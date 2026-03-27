@@ -39,6 +39,7 @@ export class SendMessageUseCase {
 
     const { waMessageId } = await this.messagingApi.sendMessage({
       provider: phone!.provider,
+      providerConfig: phone!.providerConfig,
       phoneNumberId: phone!.phoneNumberId,
       to: contact!.waId,
       type: input.messageType ?? MessageType.TEXT,

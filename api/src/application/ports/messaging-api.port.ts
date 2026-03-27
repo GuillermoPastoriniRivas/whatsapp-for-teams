@@ -2,6 +2,7 @@ import { MessagingProvider } from '../../domain/enums/messaging-provider.enum.js
 
 export interface SendMessageParams {
   provider: MessagingProvider;
+  providerConfig: Record<string, string>;
   phoneNumberId: string;
   to: string;
   type: string;

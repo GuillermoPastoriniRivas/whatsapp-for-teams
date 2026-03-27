@@ -6,6 +6,7 @@ export class PhoneNumber {
     public readonly id: string,
     public readonly tenantId: string,
     public readonly provider: MessagingProvider,
+    public readonly providerConfig: Record<string, string>,
     public readonly wabaId: string,
     public readonly phoneNumberId: string,
     public readonly displayPhone: string,

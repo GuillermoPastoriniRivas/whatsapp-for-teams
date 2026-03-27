@@ -96,6 +96,10 @@ PHONE_NUMBER
 _id            ObjectId  PK
 tenantId       ObjectId  FK -> Tenant
 provider       enum            # meta | twilio | 360dialog
+providerConfig object          # Per-number credentials. Examples:
+                               #   meta:     { accessToken: "EAA..." }
+                               #   twilio:   { accountSid: "AC...", authToken: "..." }
+                               #   360dialog: { apiKey: "..." }
 wabaId         string          # WhatsApp Business Account ID (provider-specific)
 phoneNumberId  string  UNIQUE  # Provider's phone number ID (from webhook payload)
 displayPhone   string          # "+598 99 123 456"
@@ -316,7 +320,7 @@ GET    /tenants/:tenantId
 
 ```
 POST   /phone-numbers                               @Roles('admin')
-  Body: { provider, wabaId, phoneNumberId, displayPhone, label, webhookSecret }
+  Body: { provider, providerConfig, wabaId, phoneNumberId, displayPhone, label, webhookSecret }
   Returns: PhoneNumber
 
 GET    /phone-numbers

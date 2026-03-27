@@ -11,6 +11,7 @@ export class RegisterPhoneNumberUseCase {
     const phone = await this.phoneRepo.create({
       tenantId: input.tenantId,
       provider: input.provider,
+      providerConfig: input.providerConfig,
       wabaId: input.wabaId,
       phoneNumberId: input.phoneNumberId,
       displayPhone: input.displayPhone,
