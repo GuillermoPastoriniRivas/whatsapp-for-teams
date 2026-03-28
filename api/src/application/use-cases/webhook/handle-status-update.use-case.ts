@@ -1,6 +1,7 @@
 import { MessageRepository } from '../../../domain/repositories/message.repository.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { StatusUpdateInput } from '../../dtos/webhook/status-update-input.dto.js';
+import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
 
 export class HandleStatusUpdateUseCase {
   constructor(
@@ -9,9 +10,16 @@ export class HandleStatusUpdateUseCase {
   ) {}
 
   async execute(input: StatusUpdateInput): Promise<void> {
-    // TODO: Implement status update handling
-    // 1. Find Message by input.waMessageId
-    // 2. Update waStatus (sent → delivered → read)
-    // 3. Emit WebSocket event to conversation room
+    const message = await this.messageRepo.updateStatusByWaMessageId(
+      input.waMessageId,
+      input.status as MessageWaStatus,
+    );
+
+    if (message) {
+      this.gateway.emitToConversation(message.conversationId, 'message.status', {
+        waMessageId: input.waMessageId,
+        waStatus: input.status,
+      });
+    }
   }
 }

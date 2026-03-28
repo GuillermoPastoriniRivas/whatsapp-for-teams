@@ -33,8 +33,7 @@ export class AgentController {
 
   @Post()
   @Roles('admin')
-  @UsePipes(new ZodValidationPipe(CreateAgentRequestSchema))
-  async create(@Body() body: CreateAgentRequestDto, @CurrentAgent() agent: RequestAgent) {
+  async create(@Body(new ZodValidationPipe(CreateAgentRequestSchema)) body: CreateAgentRequestDto, @CurrentAgent() agent: RequestAgent) {
     const result = await this.createAgent.execute({ ...body, tenantId: agent.tenantId });
     if (!result.ok) throw new ConflictException(result.error.message);
     const a = result.value;
@@ -47,10 +46,9 @@ export class AgentController {
   }
 
   @Patch(':id/status')
-  @UsePipes(new ZodValidationPipe(UpdateStatusRequestSchema))
   async changeStatus(
     @Param('id') id: string,
-    @Body() body: UpdateStatusRequestDto,
+    @Body(new ZodValidationPipe(UpdateStatusRequestSchema)) body: UpdateStatusRequestDto,
     @CurrentAgent() agent: RequestAgent,
   ) {
     // Agent can change own status; admin can change any
@@ -68,10 +66,9 @@ export class AgentController {
 
   @Post(':agentId/phone-access')
   @Roles('admin')
-  @UsePipes(new ZodValidationPipe(GrantPhoneAccessRequestSchema))
   async grantPhoneAccess(
     @Param('agentId') agentId: string,
-    @Body() body: GrantPhoneAccessRequestDto,
+    @Body(new ZodValidationPipe(GrantPhoneAccessRequestSchema)) body: GrantPhoneAccessRequestDto,
     @CurrentAgent() agent: RequestAgent,
   ) {
     const result = await this.grantAccess.execute({

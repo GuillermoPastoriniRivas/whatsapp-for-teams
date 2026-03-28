@@ -1,5 +1,6 @@
 export { AgentRole } from './agent-role.enum.js';
 export { AgentStatus } from './agent-status.enum.js';
+export { ConversationEventType } from './conversation-event-type.enum.js';
 export { ConversationStatus } from './conversation-status.enum.js';
 export { MessageDirection } from './message-direction.enum.js';
 export { MessageType } from './message-type.enum.js';

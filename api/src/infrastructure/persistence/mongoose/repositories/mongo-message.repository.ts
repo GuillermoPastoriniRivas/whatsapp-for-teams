@@ -27,9 +27,11 @@ export class MongoMessageRepository implements MessageRepository {
           mimeType: message.mimeType,
           waStatus: message.waStatus,
           timestamp: message.timestamp,
+          senderAgentId: message.senderAgentId,
+          senderAgentName: message.senderAgentName,
         },
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     );
     return MessageMapper.toDomain(doc!);
   }
@@ -60,7 +62,7 @@ export class MongoMessageRepository implements MessageRepository {
     const doc = await this.model.findOneAndUpdate(
       { waMessageId },
       { $set: { waStatus } },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? MessageMapper.toDomain(doc) : null;
   }

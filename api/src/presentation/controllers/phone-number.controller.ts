@@ -21,8 +21,7 @@ export class PhoneNumberController {
 
   @Post()
   @Roles('admin')
-  @UsePipes(new ZodValidationPipe(RegisterPhoneNumberRequestSchema))
-  async register(@Body() body: RegisterPhoneNumberRequestDto, @CurrentAgent() agent: RequestAgent) {
+  async register(@Body(new ZodValidationPipe(RegisterPhoneNumberRequestSchema)) body: RegisterPhoneNumberRequestDto, @CurrentAgent() agent: RequestAgent) {
     const result = await this.registerPhone.execute({ ...body, tenantId: agent.tenantId });
     if (!result.ok) throw new NotFoundException('Registration failed');
     return result.value;
@@ -35,10 +34,9 @@ export class PhoneNumberController {
 
   @Patch(':id')
   @Roles('admin')
-  @UsePipes(new ZodValidationPipe(UpdatePhoneNumberRequestSchema))
   async update(
     @Param('id') id: string,
-    @Body() body: UpdatePhoneNumberRequestDto,
+    @Body(new ZodValidationPipe(UpdatePhoneNumberRequestSchema)) body: UpdatePhoneNumberRequestDto,
     @CurrentAgent() agent: RequestAgent,
   ) {
     const result = await this.updatePhone.execute({ ...body, id, tenantId: agent.tenantId });

@@ -8,6 +8,7 @@ import { GetConversationMessagesUseCase } from '../../application/use-cases/conv
 import { SendMessageUseCase } from '../../application/use-cases/conversation/send-message.use-case.js';
 import { AssignConversationUseCase } from '../../application/use-cases/conversation/assign-conversation.use-case.js';
 import { ResolveConversationUseCase } from '../../application/use-cases/conversation/resolve-conversation.use-case.js';
+import { GetConversationEventsUseCase } from '../../application/use-cases/conversation/get-conversation-events.use-case.js';
 import { Roles } from '../decorators/roles.decorator.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
@@ -19,6 +20,9 @@ import type { AssignConversationRequestDto } from '../request-dtos/assign-conver
 import { ConversationQueryParamsSchema } from '../request-dtos/conversation-query-params.dto.js';
 import type { ConversationQueryParamsDto } from '../request-dtos/conversation-query-params.dto.js';
 import { DomainError } from '../../domain/errors/domain-errors.js';
+import type { ContactRepository } from '../../domain/repositories/contact.repository.js';
+import type { AgentRepository } from '../../domain/repositories/agent.repository.js';
+import type { PhoneNumberRepository } from '../../domain/repositories/phone-number.repository.js';
 
 @Controller('conversations')
 export class ConversationController {
@@ -29,6 +33,10 @@ export class ConversationController {
     @Inject('SendMessageUseCase') private readonly sendMessage: SendMessageUseCase,
     @Inject('AssignConversationUseCase') private readonly assignConversation: AssignConversationUseCase,
     @Inject('ResolveConversationUseCase') private readonly resolveConversation: ResolveConversationUseCase,
+    @Inject('GetConversationEventsUseCase') private readonly getConversationEvents: GetConversationEventsUseCase,
+    @Inject('ContactRepository') private readonly contactRepo: ContactRepository,
+    @Inject('AgentRepository') private readonly agentRepo: AgentRepository,
+    @Inject('PhoneNumberRepository') private readonly phoneRepo: PhoneNumberRepository,
   ) {}
 
   @Get()
@@ -39,14 +47,59 @@ export class ConversationController {
       tenantId: agent.tenantId,
       ...(agent.role !== 'admin' && !query.agentId ? { agentId: agent._id } : {}),
     };
-    return this.listConversations.execute(filters);
+    const result = await this.listConversations.execute(filters);
+
+    // Batch-lookup agent names and phone labels
+    const agentIds = [...new Set(result.data.map((c) => c.agentId).filter(Boolean))] as string[];
+    const phoneIds = [...new Set(result.data.map((c) => c.phoneNumberId))] as string[];
+    const [agents, phones] = await Promise.all([
+      Promise.all(agentIds.map((id) => this.agentRepo.findById(id))),
+      Promise.all(phoneIds.map((id) => this.phoneRepo.findById(id))),
+    ]);
+    const agentMap = new Map(agents.filter(Boolean).map((a) => [a!.id, a!.name]));
+    const phoneMap = new Map(phones.filter(Boolean).map((p) => [p!.id, { label: p!.label, displayPhone: p!.displayPhone }]));
+
+    // Enrich conversations
+    const enriched = await Promise.all(
+      result.data.map(async (conv) => {
+        const contact = await this.contactRepo.findById(conv.contactId);
+        const phoneInfo = phoneMap.get(conv.phoneNumberId);
+        return {
+          ...conv,
+          contact: contact
+            ? { name: contact.name, phone: contact.phone, waId: contact.waId, profilePicUrl: contact.profilePicUrl }
+            : null,
+          agentName: conv.agentId ? (agentMap.get(conv.agentId) ?? null) : null,
+          phoneLabel: phoneInfo?.label ?? null,
+          phoneDisplay: phoneInfo?.displayPhone ?? null,
+        };
+      }),
+    );
+
+    return { ...result, data: enriched };
   }
 
   @Get(':id')
   async detail(@Param('id') id: string) {
     const result = await this.getDetail.execute(id);
     if (!result.ok) throw new NotFoundException(result.error.message);
-    return result.value;
+    const contact = await this.contactRepo.findById(result.value.contactId);
+    const agent = result.value.agentId ? await this.agentRepo.findById(result.value.agentId) : null;
+    const phone = await this.phoneRepo.findById(result.value.phoneNumberId);
+    return {
+      ...result.value,
+      contact: contact
+        ? { name: contact.name, phone: contact.phone, waId: contact.waId, profilePicUrl: contact.profilePicUrl }
+        : null,
+      agentName: agent?.name ?? null,
+      phoneLabel: phone?.label ?? null,
+      phoneDisplay: phone?.displayPhone ?? null,
+    };
+  }
+
+  @Get(':id/events')
+  async events(@Param('id') id: string) {
+    return this.getConversationEvents.execute(id);
   }
 
   @Get(':id/messages')
@@ -65,10 +118,9 @@ export class ConversationController {
   }
 
   @Post(':id/messages')
-  @UsePipes(new ZodValidationPipe(SendMessageRequestSchema))
   async send(
     @Param('id') id: string,
-    @Body() body: SendMessageRequestDto,
+    @Body(new ZodValidationPipe(SendMessageRequestSchema)) body: SendMessageRequestDto,
     @CurrentAgent() agent: RequestAgent,
   ) {
     const result = await this.sendMessage.execute({
@@ -89,10 +141,9 @@ export class ConversationController {
 
   @Patch(':id/assign')
   @Roles('admin')
-  @UsePipes(new ZodValidationPipe(AssignConversationRequestSchema))
   async assign(
     @Param('id') id: string,
-    @Body() body: AssignConversationRequestDto,
+    @Body(new ZodValidationPipe(AssignConversationRequestSchema)) body: AssignConversationRequestDto,
     @CurrentAgent() agent: RequestAgent,
   ) {
     const result = await this.assignConversation.execute({

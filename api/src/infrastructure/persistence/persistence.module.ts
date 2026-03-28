@@ -8,6 +8,7 @@ import { ContactModel, ContactSchema } from './mongoose/schemas/contact.schema.j
 import { ConversationModel, ConversationSchema } from './mongoose/schemas/conversation.schema.js';
 import { MessageModel, MessageSchema } from './mongoose/schemas/message.schema.js';
 import { RefreshTokenModel, RefreshTokenSchema } from './mongoose/schemas/refresh-token.schema.js';
+import { ConversationEventModel, ConversationEventSchema } from './mongoose/schemas/conversation-event.schema.js';
 import { MongoTenantRepository } from './mongoose/repositories/mongo-tenant.repository.js';
 import { MongoPhoneNumberRepository } from './mongoose/repositories/mongo-phone-number.repository.js';
 import { MongoAgentRepository } from './mongoose/repositories/mongo-agent.repository.js';
@@ -16,6 +17,7 @@ import { MongoContactRepository } from './mongoose/repositories/mongo-contact.re
 import { MongoConversationRepository } from './mongoose/repositories/mongo-conversation.repository.js';
 import { MongoMessageRepository } from './mongoose/repositories/mongo-message.repository.js';
 import { MongoRefreshTokenRepository } from './mongoose/repositories/mongo-refresh-token.repository.js';
+import { MongoConversationEventRepository } from './mongoose/repositories/mongo-conversation-event.repository.js';
 
 const schemas = MongooseModule.forFeature([
   { name: TenantModel.name, schema: TenantSchema },
@@ -26,6 +28,7 @@ const schemas = MongooseModule.forFeature([
   { name: ConversationModel.name, schema: ConversationSchema },
   { name: MessageModel.name, schema: MessageSchema },
   { name: RefreshTokenModel.name, schema: RefreshTokenSchema },
+  { name: ConversationEventModel.name, schema: ConversationEventSchema },
 ]);
 
 const repositories = [
@@ -37,6 +40,7 @@ const repositories = [
   { provide: 'ConversationRepository', useClass: MongoConversationRepository },
   { provide: 'MessageRepository', useClass: MongoMessageRepository },
   { provide: 'RefreshTokenRepository', useClass: MongoRefreshTokenRepository },
+  { provide: 'ConversationEventRepository', useClass: MongoConversationEventRepository },
 ];
 
 @Module({

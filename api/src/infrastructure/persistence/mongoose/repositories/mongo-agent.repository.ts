@@ -39,12 +39,12 @@ export class MongoAgentRepository implements AgentRepository {
   }
 
   async updateStatus(id: string, status: AgentStatus): Promise<Agent | null> {
-    const doc = await this.model.findByIdAndUpdate(id, { $set: { status } }, { new: true });
+    const doc = await this.model.findByIdAndUpdate(id, { $set: { status } }, { returnDocument: 'after' });
     return doc ? AgentMapper.toDomain(doc) : null;
   }
 
   async incrementActiveCount(id: string, delta: number): Promise<Agent | null> {
-    const doc = await this.model.findByIdAndUpdate(id, { $inc: { activeCount: delta } }, { new: true });
+    const doc = await this.model.findByIdAndUpdate(id, { $inc: { activeCount: delta } }, { returnDocument: 'after' });
     return doc ? AgentMapper.toDomain(doc) : null;
   }
 
@@ -58,7 +58,7 @@ export class MongoAgentRepository implements AgentRepository {
       { $inc: { activeCount: 1 } },
       {
         sort: { activeCount: 1 },
-        new: true,
+        returnDocument: 'after',
       },
     );
     return doc ? AgentMapper.toDomain(doc) : null;

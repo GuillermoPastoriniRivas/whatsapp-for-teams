@@ -44,6 +44,18 @@ export class MongoConversationRepository implements ConversationRepository {
     return doc ? ConversationMapper.toDomain(doc) : null;
   }
 
+  async findByContactAndPhone(contactId: string, phoneNumberId: string): Promise<Conversation | null> {
+    const doc = await this.model.findOne(
+      {
+        contactId: new Types.ObjectId(contactId),
+        phoneNumberId: new Types.ObjectId(phoneNumberId),
+      },
+      null,
+      { sort: { lastMessageAt: -1 } },
+    );
+    return doc ? ConversationMapper.toDomain(doc) : null;
+  }
+
   async findByFilters(filters: ConversationFilters): Promise<PaginatedResult<Conversation>> {
     const query: Record<string, unknown> = { tenantId: new Types.ObjectId(filters.tenantId) };
     if (filters.status) query.status = filters.status;
@@ -96,7 +108,7 @@ export class MongoConversationRepository implements ConversationRepository {
         updateData[key] = value;
       }
     }
-    const doc = await this.model.findByIdAndUpdate(id, { $set: updateData }, { new: true });
+    const doc = await this.model.findByIdAndUpdate(id, { $set: updateData }, { returnDocument: 'after' });
     return doc ? ConversationMapper.toDomain(doc) : null;
   }
 }

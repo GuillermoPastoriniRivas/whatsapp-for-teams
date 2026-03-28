@@ -17,6 +17,8 @@ export class MessageMapper {
       doc.waMessageId,
       doc.waStatus as MessageWaStatus,
       doc.timestamp,
+      doc.senderAgentId ?? null,
+      doc.senderAgentName ?? null,
     );
   }
 }

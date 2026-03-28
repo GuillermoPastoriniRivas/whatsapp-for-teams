@@ -17,7 +17,7 @@ export class ContactModel {
   @Prop({ required: true })
   phone: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   profilePicUrl: string | null;
 
   @Prop({ required: true, default: () => new Date() })

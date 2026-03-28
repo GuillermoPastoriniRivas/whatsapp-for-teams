@@ -1,0 +1,60 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { MessageSquare, Settings, Shield } from "lucide-react";
+import { useAuthStore } from "@/stores/auth.store";
+import { useConversationStore } from "@/stores/conversation.store";
+import { cn } from "@/lib/utils";
+
+export function MobileNav() {
+  const pathname = usePathname();
+  const agent = useAuthStore((s) => s.agent);
+  const totalUnread = useConversationStore((s) =>
+    Object.values(s.unreadCounts).reduce((sum, n) => sum + n, 0)
+  );
+
+  const tabs = [
+    { href: "/", icon: MessageSquare, label: "Chats" },
+    ...(agent?.role === "admin"
+      ? [{ href: "/admin", icon: Shield, label: "Admin" }]
+      : []),
+    { href: "/settings", icon: Settings, label: "Settings" },
+  ];
+
+  // Hide nav on login page or when inside a chat on mobile
+  if (pathname === "/login") return null;
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden">
+      <div className="flex items-center justify-around">
+        {tabs.map((tab) => {
+          const isActive =
+            tab.href === "/"
+              ? pathname === "/" || pathname.startsWith("/conversations")
+              : pathname.startsWith(tab.href);
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={cn(
+                "flex flex-1 flex-col items-center gap-1 py-3 text-xs",
+                isActive ? "text-[#25D366]" : "text-muted-foreground"
+              )}
+            >
+              <span className="relative">
+                <tab.icon className="h-5 w-5" />
+                {tab.label === "Chats" && totalUnread > 0 && (
+                  <span className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#25D366] px-1 text-[9px] font-bold text-white">
+                    {totalUnread > 99 ? "99+" : totalUnread}
+                  </span>
+                )}
+              </span>
+              <span>{tab.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}

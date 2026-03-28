@@ -19,6 +19,7 @@ export interface ConversationRepository {
   create(conversation: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy'>): Promise<Conversation>;
   findById(id: string): Promise<Conversation | null>;
   findOpenByContactAndPhone(contactId: string, phoneNumberId: string): Promise<Conversation | null>;
+  findByContactAndPhone(contactId: string, phoneNumberId: string): Promise<Conversation | null>;
   findByFilters(filters: ConversationFilters): Promise<PaginatedResult<Conversation>>;
   findActiveByAgentId(agentId: string): Promise<Conversation[]>;
   findActiveByAgentAndPhone(agentId: string, phoneNumberId: string): Promise<Conversation[]>;

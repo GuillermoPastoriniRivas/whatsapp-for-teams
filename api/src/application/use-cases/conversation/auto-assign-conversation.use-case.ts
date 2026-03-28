@@ -2,8 +2,10 @@ import { Agent } from '../../../domain/entities/agent.entity.js';
 import { ConversationRepository } from '../../../domain/repositories/conversation.repository.js';
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { AgentPhoneAccessRepository } from '../../../domain/repositories/agent-phone-access.repository.js';
+import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
+import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
 
 export class AutoAssignConversationUseCase {
   constructor(
@@ -11,6 +13,7 @@ export class AutoAssignConversationUseCase {
     private readonly agentRepo: AgentRepository,
     private readonly accessRepo: AgentPhoneAccessRepository,
     private readonly gateway: RealtimeGatewayPort,
+    private readonly eventRepo: ConversationEventRepository,
   ) {}
 
   async execute(conversationId: string): Promise<Agent | null> {
@@ -30,11 +33,18 @@ export class AutoAssignConversationUseCase {
     const agent = await this.agentRepo.findAvailableByIdsAndIncrementLoad(agentIds);
 
     if (!agent) {
-      // No available agents — mark unassigned
       await this.conversationRepo.update(conversationId, {
         agentId: null,
         status: ConversationStatus.UNASSIGNED,
       } as any);
+
+      await this.eventRepo.create({
+        conversationId,
+        tenantId: conversation.tenantId,
+        type: ConversationEventType.UNASSIGNED,
+        performedBy: null,
+        data: { reason: 'No available agents' },
+      });
 
       this.gateway.emitToTenant(conversation.tenantId, 'conversation.unassigned', { conversationId });
       return null;
@@ -45,6 +55,14 @@ export class AutoAssignConversationUseCase {
       agentId: agent.id,
       status: ConversationStatus.ACTIVE,
     } as any);
+
+    await this.eventRepo.create({
+      conversationId,
+      tenantId: conversation.tenantId,
+      type: ConversationEventType.ASSIGNED,
+      performedBy: null,
+      data: { agentId: agent.id, agentName: agent.name, auto: true },
+    });
 
     this.gateway.emitToAgent(agent.id, 'conversation.new', { conversationId });
 

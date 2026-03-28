@@ -3,6 +3,7 @@ import { ConversationRepository } from '../../../domain/repositories/conversatio
 import { MessageRepository } from '../../../domain/repositories/message.repository.js';
 import { ContactRepository } from '../../../domain/repositories/contact.repository.js';
 import { PhoneNumberRepository } from '../../../domain/repositories/phone-number.repository.js';
+import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { SendMessageInput } from '../../dtos/conversation/send-message-input.dto.js';
@@ -22,6 +23,7 @@ export class SendMessageUseCase {
     private readonly phoneRepo: PhoneNumberRepository,
     private readonly messagingApi: MessagingApiPort,
     private readonly gateway: RealtimeGatewayPort,
+    private readonly agentRepo: AgentRepository,
   ) {}
 
   async execute(input: SendMessageInput): Promise<Result<Message, DomainError>> {
@@ -36,6 +38,7 @@ export class SendMessageUseCase {
 
     const contact = await this.contactRepo.findById(conversation.contactId);
     const phone = await this.phoneRepo.findById(conversation.phoneNumberId);
+    const agent = await this.agentRepo.findById(input.agentId);
 
     const { waMessageId } = await this.messagingApi.sendMessage({
       provider: phone!.provider,
@@ -56,6 +59,8 @@ export class SendMessageUseCase {
       waMessageId,
       waStatus: MessageWaStatus.SENT,
       timestamp: new Date(),
+      senderAgentId: input.agentId,
+      senderAgentName: agent?.name ?? null,
     });
 
     await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date() } as any);

@@ -27,10 +27,10 @@ export class ConversationModel {
   @Prop({ required: true, default: () => new Date() })
   lastInboundAt: Date;
 
-  @Prop({ default: null })
+  @Prop({ type: Date, default: null })
   resolvedAt: Date | null;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   closedBy: string | null;
 
   createdAt: Date;

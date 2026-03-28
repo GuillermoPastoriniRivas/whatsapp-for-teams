@@ -1,0 +1,67 @@
+"use client";
+
+import { create } from "zustand";
+import { api } from "@/lib/api";
+import { connectSocket, disconnectSocket } from "@/lib/socket";
+import type { Agent, LoginResponse } from "@/types";
+
+interface AuthState {
+  agent: Pick<Agent, "id" | "name" | "email" | "role"> | null;
+  accessToken: string | null;
+  isLoading: boolean;
+  error: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  hydrate: () => void;
+}
+
+export const useAuthStore = create<AuthState>((set, get) => ({
+  agent: null,
+  accessToken: null,
+  isLoading: false,
+  error: null,
+
+  login: async (email, password) => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await api.post<LoginResponse>("/auth/login", {
+        email,
+        password,
+      });
+      api.setToken(data.accessToken);
+      connectSocket(data.accessToken);
+
+      localStorage.setItem("accessToken", data.accessToken);
+      localStorage.setItem("refreshToken", data.refreshToken);
+      localStorage.setItem("agent", JSON.stringify(data.agent));
+
+      set({
+        agent: data.agent,
+        accessToken: data.accessToken,
+        isLoading: false,
+      });
+    } catch (err: any) {
+      set({ error: err.message || "Login failed", isLoading: false });
+    }
+  },
+
+  logout: () => {
+    api.setToken(null);
+    disconnectSocket();
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("agent");
+    set({ agent: null, accessToken: null });
+  },
+
+  hydrate: () => {
+    const token = localStorage.getItem("accessToken");
+    const agentStr = localStorage.getItem("agent");
+    if (token && agentStr) {
+      const agent = JSON.parse(agentStr);
+      api.setToken(token);
+      connectSocket(token);
+      set({ agent, accessToken: token });
+    }
+  },
+}));

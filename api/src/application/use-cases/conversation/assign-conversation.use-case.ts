@@ -1,10 +1,12 @@
 import { Conversation } from '../../../domain/entities/conversation.entity.js';
 import { ConversationRepository } from '../../../domain/repositories/conversation.repository.js';
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
+import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { Result, ok, err } from '../../common/result.js';
 import { DomainError, ConversationNotFoundError, AgentNotFoundError } from '../../../domain/errors/domain-errors.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
+import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
 
 export interface AssignConversationInput {
   conversationId: string;
@@ -17,6 +19,7 @@ export class AssignConversationUseCase {
     private readonly conversationRepo: ConversationRepository,
     private readonly agentRepo: AgentRepository,
     private readonly gateway: RealtimeGatewayPort,
+    private readonly eventRepo: ConversationEventRepository,
   ) {}
 
   async execute(input: AssignConversationInput): Promise<Result<Conversation, DomainError>> {
@@ -26,10 +29,15 @@ export class AssignConversationUseCase {
     const newAgent = await this.agentRepo.findById(input.agentId);
     if (!newAgent) return err(new AgentNotFoundError());
 
+    const oldAgentId = conversation.agentId;
+    let oldAgentName: string | null = null;
+
     // Decrement old agent's load if reassigning
-    if (conversation.agentId) {
-      await this.agentRepo.incrementActiveCount(conversation.agentId, -1);
-      this.gateway.emitToAgent(conversation.agentId, 'conversation.assigned', { conversationId: conversation.id });
+    if (oldAgentId) {
+      const oldAgent = await this.agentRepo.findById(oldAgentId);
+      oldAgentName = oldAgent?.name ?? null;
+      await this.agentRepo.incrementActiveCount(oldAgentId, -1);
+      this.gateway.emitToAgent(oldAgentId, 'conversation.assigned', { conversationId: conversation.id });
     }
 
     // Increment new agent's load
@@ -39,6 +47,18 @@ export class AssignConversationUseCase {
       agentId: input.agentId,
       status: ConversationStatus.ACTIVE,
     } as any);
+
+    // Write event
+    const isReassign = !!oldAgentId;
+    await this.eventRepo.create({
+      conversationId: conversation.id,
+      tenantId: conversation.tenantId,
+      type: isReassign ? ConversationEventType.REASSIGNED : ConversationEventType.ASSIGNED,
+      performedBy: input.agentId,
+      data: isReassign
+        ? { fromAgentId: oldAgentId, fromAgentName: oldAgentName, toAgentId: input.agentId, toAgentName: newAgent.name }
+        : { agentId: input.agentId, agentName: newAgent.name },
+    });
 
     this.gateway.emitToAgent(input.agentId, 'conversation.assigned', updated);
 

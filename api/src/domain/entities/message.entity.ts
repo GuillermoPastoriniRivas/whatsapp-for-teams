@@ -14,5 +14,7 @@ export class Message {
     public readonly waMessageId: string,
     public readonly waStatus: MessageWaStatus,
     public readonly timestamp: Date,
+    public readonly senderAgentId: string | null,
+    public readonly senderAgentName: string | null,
   ) {}
 }

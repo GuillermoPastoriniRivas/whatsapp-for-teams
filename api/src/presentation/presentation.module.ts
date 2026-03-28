@@ -40,6 +40,7 @@ import { SendMessageUseCase } from '../application/use-cases/conversation/send-m
 import { AssignConversationUseCase } from '../application/use-cases/conversation/assign-conversation.use-case.js';
 import { AutoAssignConversationUseCase } from '../application/use-cases/conversation/auto-assign-conversation.use-case.js';
 import { ResolveConversationUseCase } from '../application/use-cases/conversation/resolve-conversation.use-case.js';
+import { GetConversationEventsUseCase } from '../application/use-cases/conversation/get-conversation-events.use-case.js';
 
 // Use Cases — Tenant
 import { CreateTenantUseCase } from '../application/use-cases/tenant/create-tenant.use-case.js';
@@ -82,9 +83,9 @@ const useCaseProviders = [
   },
   {
     provide: 'AutoAssignConversationUseCase',
-    useFactory: (convRepo: any, agentRepo: any, accessRepo: any, gateway: any) =>
-      new AutoAssignConversationUseCase(convRepo, agentRepo, accessRepo, gateway),
-    inject: ['ConversationRepository', 'AgentRepository', 'AgentPhoneAccessRepository', 'RealtimeGatewayPort'],
+    useFactory: (convRepo: any, agentRepo: any, accessRepo: any, gateway: any, eventRepo: any) =>
+      new AutoAssignConversationUseCase(convRepo, agentRepo, accessRepo, gateway, eventRepo),
+    inject: ['ConversationRepository', 'AgentRepository', 'AgentPhoneAccessRepository', 'RealtimeGatewayPort', 'ConversationEventRepository'],
   },
   {
     provide: 'UpdateAgentStatusUseCase',
@@ -145,21 +146,26 @@ const useCaseProviders = [
   },
   {
     provide: 'SendMessageUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, messagingApi: any, gateway: any) =>
-      new SendMessageUseCase(convRepo, msgRepo, contactRepo, phoneRepo, messagingApi, gateway),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'MessagingApiPort', 'RealtimeGatewayPort'],
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, messagingApi: any, gateway: any, agentRepo: any) =>
+      new SendMessageUseCase(convRepo, msgRepo, contactRepo, phoneRepo, messagingApi, gateway, agentRepo),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'AgentRepository'],
   },
   {
     provide: 'AssignConversationUseCase',
-    useFactory: (convRepo: any, agentRepo: any, gateway: any) =>
-      new AssignConversationUseCase(convRepo, agentRepo, gateway),
-    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort'],
+    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any) =>
+      new AssignConversationUseCase(convRepo, agentRepo, gateway, eventRepo),
+    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository'],
+  },
+  {
+    provide: 'GetConversationEventsUseCase',
+    useFactory: (eventRepo: any) => new GetConversationEventsUseCase(eventRepo),
+    inject: ['ConversationEventRepository'],
   },
   {
     provide: 'ResolveConversationUseCase',
-    useFactory: (convRepo: any, agentRepo: any, gateway: any) =>
-      new ResolveConversationUseCase(convRepo, agentRepo, gateway),
-    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort'],
+    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any) =>
+      new ResolveConversationUseCase(convRepo, agentRepo, gateway, eventRepo),
+    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository'],
   },
 
   // Tenant
@@ -177,9 +183,9 @@ const useCaseProviders = [
   // Webhook
   {
     provide: 'HandleInboundMessageUseCase',
-    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any) =>
-      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign),
-    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase'],
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any) =>
+      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository'],
   },
   {
     provide: 'HandleStatusUpdateUseCase',

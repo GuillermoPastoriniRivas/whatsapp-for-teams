@@ -17,13 +17,13 @@ export class MessageModel {
   @Prop({ required: true, enum: MessageType })
   messageType: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   body: string | null;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   mediaUrl: string | null;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   mimeType: string | null;
 
   @Prop({ required: true, unique: true })
@@ -34,6 +34,12 @@ export class MessageModel {
 
   @Prop({ required: true })
   timestamp: Date;
+
+  @Prop({ type: String, default: null })
+  senderAgentId: string | null;
+
+  @Prop({ type: String, default: null })
+  senderAgentName: string | null;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(MessageModel);

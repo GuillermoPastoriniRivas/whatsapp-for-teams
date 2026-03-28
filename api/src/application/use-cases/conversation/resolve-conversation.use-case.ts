@@ -1,10 +1,12 @@
 import { Conversation } from '../../../domain/entities/conversation.entity.js';
 import { ConversationRepository } from '../../../domain/repositories/conversation.repository.js';
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
+import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { Result, ok, err } from '../../common/result.js';
 import { ConversationNotFoundError } from '../../../domain/errors/domain-errors.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
+import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
 
 export interface ResolveConversationInput {
   conversationId: string;
@@ -16,11 +18,15 @@ export class ResolveConversationUseCase {
     private readonly conversationRepo: ConversationRepository,
     private readonly agentRepo: AgentRepository,
     private readonly gateway: RealtimeGatewayPort,
+    private readonly eventRepo: ConversationEventRepository,
   ) {}
 
   async execute(input: ResolveConversationInput): Promise<Result<Conversation, ConversationNotFoundError>> {
     const conversation = await this.conversationRepo.findById(input.conversationId);
     if (!conversation) return err(new ConversationNotFoundError());
+
+    // Get agent name for the event
+    const agent = await this.agentRepo.findById(input.agentId);
 
     // Decrement agent's load
     if (conversation.agentId) {
@@ -33,6 +39,14 @@ export class ResolveConversationUseCase {
       closedBy: input.agentId,
       agentId: null,
     } as any);
+
+    await this.eventRepo.create({
+      conversationId: conversation.id,
+      tenantId: conversation.tenantId,
+      type: ConversationEventType.RESOLVED,
+      performedBy: input.agentId,
+      data: { agentId: input.agentId, agentName: agent?.name ?? 'Unknown' },
+    });
 
     this.gateway.emitToTenant(conversation.tenantId, 'conversation.resolved', {
       conversationId: conversation.id,
