@@ -5,4 +5,5 @@ export enum ConversationEventType {
   UNASSIGNED = 'unassigned',
   RESOLVED = 'resolved',
   REOPENED = 'reopened',
+  NOTE_ADDED = 'note_added',
 }

@@ -13,6 +13,7 @@ import { PhoneNumberController } from './controllers/phone-number.controller.js'
 import { ConversationController } from './controllers/conversation.controller.js';
 import { TenantController } from './controllers/tenant.controller.js';
 import { WebhookController } from './controllers/webhook.controller.js';
+import { ContactController } from './controllers/contact.controller.js';
 
 // Use Cases — Auth
 import { LoginUseCase } from '../application/use-cases/auth/login.use-case.js';
@@ -41,6 +42,11 @@ import { AssignConversationUseCase } from '../application/use-cases/conversation
 import { AutoAssignConversationUseCase } from '../application/use-cases/conversation/auto-assign-conversation.use-case.js';
 import { ResolveConversationUseCase } from '../application/use-cases/conversation/resolve-conversation.use-case.js';
 import { GetConversationEventsUseCase } from '../application/use-cases/conversation/get-conversation-events.use-case.js';
+import { AddConversationNoteUseCase } from '../application/use-cases/conversation/add-conversation-note.use-case.js';
+import { GetConversationNotesUseCase } from '../application/use-cases/conversation/get-conversation-notes.use-case.js';
+
+// Use Cases — Contact
+import { UpdateContactUseCase } from '../application/use-cases/contact/update-contact.use-case.js';
 
 // Use Cases — Tenant
 import { CreateTenantUseCase } from '../application/use-cases/tenant/create-tenant.use-case.js';
@@ -162,6 +168,17 @@ const useCaseProviders = [
     inject: ['ConversationEventRepository'],
   },
   {
+    provide: 'AddConversationNoteUseCase',
+    useFactory: (noteRepo: any, convRepo: any, agentRepo: any, eventRepo: any, gateway: any) =>
+      new AddConversationNoteUseCase(noteRepo, convRepo, agentRepo, eventRepo, gateway),
+    inject: ['ConversationNoteRepository', 'ConversationRepository', 'AgentRepository', 'ConversationEventRepository', 'RealtimeGatewayPort'],
+  },
+  {
+    provide: 'GetConversationNotesUseCase',
+    useFactory: (noteRepo: any) => new GetConversationNotesUseCase(noteRepo),
+    inject: ['ConversationNoteRepository'],
+  },
+  {
     provide: 'ResolveConversationUseCase',
     useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any) =>
       new ResolveConversationUseCase(convRepo, agentRepo, gateway, eventRepo),
@@ -178,6 +195,13 @@ const useCaseProviders = [
     provide: 'GetTenantUseCase',
     useFactory: (tenantRepo: any) => new GetTenantUseCase(tenantRepo),
     inject: ['TenantRepository'],
+  },
+
+  // Contact
+  {
+    provide: 'UpdateContactUseCase',
+    useFactory: (contactRepo: any) => new UpdateContactUseCase(contactRepo),
+    inject: ['ContactRepository'],
   },
 
   // Webhook
@@ -203,6 +227,7 @@ const useCaseProviders = [
     ConversationController,
     TenantController,
     WebhookController,
+    ContactController,
   ],
   providers: [
     ...useCaseProviders,

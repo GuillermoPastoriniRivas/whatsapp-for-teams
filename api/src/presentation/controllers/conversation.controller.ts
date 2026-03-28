@@ -9,6 +9,8 @@ import { SendMessageUseCase } from '../../application/use-cases/conversation/sen
 import { AssignConversationUseCase } from '../../application/use-cases/conversation/assign-conversation.use-case.js';
 import { ResolveConversationUseCase } from '../../application/use-cases/conversation/resolve-conversation.use-case.js';
 import { GetConversationEventsUseCase } from '../../application/use-cases/conversation/get-conversation-events.use-case.js';
+import { AddConversationNoteUseCase } from '../../application/use-cases/conversation/add-conversation-note.use-case.js';
+import { GetConversationNotesUseCase } from '../../application/use-cases/conversation/get-conversation-notes.use-case.js';
 import { Roles } from '../decorators/roles.decorator.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
@@ -19,6 +21,8 @@ import { AssignConversationRequestSchema } from '../request-dtos/assign-conversa
 import type { AssignConversationRequestDto } from '../request-dtos/assign-conversation-request.dto.js';
 import { ConversationQueryParamsSchema } from '../request-dtos/conversation-query-params.dto.js';
 import type { ConversationQueryParamsDto } from '../request-dtos/conversation-query-params.dto.js';
+import { AddNoteRequestSchema } from '../request-dtos/add-note-request.dto.js';
+import type { AddNoteRequestDto } from '../request-dtos/add-note-request.dto.js';
 import { DomainError } from '../../domain/errors/domain-errors.js';
 import type { ContactRepository } from '../../domain/repositories/contact.repository.js';
 import type { AgentRepository } from '../../domain/repositories/agent.repository.js';
@@ -34,6 +38,8 @@ export class ConversationController {
     @Inject('AssignConversationUseCase') private readonly assignConversation: AssignConversationUseCase,
     @Inject('ResolveConversationUseCase') private readonly resolveConversation: ResolveConversationUseCase,
     @Inject('GetConversationEventsUseCase') private readonly getConversationEvents: GetConversationEventsUseCase,
+    @Inject('AddConversationNoteUseCase') private readonly addNote: AddConversationNoteUseCase,
+    @Inject('GetConversationNotesUseCase') private readonly getNotes: GetConversationNotesUseCase,
     @Inject('ContactRepository') private readonly contactRepo: ContactRepository,
     @Inject('AgentRepository') private readonly agentRepo: AgentRepository,
     @Inject('PhoneNumberRepository') private readonly phoneRepo: PhoneNumberRepository,
@@ -89,7 +95,16 @@ export class ConversationController {
     return {
       ...result.value,
       contact: contact
-        ? { name: contact.name, phone: contact.phone, waId: contact.waId, profilePicUrl: contact.profilePicUrl }
+        ? {
+            id: contact.id,
+            name: contact.name,
+            phone: contact.phone,
+            waId: contact.waId,
+            profilePicUrl: contact.profilePicUrl,
+            email: contact.email,
+            company: contact.company,
+            notes: contact.notes,
+          }
         : null,
       agentName: agent?.name ?? null,
       phoneLabel: phone?.label ?? null,
@@ -136,6 +151,27 @@ export class ConversationController {
       if (error.code === 'AGENT_NOT_ASSIGNED') throw new ForbiddenException(error.message);
       throw new NotFoundException(error.message);
     }
+    return result.value;
+  }
+
+  @Get(':id/notes')
+  async notes(@Param('id') id: string) {
+    return this.getNotes.execute(id);
+  }
+
+  @Post(':id/notes')
+  async addNoteToConversation(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(AddNoteRequestSchema)) body: AddNoteRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.addNote.execute({
+      conversationId: id,
+      agentId: agent._id,
+      tenantId: agent.tenantId,
+      body: body.body,
+    });
+    if (!result.ok) throw new NotFoundException(result.error.message);
     return result.value;
   }
 

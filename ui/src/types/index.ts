@@ -26,10 +26,14 @@ export interface Conversation {
   phoneDisplay: string | null;
   agentName: string | null;
   contact: {
+    id: string;
     name: string;
     phone: string;
     waId: string;
     profilePicUrl: string | null;
+    email: string | null;
+    company: string | null;
+    notes: string | null;
   } | null;
 }
 
@@ -41,6 +45,10 @@ export interface Contact {
   phone: string;
   profilePicUrl: string | null;
   lastSeenAt: string;
+  email: string | null;
+  company: string | null;
+  notes: string | null;
+  customFields: Record<string, string>;
 }
 
 export interface Message {
@@ -80,9 +88,20 @@ export interface ConversationEvent {
     | "reassigned"
     | "unassigned"
     | "resolved"
-    | "reopened";
+    | "reopened"
+    | "note_added";
   performedBy: string | null;
   data: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface ConversationNote {
+  id: string;
+  conversationId: string;
+  tenantId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
   createdAt: string;
 }
 

@@ -12,6 +12,10 @@ export class ContactMapper {
       doc.profilePicUrl,
       doc.lastSeenAt,
       doc.createdAt,
+      doc.email ?? null,
+      doc.company ?? null,
+      doc.notes ?? null,
+      doc.customFields ?? {},
     );
   }
 }

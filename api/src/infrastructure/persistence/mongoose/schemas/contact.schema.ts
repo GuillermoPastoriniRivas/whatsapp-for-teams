@@ -23,6 +23,18 @@ export class ContactModel {
   @Prop({ required: true, default: () => new Date() })
   lastSeenAt: Date;
 
+  @Prop({ type: String, default: null })
+  email: string | null;
+
+  @Prop({ type: String, default: null })
+  company: string | null;
+
+  @Prop({ type: String, default: null })
+  notes: string | null;
+
+  @Prop({ type: Object, default: {} })
+  customFields: Record<string, string>;
+
   createdAt: Date;
 }
 

@@ -9,9 +9,11 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Phone, Clock } from "lucide-react";
+import { User, Phone, Clock, StickyNote } from "lucide-react";
 import { api } from "@/lib/api";
 import { ActivityTimeline } from "./activity-timeline";
+import { ConversationNotes } from "./conversation-notes";
+import { ContactFields } from "./contact-fields";
 import type { Conversation, ConversationEvent } from "@/types";
 
 interface Props {
@@ -65,6 +67,19 @@ export function ContactInfoSheet({ open, onOpenChange, conversation }: Props) {
               <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
               <span>+{contact?.waId || contact?.phone || "—"}</span>
             </div>
+            {contact?.id && (
+              <ContactFields
+                contact={{
+                  id: contact.id,
+                  email: contact.email ?? null,
+                  company: contact.company ?? null,
+                  notes: contact.notes ?? null,
+                }}
+                onUpdated={() => {
+                  // Fields update in-place via the component's own state
+                }}
+              />
+            )}
           </div>
 
           <Separator />
@@ -90,6 +105,22 @@ export function ContactInfoSheet({ open, onOpenChange, conversation }: Props) {
                 {conversation?.status}
               </Badge>
             </div>
+          </div>
+
+          <Separator />
+
+          {/* Internal notes */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
+              <StickyNote className="h-3.5 w-3.5" />
+              Internal Notes
+            </h3>
+            {conversation && (
+              <ConversationNotes
+                conversationId={conversation.id}
+                open={open}
+              />
+            )}
           </div>
 
           <Separator />

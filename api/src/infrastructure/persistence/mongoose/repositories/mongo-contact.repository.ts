@@ -40,4 +40,18 @@ export class MongoContactRepository implements ContactRepository {
     const doc = await this.model.findById(id);
     return doc ? ContactMapper.toDomain(doc) : null;
   }
+
+  async update(
+    id: string,
+    data: { email?: string | null; company?: string | null; notes?: string | null; customFields?: Record<string, string> },
+  ): Promise<Contact | null> {
+    const update: Record<string, unknown> = {};
+    if (data.email !== undefined) update.email = data.email;
+    if (data.company !== undefined) update.company = data.company;
+    if (data.notes !== undefined) update.notes = data.notes;
+    if (data.customFields !== undefined) update.customFields = data.customFields;
+
+    const doc = await this.model.findByIdAndUpdate(id, { $set: update }, { returnDocument: 'after' });
+    return doc ? ContactMapper.toDomain(doc) : null;
+  }
 }

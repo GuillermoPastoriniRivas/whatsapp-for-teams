@@ -8,5 +8,9 @@ export class Contact {
     public readonly profilePicUrl: string | null,
     public readonly lastSeenAt: Date,
     public readonly createdAt: Date,
+    public readonly email: string | null = null,
+    public readonly company: string | null = null,
+    public readonly notes: string | null = null,
+    public readonly customFields: Record<string, string> = {},
   ) {}
 }

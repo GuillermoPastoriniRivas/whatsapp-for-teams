@@ -7,6 +7,7 @@ import {
   RotateCcw,
   PlusCircle,
   UserMinus,
+  StickyNote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ConversationEvent } from "@/types";
@@ -48,6 +49,11 @@ const eventConfig: Record<
     icon: RotateCcw,
     color: "text-purple-500",
     label: () => "Reopened by new inbound message",
+  },
+  note_added: {
+    icon: StickyNote,
+    color: "text-yellow-500",
+    label: (data) => `${data.agentName} added a note`,
   },
 };
 
