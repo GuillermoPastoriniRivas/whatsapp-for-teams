@@ -30,7 +30,7 @@ export function PhoneNumberList() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Phone Numbers</h2>
-        <Button size="sm" onClick={() => setRegisterOpen(true)} className="gap-1.5 bg-[#25D366] hover:bg-[#1da851]">
+        <Button size="sm" onClick={() => setRegisterOpen(true)} className="gap-1.5 bg-primary hover:bg-primary/90">
           <Plus className="h-4 w-4" />
           Add Number
         </Button>

@@ -59,12 +59,6 @@ export function ChatPanel({ conversationId }: Props) {
       <ChatHeader conversationId={conversationId} />
       <ScrollArea className="flex-1 w-full px-4 sm:px-[5%] md:px-[10%] lg:px-[15%]">
         <div className="flex flex-col py-6 min-h-full">
-          <div className="flex justify-center mb-6 mt-2 pb-4">
-            <div className="bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 text-xs px-4 py-1.5 rounded-lg shadow-sm font-medium flex items-center max-w-sm text-center">
-              End-to-end encrypted. Enterprise workspace.
-            </div>
-          </div>
-          
           {convMessages.map((msg) => (
             <MessageBubble key={msg.id} message={msg} />
           ))}

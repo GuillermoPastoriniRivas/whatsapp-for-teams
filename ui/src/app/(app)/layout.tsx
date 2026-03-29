@@ -8,9 +8,9 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <div className="flex h-screen w-full overflow-hidden bg-white dark:bg-slate-950 font-sans">
+      <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
         <AppSidebar />
-        <div className="flex flex-1 flex-col overflow-hidden relative border-l border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
+        <div className="flex flex-1 flex-col overflow-hidden relative shadow-xl shadow-slate-200/50 dark:shadow-none">
           {/* We only show the AppHeader on mobile or as a specific use-case inside. If we want we can hide it on desktop. */}
           <div className="md:hidden">
             <AppHeader />

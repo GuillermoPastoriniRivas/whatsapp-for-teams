@@ -38,8 +38,8 @@ export function ConversationItem({ conversation, onSelect }: Props) {
   const unreadCount = useConversationStore((s) => s.unreadCounts[conversation.id] || 0);
   
   const statusColors: Record<string, string> = {
-    active: "bg-[#25D366]",
-    unassigned: "bg-red-500",
+    active: "bg-primary",
+    unassigned: "bg-accent",
     resolved: "bg-slate-300 dark:bg-slate-700",
   };
 
@@ -48,9 +48,9 @@ export function ConversationItem({ conversation, onSelect }: Props) {
       onClick={onSelect}
       className={cn(
         "flex w-full items-center gap-4 px-4 py-3 text-left transition-colors border-b border-transparent group",
-        isActive 
-          ? "bg-[#F0F2F5] dark:bg-[#2A3942]" 
-          : "hover:bg-[#F5F6F6] dark:hover:bg-[#202C33]"
+        isActive
+          ? "bg-muted"
+          : "hover:bg-muted/50"
       )}
     >
       <div className="relative">
@@ -77,7 +77,7 @@ export function ConversationItem({ conversation, onSelect }: Props) {
           )}
           <span className={cn(
             "text-xs whitespace-nowrap ml-2",
-            conversation.status === "unassigned" ? "text-red-500 font-medium" : "text-slate-500 dark:text-slate-400"
+            conversation.status === "unassigned" ? "text-accent font-medium" : "text-slate-500 dark:text-slate-400"
           )}>
             {timeAgo(conversation.lastMessageAt)}
           </span>
@@ -92,12 +92,12 @@ export function ConversationItem({ conversation, onSelect }: Props) {
                 : "Unassigned"}
           </span>
           {conversation.status === "unassigned" && (
-            <div className="ml-2 flex h-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+            <div className="ml-2 flex h-5 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-bold text-white">
               NEW
             </div>
           )}
           {unreadCount > 0 && (
-            <div className="ml-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#25D366] px-1.5 text-[10px] font-bold text-white">
+            <div className="ml-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white">
               {unreadCount > 99 ? "99+" : unreadCount}
             </div>
           )}

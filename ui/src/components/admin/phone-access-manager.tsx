@@ -210,7 +210,7 @@ export function PhoneAccessManager() {
                         className={cn(
                           "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-all",
                           hasAccess
-                            ? "bg-[#25D366] border-[#25D366] text-white"
+                            ? "bg-primary border-primary text-white"
                             : "border-slate-300 dark:border-slate-600",
                           isUpdating && "opacity-50"
                         )}

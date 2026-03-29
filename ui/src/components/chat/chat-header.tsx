@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useConversationStore } from "@/stores/conversation.store";
+import { useAuthStore } from "@/stores/auth.store";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User } from "lucide-react";
@@ -21,8 +22,20 @@ export function ChatHeader({ conversationId }: Props) {
   );
   const updateConversation = useConversationStore((s) => s.updateConversation);
 
+  const currentAgent = useAuthStore((s) => s.agent);
+
   const [contactInfoOpen, setContactInfoOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+
+  const isMine = conversation?.agentId === currentAgent?.id;
+
+  const handleClaim = async () => {
+    if (!currentAgent) return;
+    await api.patch(`/conversations/${conversationId}/assign`, {
+      agentId: currentAgent.id,
+    });
+    useConversationStore.getState().fetch();
+  };
 
   const handleResolve = async () => {
     await api.patch(`/conversations/${conversationId}/resolve`);
@@ -39,7 +52,7 @@ export function ChatHeader({ conversationId }: Props) {
 
   return (
     <>
-      <div className="flex h-[60px] items-center justify-between bg-[#F0F2F5] dark:bg-[#202C33] px-4 py-2 border-b border-slate-200 dark:border-slate-800 shadow-sm z-10 w-full">
+      <div className="flex h-[60px] items-center justify-between bg-[var(--hivvo-surface-header)] px-4 py-2 border-b border-border shadow-sm z-10 w-full">
         <div className="flex items-center gap-3 overflow-hidden">
           <Button
             variant="ghost"
@@ -70,7 +83,7 @@ export function ChatHeader({ conversationId }: Props) {
                   </span>
                 )}
                 {conversation?.agentName && (
-                  <span className="ml-1.5 text-emerald-600 dark:text-emerald-400">
+                  <span className="ml-1.5 text-primary">
                     · {conversation.agentName}
                   </span>
                 )}
@@ -80,21 +93,33 @@ export function ChatHeader({ conversationId }: Props) {
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
+          {!isResolved && !isMine && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden sm:flex shrink-0 rounded-full px-4 h-9 shadow-sm"
+              onClick={handleClaim}
+            >
+              Claim
+            </Button>
+          )}
           {!isResolved && (
             <Button
               variant="outline"
               size="sm"
-              className="hidden sm:flex shrink-0 text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-900/50 dark:text-emerald-400 dark:hover:bg-emerald-900/40 rounded-full px-4 h-9 shadow-sm"
+              className="hidden sm:flex shrink-0 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 dark:bg-primary/10 dark:border-primary/20 dark:text-primary dark:hover:bg-primary/20 rounded-full px-4 h-9 shadow-sm"
               onClick={handleResolve}
             >
-              Resolve
+              Mark Resolved
             </Button>
           )}
           <ChatMenu
             onViewContact={() => setContactInfoOpen(true)}
             onAssign={() => setAssignOpen(true)}
             onResolve={handleResolve}
+            onClaim={handleClaim}
             isResolved={isResolved}
+            isMine={isMine}
           />
         </div>
       </div>

@@ -51,8 +51,8 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: Props) {
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader className="mb-6">
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-              <UserPlus className="h-5 w-5 text-emerald-600" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <UserPlus className="h-5 w-5 text-primary" />
             </div>
             <div>
               <SheetTitle>New Agent</SheetTitle>
@@ -86,7 +86,7 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: Props) {
           )}
           <Button
             type="submit"
-            className="w-full bg-[#25D366] hover:bg-[#1da851]"
+            className="w-full bg-primary hover:bg-primary/90"
             disabled={loading}
           >
             {loading ? "Creating..." : "Create Agent"}

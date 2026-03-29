@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MessageCircle } from "lucide-react";
+import { Hexagon } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,11 +38,11 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366]">
-            <MessageCircle className="h-6 w-6 text-white" />
+          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-tr from-[#0D9488] to-[#0F766E]">
+            <Hexagon className="h-6 w-6 text-white" />
           </div>
-          <CardTitle className="text-xl">WhatsApp for Teams</CardTitle>
-          <CardDescription>Sign in to your agent account</CardDescription>
+          <CardTitle className="text-xl">Hivvo.chat</CardTitle>
+          <CardDescription>Sign in to your workspace</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -66,7 +66,7 @@ export default function LoginPage() {
             )}
             <Button
               type="submit"
-              className="w-full bg-[#25D366] hover:bg-[#1da851]"
+              className="w-full bg-primary hover:bg-primary/90"
               disabled={isLoading}
             >
               {isLoading ? "Signing in..." : "Sign in"}

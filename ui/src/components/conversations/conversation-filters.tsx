@@ -23,7 +23,7 @@ export function ConversationFilters() {
           size="sm"
           className={cn(
             "h-7 text-xs shrink-0",
-            statusFilter === f.value && "bg-[#25D366] hover:bg-[#1da851]"
+            statusFilter === f.value && "bg-primary hover:bg-primary/90"
           )}
           onClick={() => setFilter(f.value)}
         >

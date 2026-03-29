@@ -40,7 +40,7 @@ export function AgentList() {
         <Button
           size="sm"
           onClick={() => setCreateOpen(true)}
-          className="gap-1.5 bg-[#25D366] hover:bg-[#1da851]"
+          className="gap-1.5 bg-primary hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
           Add Agent

@@ -129,7 +129,7 @@ export function RegisterPhoneForm({ open, onOpenChange, onCreated }: Props) {
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Label</label>
-            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="WhatsApp Sandbox" required />
+            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Business Phone" required />
           </div>
 
           <div className="space-y-1.5">
@@ -140,7 +140,7 @@ export function RegisterPhoneForm({ open, onOpenChange, onCreated }: Props) {
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button
             type="submit"
-            className="w-full bg-[#25D366] hover:bg-[#1da851]"
+            className="w-full bg-primary hover:bg-primary/90"
             disabled={loading}
           >
             {loading ? "Registering..." : "Register Phone Number"}

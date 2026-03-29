@@ -38,7 +38,7 @@ export function MessageInput({ conversationId }: Props) {
   };
 
   return (
-    <div className="flex items-center gap-2 bg-[#F0F2F5] dark:bg-[#202C33] px-4 py-3 sm:px-6 w-full shadow-sm z-10 transition-colors duration-200 border-t border-[#F0F2F5] dark:border-[#202C33]">
+    <div className="flex items-center gap-2 bg-[var(--hivvo-surface-header)] px-4 py-3 sm:px-6 w-full shadow-sm z-10 transition-colors duration-200 border-t border-border">
       <Button variant="ghost" size="icon" className="shrink-0 text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:bg-white/5 rounded-full h-10 w-10">
         <Smile className="h-[22px] w-[22px]" />
       </Button>
@@ -46,7 +46,7 @@ export function MessageInput({ conversationId }: Props) {
         <Paperclip className="h-[22px] w-[22px]" />
       </Button>
       
-      <div className="flex-1 bg-white dark:bg-[#2A3942] flex items-center rounded-[24px] px-4 py-1 border border-transparent focus-within:border-[#25D366]/30 shadow-sm transition-all">
+      <div className="flex-1 bg-white dark:bg-secondary flex items-center rounded-[24px] px-4 py-1 border border-transparent focus-within:border-primary/30 shadow-sm transition-all">
         <Input
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -60,7 +60,7 @@ export function MessageInput({ conversationId }: Props) {
       {text.trim() ? (
         <Button
           size="icon"
-          className="shrink-0 bg-[#25D366] hover:bg-[#1da851] text-white rounded-full h-10 w-10 ml-1 shadow-sm transition-transform active:scale-95"
+          className="shrink-0 bg-primary hover:bg-primary/90 text-white rounded-full h-10 w-10 ml-1 shadow-sm transition-transform active:scale-95"
           onClick={handleSend}
           disabled={sending}
         >

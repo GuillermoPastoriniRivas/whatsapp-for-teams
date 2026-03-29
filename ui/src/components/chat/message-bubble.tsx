@@ -37,23 +37,23 @@ export function MessageBubble({ message }: Props) {
         className={cn(
           "max-w-[85%] sm:max-w-[70%] px-3 pt-2 pb-1.5 text-[15px] leading-relaxed shadow-sm",
           isOutbound
-            ? "bg-[#D9FDD3] dark:bg-[#005C4B] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tr-[4px]"
-            : "bg-white dark:bg-[#202C33] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tl-[4px]"
+            ? "bg-[var(--hivvo-bubble-outbound)] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tr-[4px]"
+            : "bg-[var(--hivvo-bubble-inbound)] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tl-[4px]"
         )}
       >
         {isOutbound && message.senderAgentName && (
-          <p className="text-[12px] font-semibold text-emerald-700 dark:text-emerald-300 mb-0.5">
+          <p className="text-[12px] font-semibold text-primary mb-0.5">
             {message.senderAgentName}
           </p>
         )}
         {message.body && (
           <p className="whitespace-pre-wrap inline">{message.body}</p>
         )}
-        {/* Inline spacer + timestamp — sits at the end of the last text line like real WhatsApp */}
+        {/* Inline spacer + timestamp — sits at the end of the last text line */}
         <span className="inline-flex items-center gap-1 align-bottom float-right ml-2 mt-1 translate-y-[2px]">
           <span className={cn(
             "text-[11px] font-medium leading-none",
-            isOutbound ? "text-emerald-700/60 dark:text-emerald-200/50" : "text-slate-400 dark:text-slate-500"
+            isOutbound ? "text-slate-500 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"
           )}>
             {formatTime(message.timestamp)}
           </span>

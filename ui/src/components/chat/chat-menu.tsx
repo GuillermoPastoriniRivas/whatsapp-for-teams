@@ -8,17 +8,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, User, UserPlus, CheckCircle } from "lucide-react";
+import { MoreVertical, User, UserPlus, CheckCircle, Hand } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 
 interface Props {
   onViewContact: () => void;
   onAssign: () => void;
   onResolve: () => void;
+  onClaim: () => void;
   isResolved: boolean;
+  isMine: boolean;
 }
 
-export function ChatMenu({ onViewContact, onAssign, onResolve, isResolved }: Props) {
+export function ChatMenu({ onViewContact, onAssign, onResolve, onClaim, isResolved, isMine }: Props) {
   const agent = useAuthStore((s) => s.agent);
   const isAdmin = agent?.role === "admin";
 
@@ -38,6 +40,15 @@ export function ChatMenu({ onViewContact, onAssign, onResolve, isResolved }: Pro
           <User className="h-4 w-4" />
           Contact info
         </DropdownMenuItem>
+        {!isResolved && !isMine && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onClaim} className="gap-2">
+              <Hand className="h-4 w-4" />
+              Claim
+            </DropdownMenuItem>
+          </>
+        )}
         {isAdmin && !isResolved && (
           <>
             <DropdownMenuSeparator />
@@ -52,7 +63,7 @@ export function ChatMenu({ onViewContact, onAssign, onResolve, isResolved }: Pro
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onResolve} className="gap-2 text-emerald-600">
               <CheckCircle className="h-4 w-4" />
-              Mark as resolved
+              Mark Resolved
             </DropdownMenuItem>
           </>
         )}

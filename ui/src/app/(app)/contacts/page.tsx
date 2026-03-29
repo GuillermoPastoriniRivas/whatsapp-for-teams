@@ -164,7 +164,7 @@ export default function ContactsPage() {
         <SheetContent side="right" className="w-full sm:max-w-sm p-0 overflow-y-auto">
           {selected && (
             <>
-              <div className="bg-[#F0F2F5] dark:bg-[#202C33] pt-14 pb-6 flex flex-col items-center">
+              <div className="bg-[var(--hivvo-surface-header)] pt-14 pb-6 flex flex-col items-center">
                 <div className="h-20 w-20 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 mb-3">
                   <User className="h-10 w-10" />
                 </div>

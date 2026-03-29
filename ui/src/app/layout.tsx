@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "WhatsApp for Teams",
-  description: "Multi-agent WhatsApp messaging dashboard",
+  title: "Hivvo.chat",
+  description: "Multi-channel messaging platform",
 };
 
 export default function RootLayout({
