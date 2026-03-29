@@ -41,6 +41,28 @@ export class MongoContactRepository implements ContactRepository {
     return doc ? ContactMapper.toDomain(doc) : null;
   }
 
+  async findByTenantId(tenantId: string, options: { search?: string; page: number; limit: number }) {
+    const filter: Record<string, unknown> = { tenantId: new Types.ObjectId(tenantId) };
+    if (options.search) {
+      const regex = { $regex: options.search, $options: 'i' };
+      filter.$or = [{ name: regex }, { phone: regex }, { waId: regex }, { email: regex }, { company: regex }];
+    }
+
+    const [data, total] = await Promise.all([
+      this.model
+        .find(filter)
+        .sort({ lastSeenAt: -1 })
+        .skip((options.page - 1) * options.limit)
+        .limit(options.limit),
+      this.model.countDocuments(filter),
+    ]);
+
+    return {
+      data: data.map(ContactMapper.toDomain),
+      meta: { total, page: options.page, pages: Math.ceil(total / options.limit) },
+    };
+  }
+
   async update(
     id: string,
     data: { email?: string | null; company?: string | null; notes?: string | null; customFields?: Record<string, string> },

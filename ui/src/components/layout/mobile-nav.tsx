@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Settings, Shield } from "lucide-react";
+import { MessageSquare, Settings, Shield, Contact } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ export function MobileNav() {
 
   const tabs = [
     { href: "/", icon: MessageSquare, label: "Chats" },
+    { href: "/contacts", icon: Contact, label: "Contacts" },
     ...(agent?.role === "admin"
       ? [{ href: "/admin", icon: Shield, label: "Admin" }]
       : []),

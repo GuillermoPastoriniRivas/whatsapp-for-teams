@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Settings, Shield, User, Bell } from "lucide-react";
+import { MessageSquare, Settings, Shield, User, Bell, Contact } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ export function AppSidebar({ className }: { className?: string }) {
 
   const topTabs = [
     { href: "/", icon: MessageSquare, label: "Chats" },
+    { href: "/contacts", icon: Contact, label: "Contacts" },
     ...(agent?.role === "admin"
       ? [{ href: "/admin", icon: Shield, label: "Admin" }]
       : []),

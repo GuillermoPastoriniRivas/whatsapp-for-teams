@@ -1,8 +1,9 @@
 import {
-  Controller, Get, Patch, Body, Param, Inject, NotFoundException,
+  Controller, Get, Patch, Body, Param, Query, Inject, NotFoundException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { UpdateContactUseCase } from '../../application/use-cases/contact/update-contact.use-case.js';
+import { ListContactsUseCase } from '../../application/use-cases/contact/list-contacts.use-case.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
@@ -16,8 +17,26 @@ import type { ContactRepository } from '../../domain/repositories/contact.reposi
 export class ContactController {
   constructor(
     @Inject('UpdateContactUseCase') private readonly updateContact: UpdateContactUseCase,
+    @Inject('ListContactsUseCase') private readonly listContacts: ListContactsUseCase,
     @Inject('ContactRepository') private readonly contactRepo: ContactRepository,
   ) {}
+
+  @Get()
+  @ApiOperation({ summary: 'List contacts', description: 'List all contacts for the tenant with optional search' })
+  @ApiQuery({ name: 'search', required: false, description: 'Search by name, phone, email or company' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default: 20, max: 100)' })
+  @ApiResponse({ status: 200, description: 'Paginated list of contacts' })
+  async list(
+    @CurrentAgent() agent: RequestAgent,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const p = Math.max(1, parseInt(page || '1', 10) || 1);
+    const l = Math.min(100, Math.max(1, parseInt(limit || '20', 10) || 20));
+    return this.listContacts.execute({ tenantId: agent.tenantId, search, page: p, limit: l });
+  }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get contact', description: 'Get contact details by ID' })

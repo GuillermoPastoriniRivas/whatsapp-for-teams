@@ -47,6 +47,7 @@ import { GetConversationNotesUseCase } from '../application/use-cases/conversati
 
 // Use Cases — Contact
 import { UpdateContactUseCase } from '../application/use-cases/contact/update-contact.use-case.js';
+import { ListContactsUseCase } from '../application/use-cases/contact/list-contacts.use-case.js';
 
 // Use Cases — Tenant
 import { CreateTenantUseCase } from '../application/use-cases/tenant/create-tenant.use-case.js';
@@ -201,6 +202,11 @@ const useCaseProviders = [
   {
     provide: 'UpdateContactUseCase',
     useFactory: (contactRepo: any) => new UpdateContactUseCase(contactRepo),
+    inject: ['ContactRepository'],
+  },
+  {
+    provide: 'ListContactsUseCase',
+    useFactory: (contactRepo: any) => new ListContactsUseCase(contactRepo),
     inject: ['ContactRepository'],
   },
 
