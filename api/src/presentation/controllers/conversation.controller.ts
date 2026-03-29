@@ -2,6 +2,7 @@ import {
   Controller, Get, Post, Patch, Body, Param, Query,
   Inject, UsePipes, NotFoundException, ForbiddenException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { ListConversationsUseCase } from '../../application/use-cases/conversation/list-conversations.use-case.js';
 import { GetConversationDetailUseCase } from '../../application/use-cases/conversation/get-conversation-detail.use-case.js';
 import { GetConversationMessagesUseCase } from '../../application/use-cases/conversation/get-conversation-messages.use-case.js';
@@ -28,6 +29,8 @@ import type { ContactRepository } from '../../domain/repositories/contact.reposi
 import type { AgentRepository } from '../../domain/repositories/agent.repository.js';
 import type { PhoneNumberRepository } from '../../domain/repositories/phone-number.repository.js';
 
+@ApiTags('Conversations')
+@ApiBearerAuth('JWT')
 @Controller('conversations')
 export class ConversationController {
   constructor(
@@ -46,6 +49,13 @@ export class ConversationController {
   ) {}
 
   @Get()
+  @ApiOperation({ summary: 'List conversations', description: 'List conversations with filtering and pagination. Agents see their own + unassigned; admins see all.' })
+  @ApiQuery({ name: 'status', required: false, enum: ['unassigned', 'active', 'resolved'], description: 'Filter by conversation status' })
+  @ApiQuery({ name: 'agentId', required: false, description: 'Filter by assigned agent ID' })
+  @ApiQuery({ name: 'phoneNumberId', required: false, description: 'Filter by phone number ID' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default: 20, max: 100)' })
+  @ApiResponse({ status: 200, description: 'Paginated list of conversations with contact info' })
   async list(@Query(new ZodValidationPipe(ConversationQueryParamsSchema)) query: ConversationQueryParamsDto, @CurrentAgent() agent: RequestAgent) {
     // Agent sees own + unassigned; admin sees all
     const filters = {
@@ -86,6 +96,10 @@ export class ConversationController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get conversation detail', description: 'Get full conversation details with contact and agent info' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 200, description: 'Conversation detail with enriched data' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
   async detail(@Param('id') id: string) {
     const result = await this.getDetail.execute(id);
     if (!result.ok) throw new NotFoundException(result.error.message);
@@ -113,11 +127,20 @@ export class ConversationController {
   }
 
   @Get(':id/events')
+  @ApiOperation({ summary: 'Get conversation events', description: 'Get the event timeline for a conversation (assignments, status changes, etc.)' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 200, description: 'List of conversation events' })
   async events(@Param('id') id: string) {
     return this.getConversationEvents.execute(id);
   }
 
   @Get(':id/messages')
+  @ApiOperation({ summary: 'Get conversation messages', description: 'Get paginated messages for a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Messages per page (default: 50, max: 100)' })
+  @ApiResponse({ status: 200, description: 'Paginated messages' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
   async messages(
     @Param('id') id: string,
     @Query('page') page?: string,
@@ -133,6 +156,21 @@ export class ConversationController {
   }
 
   @Post(':id/messages')
+  @ApiOperation({ summary: 'Send message', description: 'Send a message in a conversation via WhatsApp' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['body'],
+      properties: {
+        body: { type: 'string', example: 'Hello! How can I help you?' },
+        messageType: { type: 'string', enum: ['text', 'image', 'audio', 'video', 'document', 'location'], description: 'Defaults to text' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Message sent' })
+  @ApiResponse({ status: 403, description: 'Conversation window expired or agent not assigned' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
   async send(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(SendMessageRequestSchema)) body: SendMessageRequestDto,
@@ -155,11 +193,27 @@ export class ConversationController {
   }
 
   @Get(':id/notes')
+  @ApiOperation({ summary: 'Get conversation notes', description: 'Get internal notes for a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 200, description: 'List of notes' })
   async notes(@Param('id') id: string) {
     return this.getNotes.execute(id);
   }
 
   @Post(':id/notes')
+  @ApiOperation({ summary: 'Add note', description: 'Add an internal note to a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['body'],
+      properties: {
+        body: { type: 'string', maxLength: 2000, example: 'Customer requested callback tomorrow' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Note added' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
   async addNoteToConversation(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(AddNoteRequestSchema)) body: AddNoteRequestDto,
@@ -177,6 +231,20 @@ export class ConversationController {
 
   @Patch(':id/assign')
   @Roles('admin')
+  @ApiOperation({ summary: 'Assign conversation', description: 'Assign a conversation to an agent (admin only)' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['agentId'],
+      properties: {
+        agentId: { type: 'string', description: 'ID of the agent to assign' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Conversation assigned' })
+  @ApiResponse({ status: 403, description: 'Admin role required' })
+  @ApiResponse({ status: 404, description: 'Conversation or agent not found' })
   async assign(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(AssignConversationRequestSchema)) body: AssignConversationRequestDto,
@@ -192,6 +260,10 @@ export class ConversationController {
   }
 
   @Patch(':id/resolve')
+  @ApiOperation({ summary: 'Resolve conversation', description: 'Mark a conversation as resolved' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 200, description: 'Conversation resolved' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
   async resolve(@Param('id') id: string, @CurrentAgent() agent: RequestAgent) {
     const result = await this.resolveConversation.execute({
       conversationId: id,

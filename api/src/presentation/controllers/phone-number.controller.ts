@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Body, Param, Inject, UsePipes, NotFoundException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { RegisterPhoneNumberUseCase } from '../../application/use-cases/phone-number/register-phone-number.use-case.js';
 import { ListPhoneNumbersUseCase } from '../../application/use-cases/phone-number/list-phone-numbers.use-case.js';
 import { UpdatePhoneNumberUseCase } from '../../application/use-cases/phone-number/update-phone-number.use-case.js';
@@ -11,6 +12,8 @@ import type { RegisterPhoneNumberRequestDto } from '../request-dtos/register-pho
 import { UpdatePhoneNumberRequestSchema } from '../request-dtos/update-phone-number-request.dto.js';
 import type { UpdatePhoneNumberRequestDto } from '../request-dtos/update-phone-number-request.dto.js';
 
+@ApiTags('Phone Numbers')
+@ApiBearerAuth('JWT')
 @Controller('phone-numbers')
 export class PhoneNumberController {
   constructor(
@@ -21,6 +24,24 @@ export class PhoneNumberController {
 
   @Post()
   @Roles('admin')
+  @ApiOperation({ summary: 'Register phone number', description: 'Register a new WhatsApp phone number for the tenant (admin only)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['provider', 'providerConfig', 'wabaId', 'phoneNumberId', 'displayPhone', 'label', 'webhookSecret'],
+      properties: {
+        provider: { type: 'string', enum: ['meta', 'twilio', '360dialog'], example: 'twilio' },
+        providerConfig: { type: 'object', additionalProperties: { type: 'string' }, example: { accountSid: 'AC...', authToken: '...' } },
+        wabaId: { type: 'string', example: 'waba_123' },
+        phoneNumberId: { type: 'string', example: 'pn_456' },
+        displayPhone: { type: 'string', example: '+1234567890' },
+        label: { type: 'string', example: 'Sales Line' },
+        webhookSecret: { type: 'string', example: 'whsec_abc123' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Phone number registered' })
+  @ApiResponse({ status: 403, description: 'Admin role required' })
   async register(@Body(new ZodValidationPipe(RegisterPhoneNumberRequestSchema)) body: RegisterPhoneNumberRequestDto, @CurrentAgent() agent: RequestAgent) {
     const result = await this.registerPhone.execute({ ...body, tenantId: agent.tenantId });
     if (!result.ok) throw new NotFoundException('Registration failed');
@@ -28,12 +49,28 @@ export class PhoneNumberController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'List phone numbers', description: 'List all phone numbers registered for the tenant' })
+  @ApiResponse({ status: 200, description: 'List of phone numbers' })
   async list(@CurrentAgent() agent: RequestAgent) {
     return this.listPhones.execute(agent.tenantId);
   }
 
   @Patch(':id')
   @Roles('admin')
+  @ApiOperation({ summary: 'Update phone number', description: 'Update phone number details (admin only)' })
+  @ApiParam({ name: 'id', description: 'Phone number ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        label: { type: 'string', example: 'Support Line' },
+        status: { type: 'string', enum: ['active', 'inactive'] },
+        webhookSecret: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Phone number updated' })
+  @ApiResponse({ status: 404, description: 'Phone number not found' })
   async update(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(UpdatePhoneNumberRequestSchema)) body: UpdatePhoneNumberRequestDto,

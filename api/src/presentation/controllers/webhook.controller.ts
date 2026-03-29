@@ -1,10 +1,12 @@
 import { Controller, Get, Post, Req, Res, Body, Query, HttpCode, Inject, Logger } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiQuery, ApiResponse, ApiExcludeEndpoint } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { HandleInboundMessageUseCase } from '../../application/use-cases/webhook/handle-inbound-message.use-case.js';
 import { HandleStatusUpdateUseCase } from '../../application/use-cases/webhook/handle-status-update.use-case.js';
 import { Public } from '../decorators/public.decorator.js';
 
 @Public()
+@ApiTags('Webhooks')
 @Controller('webhooks')
 export class WebhookController {
   private readonly logger = new Logger(WebhookController.name);
@@ -17,6 +19,12 @@ export class WebhookController {
   // ── Meta Cloud API ────────────────────────────────────
 
   @Get('whatsapp')
+  @ApiOperation({ summary: 'Verify webhook (Meta)', description: 'Meta Cloud API webhook verification endpoint (hub.challenge handshake)' })
+  @ApiQuery({ name: 'hub.mode', required: true, description: 'Must be "subscribe"' })
+  @ApiQuery({ name: 'hub.challenge', required: true, description: 'Challenge string to echo back' })
+  @ApiQuery({ name: 'hub.verify_token', required: true, description: 'Verification token' })
+  @ApiResponse({ status: 200, description: 'Challenge echoed back' })
+  @ApiResponse({ status: 403, description: 'Verification failed' })
   verify(
     @Query('hub.mode') mode: string,
     @Query('hub.challenge') challenge: string,
@@ -31,6 +39,8 @@ export class WebhookController {
 
   @Post('whatsapp')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Receive webhook (Meta)', description: 'Meta Cloud API inbound webhook receiver for messages and status updates' })
+  @ApiResponse({ status: 200, description: 'Webhook processed' })
   async receiveWhatsApp(@Req() req: Request) {
     // TODO: Parse Meta Cloud API webhook format
     return { status: 'ok' };
@@ -40,6 +50,8 @@ export class WebhookController {
 
   @Post('twilio')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Receive webhook (Twilio)', description: 'Twilio WhatsApp inbound webhook receiver for messages and status callbacks' })
+  @ApiResponse({ status: 200, description: 'Webhook processed' })
   async receiveTwilio(@Body() body: Record<string, string>) {
     this.logger.log(`Twilio webhook: ${body.MessageSid} from ${body.From}`);
 

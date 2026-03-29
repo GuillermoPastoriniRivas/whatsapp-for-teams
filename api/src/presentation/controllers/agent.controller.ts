@@ -2,6 +2,7 @@ import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query,
   Inject, UsePipes, ForbiddenException, NotFoundException, ConflictException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateAgentUseCase } from '../../application/use-cases/agent/create-agent.use-case.js';
 import { ListAgentsUseCase } from '../../application/use-cases/agent/list-agents.use-case.js';
 import { UpdateAgentStatusUseCase } from '../../application/use-cases/agent/update-agent-status.use-case.js';
@@ -20,6 +21,8 @@ import { GrantPhoneAccessRequestSchema } from '../request-dtos/grant-phone-acces
 import type { GrantPhoneAccessRequestDto } from '../request-dtos/grant-phone-access-request.dto.js';
 import { AgentStatus } from '../../domain/enums/agent-status.enum.js';
 
+@ApiTags('Agents')
+@ApiBearerAuth('JWT')
 @Controller('agents')
 export class AgentController {
   constructor(
@@ -33,6 +36,31 @@ export class AgentController {
 
   @Post()
   @Roles('admin')
+  @ApiOperation({ summary: 'Create agent', description: 'Create a new agent in the tenant (admin only)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['name', 'email', 'password'],
+      properties: {
+        name: { type: 'string', example: 'John Doe' },
+        email: { type: 'string', format: 'email', example: 'john@company.com' },
+        password: { type: 'string', minLength: 6, example: 'securepass' },
+        role: { type: 'string', enum: ['admin', 'agent'], description: 'Defaults to agent' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Agent created', schema: {
+    type: 'object',
+    properties: {
+      id: { type: 'string' },
+      name: { type: 'string' },
+      email: { type: 'string' },
+      role: { type: 'string', enum: ['admin', 'agent'] },
+      status: { type: 'string', enum: ['available', 'busy', 'offline'] },
+    },
+  }})
+  @ApiResponse({ status: 403, description: 'Admin role required' })
+  @ApiResponse({ status: 409, description: 'Agent email already exists' })
   async create(@Body(new ZodValidationPipe(CreateAgentRequestSchema)) body: CreateAgentRequestDto, @CurrentAgent() agent: RequestAgent) {
     const result = await this.createAgent.execute({ ...body, tenantId: agent.tenantId });
     if (!result.ok) throw new ConflictException(result.error.message);
@@ -41,11 +69,28 @@ export class AgentController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'List agents', description: 'List all agents in the tenant, optionally filtered by status' })
+  @ApiQuery({ name: 'status', required: false, enum: ['available', 'busy', 'offline'], description: 'Filter by agent status' })
+  @ApiResponse({ status: 200, description: 'List of agents' })
   async list(@CurrentAgent() agent: RequestAgent, @Query('status') status?: AgentStatus) {
     return this.listAgents.execute(agent.tenantId, status);
   }
 
   @Patch(':id/status')
+  @ApiOperation({ summary: 'Update agent status', description: 'Change agent availability status. Agents can change their own; admins can change any.' })
+  @ApiParam({ name: 'id', description: 'Agent ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['status'],
+      properties: {
+        status: { type: 'string', enum: ['available', 'busy', 'offline'] },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Updated agent' })
+  @ApiResponse({ status: 403, description: 'Cannot change another agent\'s status' })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
   async changeStatus(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(UpdateStatusRequestSchema)) body: UpdateStatusRequestDto,
@@ -66,6 +111,20 @@ export class AgentController {
 
   @Post(':agentId/phone-access')
   @Roles('admin')
+  @ApiOperation({ summary: 'Grant phone access', description: 'Grant an agent access to a phone number (admin only)' })
+  @ApiParam({ name: 'agentId', description: 'Agent ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['phoneNumberId'],
+      properties: {
+        phoneNumberId: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Access granted' })
+  @ApiResponse({ status: 404, description: 'Agent or phone number not found' })
+  @ApiResponse({ status: 409, description: 'Access already exists' })
   async grantPhoneAccess(
     @Param('agentId') agentId: string,
     @Body(new ZodValidationPipe(GrantPhoneAccessRequestSchema)) body: GrantPhoneAccessRequestDto,
@@ -85,6 +144,10 @@ export class AgentController {
 
   @Delete(':agentId/phone-access/:phoneNumberId')
   @Roles('admin')
+  @ApiOperation({ summary: 'Revoke phone access', description: 'Revoke an agent\'s access to a phone number (admin only)' })
+  @ApiParam({ name: 'agentId', description: 'Agent ID' })
+  @ApiParam({ name: 'phoneNumberId', description: 'Phone number ID' })
+  @ApiResponse({ status: 200, description: 'Access revoked' })
   async revokePhoneAccess(
     @Param('agentId') agentId: string,
     @Param('phoneNumberId') phoneNumberId: string,
@@ -94,6 +157,9 @@ export class AgentController {
   }
 
   @Get(':agentId/phone-access')
+  @ApiOperation({ summary: 'Get phone access list', description: 'List phone numbers an agent has access to' })
+  @ApiParam({ name: 'agentId', description: 'Agent ID' })
+  @ApiResponse({ status: 200, description: 'List of phone access entries' })
   async getPhoneAccess(@Param('agentId') agentId: string) {
     return this.getAccess.execute(agentId);
   }
