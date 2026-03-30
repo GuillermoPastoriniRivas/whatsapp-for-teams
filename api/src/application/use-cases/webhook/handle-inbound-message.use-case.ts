@@ -1,9 +1,12 @@
+import { Agent } from '../../../domain/entities/agent.entity.js';
 import { ContactRepository } from '../../../domain/repositories/contact.repository.js';
 import { ConversationRepository } from '../../../domain/repositories/conversation.repository.js';
 import { MessageRepository } from '../../../domain/repositories/message.repository.js';
 import { PhoneNumberRepository } from '../../../domain/repositories/phone-number.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
+import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
+import { JobQueuePort } from '../../ports/job-queue.port.js';
 import { InboundMessageInput } from '../../dtos/webhook/inbound-message-input.dto.js';
 import { AutoAssignConversationUseCase } from '../conversation/auto-assign-conversation.use-case.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
@@ -11,6 +14,9 @@ import { ConversationEventType } from '../../../domain/enums/conversation-event-
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
+import { AgentType } from '../../../domain/enums/agent-type.enum.js';
+
+const AI_RESPONSE_JOB = 'ai.process-response';
 
 export class HandleInboundMessageUseCase {
   constructor(
@@ -21,6 +27,8 @@ export class HandleInboundMessageUseCase {
     private readonly gateway: RealtimeGatewayPort,
     private readonly autoAssign: AutoAssignConversationUseCase,
     private readonly eventRepo: ConversationEventRepository,
+    private readonly agentRepo: AgentRepository,
+    private readonly jobQueue: JobQueuePort,
   ) {}
 
   async execute(input: InboundMessageInput): Promise<void> {
@@ -106,12 +114,31 @@ export class HandleInboundMessageUseCase {
     } as any);
 
     // 6. If needs assignment (new or reopened) → auto-assign
+    let assignedAgent: Agent | null = null;
     if (needsAssignment) {
-      await this.autoAssign.execute(conversation.id);
+      assignedAgent = await this.autoAssign.execute(conversation.id);
     }
 
     // 7. Emit WebSocket events
     this.gateway.emitToConversation(conversation.id, 'message.new', message);
     this.gateway.emitToTenant(tenantId, 'conversation.updated', { conversationId: conversation.id });
+
+    // 8. If assigned to AI agent → enqueue AI response job
+    const messageBody = input.body ?? '';
+    if (assignedAgent && assignedAgent.type === AgentType.AI) {
+      await this.jobQueue.enqueue(AI_RESPONSE_JOB, {
+        conversationId: conversation.id,
+        messageBody,
+      });
+    } else if (!needsAssignment && conversation.agentId) {
+      // Existing active conversation — check if current agent is AI
+      const currentAgent = await this.agentRepo.findById(conversation.agentId);
+      if (currentAgent && currentAgent.type === AgentType.AI) {
+        await this.jobQueue.enqueue(AI_RESPONSE_JOB, {
+          conversationId: conversation.id,
+          messageBody,
+        });
+      }
+    }
   }
 }

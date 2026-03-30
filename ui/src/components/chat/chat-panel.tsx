@@ -20,7 +20,7 @@ export function ChatPanel({ conversationId }: Props) {
   const conversation = useConversationStore((s) =>
     s.conversations.find((c) => c.id === conversationId)
   );
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const convMessages = messages[conversationId] || [];
 
   const [contactInfoOpen, setContactInfoOpen] = useState(false);
@@ -55,7 +55,12 @@ export function ChatPanel({ conversationId }: Props) {
   }, [conversationId]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const viewport = scrollAreaRef.current?.querySelector(
+      "[data-slot=scroll-area-viewport]"
+    ) as HTMLElement | null;
+    if (viewport) {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
+    }
   }, [convMessages.length]);
 
   return (
@@ -66,12 +71,11 @@ export function ChatPanel({ conversationId }: Props) {
           conversationId={conversationId}
           onToggleContactInfo={() => setContactInfoOpen((prev) => !prev)}
         />
-        <ScrollArea className="flex-1 w-full px-4 sm:px-[5%] md:px-[10%] lg:px-[15%]">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 overflow-hidden w-full px-4 sm:px-[5%] md:px-[10%] lg:px-[15%]">
           <div className="flex flex-col py-6 min-h-full">
             {convMessages.map((msg) => (
               <MessageBubble key={msg.id} message={msg} />
             ))}
-            <div ref={bottomRef} className="h-4" />
           </div>
         </ScrollArea>
         <MessageInput conversationId={conversationId} />

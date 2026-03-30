@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { AgentRepository } from '../../../../domain/repositories/agent.repository.js';
 import { Agent } from '../../../../domain/entities/agent.entity.js';
 import { AgentStatus } from '../../../../domain/enums/agent-status.enum.js';
+import { AgentType } from '../../../../domain/enums/agent-type.enum.js';
 import { AgentModel, AgentDocument } from '../schemas/agent.schema.js';
 import { AgentMapper } from '../mappers/agent.mapper.js';
 
@@ -48,19 +49,28 @@ export class MongoAgentRepository implements AgentRepository {
     return doc ? AgentMapper.toDomain(doc) : null;
   }
 
-  async findAvailableByIdsAndIncrementLoad(agentIds: string[]): Promise<Agent | null> {
+  async findAvailableByIdsAndIncrementLoad(agentIds: string[], excludeType?: AgentType): Promise<Agent | null> {
     const objectIds = agentIds.map((id) => new Types.ObjectId(id));
+    const filter: Record<string, unknown> = {
+      _id: { $in: objectIds },
+      status: AgentStatus.AVAILABLE,
+    };
+    if (excludeType) {
+      filter.type = { $ne: excludeType };
+    }
     const doc = await this.model.findOneAndUpdate(
-      {
-        _id: { $in: objectIds },
-        status: AgentStatus.AVAILABLE,
-      },
+      filter,
       { $inc: { activeCount: 1 } },
       {
         sort: { activeCount: 1 },
         returnDocument: 'after',
       },
     );
+    return doc ? AgentMapper.toDomain(doc) : null;
+  }
+
+  async updateName(id: string, name: string): Promise<Agent | null> {
+    const doc = await this.model.findByIdAndUpdate(id, { $set: { name } }, { returnDocument: 'after' });
     return doc ? AgentMapper.toDomain(doc) : null;
   }
 }

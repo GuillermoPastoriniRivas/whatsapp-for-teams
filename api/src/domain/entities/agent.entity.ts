@@ -1,5 +1,6 @@
 import { AgentRole } from '../enums/agent-role.enum.js';
 import { AgentStatus } from '../enums/agent-status.enum.js';
+import { AgentType } from '../enums/agent-type.enum.js';
 
 export class Agent {
   constructor(
@@ -12,5 +13,6 @@ export class Agent {
     public readonly status: AgentStatus,
     public readonly activeCount: number,
     public readonly createdAt: Date,
+    public readonly type: AgentType = AgentType.HUMAN,
   ) {}
 }

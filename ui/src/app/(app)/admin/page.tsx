@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgentList } from "@/components/admin/agent-list";
 import { PhoneNumberList } from "@/components/admin/phone-number-list";
 import { PhoneAccessManager } from "@/components/admin/phone-access-manager";
+import { AiAgentList } from "@/components/admin/ai-agent-list";
 import { useAuthStore } from "@/stores/auth.store";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -26,11 +27,15 @@ export default function AdminPage() {
       <Tabs defaultValue="agents" className="w-full">
         <TabsList>
           <TabsTrigger value="agents">Agents</TabsTrigger>
+          <TabsTrigger value="ai-agents">AI Agents</TabsTrigger>
           <TabsTrigger value="phones">Phone Numbers</TabsTrigger>
           <TabsTrigger value="access">Phone Access</TabsTrigger>
         </TabsList>
         <TabsContent value="agents" className="mt-4">
           <AgentList />
+        </TabsContent>
+        <TabsContent value="ai-agents" className="mt-4">
+          <AiAgentList />
         </TabsContent>
         <TabsContent value="phones" className="mt-4">
           <PhoneNumberList />

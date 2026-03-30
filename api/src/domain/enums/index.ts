@@ -7,3 +7,5 @@ export { MessageType } from './message-type.enum.js';
 export { MessageWaStatus } from './message-wa-status.enum.js';
 export { MessagingProvider } from './messaging-provider.enum.js';
 export { PhoneNumberStatus } from './phone-number-status.enum.js';
+export { AgentType } from './agent-type.enum.js';
+export { AiProvider } from './ai-provider.enum.js';

@@ -6,6 +6,11 @@ import { ConversationEventRepository } from '../../../domain/repositories/conver
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
+import { AgentType } from '../../../domain/enums/agent-type.enum.js';
+
+export interface AutoAssignOptions {
+  excludeAi?: boolean;
+}
 
 export class AutoAssignConversationUseCase {
   constructor(
@@ -16,7 +21,7 @@ export class AutoAssignConversationUseCase {
     private readonly eventRepo: ConversationEventRepository,
   ) {}
 
-  async execute(conversationId: string): Promise<Agent | null> {
+  async execute(conversationId: string, options?: AutoAssignOptions): Promise<Agent | null> {
     const conversation = await this.conversationRepo.findById(conversationId);
     if (!conversation) return null;
 
@@ -30,7 +35,8 @@ export class AutoAssignConversationUseCase {
     const agentIds = accessList.map((a) => a.agentId);
 
     // Atomic: find least-loaded available agent and increment
-    const agent = await this.agentRepo.findAvailableByIdsAndIncrementLoad(agentIds);
+    const excludeType = options?.excludeAi ? AgentType.AI : undefined;
+    const agent = await this.agentRepo.findAvailableByIdsAndIncrementLoad(agentIds, excludeType);
 
     if (!agent) {
       await this.conversationRepo.update(conversationId, {

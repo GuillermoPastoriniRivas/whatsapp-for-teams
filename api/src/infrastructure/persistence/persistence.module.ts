@@ -10,6 +10,8 @@ import { MessageModel, MessageSchema } from './mongoose/schemas/message.schema.j
 import { RefreshTokenModel, RefreshTokenSchema } from './mongoose/schemas/refresh-token.schema.js';
 import { ConversationEventModel, ConversationEventSchema } from './mongoose/schemas/conversation-event.schema.js';
 import { ConversationNoteModel, ConversationNoteSchema } from './mongoose/schemas/conversation-note.schema.js';
+import { AiAgentConfigModel, AiAgentConfigSchema } from './mongoose/schemas/ai-agent-config.schema.js';
+import { AiUsageModel, AiUsageSchema } from './mongoose/schemas/ai-usage.schema.js';
 import { MongoTenantRepository } from './mongoose/repositories/mongo-tenant.repository.js';
 import { MongoPhoneNumberRepository } from './mongoose/repositories/mongo-phone-number.repository.js';
 import { MongoAgentRepository } from './mongoose/repositories/mongo-agent.repository.js';
@@ -20,6 +22,9 @@ import { MongoMessageRepository } from './mongoose/repositories/mongo-message.re
 import { MongoRefreshTokenRepository } from './mongoose/repositories/mongo-refresh-token.repository.js';
 import { MongoConversationEventRepository } from './mongoose/repositories/mongo-conversation-event.repository.js';
 import { MongoConversationNoteRepository } from './mongoose/repositories/mongo-conversation-note.repository.js';
+import { MongoAiAgentConfigRepository } from './mongoose/repositories/mongo-ai-agent-config.repository.js';
+import { MongoAiUsageRepository } from './mongoose/repositories/mongo-ai-usage.repository.js';
+import { EncryptionService } from '../ai/encryption.service.js';
 
 const schemas = MongooseModule.forFeature([
   { name: TenantModel.name, schema: TenantSchema },
@@ -32,6 +37,8 @@ const schemas = MongooseModule.forFeature([
   { name: RefreshTokenModel.name, schema: RefreshTokenSchema },
   { name: ConversationEventModel.name, schema: ConversationEventSchema },
   { name: ConversationNoteModel.name, schema: ConversationNoteSchema },
+  { name: AiAgentConfigModel.name, schema: AiAgentConfigSchema },
+  { name: AiUsageModel.name, schema: AiUsageSchema },
 ]);
 
 const repositories = [
@@ -45,11 +52,13 @@ const repositories = [
   { provide: 'RefreshTokenRepository', useClass: MongoRefreshTokenRepository },
   { provide: 'ConversationEventRepository', useClass: MongoConversationEventRepository },
   { provide: 'ConversationNoteRepository', useClass: MongoConversationNoteRepository },
+  { provide: 'AiAgentConfigRepository', useClass: MongoAiAgentConfigRepository },
+  { provide: 'AiUsageRepository', useClass: MongoAiUsageRepository },
 ];
 
 @Module({
   imports: [schemas],
-  providers: [...repositories],
-  exports: [...repositories],
+  providers: [...repositories, EncryptionService],
+  exports: [...repositories, EncryptionService],
 })
 export class PersistenceModule {}

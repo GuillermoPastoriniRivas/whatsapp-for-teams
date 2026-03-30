@@ -8,6 +8,7 @@ export interface Agent {
   role: "admin" | "agent";
   status: "available" | "busy" | "offline";
   activeCount: number;
+  type?: "human" | "ai";
 }
 
 export interface Conversation {
@@ -89,7 +90,8 @@ export interface ConversationEvent {
     | "unassigned"
     | "resolved"
     | "reopened"
-    | "note_added";
+    | "note_added"
+    | "handoff";
   performedBy: string | null;
   data: Record<string, unknown>;
   createdAt: string;
@@ -118,4 +120,45 @@ export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
   agent: Pick<Agent, "id" | "name" | "email" | "role">;
+}
+
+export interface AiAgentConfig {
+  id: string;
+  agentId: string;
+  tenantId: string;
+  provider: "openai" | "anthropic" | "gemini" | "openrouter";
+  model: string;
+  apiKeySet: boolean;
+  systemPrompt: string;
+  knowledgeBase: string;
+  persona: {
+    role: string;
+    tone: string;
+    language: string;
+    instructions: string;
+  };
+  handoffRules: {
+    keywords: string[];
+    maxConsecutiveFailures: number;
+    onCustomerRequest: boolean;
+    urgencyKeywords: string[];
+  };
+  contextConfig: {
+    maxHistoryMessages: number;
+    includeContactInfo: boolean;
+  };
+  rateLimits: {
+    maxMessagesPerDay: number;
+    maxTokensPerDay: number;
+  };
+  isActive: boolean;
+}
+
+export interface AiAgentWithConfig {
+  id: string;
+  name: string;
+  type: "ai";
+  status: string;
+  activeCount: number;
+  config: AiAgentConfig;
 }

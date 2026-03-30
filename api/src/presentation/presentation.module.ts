@@ -57,8 +57,21 @@ import { GetTenantUseCase } from '../application/use-cases/tenant/get-tenant.use
 import { HandleInboundMessageUseCase } from '../application/use-cases/webhook/handle-inbound-message.use-case.js';
 import { HandleStatusUpdateUseCase } from '../application/use-cases/webhook/handle-status-update.use-case.js';
 
+// Use Cases — AI Agent
+import { CreateAiAgentUseCase } from '../application/use-cases/ai/create-ai-agent.use-case.js';
+import { GetAiAgentUseCase } from '../application/use-cases/ai/get-ai-agent.use-case.js';
+import { ListAiAgentsUseCase } from '../application/use-cases/ai/list-ai-agents.use-case.js';
+import { UpdateAiAgentConfigUseCase } from '../application/use-cases/ai/update-ai-agent-config.use-case.js';
+import { DeleteAiAgentUseCase } from '../application/use-cases/ai/delete-ai-agent.use-case.js';
+import { ProcessAiResponseUseCase } from '../application/use-cases/ai/process-ai-response.use-case.js';
+import { HandoffToHumanUseCase } from '../application/use-cases/ai/handoff-to-human.use-case.js';
+
+// Controllers — AI
+import { AiAgentController } from './controllers/ai-agent.controller.js';
+
 // Queue Processors
 import { WebhookJobProcessor } from '../infrastructure/queue/webhook-job.processor.js';
+import { AiResponseJobProcessor } from '../infrastructure/queue/ai-response-job.processor.js';
 
 const useCaseProviders = [
   // Auth
@@ -216,14 +229,53 @@ const useCaseProviders = [
   // Webhook
   {
     provide: 'HandleInboundMessageUseCase',
-    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any) =>
-      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo),
-    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository'],
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any) =>
+      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort'],
   },
   {
     provide: 'HandleStatusUpdateUseCase',
     useFactory: (msgRepo: any, gateway: any) => new HandleStatusUpdateUseCase(msgRepo, gateway),
     inject: ['MessageRepository', 'RealtimeGatewayPort'],
+  },
+
+  // AI Agent
+  {
+    provide: 'CreateAiAgentUseCase',
+    useFactory: (agentRepo: any, configRepo: any) => new CreateAiAgentUseCase(agentRepo, configRepo),
+    inject: ['AgentRepository', 'AiAgentConfigRepository'],
+  },
+  {
+    provide: 'GetAiAgentUseCase',
+    useFactory: (agentRepo: any, configRepo: any) => new GetAiAgentUseCase(agentRepo, configRepo),
+    inject: ['AgentRepository', 'AiAgentConfigRepository'],
+  },
+  {
+    provide: 'ListAiAgentsUseCase',
+    useFactory: (agentRepo: any, configRepo: any) => new ListAiAgentsUseCase(agentRepo, configRepo),
+    inject: ['AgentRepository', 'AiAgentConfigRepository'],
+  },
+  {
+    provide: 'UpdateAiAgentConfigUseCase',
+    useFactory: (agentRepo: any, configRepo: any) => new UpdateAiAgentConfigUseCase(agentRepo, configRepo),
+    inject: ['AgentRepository', 'AiAgentConfigRepository'],
+  },
+  {
+    provide: 'DeleteAiAgentUseCase',
+    useFactory: (agentRepo: any, configRepo: any) => new DeleteAiAgentUseCase(agentRepo, configRepo),
+    inject: ['AgentRepository', 'AiAgentConfigRepository'],
+  },
+  {
+    provide: 'HandoffToHumanUseCase',
+    useFactory: (convRepo: any, agentRepo: any, noteRepo: any, eventRepo: any, gateway: any, autoAssign: any) =>
+      new HandoffToHumanUseCase(convRepo, agentRepo, noteRepo, eventRepo, gateway, autoAssign),
+    inject: ['ConversationRepository', 'AgentRepository', 'ConversationNoteRepository', 'ConversationEventRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase'],
+  },
+  {
+    provide: 'ProcessAiResponseUseCase',
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any) =>
+      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase'],
   },
 ];
 
@@ -237,10 +289,12 @@ const useCaseProviders = [
     TenantController,
     WebhookController,
     ContactController,
+    AiAgentController,
   ],
   providers: [
     ...useCaseProviders,
     WebhookJobProcessor,
+    AiResponseJobProcessor,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],

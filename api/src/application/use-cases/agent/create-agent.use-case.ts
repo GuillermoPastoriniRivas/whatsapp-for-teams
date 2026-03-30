@@ -6,6 +6,7 @@ import { Result, ok, err } from '../../common/result.js';
 import { EmailAlreadyExistsError } from '../../../domain/errors/domain-errors.js';
 import { AgentRole } from '../../../domain/enums/agent-role.enum.js';
 import { AgentStatus } from '../../../domain/enums/agent-status.enum.js';
+import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 
 export class CreateAgentUseCase {
   constructor(
@@ -27,6 +28,7 @@ export class CreateAgentUseCase {
       role: input.role ?? AgentRole.AGENT,
       status: AgentStatus.AVAILABLE,
       activeCount: 0,
+      type: AgentType.HUMAN,
     });
 
     return ok(agent);

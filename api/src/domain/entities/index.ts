@@ -7,3 +7,6 @@ export { Conversation } from './conversation.entity.js';
 export { ConversationEvent } from './conversation-event.entity.js';
 export { Message } from './message.entity.js';
 export { RefreshToken } from './refresh-token.entity.js';
+export { AiAgentConfig } from './ai-agent-config.entity.js';
+export type { AiPersona, HandoffRules, AiContextConfig, AiRateLimits } from './ai-agent-config.entity.js';
+export { AiUsage } from './ai-usage.entity.js';
