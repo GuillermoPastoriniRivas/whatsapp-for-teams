@@ -2,13 +2,13 @@ import { Controller, Get, Post, Req, Res, Body, Query, HttpCode, Inject, Logger,
 import { ConfigService } from '@nestjs/config';
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse, ApiExcludeEndpoint } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { HandleInboundMessageUseCase } from '../../application/use-cases/webhook/handle-inbound-message.use-case.js';
-import { HandleStatusUpdateUseCase } from '../../application/use-cases/webhook/handle-status-update.use-case.js';
 import { Public } from '../decorators/public.decorator.js';
 import { WebhookSignatureGuard } from '../guards/webhook-signature.guard.js';
 import { parseMetaWebhook, mapMetaMessageToInbound, mapMetaStatusToUpdate } from '../webhooks/meta-webhook.parser.js';
 import type { MetaWebhookPayload } from '../webhooks/meta-webhook.types.js';
 import type { PhoneNumber } from '../../domain/entities/phone-number.entity.js';
+import type { JobQueuePort } from '../../application/ports/job-queue.port.js';
+import { INBOUND_MESSAGE_JOB, STATUS_UPDATE_JOB } from '../../infrastructure/queue/webhook-job.processor.js';
 
 @Public()
 @ApiTags('Webhooks')
@@ -17,8 +17,7 @@ export class WebhookController {
   private readonly logger = new Logger(WebhookController.name);
 
   constructor(
-    @Inject('HandleInboundMessageUseCase') private readonly handleInbound: HandleInboundMessageUseCase,
-    @Inject('HandleStatusUpdateUseCase') private readonly handleStatus: HandleStatusUpdateUseCase,
+    @Inject('JobQueuePort') private readonly queue: JobQueuePort,
     private readonly configService: ConfigService,
   ) {}
 
@@ -59,27 +58,19 @@ export class WebhookController {
 
     const { messages, statuses } = parseMetaWebhook(body);
 
-    // Process inbound messages
+    // Enqueue inbound messages
     for (const parsed of messages) {
       const input = mapMetaMessageToInbound(parsed, phoneNumber.phoneNumberId, apiVersion);
       if (!input) {
         this.logger.warn(`Unsupported Meta message type: ${parsed.message.type} (id=${parsed.message.id})`);
         continue;
       }
-      try {
-        await this.handleInbound.execute(input);
-      } catch (err) {
-        this.logger.error(`Failed to handle Meta inbound message ${parsed.message.id}: ${err}`);
-      }
+      await this.queue.enqueue(INBOUND_MESSAGE_JOB, input);
     }
 
-    // Process status updates
+    // Enqueue status updates
     for (const status of statuses) {
-      try {
-        await this.handleStatus.execute(mapMetaStatusToUpdate(status));
-      } catch (err) {
-        this.logger.error(`Failed to handle Meta status update ${status.id}: ${err}`);
-      }
+      await this.queue.enqueue(STATUS_UPDATE_JOB, mapMetaStatusToUpdate(status));
     }
 
     return { status: 'ok' };
@@ -98,7 +89,7 @@ export class WebhookController {
 
     // Status callback (sent, delivered, read, etc.)
     if (smsStatus && smsStatus !== 'received') {
-      await this.handleStatus.execute({
+      await this.queue.enqueue(STATUS_UPDATE_JOB, {
         waMessageId: body.MessageSid,
         status: this.mapTwilioStatus(smsStatus),
         timestamp: new Date(),
@@ -107,12 +98,11 @@ export class WebhookController {
     }
 
     // Inbound message
-    // Extract the To number without "whatsapp:" prefix to look up our PhoneNumber
     const toNumber = body.To?.replace('whatsapp:', '');
     const fromNumber = body.WaId || body.From?.replace('whatsapp:+', '');
 
-    await this.handleInbound.execute({
-      phoneNumberId: toNumber,  // We'll match by displayPhone or phoneNumberId
+    await this.queue.enqueue(INBOUND_MESSAGE_JOB, {
+      phoneNumberId: toNumber,
       waMessageId: body.MessageSid,
       from: fromNumber,
       contactName: body.ProfileName || fromNumber,

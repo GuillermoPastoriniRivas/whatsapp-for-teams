@@ -57,6 +57,9 @@ import { GetTenantUseCase } from '../application/use-cases/tenant/get-tenant.use
 import { HandleInboundMessageUseCase } from '../application/use-cases/webhook/handle-inbound-message.use-case.js';
 import { HandleStatusUpdateUseCase } from '../application/use-cases/webhook/handle-status-update.use-case.js';
 
+// Queue Processors
+import { WebhookJobProcessor } from '../infrastructure/queue/webhook-job.processor.js';
+
 const useCaseProviders = [
   // Auth
   {
@@ -237,6 +240,7 @@ const useCaseProviders = [
   ],
   providers: [
     ...useCaseProviders,
+    WebhookJobProcessor,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
