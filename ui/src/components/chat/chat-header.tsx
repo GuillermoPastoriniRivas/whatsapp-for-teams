@@ -7,15 +7,15 @@ import { useAuthStore } from "@/stores/auth.store";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User } from "lucide-react";
-import { ContactInfoSheet } from "./contact-info-sheet";
 import { ChatMenu } from "./chat-menu";
 import { AssignAgentDialog } from "./assign-agent-dialog";
 
 interface Props {
   conversationId: string;
+  onToggleContactInfo: () => void;
 }
 
-export function ChatHeader({ conversationId }: Props) {
+export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
   const router = useRouter();
   const conversation = useConversationStore((s) =>
     s.conversations.find((c) => c.id === conversationId)
@@ -24,7 +24,6 @@ export function ChatHeader({ conversationId }: Props) {
 
   const currentAgent = useAuthStore((s) => s.agent);
 
-  const [contactInfoOpen, setContactInfoOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
 
   const isMine = conversation?.agentId === currentAgent?.id;
@@ -63,9 +62,9 @@ export function ChatHeader({ conversationId }: Props) {
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
-          {/* Clickable avatar + name area → opens contact info */}
+          {/* Clickable avatar + name area → toggles contact info panel */}
           <button
-            onClick={() => setContactInfoOpen(true)}
+            onClick={onToggleContactInfo}
             className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500">
@@ -114,7 +113,7 @@ export function ChatHeader({ conversationId }: Props) {
             </Button>
           )}
           <ChatMenu
-            onViewContact={() => setContactInfoOpen(true)}
+            onViewContact={onToggleContactInfo}
             onAssign={() => setAssignOpen(true)}
             onResolve={handleResolve}
             onClaim={handleClaim}
@@ -123,12 +122,6 @@ export function ChatHeader({ conversationId }: Props) {
           />
         </div>
       </div>
-
-      <ContactInfoSheet
-        open={contactInfoOpen}
-        onOpenChange={setContactInfoOpen}
-        conversation={conversation}
-      />
 
       <AssignAgentDialog
         open={assignOpen}
