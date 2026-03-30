@@ -5,5 +5,5 @@ export interface PhoneNumberRepository {
   findById(id: string): Promise<PhoneNumber | null>;
   findByPhoneNumberId(phoneNumberId: string): Promise<PhoneNumber | null>;
   findByTenantId(tenantId: string): Promise<PhoneNumber[]>;
-  update(id: string, data: Partial<Pick<PhoneNumber, 'label' | 'status' | 'webhookSecret'>>): Promise<PhoneNumber | null>;
+  update(id: string, data: Partial<Pick<PhoneNumber, 'label' | 'status' | 'webhookSecret' | 'providerConfig' | 'wabaId' | 'phoneNumberId' | 'displayPhone'>>): Promise<PhoneNumber | null>;
 }

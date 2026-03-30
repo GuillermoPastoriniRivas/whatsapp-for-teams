@@ -11,5 +11,6 @@ export default () => ({
   },
   meta: {
     apiVersion: process.env.META_API_VERSION ?? 'v21.0',
+    webhookVerifyToken: process.env.META_WEBHOOK_VERIFY_TOKEN ?? '',
   },
 });

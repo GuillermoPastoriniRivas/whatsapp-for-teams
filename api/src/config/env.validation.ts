@@ -5,5 +5,6 @@ export interface EnvironmentVariables {
   JWT_REFRESH_SECRET: string;
   JWT_REFRESH_EXPIRES_IN: string;
   META_API_VERSION: string;
+  META_WEBHOOK_VERIFY_TOKEN: string;
   PORT: number;
 }

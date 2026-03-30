@@ -6,4 +6,8 @@ export interface UpdatePhoneNumberInput {
   label?: string;
   status?: PhoneNumberStatus;
   webhookSecret?: string;
+  providerConfig?: Record<string, string>;
+  wabaId?: string;
+  phoneNumberId?: string;
+  displayPhone?: string;
 }

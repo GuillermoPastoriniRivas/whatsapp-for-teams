@@ -66,6 +66,10 @@ export class PhoneNumberController {
         label: { type: 'string', example: 'Support Line' },
         status: { type: 'string', enum: ['active', 'inactive'] },
         webhookSecret: { type: 'string' },
+        providerConfig: { type: 'object', additionalProperties: { type: 'string' }, example: { accessToken: 'EAA...' } },
+        wabaId: { type: 'string', example: 'waba_123' },
+        phoneNumberId: { type: 'string', example: '1030090320194248' },
+        displayPhone: { type: 'string', example: '+15551511323' },
       },
     },
   })

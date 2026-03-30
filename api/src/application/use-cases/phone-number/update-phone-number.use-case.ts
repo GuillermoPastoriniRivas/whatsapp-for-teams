@@ -16,6 +16,10 @@ export class UpdatePhoneNumberUseCase {
       label: input.label,
       status: input.status,
       webhookSecret: input.webhookSecret,
+      providerConfig: input.providerConfig,
+      wabaId: input.wabaId,
+      phoneNumberId: input.phoneNumberId,
+      displayPhone: input.displayPhone,
     });
 
     return ok(updated!);

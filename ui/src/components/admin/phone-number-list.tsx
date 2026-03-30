@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, Plus } from "lucide-react";
+import { Phone, Plus, Pencil } from "lucide-react";
 import { RegisterPhoneForm } from "./register-phone-form";
+import { EditPhoneForm } from "./edit-phone-form";
 import type { PhoneNumber } from "@/types";
 
 export function PhoneNumberList() {
   const [phones, setPhones] = useState<PhoneNumber[]>([]);
   const [loading, setLoading] = useState(true);
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [editPhone, setEditPhone] = useState<PhoneNumber | null>(null);
 
   const fetchPhones = () => {
     setLoading(true);
@@ -68,6 +70,14 @@ export function PhoneNumberList() {
                 >
                   {phone.status}
                 </Badge>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setEditPhone(phone)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           ))}
@@ -78,6 +88,13 @@ export function PhoneNumberList() {
         open={registerOpen}
         onOpenChange={setRegisterOpen}
         onCreated={fetchPhones}
+      />
+
+      <EditPhoneForm
+        phone={editPhone}
+        open={!!editPhone}
+        onOpenChange={(open) => { if (!open) setEditPhone(null); }}
+        onUpdated={fetchPhones}
       />
     </div>
   );

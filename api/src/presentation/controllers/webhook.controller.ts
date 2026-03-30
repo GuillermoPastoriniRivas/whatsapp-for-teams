@@ -1,9 +1,14 @@
-import { Controller, Get, Post, Req, Res, Body, Query, HttpCode, Inject, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Req, Res, Body, Query, HttpCode, Inject, Logger, UseGuards } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse, ApiExcludeEndpoint } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { HandleInboundMessageUseCase } from '../../application/use-cases/webhook/handle-inbound-message.use-case.js';
 import { HandleStatusUpdateUseCase } from '../../application/use-cases/webhook/handle-status-update.use-case.js';
 import { Public } from '../decorators/public.decorator.js';
+import { WebhookSignatureGuard } from '../guards/webhook-signature.guard.js';
+import { parseMetaWebhook, mapMetaMessageToInbound, mapMetaStatusToUpdate } from '../webhooks/meta-webhook.parser.js';
+import type { MetaWebhookPayload } from '../webhooks/meta-webhook.types.js';
+import type { PhoneNumber } from '../../domain/entities/phone-number.entity.js';
 
 @Public()
 @ApiTags('Webhooks')
@@ -14,6 +19,7 @@ export class WebhookController {
   constructor(
     @Inject('HandleInboundMessageUseCase') private readonly handleInbound: HandleInboundMessageUseCase,
     @Inject('HandleStatusUpdateUseCase') private readonly handleStatus: HandleStatusUpdateUseCase,
+    private readonly configService: ConfigService,
   ) {}
 
   // ── Meta Cloud API ────────────────────────────────────
@@ -31,18 +37,51 @@ export class WebhookController {
     @Query('hub.verify_token') verifyToken: string,
     @Res() res: Response,
   ) {
-    if (mode === 'subscribe' && challenge) {
+    const expectedToken = this.configService.get<string>('meta.webhookVerifyToken');
+
+    if (mode === 'subscribe' && verifyToken === expectedToken && challenge) {
+      this.logger.log('Meta webhook verified successfully');
       return res.status(200).send(challenge);
     }
+
+    this.logger.warn(`Meta webhook verification failed (mode=${mode}, tokenMatch=${verifyToken === expectedToken})`);
     return res.status(403).send('Forbidden');
   }
 
   @Post('whatsapp')
   @HttpCode(200)
+  @UseGuards(WebhookSignatureGuard)
   @ApiOperation({ summary: 'Receive webhook (Meta)', description: 'Meta Cloud API inbound webhook receiver for messages and status updates' })
   @ApiResponse({ status: 200, description: 'Webhook processed' })
-  async receiveWhatsApp(@Req() req: Request) {
-    // TODO: Parse Meta Cloud API webhook format
+  async receiveWhatsApp(@Req() req: Request, @Body() body: MetaWebhookPayload) {
+    const phoneNumber = (req as any).phoneNumber as PhoneNumber;
+    const apiVersion = this.configService.get<string>('meta.apiVersion', 'v21.0');
+
+    const { messages, statuses } = parseMetaWebhook(body);
+
+    // Process inbound messages
+    for (const parsed of messages) {
+      const input = mapMetaMessageToInbound(parsed, phoneNumber.phoneNumberId, apiVersion);
+      if (!input) {
+        this.logger.warn(`Unsupported Meta message type: ${parsed.message.type} (id=${parsed.message.id})`);
+        continue;
+      }
+      try {
+        await this.handleInbound.execute(input);
+      } catch (err) {
+        this.logger.error(`Failed to handle Meta inbound message ${parsed.message.id}: ${err}`);
+      }
+    }
+
+    // Process status updates
+    for (const status of statuses) {
+      try {
+        await this.handleStatus.execute(mapMetaStatusToUpdate(status));
+      } catch (err) {
+        this.logger.error(`Failed to handle Meta status update ${status.id}: ${err}`);
+      }
+    }
+
     return { status: 'ok' };
   }
 
