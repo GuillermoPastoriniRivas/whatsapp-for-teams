@@ -49,7 +49,7 @@ export function AppSidebar({ className }: { className?: string }) {
   };
 
   const topTabs = [
-    { href: "/", icon: MessageSquare, label: "Chats" },
+    { href: "/conversations", icon: MessageSquare, label: "Chats" },
     { href: "/contacts", icon: Contact, label: "Contactos" },
     ...(agent?.role === "admin"
       ? [{ href: "/admin", icon: Shield, label: "Admin" }]
@@ -63,9 +63,7 @@ export function AppSidebar({ className }: { className?: string }) {
 
   const NavItem = ({ tab }: { tab: { href: string; icon: any; label: string } }) => {
     const isActive =
-      tab.href === "/"
-        ? pathname === "/" || pathname.startsWith("/conversations")
-        : pathname.startsWith(tab.href);
+      pathname.startsWith(tab.href);
 
     const linkContent = (
       <Link

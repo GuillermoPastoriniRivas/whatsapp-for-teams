@@ -26,6 +26,7 @@ export class SocketIoGatewayService
   handleConnection(client: Socket): void {
     const token = client.handshake.auth?.token;
     if (!token) {
+      client.emit('auth_error', { message: 'no token' });
       client.disconnect();
       return;
     }
@@ -37,6 +38,7 @@ export class SocketIoGatewayService
       this.logger.log(`Agent ${payload.sub} connected (tenant: ${payload.tenantId})`);
     } catch {
       this.logger.warn('Socket connection rejected: invalid token');
+      client.emit('auth_error', { message: 'invalid token' });
       client.disconnect();
       return;
     }

@@ -1,5 +1,43 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
+let onUnauthorizedCallback: (() => void) | null = null;
+
+export function onUnauthorized(cb: () => void) {
+  onUnauthorizedCallback = cb;
+}
+
+let refreshPromise: Promise<string | null> | null = null;
+
+export async function tryRefreshToken(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (!refreshToken) return null;
+
+      const res = await fetch(`${API_URL}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!res.ok) return null;
+
+      const data = await res.json();
+      localStorage.setItem("accessToken", data.accessToken);
+      api.setToken(data.accessToken);
+      return data.accessToken as string;
+    } catch {
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
 class ApiClient {
   private accessToken: string | null = null;
 
@@ -9,7 +47,8 @@ class ApiClient {
 
   private async request<T>(
     path: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    isRetry = false
   ): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -24,6 +63,15 @@ class ApiClient {
       ...options,
       headers,
     });
+
+    if (res.status === 401 && !isRetry) {
+      const newToken = await tryRefreshToken();
+      if (newToken) {
+        return this.request<T>(path, options, true);
+      }
+      onUnauthorizedCallback?.();
+      throw new ApiError(401, "Session expired");
+    }
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({ message: res.statusText }));

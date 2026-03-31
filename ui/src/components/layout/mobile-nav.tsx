@@ -15,7 +15,7 @@ export function MobileNav() {
   );
 
   const tabs = [
-    { href: "/", icon: MessageSquare, label: "Chats" },
+    { href: "/conversations", icon: MessageSquare, label: "Chats" },
     { href: "/contacts", icon: Contact, label: "Contacts" },
     ...(agent?.role === "admin"
       ? [{ href: "/admin", icon: Shield, label: "Admin" }]
@@ -31,9 +31,7 @@ export function MobileNav() {
       <div className="flex items-center justify-around">
         {tabs.map((tab) => {
           const isActive =
-            tab.href === "/"
-              ? pathname === "/" || pathname.startsWith("/conversations")
-              : pathname.startsWith(tab.href);
+            pathname.startsWith(tab.href);
           return (
             <Link
               key={tab.href}
