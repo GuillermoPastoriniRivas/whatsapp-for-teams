@@ -24,6 +24,8 @@ import { GetCurrentAgentUseCase } from '../application/use-cases/auth/get-curren
 import { CreateAgentUseCase } from '../application/use-cases/agent/create-agent.use-case.js';
 import { ListAgentsUseCase } from '../application/use-cases/agent/list-agents.use-case.js';
 import { UpdateAgentStatusUseCase } from '../application/use-cases/agent/update-agent-status.use-case.js';
+import { UpdateAgentProfileUseCase } from '../application/use-cases/agent/update-agent-profile.use-case.js';
+import { DeleteAgentUseCase } from '../application/use-cases/agent/delete-agent.use-case.js';
 import { GrantPhoneAccessUseCase } from '../application/use-cases/agent/grant-phone-access.use-case.js';
 import { RevokePhoneAccessUseCase } from '../application/use-cases/agent/revoke-phone-access.use-case.js';
 import { GetAgentPhoneAccessUseCase } from '../application/use-cases/agent/get-agent-phone-access.use-case.js';
@@ -115,6 +117,16 @@ const useCaseProviders = [
     useFactory: (agentRepo: any, convRepo: any, autoAssign: any) =>
       new UpdateAgentStatusUseCase(agentRepo, convRepo, autoAssign),
     inject: ['AgentRepository', 'ConversationRepository', 'AutoAssignConversationUseCase'],
+  },
+  {
+    provide: 'UpdateAgentProfileUseCase',
+    useFactory: (agentRepo: any) => new UpdateAgentProfileUseCase(agentRepo),
+    inject: ['AgentRepository'],
+  },
+  {
+    provide: 'DeleteAgentUseCase',
+    useFactory: (agentRepo: any) => new DeleteAgentUseCase(agentRepo),
+    inject: ['AgentRepository'],
   },
   {
     provide: 'GrantPhoneAccessUseCase',

@@ -6,6 +6,8 @@ import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery, ApiBea
 import { CreateAgentUseCase } from '../../application/use-cases/agent/create-agent.use-case.js';
 import { ListAgentsUseCase } from '../../application/use-cases/agent/list-agents.use-case.js';
 import { UpdateAgentStatusUseCase } from '../../application/use-cases/agent/update-agent-status.use-case.js';
+import { UpdateAgentProfileUseCase } from '../../application/use-cases/agent/update-agent-profile.use-case.js';
+import { DeleteAgentUseCase } from '../../application/use-cases/agent/delete-agent.use-case.js';
 import { GrantPhoneAccessUseCase } from '../../application/use-cases/agent/grant-phone-access.use-case.js';
 import { RevokePhoneAccessUseCase } from '../../application/use-cases/agent/revoke-phone-access.use-case.js';
 import { GetAgentPhoneAccessUseCase } from '../../application/use-cases/agent/get-agent-phone-access.use-case.js';
@@ -17,6 +19,8 @@ import { CreateAgentRequestSchema } from '../request-dtos/create-agent-request.d
 import type { CreateAgentRequestDto } from '../request-dtos/create-agent-request.dto.js';
 import { UpdateStatusRequestSchema } from '../request-dtos/update-status-request.dto.js';
 import type { UpdateStatusRequestDto } from '../request-dtos/update-status-request.dto.js';
+import { UpdateAgentProfileRequestSchema } from '../request-dtos/update-agent-profile-request.dto.js';
+import type { UpdateAgentProfileRequestDto } from '../request-dtos/update-agent-profile-request.dto.js';
 import { GrantPhoneAccessRequestSchema } from '../request-dtos/grant-phone-access-request.dto.js';
 import type { GrantPhoneAccessRequestDto } from '../request-dtos/grant-phone-access-request.dto.js';
 import { AgentStatus } from '../../domain/enums/agent-status.enum.js';
@@ -29,6 +33,8 @@ export class AgentController {
     @Inject('CreateAgentUseCase') private readonly createAgent: CreateAgentUseCase,
     @Inject('ListAgentsUseCase') private readonly listAgents: ListAgentsUseCase,
     @Inject('UpdateAgentStatusUseCase') private readonly updateStatus: UpdateAgentStatusUseCase,
+    @Inject('UpdateAgentProfileUseCase') private readonly updateProfile: UpdateAgentProfileUseCase,
+    @Inject('DeleteAgentUseCase') private readonly deleteAgent: DeleteAgentUseCase,
     @Inject('GrantPhoneAccessUseCase') private readonly grantAccess: GrantPhoneAccessUseCase,
     @Inject('RevokePhoneAccessUseCase') private readonly revokeAccess: RevokePhoneAccessUseCase,
     @Inject('GetAgentPhoneAccessUseCase') private readonly getAccess: GetAgentPhoneAccessUseCase,
@@ -74,6 +80,57 @@ export class AgentController {
   @ApiResponse({ status: 200, description: 'List of agents' })
   async list(@CurrentAgent() agent: RequestAgent, @Query('status') status?: AgentStatus) {
     return this.listAgents.execute(agent.tenantId, status);
+  }
+
+  @Patch(':id')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Update agent profile', description: 'Update agent name and/or role (admin only)' })
+  @ApiParam({ name: 'id', description: 'Agent ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'Jane Doe' },
+        role: { type: 'string', enum: ['admin', 'agent'] },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Updated agent' })
+  @ApiResponse({ status: 403, description: 'Admin role required' })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  async patchProfile(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(UpdateAgentProfileRequestSchema)) body: UpdateAgentProfileRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.updateProfile.execute({
+      agentId: id,
+      tenantId: agent.tenantId,
+      name: body.name,
+      role: body.role,
+    });
+    if (!result.ok) throw new NotFoundException(result.error.message);
+    const a = result.value;
+    return { id: a.id, name: a.name, email: a.email, role: a.role, status: a.status };
+  }
+
+  @Delete(':id')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Delete agent', description: 'Delete an agent from the tenant (admin only)' })
+  @ApiParam({ name: 'id', description: 'Agent ID' })
+  @ApiResponse({ status: 200, description: 'Agent deleted' })
+  @ApiResponse({ status: 403, description: 'Admin role required' })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  async remove(
+    @Param('id') id: string,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.deleteAgent.execute({
+      agentId: id,
+      tenantId: agent.tenantId,
+    });
+    if (!result.ok) throw new NotFoundException(result.error.message);
+    return { deleted: true };
   }
 
   @Patch(':id/status')

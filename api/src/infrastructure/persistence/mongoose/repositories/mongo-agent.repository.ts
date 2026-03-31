@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AgentRepository } from '../../../../domain/repositories/agent.repository.js';
 import { Agent } from '../../../../domain/entities/agent.entity.js';
+import { AgentRole } from '../../../../domain/enums/agent-role.enum.js';
 import { AgentStatus } from '../../../../domain/enums/agent-status.enum.js';
 import { AgentType } from '../../../../domain/enums/agent-type.enum.js';
 import { AgentModel, AgentDocument } from '../schemas/agent.schema.js';
@@ -72,5 +73,18 @@ export class MongoAgentRepository implements AgentRepository {
   async updateName(id: string, name: string): Promise<Agent | null> {
     const doc = await this.model.findByIdAndUpdate(id, { $set: { name } }, { returnDocument: 'after' });
     return doc ? AgentMapper.toDomain(doc) : null;
+  }
+
+  async updateProfile(id: string, data: { name?: string; role?: AgentRole }): Promise<Agent | null> {
+    const update: Record<string, unknown> = {};
+    if (data.name !== undefined) update.name = data.name;
+    if (data.role !== undefined) update.role = data.role;
+    const doc = await this.model.findByIdAndUpdate(id, { $set: update }, { returnDocument: 'after' });
+    return doc ? AgentMapper.toDomain(doc) : null;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const result = await this.model.findByIdAndDelete(id);
+    return result !== null;
   }
 }

@@ -1,13 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,10 +11,9 @@ import { Bot, Save, Trash2, Send } from "lucide-react";
 import type { AiAgentWithConfig } from "@/types";
 
 interface Props {
-  agent: AiAgentWithConfig | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  agent: AiAgentWithConfig;
   onUpdated: () => void;
+  onDeleted: () => void;
 }
 
 const providerLabels: Record<string, string> = {
@@ -31,46 +23,38 @@ const providerLabels: Record<string, string> = {
   openrouter: "OpenRouter",
 };
 
-export function AiAgentDetail({ agent, open, onOpenChange, onUpdated }: Props) {
+export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Editable fields
-  const [name, setName] = useState("");
-  const [knowledgeBase, setKnowledgeBase] = useState("");
-  const [systemPrompt, setSystemPrompt] = useState("");
-  const [personaRole, setPersonaRole] = useState("");
-  const [personaTone, setPersonaTone] = useState("");
-  const [personaLanguage, setPersonaLanguage] = useState("");
-  const [personaInstructions, setPersonaInstructions] = useState("");
+  const [name, setName] = useState(agent.name);
+  const [knowledgeBase, setKnowledgeBase] = useState(agent.config.knowledgeBase || "");
+  const [systemPrompt, setSystemPrompt] = useState(agent.config.systemPrompt || "");
+  const [personaRole, setPersonaRole] = useState(agent.config.persona.role || "");
+  const [personaTone, setPersonaTone] = useState(agent.config.persona.tone || "");
+  const [personaLanguage, setPersonaLanguage] = useState(agent.config.persona.language || "");
+  const [personaInstructions, setPersonaInstructions] = useState(agent.config.persona.instructions || "");
 
-  // Test
   const [testMessage, setTestMessage] = useState("");
   const [testResponse, setTestResponse] = useState("");
   const [testing, setTesting] = useState(false);
 
-  // Sync state when agent changes
-  const loadAgent = (a: AiAgentWithConfig) => {
-    setName(a.name);
-    setKnowledgeBase(a.config.knowledgeBase || "");
-    setSystemPrompt(a.config.systemPrompt || "");
-    setPersonaRole(a.config.persona.role || "");
-    setPersonaTone(a.config.persona.tone || "");
-    setPersonaLanguage(a.config.persona.language || "");
-    setPersonaInstructions(a.config.persona.instructions || "");
+  // Reset state when agent changes
+  useEffect(() => {
+    setName(agent.name);
+    setKnowledgeBase(agent.config.knowledgeBase || "");
+    setSystemPrompt(agent.config.systemPrompt || "");
+    setPersonaRole(agent.config.persona.role || "");
+    setPersonaTone(agent.config.persona.tone || "");
+    setPersonaLanguage(agent.config.persona.language || "");
+    setPersonaInstructions(agent.config.persona.instructions || "");
     setError(null);
     setSuccess(null);
     setTestResponse("");
-  };
-
-  // Load on open
-  if (agent && open && name === "" && agent.name !== "") {
-    loadAgent(agent);
-  }
+  }, [agent.id]);
 
   const handleSave = async () => {
-    if (!agent) return;
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -97,19 +81,18 @@ export function AiAgentDetail({ agent, open, onOpenChange, onUpdated }: Props) {
   };
 
   const handleDelete = async () => {
-    if (!agent || !confirm("Are you sure you want to delete this AI agent?")) return;
+    if (!confirm("Are you sure you want to delete this AI agent?")) return;
 
     try {
       await api.delete(`/ai-agents/${agent.id}`);
-      onOpenChange(false);
-      onUpdated();
+      onDeleted();
     } catch (err: any) {
       setError(err.message || "Failed to delete");
     }
   };
 
   const handleTest = async () => {
-    if (!agent || !testMessage.trim()) return;
+    if (!testMessage.trim()) return;
     setTesting(true);
     setTestResponse("");
 
@@ -127,45 +110,37 @@ export function AiAgentDetail({ agent, open, onOpenChange, onUpdated }: Props) {
   };
 
   return (
-    <Sheet open={open} onOpenChange={(v) => {
-      onOpenChange(v);
-      if (!v) {
-        setName("");
-        setTestResponse("");
-      }
-    }}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
-        <SheetHeader className="mb-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-              <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-            </div>
-            <div>
-              <SheetTitle>{agent?.name || "AI Agent"}</SheetTitle>
-              <SheetDescription className="flex items-center gap-2">
-                {agent && (
-                  <>
-                    <Badge variant="outline" className="text-[10px]">
-                      {providerLabels[agent.config.provider]}
-                    </Badge>
-                    <Badge variant="secondary" className="text-[10px]">
-                      {agent.config.model}
-                    </Badge>
-                  </>
-                )}
-              </SheetDescription>
+    <>
+      {/* Header */}
+      <div className="px-4 pt-6 pb-4 border-b">
+        <div className="flex items-center gap-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
+            <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold">{agent.name}</h2>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <Badge variant="outline" className="text-[10px] h-5">
+                {providerLabels[agent.config.provider]}
+              </Badge>
+              <Badge variant="secondary" className="text-[10px] h-5">
+                {agent.config.model}
+              </Badge>
             </div>
           </div>
-        </SheetHeader>
+        </div>
+      </div>
 
+      {/* Tabs */}
+      <div className="px-4 py-4">
         <Tabs defaultValue="config" className="w-full">
           <TabsList className="w-full">
-            <TabsTrigger value="config" className="flex-1">Config</TabsTrigger>
-            <TabsTrigger value="knowledge" className="flex-1">Knowledge</TabsTrigger>
-            <TabsTrigger value="test" className="flex-1">Test</TabsTrigger>
+            <TabsTrigger value="config" className="flex-1 text-xs">Config</TabsTrigger>
+            <TabsTrigger value="knowledge" className="flex-1 text-xs">Knowledge</TabsTrigger>
+            <TabsTrigger value="test" className="flex-1 text-xs">Test</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="config" className="mt-4 space-y-4">
+          <TabsContent value="config" className="mt-4 space-y-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Name</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
@@ -175,10 +150,10 @@ export function AiAgentDetail({ agent, open, onOpenChange, onUpdated }: Props) {
               <Input
                 value={personaRole}
                 onChange={(e) => setPersonaRole(e.target.value)}
-                placeholder="e.g., Customer support agent for Acme Corp"
+                placeholder="e.g., Customer support agent"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Tone</label>
                 <Input value={personaTone} onChange={(e) => setPersonaTone(e.target.value)} />
@@ -189,7 +164,7 @@ export function AiAgentDetail({ agent, open, onOpenChange, onUpdated }: Props) {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Additional Instructions</label>
+              <label className="text-sm font-medium">Instructions</label>
               <Textarea
                 value={personaInstructions}
                 onChange={(e) => setPersonaInstructions(e.target.value)}
@@ -207,20 +182,20 @@ export function AiAgentDetail({ agent, open, onOpenChange, onUpdated }: Props) {
             </div>
           </TabsContent>
 
-          <TabsContent value="knowledge" className="mt-4 space-y-4">
+          <TabsContent value="knowledge" className="mt-4 space-y-3">
             <p className="text-sm text-muted-foreground">
               Write everything your agent needs to know. This text is sent directly to the AI as context.
             </p>
             <Textarea
               value={knowledgeBase}
               onChange={(e) => setKnowledgeBase(e.target.value)}
-              rows={20}
+              rows={14}
               className="font-mono text-sm"
               placeholder="Business info, services, pricing, FAQs, policies..."
             />
           </TabsContent>
 
-          <TabsContent value="test" className="mt-4 space-y-4">
+          <TabsContent value="test" className="mt-4 space-y-3">
             <p className="text-sm text-muted-foreground">
               Send a test message to see how your AI agent responds.
             </p>
@@ -231,13 +206,13 @@ export function AiAgentDetail({ agent, open, onOpenChange, onUpdated }: Props) {
                 placeholder="Type a test message..."
                 onKeyDown={(e) => e.key === "Enter" && handleTest()}
               />
-              <Button onClick={handleTest} disabled={testing} size="sm" className="gap-1">
+              <Button onClick={handleTest} disabled={testing} size="sm" className="gap-1 shrink-0">
                 <Send className="h-4 w-4" />
                 {testing ? "..." : "Send"}
               </Button>
             </div>
             {testResponse && (
-              <div className="rounded-lg border bg-muted/50 p-4">
+              <div className="rounded-lg border bg-muted/50 p-3">
                 <p className="text-xs font-medium text-muted-foreground mb-1">AI Response:</p>
                 <p className="text-sm whitespace-pre-wrap">{testResponse}</p>
               </div>
@@ -246,14 +221,14 @@ export function AiAgentDetail({ agent, open, onOpenChange, onUpdated }: Props) {
         </Tabs>
 
         {(error || success) && (
-          <div className={`mt-4 rounded-md px-3 py-2 text-sm ${
+          <div className={`mt-3 rounded-md px-3 py-2 text-sm ${
             error ? "bg-destructive/10 text-destructive" : "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
           }`}>
             {error || success}
           </div>
         )}
 
-        <div className="mt-6 flex gap-2">
+        <div className="mt-4 flex gap-2">
           <Button
             variant="destructive"
             size="sm"
@@ -271,10 +246,10 @@ export function AiAgentDetail({ agent, open, onOpenChange, onUpdated }: Props) {
             className="gap-1 bg-primary hover:bg-primary/90"
           >
             <Save className="h-4 w-4" />
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? "Saving..." : "Save"}
           </Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </>
   );
 }
