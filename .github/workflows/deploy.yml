@@ -1,0 +1,66 @@
+name: Build & Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # manual trigger
+
+env:
+  APP_DIR: /home/ubuntu/hivvo
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Build Docker images locally, save as tarballs ---
+      - name: Build API image
+        run: docker build -t hivvo-api:latest ./api
+
+      - name: Build UI image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+            -t hivvo-ui:latest ./ui
+
+      - name: Save images as tarballs
+        run: |
+          docker save hivvo-api:latest | gzip > hivvo-api.tar.gz
+          docker save hivvo-ui:latest | gzip > hivvo-ui.tar.gz
+
+      # --- Copy artifacts to EC2 ---
+      - name: Copy images to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "hivvo-api.tar.gz,hivvo-ui.tar.gz,docker-compose.yml,infra/nginx/"
+          target: ${{ env.APP_DIR }}
+
+      # --- Deploy on EC2 ---
+      - name: Deploy containers
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ${{ env.APP_DIR }}
+
+            # Load new images
+            docker load < hivvo-api.tar.gz
+            docker load < hivvo-ui.tar.gz
+
+            # Restart services
+            docker compose down
+            docker compose up -d
+
+            # Cleanup tarballs
+            rm -f hivvo-api.tar.gz hivvo-ui.tar.gz
+
+            # Prune old images
+            docker image prune -f
+
+            echo "Deploy complete!"

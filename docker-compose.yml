@@ -1,0 +1,47 @@
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: hivvo-api
+    restart: unless-stopped
+    env_file: ./api/.env
+    ports:
+      - "3000:3000"
+    networks:
+      - hivvo
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://yourdomain.com}
+    container_name: hivvo-ui
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+    networks:
+      - hivvo
+
+  nginx:
+    image: nginx:alpine
+    container_name: hivvo-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - api
+      - ui
+    networks:
+      - hivvo
+
+networks:
+  hivvo:
+    driver: bridge
