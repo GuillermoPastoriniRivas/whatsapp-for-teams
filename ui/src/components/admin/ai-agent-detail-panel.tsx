@@ -10,7 +10,9 @@ import { api } from "@/lib/api";
 import { Bot, Save, Trash2, Send, Eye, EyeOff } from "lucide-react";
 import type { AiAgentWithConfig } from "@/types";
 
-const providers = [
+type ProviderValue = "openai" | "anthropic" | "gemini" | "openrouter";
+
+const providers: { value: ProviderValue; label: string; models: string[] }[] = [
   { value: "openai", label: "OpenAI", models: ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "o3-mini"] },
   { value: "anthropic", label: "Anthropic", models: ["claude-sonnet-4-20250514", "claude-haiku-4-5-20251001", "claude-opus-4-20250514"] },
   { value: "gemini", label: "Gemini", models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"] },
