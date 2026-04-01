@@ -139,7 +139,13 @@ export class ProcessAiResponseUseCase {
     // 1. Base prompt — shared across all AI agents
     promptParts.push(BASE_SYSTEM_PROMPT);
 
-    // 2. Persona — configured by admin
+    // 2. Current date & time
+    const now = new Date();
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = days[now.getDay()];
+    promptParts.push(`## Current Date & Time\nToday is ${dayName}, ${now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}. Current time: ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}. Use this to answer questions about dates, business hours, availability, etc.`);
+
+    // 3. Persona — configured by admin
     const personaParts: string[] = [];
     if (config.persona.role) personaParts.push(`Your role: ${config.persona.role}`);
     if (config.persona.tone) personaParts.push(`Communication tone: ${config.persona.tone}`);
@@ -149,17 +155,17 @@ export class ProcessAiResponseUseCase {
       promptParts.push(`## Your Identity\n${personaParts.join('\n')}`);
     }
 
-    // 3. Admin system prompt override (advanced)
+    // 4. Admin system prompt override (advanced)
     if (config.systemPrompt) {
       promptParts.push(`## Additional Instructions\n${config.systemPrompt}`);
     }
 
-    // 4. Knowledge base — business info written by admin
+    // 5. Knowledge base — business info written by admin
     if (config.knowledgeBase) {
       promptParts.push(`## Business Knowledge\nUse the following information to answer customer questions. This is your source of truth — do not invent information beyond what is provided here.\n\n${config.knowledgeBase}`);
     }
 
-    // 5. Contact info — dynamic per conversation
+    // 6. Contact info — dynamic per conversation
     if (config.contextConfig.includeContactInfo) {
       const contact = await this.contactRepo.findById(conversation.contactId);
       if (contact) {

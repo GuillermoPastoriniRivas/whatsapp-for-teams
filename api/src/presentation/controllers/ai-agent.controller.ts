@@ -143,7 +143,12 @@ export class AiAgentController {
       throw new NotFoundException('AI agent not found');
     }
 
+    const now = new Date();
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = days[now.getDay()];
+
     let systemPrompt = '';
+    systemPrompt += `Current datetime: ${dayName}, ${now.toISOString().slice(0, 10)}.\n\n`;
     if (config.persona.role) systemPrompt += `You are ${config.persona.role}.\n`;
     if (config.persona.tone) systemPrompt += `Tone: ${config.persona.tone}.\n`;
     if (config.persona.language) systemPrompt += `Respond in: ${config.persona.language}.\n`;

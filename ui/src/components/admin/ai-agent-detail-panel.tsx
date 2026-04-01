@@ -7,8 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
-import { Bot, Save, Trash2, Send } from "lucide-react";
+import { Bot, Save, Trash2, Send, Eye, EyeOff } from "lucide-react";
 import type { AiAgentWithConfig } from "@/types";
+
+const providers = [
+  { value: "openai", label: "OpenAI", models: ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "o3-mini"] },
+  { value: "anthropic", label: "Anthropic", models: ["claude-sonnet-4-20250514", "claude-haiku-4-5-20251001", "claude-opus-4-20250514"] },
+  { value: "gemini", label: "Gemini", models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"] },
+  { value: "openrouter", label: "OpenRouter", models: [] },
+];
 
 interface Props {
   agent: AiAgentWithConfig;
@@ -36,6 +43,13 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
   const [personaLanguage, setPersonaLanguage] = useState(agent.config.persona.language || "");
   const [personaInstructions, setPersonaInstructions] = useState(agent.config.persona.instructions || "");
 
+  const [provider, setProvider] = useState(agent.config.provider || "openai");
+  const [model, setModel] = useState(agent.config.model || "");
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  const selectedProvider = providers.find((p) => p.value === provider);
+
   const [testMessage, setTestMessage] = useState("");
   const [testResponse, setTestResponse] = useState("");
   const [testing, setTesting] = useState(false);
@@ -49,6 +63,10 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
     setPersonaTone(agent.config.persona.tone || "");
     setPersonaLanguage(agent.config.persona.language || "");
     setPersonaInstructions(agent.config.persona.instructions || "");
+    setProvider(agent.config.provider || "openai");
+    setModel(agent.config.model || "");
+    setApiKey("");
+    setShowApiKey(false);
     setError(null);
     setSuccess(null);
     setTestResponse("");
@@ -60,8 +78,10 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
     setSuccess(null);
 
     try {
-      await api.patch(`/ai-agents/${agent.id}`, {
+      const payload: Record<string, any> = {
         name,
+        provider,
+        model,
         knowledgeBase,
         systemPrompt,
         persona: {
@@ -70,7 +90,11 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
           language: personaLanguage,
           instructions: personaInstructions,
         },
-      });
+      };
+      if (apiKey.trim()) {
+        payload.apiKey = apiKey;
+      }
+      await api.patch(`/ai-agents/${agent.id}`, payload);
       setSuccess("Saved successfully");
       onUpdated();
     } catch (err: any) {
@@ -121,10 +145,10 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
             <h2 className="text-base font-semibold">{agent.name}</h2>
             <div className="flex items-center gap-1.5 mt-0.5">
               <Badge variant="outline" className="text-[10px] h-5">
-                {providerLabels[agent.config.provider]}
+                {providerLabels[provider]}
               </Badge>
               <Badge variant="secondary" className="text-[10px] h-5">
-                {agent.config.model}
+                {model}
               </Badge>
             </div>
           </div>
@@ -145,6 +169,86 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
               <label className="text-sm font-medium">Name</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
+
+            {/* AI Provider Settings */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Provider</label>
+              <div className="grid grid-cols-2 gap-2">
+                {providers.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => {
+                      setProvider(p.value);
+                      if (p.models.length > 0) setModel(p.models[0]);
+                      else setModel("");
+                    }}
+                    className={`rounded-lg border p-2 text-left text-xs transition-colors ${
+                      provider === p.value
+                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
+                        : "hover:bg-muted/50"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Model</label>
+              {selectedProvider && selectedProvider.models.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedProvider.models.map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setModel(m)}
+                      className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                        model === m
+                          ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
+                          : "hover:bg-muted/50"
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <Input
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="e.g., openai/gpt-4o"
+                  className="text-sm"
+                />
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">API Key</label>
+              <div className="relative">
+                <Input
+                  type={showApiKey ? "text" : "password"}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder={agent.config.apiKeySet ? "••••••••  (leave empty to keep current)" : "sk-..."}
+                  className="pr-10 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {agent.config.apiKeySet
+                  ? "A key is already set. Enter a new one only if you want to replace it."
+                  : "No API key set. Enter one to enable the agent."}
+              </p>
+            </div>
+
+            <hr className="my-1" />
+
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Role</label>
               <Input
