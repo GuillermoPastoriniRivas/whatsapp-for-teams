@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
+import { useTranslations } from "@/lib/i18n/use-translations";
+import { LanguageToggle } from "@/components/layout/language-toggle";
 import { Button } from "@/components/ui/button";
 import {
   MessageSquare,
@@ -18,61 +20,55 @@ import {
 } from "lucide-react";
 import { AsisLogo } from "@/components/brand/asis-logo";
 
-const features = [
-  {
-    icon: MessageSquare,
-    title: "Todos tus números en una bandeja",
-    description:
-      "Conecta varios números de WhatsApp Business y ve todas las conversaciones en un solo lugar. Tu equipo no necesita cambiar entre teléfonos ni cuentas.",
-  },
-  {
-    icon: Users,
-    title: "Colaboración entre agentes humanos",
-    description:
-      "Asigna conversaciones a miembros del equipo, deja notas internas invisibles para el cliente y colabora en tiempo real sin que nadie lo note.",
-  },
-  {
-    icon: Bot,
-    title: "Agentes de IA con tu propio modelo",
-    description:
-      "Conecta tu LLM (OpenAI, Anthropic, Gemini) para que responda automáticamente. Configura cuándo interviene la IA, cuándo pasa a un humano y qué base de conocimiento usa.",
-  },
-  {
-    icon: Shield,
-    title: "Control y permisos de administrador",
-    description:
-      "Define quién ve qué números, asigna roles y permisos a cada miembro. Mantén control total sobre quién accede a qué conversaciones.",
-  },
-];
-
-const steps = [
-  {
-    number: "01",
-    icon: Phone,
-    title: "Conecta tus números",
-    description:
-      "Registra tus números de WhatsApp Business. Puedes conectar todos los que necesites desde el panel de administración.",
-  },
-  {
-    number: "02",
-    icon: Users,
-    title: "Tu equipo responde",
-    description:
-      "Las conversaciones se asignan a agentes humanos. Colabora con notas internas, transfiere chats y responde en tiempo real.",
-  },
-  {
-    number: "03",
-    icon: Bot,
-    title: "La IA te ayuda",
-    description:
-      "Configura agentes de IA con tu propio modelo de lenguaje. Responden automáticamente y escalan al humano cuando no pueden resolver.",
-  },
-];
-
 export default function LandingPage() {
   const router = useRouter();
   const agent = useAuthStore((s) => s.agent);
   const [hydrated, setHydrated] = useState(false);
+  const { t } = useTranslations();
+
+  const features = [
+    {
+      icon: MessageSquare,
+      title: t.landing.feature1Title,
+      description: t.landing.feature1Desc,
+    },
+    {
+      icon: Users,
+      title: t.landing.feature2Title,
+      description: t.landing.feature2Desc,
+    },
+    {
+      icon: Bot,
+      title: t.landing.feature3Title,
+      description: t.landing.feature3Desc,
+    },
+    {
+      icon: Shield,
+      title: t.landing.feature4Title,
+      description: t.landing.feature4Desc,
+    },
+  ];
+
+  const steps = [
+    {
+      number: "01",
+      icon: Phone,
+      title: t.landing.step1Title,
+      description: t.landing.step1Desc,
+    },
+    {
+      number: "02",
+      icon: Users,
+      title: t.landing.step2Title,
+      description: t.landing.step2Desc,
+    },
+    {
+      number: "03",
+      icon: Bot,
+      title: t.landing.step3Title,
+      description: t.landing.step3Desc,
+    },
+  ];
 
   useEffect(() => {
     useAuthStore.getState().hydrate();
@@ -98,18 +94,19 @@ export default function LandingPage() {
 
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
             <button onClick={() => document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" })} className="hover:text-primary transition-colors">
-              Cómo funciona
+              {t.landing.navHowItWorks}
             </button>
             <button onClick={() => document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" })} className="hover:text-primary transition-colors">
-              Funcionalidades
+              {t.landing.navFeatures}
             </button>
           </div>
 
           <div className="flex items-center gap-4">
+            <LanguageToggle />
             {hydrated && agent ? (
               <Button onClick={() => router.push("/conversations")} className="rounded-full shadow-md shadow-primary/20">
                 <LayoutDashboard className="mr-2 h-4 w-4" />
-                Ir al workspace
+                {t.landing.navWorkspace}
               </Button>
             ) : (
               <>
@@ -118,13 +115,13 @@ export default function LandingPage() {
                   className="hidden md:inline-flex text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   onClick={() => router.push("/login")}
                 >
-                  Iniciar sesión
+                  {t.landing.navLogin}
                 </Button>
                 <Button
                   className="rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-md transition-transform hover:scale-105"
                   onClick={() => router.push("/login")}
                 >
-                  Probar demo
+                  {t.landing.navDemo}
                 </Button>
               </>
             )}
@@ -138,13 +135,13 @@ export default function LandingPage() {
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <div className="mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
               <Sparkles className="h-4 w-4" />
-              <span>WhatsApp + IA para tu negocio</span>
+              <span>{t.landing.badge}</span>
             </div>
             <h1 className="mx-auto max-w-4xl text-5xl font-extrabold tracking-tight text-slate-900 sm:text-7xl">
-              Tu equipo de WhatsApp con <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">agentes de IA</span> integrados
+              {t.landing.heroTitle}<span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">{t.landing.heroTitleHighlight}</span>{t.landing.heroTitleEnd}
             </h1>
             <p className="mx-auto mt-8 max-w-2xl text-lg text-slate-600 sm:text-xl">
-              Responde clientes automaticamente, califica leads, agenda citas y escala a un humano cuando es necesario. Todo desde WhatsApp, con tu propia IA.
+              {t.landing.heroSubtitle}
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button
@@ -152,7 +149,7 @@ export default function LandingPage() {
                 className="rounded-full h-14 px-8 text-base bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30 transition-all hover:scale-105"
                 onClick={() => router.push("/login")}
               >
-                Probar demo
+                {t.landing.ctaDemo}
                 <ArrowRight className="ml-2 h-5 w-5 text-white" />
               </Button>
               <Button
@@ -164,7 +161,7 @@ export default function LandingPage() {
                 }}
               >
                 <MessageCircle className="mr-2 h-5 w-5" />
-                Cómo funciona
+                {t.landing.ctaHowItWorks}
               </Button>
             </div>
           </div>
@@ -269,7 +266,7 @@ export default function LandingPage() {
                       <div className="flex gap-3 max-w-[80%] ml-auto justify-end">
                         <div className="bg-white p-2.5 text-xs text-slate-500 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
                            <Bot className="h-3 w-3 text-primary" />
-                           <span>IA ha generado una respuesta sugerida</span>
+                           <span>{t.landing.aiSuggestion}</span>
                         </div>
                       </div>
                    </div>
@@ -293,9 +290,9 @@ export default function LandingPage() {
       <section id="como-funciona" className="py-24 sm:py-32 border-y border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center mb-16">
-            <h2 className="text-primary font-bold tracking-wide uppercase text-sm mb-3">Cómo funciona</h2>
+            <h2 className="text-primary font-bold tracking-wide uppercase text-sm mb-3">{t.landing.howItWorksLabel}</h2>
             <p className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-              De WhatsApp fragmentado a equipo coordinado en 3 pasos
+              {t.landing.howItWorksTitle}
             </p>
           </div>
 
@@ -318,12 +315,12 @@ export default function LandingPage() {
       <section id="funcionalidades" className="py-24 sm:py-32 relative bg-slate-50">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center mb-16">
-            <h2 className="text-primary font-bold tracking-wide uppercase text-sm mb-3">Funcionalidades</h2>
+            <h2 className="text-primary font-bold tracking-wide uppercase text-sm mb-3">{t.landing.featuresLabel}</h2>
             <p className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-              Todo lo que tu equipo necesita en un solo lugar
+              {t.landing.featuresTitle}
             </p>
             <p className="mt-4 text-lg text-slate-600">
-              Sin funciones inventadas. Esto es lo que asis.chat hace hoy.
+              {t.landing.featuresSubtitle}
             </p>
           </div>
 
@@ -353,14 +350,14 @@ export default function LandingPage() {
         <div className="mx-auto max-w-4xl text-center">
            <AsisLogo size={64} className="text-primary mx-auto mb-6" />
           <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-            Prueba asis<span className="text-primary">.chat</span> con tu equipo
+            {t.landing.ctaTitle}
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-600">
-            Conecta tu primer numero de WhatsApp en minutos. Mira el demo en vivo.
+            {t.landing.ctaSubtitle}
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
             <Button size="lg" className="rounded-full bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20 h-14 px-8 text-lg font-semibold transition-transform hover:scale-105" onClick={() => router.push("/login")}>
-              Probar demo
+              {t.landing.ctaDemo}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
@@ -377,31 +374,31 @@ export default function LandingPage() {
                  <span className="text-xl font-bold text-slate-900 -ml-1">asis<span className="text-primary">.chat</span></span>
               </div>
               <p className="text-sm leading-6 text-slate-600 max-w-xs">
-                Bandeja compartida de WhatsApp para equipos. Agentes humanos e IA en un solo lugar.
+                {t.landing.footerTagline}
               </p>
             </div>
             <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0">
               <div className="md:grid md:grid-cols-2 md:gap-8">
                 <div>
-                  <h3 className="text-sm font-semibold leading-6 text-slate-900">Producto</h3>
+                  <h3 className="text-sm font-semibold leading-6 text-slate-900">{t.landing.footerProduct}</h3>
                   <ul role="list" className="mt-6 space-y-4">
-                    <li><button onClick={() => document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">Funcionalidades</button></li>
-                    <li><button onClick={() => document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">Cómo funciona</button></li>
+                    <li><button onClick={() => document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.navFeatures}</button></li>
+                    <li><button onClick={() => document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.navHowItWorks}</button></li>
                   </ul>
                 </div>
                 <div className="mt-10 md:mt-0">
-                  <h3 className="text-sm font-semibold leading-6 text-slate-900">Empresa</h3>
+                  <h3 className="text-sm font-semibold leading-6 text-slate-900">{t.landing.footerCompany}</h3>
                   <ul role="list" className="mt-6 space-y-4">
-                    <li><a href="#" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">Contacto</a></li>
+                    <li><a href="#" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.footerContact}</a></li>
                   </ul>
                 </div>
               </div>
               <div className="md:grid md:grid-cols-2 md:gap-8">
                  <div>
-                  <h3 className="text-sm font-semibold leading-6 text-slate-900">Legal</h3>
+                  <h3 className="text-sm font-semibold leading-6 text-slate-900">{t.landing.footerLegal}</h3>
                   <ul role="list" className="mt-6 space-y-4">
-                    <li><a href="/privacy" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">Privacidad</a></li>
-                    <li><a href="/terms" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">Términos</a></li>
+                    <li><a href="/privacy" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.footerPrivacy}</a></li>
+                    <li><a href="/terms" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.footerTerms}</a></li>
                   </ul>
                 </div>
               </div>
@@ -409,7 +406,7 @@ export default function LandingPage() {
           </div>
           <div className="mt-16 border-t border-slate-200 pt-8 sm:mt-20 lg:mt-24 text-center">
             <p className="text-sm leading-5 text-slate-500">
-              &copy; {new Date().getFullYear()} asis.chat — Todos los derechos reservados.
+              &copy; {new Date().getFullYear()} asis.chat — {t.landing.footerRights}
             </p>
           </div>
         </div>
@@ -421,7 +418,7 @@ export default function LandingPage() {
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/20 transition-transform hover:scale-110"
-        aria-label="Contactar por WhatsApp"
+        aria-label={t.landing.whatsappAria}
       >
         <MessageCircle className="h-7 w-7" />
       </a>

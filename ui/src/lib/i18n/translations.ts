@@ -83,6 +83,72 @@ const translations = {
       phoneNumbers: "Numeros",
       phoneAccess: "Acceso",
     },
+    landing: {
+      badge: "WhatsApp + IA para tu negocio",
+      heroTitle: "Tu equipo de WhatsApp con ",
+      heroTitleHighlight: "agentes de IA",
+      heroTitleEnd: " integrados",
+      heroSubtitle:
+        "Responde clientes automaticamente, califica leads, agenda citas y escala a un humano cuando es necesario. Todo desde WhatsApp, con tu propia IA.",
+      ctaDemo: "Probar demo",
+      ctaHowItWorks: "Como funciona",
+      navHowItWorks: "Como funciona",
+      navFeatures: "Funcionalidades",
+      navLogin: "Iniciar sesion",
+      navDemo: "Probar demo",
+      navWorkspace: "Ir al workspace",
+      howItWorksLabel: "Como funciona",
+      howItWorksTitle:
+        "De WhatsApp fragmentado a equipo coordinado en 3 pasos",
+      featuresLabel: "Funcionalidades",
+      featuresTitle: "Todo lo que tu equipo necesita en un solo lugar",
+      featuresSubtitle: "Sin funciones inventadas. Esto es lo que asis.chat hace hoy.",
+      ctaTitle: "Prueba asis.chat con tu equipo",
+      ctaSubtitle:
+        "Conecta tu primer numero de WhatsApp en minutos. Mira el demo en vivo.",
+      footerProduct: "Producto",
+      footerCompany: "Empresa",
+      footerContact: "Contacto",
+      footerLegal: "Legal",
+      footerPrivacy: "Privacidad",
+      footerTerms: "Terminos",
+      footerRights: "Todos los derechos reservados.",
+      footerTagline:
+        "Bandeja compartida de WhatsApp para equipos. Agentes humanos e IA en un solo lugar.",
+      aiSuggestion: "IA ha generado una respuesta sugerida",
+      whatsappAria: "Contactar por WhatsApp",
+      feature1Title: "Todos tus numeros en una bandeja",
+      feature1Desc:
+        "Conecta varios numeros de WhatsApp Business y ve todas las conversaciones en un solo lugar. Tu equipo no necesita cambiar entre telefonos ni cuentas.",
+      feature2Title: "Colaboracion entre agentes humanos",
+      feature2Desc:
+        "Asigna conversaciones a miembros del equipo, deja notas internas invisibles para el cliente y colabora en tiempo real sin que nadie lo note.",
+      feature3Title: "Agentes de IA con tu propio modelo",
+      feature3Desc:
+        "Conecta tu LLM (OpenAI, Anthropic, Gemini) para que responda automaticamente. Configura cuando interviene la IA, cuando pasa a un humano y que base de conocimiento usa.",
+      feature4Title: "Control y permisos de administrador",
+      feature4Desc:
+        "Define quien ve que numeros, asigna roles y permisos a cada miembro. Manten control total sobre quien accede a que conversaciones.",
+      step1Title: "Conecta tus numeros",
+      step1Desc:
+        "Registra tus numeros de WhatsApp Business. Puedes conectar todos los que necesites desde el panel de administracion.",
+      step2Title: "Tu equipo responde",
+      step2Desc:
+        "Las conversaciones se asignan a agentes humanos. Colabora con notas internas, transfiere chats y responde en tiempo real.",
+      step3Title: "La IA te ayuda",
+      step3Desc:
+        "Configura agentes de IA con tu propio modelo de lenguaje. Responden automaticamente y escalan al humano cuando no pueden resolver.",
+    },
+    legal: {
+      backToHome: "Volver al inicio",
+      privacy: "Privacidad",
+      terms: "Terminos",
+      allRightsReserved: "Todos los derechos reservados.",
+      privacyTitle: "Politica de Privacidad",
+      privacyUpdated: "Ultima actualizacion: 2 de abril de 2026",
+      termsTitle: "Terminos y Condiciones de Servicio",
+      termsUpdated: "Ultima actualizacion: 2 de abril de 2026",
+    },
     common: {
       loading: "Cargando...",
       demoBanner: "Estas en modo demo — los datos se reinician diariamente",
@@ -171,6 +237,72 @@ const translations = {
       title: "Admin Panel",
       phoneNumbers: "Phone Numbers",
       phoneAccess: "Phone Access",
+    },
+    landing: {
+      badge: "WhatsApp + AI for your business",
+      heroTitle: "Your WhatsApp team with ",
+      heroTitleHighlight: "AI agents",
+      heroTitleEnd: " built in",
+      heroSubtitle:
+        "Automatically reply to customers, qualify leads, book appointments, and escalate to a human when needed. All from WhatsApp, with your own AI.",
+      ctaDemo: "Try demo",
+      ctaHowItWorks: "How it works",
+      navHowItWorks: "How it works",
+      navFeatures: "Features",
+      navLogin: "Sign in",
+      navDemo: "Try demo",
+      navWorkspace: "Go to workspace",
+      howItWorksLabel: "How it works",
+      howItWorksTitle:
+        "From fragmented WhatsApp to a coordinated team in 3 steps",
+      featuresLabel: "Features",
+      featuresTitle: "Everything your team needs in one place",
+      featuresSubtitle: "No made-up features. This is what asis.chat does today.",
+      ctaTitle: "Try asis.chat with your team",
+      ctaSubtitle:
+        "Connect your first WhatsApp number in minutes. See the live demo.",
+      footerProduct: "Product",
+      footerCompany: "Company",
+      footerContact: "Contact",
+      footerLegal: "Legal",
+      footerPrivacy: "Privacy",
+      footerTerms: "Terms",
+      footerRights: "All rights reserved.",
+      footerTagline:
+        "Shared WhatsApp inbox for teams. Human and AI agents in one place.",
+      aiSuggestion: "AI generated a suggested reply",
+      whatsappAria: "Contact via WhatsApp",
+      feature1Title: "All your numbers in one inbox",
+      feature1Desc:
+        "Connect multiple WhatsApp Business numbers and see all conversations in one place. Your team doesn't need to switch between phones or accounts.",
+      feature2Title: "Human agent collaboration",
+      feature2Desc:
+        "Assign conversations to team members, leave internal notes invisible to the customer, and collaborate in real time without anyone noticing.",
+      feature3Title: "AI agents with your own model",
+      feature3Desc:
+        "Connect your LLM (OpenAI, Anthropic, Gemini) to reply automatically. Configure when AI steps in, when it hands off to a human, and which knowledge base it uses.",
+      feature4Title: "Admin controls and permissions",
+      feature4Desc:
+        "Define who sees which numbers, assign roles and permissions to each member. Keep full control over who accesses which conversations.",
+      step1Title: "Connect your numbers",
+      step1Desc:
+        "Register your WhatsApp Business numbers. You can connect as many as you need from the admin panel.",
+      step2Title: "Your team responds",
+      step2Desc:
+        "Conversations are assigned to human agents. Collaborate with internal notes, transfer chats, and reply in real time.",
+      step3Title: "AI helps you out",
+      step3Desc:
+        "Set up AI agents with your own language model. They reply automatically and escalate to a human when they can't resolve.",
+    },
+    legal: {
+      backToHome: "Back to home",
+      privacy: "Privacy",
+      terms: "Terms",
+      allRightsReserved: "All rights reserved.",
+      privacyTitle: "Privacy Policy",
+      privacyUpdated: "Last updated: April 2, 2026",
+      termsTitle: "Terms and Conditions of Service",
+      termsUpdated: "Last updated: April 2, 2026",
     },
     common: {
       loading: "Loading...",

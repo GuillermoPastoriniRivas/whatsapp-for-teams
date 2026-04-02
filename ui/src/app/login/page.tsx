@@ -13,6 +13,7 @@ import {
   Users,
   ArrowLeft,
 } from "lucide-react";
+import { LanguageToggle } from "@/components/layout/language-toggle";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -104,9 +105,12 @@ export default function LoginPage() {
             <ArrowLeft className="h-5 w-5" />
             {t.login.back}
           </button>
-          <div className="flex items-center gap-1.5 md:hidden">
-            <AsisLogo size={36} color="#0D9488" />
-            <span className="text-lg font-bold">asis<span className="text-primary">.chat</span></span>
+          <div className="flex items-center gap-3">
+            <LanguageToggle />
+            <div className="flex items-center gap-1.5 md:hidden">
+              <AsisLogo size={36} color="#0D9488" />
+              <span className="text-lg font-bold">asis<span className="text-primary">.chat</span></span>
+            </div>
           </div>
         </div>
 
