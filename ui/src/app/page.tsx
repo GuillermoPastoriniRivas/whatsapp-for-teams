@@ -138,13 +138,13 @@ export default function LandingPage() {
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <div className="mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
               <Sparkles className="h-4 w-4" />
-              <span>Bandeja compartida de WhatsApp para equipos</span>
+              <span>WhatsApp + IA para tu negocio</span>
             </div>
             <h1 className="mx-auto max-w-4xl text-5xl font-extrabold tracking-tight text-slate-900 sm:text-7xl">
-              Todos tus números de WhatsApp, <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">un solo inbox</span> para tu equipo
+              Tu equipo de WhatsApp con <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">agentes de IA</span> integrados
             </h1>
             <p className="mx-auto mt-8 max-w-2xl text-lg text-slate-600 sm:text-xl">
-              Conecta múltiples números de WhatsApp Business. Tu equipo responde desde una bandeja compartida. Agentes de IA ayudan con respuestas automáticas y pasan al humano cuando es necesario.
+              Responde clientes automaticamente, califica leads, agenda citas y escala a un humano cuando es necesario. Todo desde WhatsApp, con tu propia IA.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button
@@ -351,11 +351,9 @@ export default function LandingPage() {
       <section className="relative isolate px-6 py-24 sm:py-32 lg:px-8 border-t border-slate-200">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-primary/5 via-slate-50 to-slate-50" />
         <div className="mx-auto max-w-4xl text-center">
-           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/30">
-             <Bot className="h-8 w-8 text-white" />
-          </div>
+           <AsisLogo size={64} className="text-primary mx-auto mb-6" />
           <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-            Prueba asis.chat con tu equipo
+            Prueba asis<span className="text-primary">.chat</span> con tu equipo
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-600">
             Conecta tu primer numero de WhatsApp en minutos. Mira el demo en vivo.
