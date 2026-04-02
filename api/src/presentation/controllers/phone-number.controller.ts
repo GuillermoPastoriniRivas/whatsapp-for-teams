@@ -4,6 +4,7 @@ import { RegisterPhoneNumberUseCase } from '../../application/use-cases/phone-nu
 import { ListPhoneNumbersUseCase } from '../../application/use-cases/phone-number/list-phone-numbers.use-case.js';
 import { UpdatePhoneNumberUseCase } from '../../application/use-cases/phone-number/update-phone-number.use-case.js';
 import { Roles } from '../decorators/roles.decorator.js';
+import { DemoRestricted } from '../guards/demo.guard.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
@@ -24,6 +25,7 @@ export class PhoneNumberController {
 
   @Post()
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Register phone number', description: 'Register a new WhatsApp phone number for the tenant (admin only)' })
   @ApiBody({
     schema: {
@@ -57,6 +59,7 @@ export class PhoneNumberController {
 
   @Patch(':id')
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Update phone number', description: 'Update phone number details (admin only)' })
   @ApiParam({ name: 'id', description: 'Phone number ID' })
   @ApiBody({

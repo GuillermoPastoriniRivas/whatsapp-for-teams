@@ -8,6 +8,7 @@ export class TenantMapper {
       doc.name,
       doc.slug,
       doc.createdAt,
+      doc.isDemo ?? false,
     );
   }
 }

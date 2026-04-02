@@ -17,6 +17,7 @@ import {
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
+  const demoLogin = useAuthStore((s) => s.demoLogin);
   const isLoading = useAuthStore((s) => s.isLoading);
   const error = useAuthStore((s) => s.error);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -28,6 +29,13 @@ export default function LoginPage() {
     const emailValue = emailRef.current?.value ?? "";
     const passwordValue = passwordRef.current?.value ?? "";
     await login(emailValue, passwordValue);
+    if (useAuthStore.getState().agent) {
+      router.push("/conversations");
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    await demoLogin();
     if (useAuthStore.getState().agent) {
       router.push("/conversations");
     }
@@ -166,6 +174,26 @@ export default function LoginPage() {
                 {isLoading ? t.login.submitting : t.login.submit}
               </Button>
             </form>
+
+            <div className="relative my-5">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  {t.login.demoDivider}
+                </span>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              className="w-full h-12 text-base rounded-xl"
+              onClick={handleDemoLogin}
+              disabled={isLoading}
+            >
+              {isLoading ? t.login.demoLoading : t.login.demoButton}
+            </Button>
           </div>
         </div>
       </div>

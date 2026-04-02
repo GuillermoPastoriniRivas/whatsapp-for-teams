@@ -5,6 +5,7 @@ import { InfrastructureModule } from '../infrastructure/infrastructure.module.js
 // Guards
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from './guards/roles.guard.js';
+import { DemoGuard } from './guards/demo.guard.js';
 
 // Controllers
 import { AuthController } from './controllers/auth.controller.js';
@@ -19,6 +20,7 @@ import { ContactController } from './controllers/contact.controller.js';
 import { LoginUseCase } from '../application/use-cases/auth/login.use-case.js';
 import { RefreshTokenUseCase } from '../application/use-cases/auth/refresh-token.use-case.js';
 import { GetCurrentAgentUseCase } from '../application/use-cases/auth/get-current-agent.use-case.js';
+import { DemoLoginUseCase } from '../application/use-cases/auth/demo-login.use-case.js';
 
 // Use Cases — Agent
 import { CreateAgentUseCase } from '../application/use-cases/agent/create-agent.use-case.js';
@@ -93,6 +95,12 @@ const useCaseProviders = [
     provide: 'GetCurrentAgentUseCase',
     useFactory: (agentRepo: any) => new GetCurrentAgentUseCase(agentRepo),
     inject: ['AgentRepository'],
+  },
+  {
+    provide: 'DemoLoginUseCase',
+    useFactory: (agentRepo: any, refreshTokenRepo: any, tokenProvider: any) =>
+      new DemoLoginUseCase(agentRepo, refreshTokenRepo, tokenProvider),
+    inject: ['AgentRepository', 'RefreshTokenRepository', 'TokenProviderPort'],
   },
 
   // Agent
@@ -309,6 +317,7 @@ const useCaseProviders = [
     AiResponseJobProcessor,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: DemoGuard },
   ],
 })
 export class PresentationModule {}

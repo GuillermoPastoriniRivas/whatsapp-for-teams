@@ -11,6 +11,9 @@ export class TenantModel {
   @Prop({ required: true, unique: true })
   slug: string;
 
+  @Prop({ default: false })
+  isDemo: boolean;
+
   createdAt: Date;
 }
 

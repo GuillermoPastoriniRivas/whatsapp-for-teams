@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nes
 import { LoginUseCase } from '../../application/use-cases/auth/login.use-case.js';
 import { RefreshTokenUseCase } from '../../application/use-cases/auth/refresh-token.use-case.js';
 import { GetCurrentAgentUseCase } from '../../application/use-cases/auth/get-current-agent.use-case.js';
+import { DemoLoginUseCase } from '../../application/use-cases/auth/demo-login.use-case.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import { LoginRequestSchema } from '../request-dtos/login-request.dto.js';
 import type { LoginRequestDto } from '../request-dtos/login-request.dto.js';
@@ -19,6 +20,7 @@ export class AuthController {
     @Inject('LoginUseCase') private readonly loginUseCase: LoginUseCase,
     @Inject('RefreshTokenUseCase') private readonly refreshTokenUseCase: RefreshTokenUseCase,
     @Inject('GetCurrentAgentUseCase') private readonly getCurrentAgentUseCase: GetCurrentAgentUseCase,
+    @Inject('DemoLoginUseCase') private readonly demoLoginUseCase: DemoLoginUseCase,
   ) {}
 
   @Public()
@@ -74,6 +76,18 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
   async refresh(@Body() body: RefreshTokenRequestDto) {
     const result = await this.refreshTokenUseCase.execute(body);
+    if (!result.ok) throw new UnauthorizedException(result.error.message);
+    return result.value;
+  }
+
+  @Public()
+  @Post('demo-login')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Demo login', description: 'Login as the demo agent without credentials' })
+  @ApiResponse({ status: 200, description: 'JWT access and refresh tokens' })
+  @ApiResponse({ status: 503, description: 'Demo not configured' })
+  async demoLogin() {
+    const result = await this.demoLoginUseCase.execute();
     if (!result.ok) throw new UnauthorizedException(result.error.message);
     return result.value;
   }

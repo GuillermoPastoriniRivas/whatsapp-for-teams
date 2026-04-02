@@ -4,5 +4,6 @@ export class Tenant {
     public readonly name: string,
     public readonly slug: string,
     public readonly createdAt: Date,
+    public readonly isDemo: boolean = false,
   ) {}
 }

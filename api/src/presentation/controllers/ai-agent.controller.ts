@@ -12,6 +12,7 @@ import type { AiCompletionPort } from '../../application/ports/ai-completion.por
 import type { AiAgentConfigRepository } from '../../domain/repositories/ai-agent-config.repository.js';
 import type { AgentRepository } from '../../domain/repositories/agent.repository.js';
 import { Roles } from '../decorators/roles.decorator.js';
+import { DemoRestricted } from '../guards/demo.guard.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
@@ -37,6 +38,7 @@ export class AiAgentController {
 
   @Post()
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Create AI agent', description: 'Create a new AI agent with LLM configuration (admin only)' })
   @ApiResponse({ status: 201, description: 'AI agent created' })
   async create(
@@ -95,6 +97,7 @@ export class AiAgentController {
 
   @Patch(':id')
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Update AI agent', description: 'Update AI agent configuration' })
   @ApiParam({ name: 'id', description: 'AI Agent ID' })
   @ApiResponse({ status: 200, description: 'Updated AI agent config' })
@@ -118,6 +121,7 @@ export class AiAgentController {
 
   @Delete(':id')
   @Roles('admin')
+  @DemoRestricted()
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete AI agent', description: 'Deactivate and remove AI agent' })
   @ApiParam({ name: 'id', description: 'AI Agent ID' })

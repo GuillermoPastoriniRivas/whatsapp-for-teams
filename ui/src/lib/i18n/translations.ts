@@ -22,6 +22,9 @@ const translations = {
       featureInbox: "Multiples cuentas de WhatsApp en un inbox",
       featureAI: "Agentes de IA con tu propio modelo",
       featureTeam: "Colaboracion en tiempo real para tu equipo",
+      demoButton: "Probar demo gratis",
+      demoDivider: "o",
+      demoLoading: "Entrando al demo...",
     },
     conversations: {
       emptyTitle: "asis.chat",
@@ -78,6 +81,7 @@ const translations = {
     },
     common: {
       loading: "Cargando...",
+      demoBanner: "Estas en modo demo — los datos se reinician diariamente",
     },
   },
   en: {
@@ -103,6 +107,9 @@ const translations = {
       featureInbox: "Multiple WhatsApp accounts in one inbox",
       featureAI: "AI agents with your own model",
       featureTeam: "Real-time collaboration for your team",
+      demoButton: "Try free demo",
+      demoDivider: "or",
+      demoLoading: "Entering demo...",
     },
     conversations: {
       emptyTitle: "asis.chat",
@@ -159,6 +166,7 @@ const translations = {
     },
     common: {
       loading: "Loading...",
+      demoBanner: "You are in demo mode — data resets daily",
     },
   },
 } as const;

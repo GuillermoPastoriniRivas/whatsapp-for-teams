@@ -12,6 +12,7 @@ import { GrantPhoneAccessUseCase } from '../../application/use-cases/agent/grant
 import { RevokePhoneAccessUseCase } from '../../application/use-cases/agent/revoke-phone-access.use-case.js';
 import { GetAgentPhoneAccessUseCase } from '../../application/use-cases/agent/get-agent-phone-access.use-case.js';
 import { Roles } from '../decorators/roles.decorator.js';
+import { DemoRestricted } from '../guards/demo.guard.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
@@ -42,6 +43,7 @@ export class AgentController {
 
   @Post()
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Create agent', description: 'Create a new agent in the tenant (admin only)' })
   @ApiBody({
     schema: {
@@ -84,6 +86,7 @@ export class AgentController {
 
   @Patch(':id')
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Update agent profile', description: 'Update agent name and/or role (admin only)' })
   @ApiParam({ name: 'id', description: 'Agent ID' })
   @ApiBody({
@@ -116,6 +119,7 @@ export class AgentController {
 
   @Delete(':id')
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Delete agent', description: 'Delete an agent from the tenant (admin only)' })
   @ApiParam({ name: 'id', description: 'Agent ID' })
   @ApiResponse({ status: 200, description: 'Agent deleted' })
@@ -168,6 +172,7 @@ export class AgentController {
 
   @Post(':agentId/phone-access')
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Grant phone access', description: 'Grant an agent access to a phone number (admin only)' })
   @ApiParam({ name: 'agentId', description: 'Agent ID' })
   @ApiBody({
@@ -201,6 +206,7 @@ export class AgentController {
 
   @Delete(':agentId/phone-access/:phoneNumberId')
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Revoke phone access', description: 'Revoke an agent\'s access to a phone number (admin only)' })
   @ApiParam({ name: 'agentId', description: 'Agent ID' })
   @ApiParam({ name: 'phoneNumberId', description: 'Phone number ID' })

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { MessagingProvider } from '../../domain/enums/messaging-provider.enum.js';
 import { MessagingApiPort, SendMessageParams, SendMessageResult } from '../../application/ports/messaging-api.port.js';
 import { MetaCloudApiService } from './meta-cloud-api.service.js';
@@ -21,6 +22,9 @@ export class MessagingApiStrategyService implements MessagingApiPort {
 
       case MessagingProvider.DIALOG_360:
         throw new Error('360Dialog provider not yet implemented');
+
+      case MessagingProvider.DEMO:
+        return { waMessageId: `demo-${randomUUID()}` };
 
       default:
         throw new Error(`Unknown messaging provider: ${params.provider}`);
