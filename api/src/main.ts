@@ -5,6 +5,7 @@ import { AppModule } from './app.module.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+  app.setGlobalPrefix('api');
   app.enableCors();
 
   const swaggerConfig = new DocumentBuilder()
@@ -22,7 +23,9 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('api/docs', app, document, {
+    useGlobalPrefix: false,
+  });
 
   const config = app.get(ConfigService);
   const port = config.get<number>('port', 3000);
