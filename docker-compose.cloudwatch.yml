@@ -1,0 +1,27 @@
+services:
+  api:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-1
+        awslogs-group: /asis/api
+        awslogs-stream-prefix: api
+        awslogs-create-group: "true"
+
+  ui:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-1
+        awslogs-group: /asis/ui
+        awslogs-stream-prefix: ui
+        awslogs-create-group: "true"
+
+  nginx:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-1
+        awslogs-group: /asis/nginx
+        awslogs-stream-prefix: nginx
+        awslogs-create-group: "true"

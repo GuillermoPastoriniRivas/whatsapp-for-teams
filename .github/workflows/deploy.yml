@@ -36,7 +36,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "hivvo-api.tar.gz,hivvo-ui.tar.gz,docker-compose.yml,infra/nginx/"
+          source: "hivvo-api.tar.gz,hivvo-ui.tar.gz,docker-compose.yml,docker-compose.cloudwatch.yml,infra/nginx/"
           target: ${{ env.APP_DIR }}
 
       # --- Deploy on EC2 ---
@@ -53,11 +53,9 @@ jobs:
             docker load < hivvo-api.tar.gz
             docker load < hivvo-ui.tar.gz
 
-            # Enable CloudWatch logging via awslogs driver
-            export LOG_DRIVER=awslogs
-            export AWS_REGION=us-east-1
-
-            # Restart services
+            # Restart services (without CloudWatch for now)
+            # When IAM role is configured, change to:
+            #   docker compose -f docker-compose.yml -f docker-compose.cloudwatch.yml up -d
             docker compose down
             docker compose up -d
 
