@@ -11,6 +11,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "asis.chat",
   description: "Atención por WhatsApp para equipos, con IA",
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({
