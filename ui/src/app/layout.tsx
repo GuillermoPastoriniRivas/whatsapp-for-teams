@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Hivvo.chat",
-  description: "Multi-channel messaging platform",
+  title: "asis.chat",
+  description: "Atención por WhatsApp para equipos, con IA",
 };
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="es"
       className={`${inter.variable} h-full antialiased`}
     >
       <body className="h-full">{children}</body>

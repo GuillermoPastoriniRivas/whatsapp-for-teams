@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
 import { Button } from "@/components/ui/button";
 import {
-  Hexagon,
   MessageSquare,
   Bot,
   Users,
@@ -17,6 +16,7 @@ import {
   Phone,
   Shield,
 } from "lucide-react";
+import { AsisLogo } from "@/components/brand/asis-logo";
 
 const features = [
   {
@@ -92,10 +92,8 @@ export default function LandingPage() {
       <nav className="fixed top-0 z-50 w-full border-b border-slate-200/60 bg-white/80 backdrop-blur-xl transition-all">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-primary to-primary/80 shadow-md shadow-primary/20">
-              <Hexagon className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">Hivvo<span className="text-primary">.chat</span></span>
+            <AsisLogo size={36} className="text-primary" />
+            <span className="text-xl font-bold tracking-tight text-slate-900 -ml-1">asis<span className="text-primary">.chat</span></span>
           </div>
 
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
@@ -126,7 +124,7 @@ export default function LandingPage() {
                   className="rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-md transition-transform hover:scale-105"
                   onClick={() => router.push("/login")}
                 >
-                  Comenzar gratis
+                  Probar demo
                 </Button>
               </>
             )}
@@ -154,7 +152,7 @@ export default function LandingPage() {
                 className="rounded-full h-14 px-8 text-base bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30 transition-all hover:scale-105"
                 onClick={() => router.push("/login")}
               >
-                Crear cuenta gratuita
+                Probar demo
                 <ArrowRight className="ml-2 h-5 w-5 text-white" />
               </Button>
               <Button
@@ -166,7 +164,7 @@ export default function LandingPage() {
                 }}
               >
                 <MessageCircle className="mr-2 h-5 w-5" />
-                Ver cómo funciona
+                Cómo funciona
               </Button>
             </div>
           </div>
@@ -182,7 +180,7 @@ export default function LandingPage() {
                   <div className="h-3 w-3 rounded-full bg-green-400" />
                 </div>
                 <div className="mx-auto flex h-6 flex-1 max-w-[200px] items-center justify-center rounded-md bg-white border border-slate-200 px-3 text-[11px] text-slate-500 shadow-sm">
-                  <Lock className="mr-1.5 h-3 w-3" /> app.hivvo.chat
+                  <Lock className="mr-1.5 h-3 w-3" /> app.asis.chat
                 </div>
                 <div className="flex gap-1.5 opacity-0">
                   <div className="h-3 w-3 rounded-full bg-red-400" />
@@ -194,9 +192,7 @@ export default function LandingPage() {
                 {/* Sidebar mock */}
                 <div className="hidden md:flex w-64 flex-col border-r border-slate-100 bg-slate-50/50">
                   <div className="p-4 border-b border-slate-100 flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-                      <Hexagon className="h-4 w-4 text-primary" />
-                    </div>
+                    <AsisLogo size={32} className="text-primary" />
                     <div className="h-4 w-24 bg-slate-200 rounded" />
                   </div>
                   <div className="p-3 space-y-1">
@@ -327,7 +323,7 @@ export default function LandingPage() {
               Todo lo que tu equipo necesita en un solo lugar
             </p>
             <p className="mt-4 text-lg text-slate-600">
-              Sin funciones inventadas. Esto es lo que Hivvo hace hoy.
+              Sin funciones inventadas. Esto es lo que asis.chat hace hoy.
             </p>
           </div>
 
@@ -359,14 +355,14 @@ export default function LandingPage() {
              <Bot className="h-8 w-8 text-white" />
           </div>
           <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-            Prueba Hivvo con tu equipo
+            Prueba asis.chat con tu equipo
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-600">
-            Conecta tu primer número de WhatsApp en minutos. Sin tarjeta de crédito.
+            Conecta tu primer numero de WhatsApp en minutos. Mira el demo en vivo.
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
             <Button size="lg" className="rounded-full bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20 h-14 px-8 text-lg font-semibold transition-transform hover:scale-105" onClick={() => router.push("/login")}>
-              Crear tu workspace
+              Probar demo
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
@@ -379,10 +375,8 @@ export default function LandingPage() {
           <div className="xl:grid xl:grid-cols-3 xl:gap-8">
             <div className="space-y-8">
               <div className="flex items-center gap-2">
-                 <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                   <Hexagon className="h-5 w-5 text-primary" />
-                 </div>
-                 <span className="text-xl font-bold text-slate-900">Hivvo</span>
+                 <AsisLogo size={32} className="text-primary" />
+                 <span className="text-xl font-bold text-slate-900 -ml-1">asis<span className="text-primary">.chat</span></span>
               </div>
               <p className="text-sm leading-6 text-slate-600 max-w-xs">
                 Bandeja compartida de WhatsApp para equipos. Agentes humanos e IA en un solo lugar.
@@ -417,7 +411,7 @@ export default function LandingPage() {
           </div>
           <div className="mt-16 border-t border-slate-200 pt-8 sm:mt-20 lg:mt-24 text-center">
             <p className="text-sm leading-5 text-slate-500">
-              &copy; {new Date().getFullYear()} Hivvo, Inc. Todos los derechos reservados.
+              &copy; {new Date().getFullYear()} asis.chat — Todos los derechos reservados.
             </p>
           </div>
         </div>

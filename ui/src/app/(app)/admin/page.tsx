@@ -8,12 +8,14 @@ import { PhoneAccessManager } from "@/components/admin/phone-access-manager";
 import { AiAgentList } from "@/components/admin/ai-agent-list";
 import { RightPanel } from "@/components/layout/right-panel";
 import { useAuthStore } from "@/stores/auth.store";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
 export default function AdminPage() {
   const agent = useAuthStore((s) => s.agent);
   const router = useRouter();
+  const { t } = useTranslations();
   const [panelContent, setPanelContent] = useState<ReactNode>(null);
 
   useEffect(() => {
@@ -31,7 +33,7 @@ export default function AdminPage() {
       {/* Left: header + tabs + content */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <div className="px-4 pt-4 md:px-6 md:pt-6">
-          <h1 className="text-xl font-bold mb-4">Admin Panel</h1>
+          <h1 className="text-xl font-bold mb-4">{t.admin.title}</h1>
         </div>
         <Tabs
           defaultValue="agents"
@@ -40,10 +42,10 @@ export default function AdminPage() {
         >
           <div className="px-4 md:px-6">
             <TabsList>
-              <TabsTrigger value="agents">Agents</TabsTrigger>
-              <TabsTrigger value="ai-agents">AI Agents</TabsTrigger>
-              <TabsTrigger value="phones">Phone Numbers</TabsTrigger>
-              <TabsTrigger value="access">Phone Access</TabsTrigger>
+              <TabsTrigger value="agents">{t.admin.agents}</TabsTrigger>
+              <TabsTrigger value="ai-agents">{t.admin.aiAgents}</TabsTrigger>
+              <TabsTrigger value="phones">{t.admin.phoneNumbers}</TabsTrigger>
+              <TabsTrigger value="access">{t.admin.phoneAccess}</TabsTrigger>
             </TabsList>
           </div>
           <TabsContent value="agents" className="mt-0 flex-1 min-h-0">

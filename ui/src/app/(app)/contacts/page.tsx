@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ContactFields } from "@/components/chat/contact-fields";
 import { RightPanel } from "@/components/layout/right-panel";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import { api } from "@/lib/api";
 import type { Contact, PaginatedResponse } from "@/types";
 
@@ -16,6 +17,7 @@ export default function ContactsPage() {
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ total: 0, page: 1, pages: 1 });
   const [selected, setSelected] = useState<Contact | null>(null);
+  const { t } = useTranslations();
 
   const fetchContacts = useCallback(async (s: string, p: number) => {
     setLoading(true);
@@ -64,11 +66,11 @@ export default function ContactsPage() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <div className="border-b px-4 py-3 md:px-6">
-          <h1 className="text-xl font-bold mb-3">Contacts</h1>
+          <h1 className="text-xl font-bold mb-3">{t.contacts.title}</h1>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name, phone, email..."
+              placeholder={t.contacts.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -86,7 +88,7 @@ export default function ContactsPage() {
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <User className="h-12 w-12 mb-2 opacity-40" />
               <p className="text-sm">
-                {search ? "No contacts found" : "No contacts yet"}
+                {search ? t.contacts.noResults : t.contacts.noContacts}
               </p>
             </div>
           ) : (
@@ -145,7 +147,7 @@ export default function ContactsPage() {
                     disabled={page <= 1}
                     className="px-3 py-1.5 text-sm rounded-md border disabled:opacity-40 hover:bg-muted transition-colors"
                   >
-                    Previous
+                    {t.contacts.previous}
                   </button>
                   <span className="text-sm text-muted-foreground">
                     {meta.page} / {meta.pages}
@@ -158,7 +160,7 @@ export default function ContactsPage() {
                     disabled={page >= meta.pages}
                     className="px-3 py-1.5 text-sm rounded-md border disabled:opacity-40 hover:bg-muted transition-colors"
                   >
-                    Next
+                    {t.contacts.next}
                   </button>
                 </div>
               )}
@@ -171,7 +173,7 @@ export default function ContactsPage() {
       <RightPanel open={!!selected} onClose={() => setSelected(null)}>
         {selected && (
           <>
-            <div className="bg-[var(--hivvo-surface-header)] pt-8 pb-6 flex flex-col items-center">
+            <div className="bg-[var(--asis-surface-header)] pt-8 pb-6 flex flex-col items-center">
               <div className="h-20 w-20 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 mb-3">
                 <User className="h-10 w-10" />
               </div>
@@ -186,7 +188,7 @@ export default function ContactsPage() {
             <div className="p-4 space-y-4">
               <div className="space-y-3">
                 <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                  Contact Info
+                  {t.contacts.contactInfo}
                 </h3>
                 <div className="flex items-center gap-3 text-sm">
                   <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -210,7 +212,7 @@ export default function ContactsPage() {
                   <div className="border-t" />
                   <div className="space-y-2">
                     <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                      Notes
+                      {t.contacts.notes}
                     </h3>
                     <p className="text-sm whitespace-pre-wrap">
                       {selected.notes}
@@ -221,7 +223,7 @@ export default function ContactsPage() {
 
               {selected.lastSeenAt && (
                 <p className="text-xs text-muted-foreground pt-2">
-                  Last seen:{" "}
+                  {t.contacts.lastSeen}:{" "}
                   {new Date(selected.lastSeenAt).toLocaleString()}
                 </p>
               )}

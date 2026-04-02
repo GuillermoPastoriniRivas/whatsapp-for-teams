@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useConversationStore } from "@/stores/conversation.store";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import { ConversationItem } from "./conversation-item";
 import { ConversationFilters } from "./conversation-filters";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,6 +17,7 @@ export function ConversationList() {
   const setActive = useConversationStore((s) => s.setActive);
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const { t } = useTranslations();
 
   useEffect(() => {
     useConversationStore.getState().fetch();
@@ -76,7 +78,7 @@ export function ConversationList() {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name or number..."
+            placeholder={t.conversations.searchPlaceholder}
             className="pl-8"
           />
         </div>
@@ -85,11 +87,11 @@ export function ConversationList() {
       <ScrollArea className="flex-1">
         {isLoading && conversations.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
-            Loading...
+            {t.common.loading}
           </div>
         ) : filteredConversations.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
-            {searchQuery ? "No matching conversations" : "No conversations yet"}
+            {searchQuery ? t.conversations.noResults : t.conversations.noConversations}
           </div>
         ) : (
           <div className="divide-y">

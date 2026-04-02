@@ -1,4 +1,4 @@
-# Hivvo — Guía de Deploy en AWS
+# asis.chat — Guía de Deploy en AWS
 
 ## Arquitectura
 
@@ -107,7 +107,7 @@ En tu repo de GitHub → Settings → Secrets and variables → Actions, agregar
 |--------|-------|
 | `EC2_HOST` | La IP elástica del Paso 2 |
 | `EC2_SSH_KEY` | Contenido completo del archivo `hivvo-key.pem` |
-| `NEXT_PUBLIC_API_URL` | `https://tudominio.com` (o `http://<IP>` si todavía no tenés dominio) |
+| `NEXT_PUBLIC_API_URL` | `https://asis.chat` (o `http://<IP>` si todavía no tenés dominio) |
 
 ---
 
@@ -135,8 +135,8 @@ Podés ver el progreso en la tab **Actions** de GitHub.
 ### Apuntar DNS
 En tu registrador de dominio, crear un **A record**:
 ```
-tudominio.com    → <PUBLIC_IP>
-www.tudominio.com → <PUBLIC_IP>
+asis.chat    → <PUBLIC_IP>
+www.asis.chat → <PUBLIC_IP>
 ```
 
 ### Configurar Nginx con tu dominio
@@ -145,7 +145,7 @@ ssh -i ~/.ssh/hivvo-key.pem ubuntu@<PUBLIC_IP>
 
 # Editar la config de Nginx para poner tu dominio
 nano ~/hivvo/infra/nginx/default.conf
-# Cambiar "server_name _;" por "server_name tudominio.com www.tudominio.com;"
+# Cambiar "server_name _;" por "server_name asis.chat www.asis.chat;"
 
 # Reiniciar Nginx
 cd ~/hivvo && docker compose restart nginx
@@ -160,7 +160,7 @@ cd ~/hivvo && docker compose restart nginx
 cd ~/hivvo && docker compose stop nginx
 
 # Obtener certificado
-sudo certbot certonly --standalone -d tudominio.com -d www.tudominio.com
+sudo certbot certonly --standalone -d asis.chat -d www.asis.chat
 
 # Los certs quedan en /etc/letsencrypt/ que ya está montado en el container
 # Reiniciar
@@ -172,16 +172,16 @@ Después de obtener el SSL, actualizar `infra/nginx/default.conf` para HTTPS:
 ```nginx
 server {
     listen 80;
-    server_name tudominio.com www.tudominio.com;
+    server_name asis.chat www.asis.chat;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl;
-    server_name tudominio.com www.tudominio.com;
+    server_name asis.chat www.asis.chat;
 
-    ssl_certificate     /etc/letsencrypt/live/tudominio.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/tudominio.com/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/asis.chat/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/asis.chat/privkey.pem;
 
     # ... (mismas locations de arriba)
 }

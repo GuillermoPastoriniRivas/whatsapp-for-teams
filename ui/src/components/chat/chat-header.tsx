@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useConversationStore } from "@/stores/conversation.store";
 import { useAuthStore } from "@/stores/auth.store";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User } from "lucide-react";
@@ -24,6 +25,7 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
 
   const currentAgent = useAuthStore((s) => s.agent);
 
+  const { t } = useTranslations();
   const [assignOpen, setAssignOpen] = useState(false);
 
   const isMine = conversation?.agentId === currentAgent?.id;
@@ -51,7 +53,7 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
 
   return (
     <>
-      <div className="flex h-[60px] items-center justify-between bg-[var(--hivvo-surface-header)] px-4 py-2 border-b border-border shadow-sm z-10 w-full">
+      <div className="flex h-[60px] items-center justify-between bg-[var(--asis-surface-header)] px-4 py-2 border-b border-border shadow-sm z-10 w-full">
         <div className="flex items-center gap-3 overflow-hidden">
           <Button
             variant="ghost"
@@ -99,7 +101,7 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
               className="hidden sm:flex shrink-0 rounded-full px-4 h-9 shadow-sm"
               onClick={handleClaim}
             >
-              Claim
+              {t.chat.claim}
             </Button>
           )}
           {!isResolved && (
@@ -109,7 +111,7 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
               className="hidden sm:flex shrink-0 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 dark:bg-primary/10 dark:border-primary/20 dark:text-primary dark:hover:bg-primary/20 rounded-full px-4 h-9 shadow-sm"
               onClick={handleResolve}
             >
-              Mark Resolved
+              {t.chat.markResolved}
             </Button>
           )}
           <ChatMenu

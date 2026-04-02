@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Hexagon,
   Settings,
   Shield,
   User,
@@ -16,7 +15,10 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
+import { AsisLogo } from "@/components/brand/asis-logo";
+import { LanguageToggle } from "@/components/layout/language-toggle";
 import {
   Tooltip,
   TooltipContent,
@@ -24,7 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-const SIDEBAR_KEY = "hivvo-sidebar-collapsed";
+const SIDEBAR_KEY = "asis-sidebar-collapsed";
 
 export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -32,6 +34,7 @@ export function AppSidebar({ className }: { className?: string }) {
   const totalUnread = useConversationStore((s) =>
     Object.values(s.unreadCounts).reduce((sum, n) => sum + n, 0)
   );
+  const { t } = useTranslations();
 
   const [collapsed, setCollapsed] = useState(false);
 
@@ -49,16 +52,16 @@ export function AppSidebar({ className }: { className?: string }) {
   };
 
   const topTabs = [
-    { href: "/conversations", icon: MessageSquare, label: "Chats" },
-    { href: "/contacts", icon: Contact, label: "Contactos" },
+    { href: "/conversations", icon: MessageSquare, label: t.nav.chats },
+    { href: "/contacts", icon: Contact, label: t.nav.contacts },
     ...(agent?.role === "admin"
-      ? [{ href: "/admin", icon: Shield, label: "Admin" }]
+      ? [{ href: "/admin", icon: Shield, label: t.nav.admin }]
       : []),
   ];
 
   const bottomTabs = [
-    { href: "/notifications", icon: Bell, label: "Notificaciones" },
-    { href: "/settings", icon: Settings, label: "Ajustes" },
+    { href: "/notifications", icon: Bell, label: t.nav.notifications },
+    { href: "/settings", icon: Settings, label: t.nav.settings },
   ];
 
   const NavItem = ({ tab }: { tab: { href: string; icon: any; label: string } }) => {
@@ -89,7 +92,7 @@ export function AppSidebar({ className }: { className?: string }) {
             {tab.label}
           </span>
         )}
-        {tab.label === "Chats" && totalUnread > 0 && (
+        {tab.href === "/conversations" && totalUnread > 0 && (
           <span
             className={cn(
               "flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white",
@@ -128,7 +131,7 @@ export function AppSidebar({ className }: { className?: string }) {
         className
       )}
     >
-      {/* Collapse toggle – sits on the border line at the top */}
+      {/* Collapse toggle */}
       <button
         onClick={toggleCollapsed}
         className="absolute -right-2 top-2 z-50 flex h-4 w-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground transition-colors"
@@ -142,11 +145,9 @@ export function AppSidebar({ className }: { className?: string }) {
 
       {/* App Logo + Brand */}
       <div className={cn("mb-6 flex items-center gap-3", collapsed ? "justify-center px-0" : "px-4")}>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#0D9488] to-[#0F766E] shadow-lg shadow-[#0D9488]/20">
-          <Hexagon className="h-5 w-5 text-white" />
-        </div>
+        <AsisLogo size={40} className="shrink-0 text-primary" />
         {!collapsed && (
-          <span className="text-lg font-bold tracking-tight">Hivvo</span>
+          <span className="text-lg font-bold tracking-tight -ml-1">asis<span className="text-primary">.chat</span></span>
         )}
       </div>
 
@@ -162,6 +163,11 @@ export function AppSidebar({ className }: { className?: string }) {
           {bottomTabs.map((tab) => (
             <NavItem key={tab.href} tab={tab} />
           ))}
+
+          {/* Language toggle */}
+          <div className="mt-1">
+            <LanguageToggle collapsed={collapsed} />
+          </div>
 
           {/* User avatar */}
           <div

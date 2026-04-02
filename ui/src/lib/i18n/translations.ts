@@ -1,0 +1,171 @@
+const translations = {
+  es: {
+    nav: {
+      chats: "Chats",
+      contacts: "Contactos",
+      admin: "Admin",
+      notifications: "Notificaciones",
+      settings: "Ajustes",
+    },
+    login: {
+      title: "Bienvenido de vuelta",
+      subtitle: "Inicia sesion para acceder a tu workspace",
+      email: "Email",
+      emailPlaceholder: "tu@empresa.com",
+      password: "Contrasena",
+      submit: "Iniciar sesion",
+      submitting: "Iniciando sesion...",
+      back: "Inicio",
+      tagline: "WhatsApp para equipos, con asistencia de IA",
+      taglineDescription:
+        "Conecta tus numeros de WhatsApp, asigna conversaciones a tu equipo y deja que la IA se encargue de las respuestas automaticas.",
+      featureInbox: "Multiples cuentas de WhatsApp en un inbox",
+      featureAI: "Agentes de IA con tu propio modelo",
+      featureTeam: "Colaboracion en tiempo real para tu equipo",
+    },
+    conversations: {
+      emptyTitle: "asis.chat",
+      emptyDescription:
+        "Elegi una conversacion para empezar. Todas tus cuentas en un solo lugar.",
+      searchPlaceholder: "Buscar conversaciones...",
+      filterAll: "Todas",
+      filterActive: "Activas",
+      filterUnassigned: "Sin asignar",
+      filterResolved: "Resueltas",
+      noConversations: "No hay conversaciones",
+      noResults: "No se encontraron resultados",
+    },
+    chat: {
+      claim: "Tomar",
+      markResolved: "Resolver",
+      typePlaceholder: "Escribe un mensaje",
+      unknown: "Desconocido",
+      unassigned: "Sin asignar",
+      sendError: "Error al enviar mensaje",
+    },
+    contacts: {
+      title: "Contactos",
+      searchPlaceholder: "Buscar por nombre, telefono, email...",
+      noContacts: "No hay contactos",
+      noResults: "No se encontraron contactos",
+      contactInfo: "Info de contacto",
+      notes: "Notas",
+      lastSeen: "Ultima vez visto",
+      previous: "Anterior",
+      next: "Siguiente",
+    },
+    contactPanel: {
+      contactInfo: "Info de contacto",
+      assignment: "Asignacion",
+      unassigned: "Sin asignar",
+      internalNotes: "Notas internas",
+      activity: "Actividad",
+      loading: "Cargando...",
+    },
+    settings: {
+      profile: "Perfil",
+      name: "Nombre",
+      email: "Email",
+      role: "Rol",
+      signOut: "Cerrar sesion",
+    },
+    admin: {
+      title: "Panel de administracion",
+      agents: "Agentes",
+      aiAgents: "Agentes IA",
+      phoneNumbers: "Numeros",
+      phoneAccess: "Acceso",
+    },
+    common: {
+      loading: "Cargando...",
+    },
+  },
+  en: {
+    nav: {
+      chats: "Chats",
+      contacts: "Contacts",
+      admin: "Admin",
+      notifications: "Notifications",
+      settings: "Settings",
+    },
+    login: {
+      title: "Welcome back",
+      subtitle: "Sign in to access your workspace",
+      email: "Email",
+      emailPlaceholder: "you@company.com",
+      password: "Password",
+      submit: "Sign in",
+      submitting: "Signing in...",
+      back: "Home",
+      tagline: "WhatsApp for teams, with AI assistance",
+      taglineDescription:
+        "Connect your WhatsApp numbers, assign conversations to your team, and let AI handle automatic replies.",
+      featureInbox: "Multiple WhatsApp accounts in one inbox",
+      featureAI: "AI agents with your own model",
+      featureTeam: "Real-time collaboration for your team",
+    },
+    conversations: {
+      emptyTitle: "asis.chat",
+      emptyDescription:
+        "Pick a conversation to get started. All your accounts in one place.",
+      searchPlaceholder: "Search conversations...",
+      filterAll: "All",
+      filterActive: "Active",
+      filterUnassigned: "Unassigned",
+      filterResolved: "Resolved",
+      noConversations: "No conversations",
+      noResults: "No results found",
+    },
+    chat: {
+      claim: "Claim",
+      markResolved: "Resolve",
+      typePlaceholder: "Type a message",
+      unknown: "Unknown",
+      unassigned: "Unassigned",
+      sendError: "Failed to send message",
+    },
+    contacts: {
+      title: "Contacts",
+      searchPlaceholder: "Search by name, phone, email...",
+      noContacts: "No contacts yet",
+      noResults: "No contacts found",
+      contactInfo: "Contact Info",
+      notes: "Notes",
+      lastSeen: "Last seen",
+      previous: "Previous",
+      next: "Next",
+    },
+    contactPanel: {
+      contactInfo: "Contact Info",
+      assignment: "Assignment",
+      unassigned: "Unassigned",
+      internalNotes: "Internal Notes",
+      activity: "Activity",
+      loading: "Loading...",
+    },
+    settings: {
+      profile: "Profile",
+      name: "Name",
+      email: "Email",
+      role: "Role",
+      signOut: "Sign out",
+    },
+    admin: {
+      title: "Admin Panel",
+      agents: "Agents",
+      aiAgents: "AI Agents",
+      phoneNumbers: "Phone Numbers",
+      phoneAccess: "Phone Access",
+    },
+    common: {
+      loading: "Loading...",
+    },
+  },
+} as const;
+
+export type Translations = {
+  [K in keyof (typeof translations)["es"]]: {
+    [P in keyof (typeof translations)["es"][K]]: string;
+  };
+};
+export default translations;

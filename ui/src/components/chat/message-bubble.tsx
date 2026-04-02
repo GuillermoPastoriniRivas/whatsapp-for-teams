@@ -37,8 +37,8 @@ export function MessageBubble({ message }: Props) {
         className={cn(
           "max-w-[85%] sm:max-w-[70%] px-3 pt-2 pb-1.5 text-[15px] leading-relaxed shadow-sm",
           isOutbound
-            ? "bg-[var(--hivvo-bubble-outbound)] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tr-[4px]"
-            : "bg-[var(--hivvo-bubble-inbound)] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tl-[4px]"
+            ? "bg-[var(--asis-bubble-outbound)] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tr-[4px]"
+            : "bg-[var(--asis-bubble-inbound)] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tl-[4px]"
         )}
       >
         {isOutbound && message.senderAgentName && (

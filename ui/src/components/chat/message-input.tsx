@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMessageStore } from "@/stores/message.store";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Smile, Paperclip, Mic } from "lucide-react";
@@ -14,6 +15,7 @@ export function MessageInput({ conversationId }: Props) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const send = useMessageStore((s) => s.send);
+  const { t } = useTranslations();
 
   const handleSend = async () => {
     const body = text.trim();
@@ -24,7 +26,7 @@ export function MessageInput({ conversationId }: Props) {
       await send(conversationId, body);
       setText("");
     } catch (err: any) {
-      alert(err.message || "Failed to send message");
+      alert(err.message || t.chat.sendError);
     } finally {
       setSending(false);
     }
@@ -38,7 +40,7 @@ export function MessageInput({ conversationId }: Props) {
   };
 
   return (
-    <div className="flex items-center gap-2 bg-[var(--hivvo-surface-header)] px-4 py-3 sm:px-6 w-full shadow-sm z-10 transition-colors duration-200 border-t border-border">
+    <div className="flex items-center gap-2 bg-[var(--asis-surface-header)] px-4 py-3 sm:px-6 w-full shadow-sm z-10 transition-colors duration-200 border-t border-border">
       <Button variant="ghost" size="icon" className="shrink-0 text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:bg-white/5 rounded-full h-10 w-10">
         <Smile className="h-[22px] w-[22px]" />
       </Button>
@@ -51,7 +53,7 @@ export function MessageInput({ conversationId }: Props) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message"
+          placeholder={t.chat.typePlaceholder}
           className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 shadow-none bg-transparent h-[38px] text-[15px]"
           disabled={sending}
         />

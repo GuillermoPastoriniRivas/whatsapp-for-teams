@@ -82,11 +82,11 @@
   --sidebar-border: oklch(0.900 0.010 250);
   --sidebar-ring: oklch(0.600 0.130 175);
 
-  /* Hivvo custom tokens */
-  --hivvo-bubble-outbound: #DBEAFE;
-  --hivvo-bubble-inbound: #FFFFFF;
-  --hivvo-surface-header: #F1F5F9;
-  --hivvo-surface-panel: #F8FAFB;
+  /* asis.chat custom tokens */
+  --asis-bubble-outbound: #DBEAFE;
+  --asis-bubble-inbound: #FFFFFF;
+  --asis-surface-header: #F1F5F9;
+  --asis-surface-panel: #F8FAFB;
 }
 
 .dark {
@@ -122,11 +122,11 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.795 0.150 173);
 
-  /* Hivvo custom tokens */
-  --hivvo-bubble-outbound: #1E3A5F;
-  --hivvo-bubble-inbound: #1E293B;
-  --hivvo-surface-header: #1E293B;
-  --hivvo-surface-panel: #0F172A;
+  /* asis.chat custom tokens */
+  --asis-bubble-outbound: #1E3A5F;
+  --asis-bubble-inbound: #1E293B;
+  --asis-surface-header: #1E293B;
+  --asis-surface-panel: #0F172A;
 }
 
 @layer base {

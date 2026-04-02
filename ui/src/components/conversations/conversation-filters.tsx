@@ -1,18 +1,20 @@
 "use client";
 
 import { useConversationStore } from "@/stores/conversation.store";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const filters = [
-  { value: "", label: "All" },
-  { value: "active", label: "Active" },
-  { value: "unassigned", label: "Unassigned" },
-  { value: "resolved", label: "Resolved" },
-];
-
 export function ConversationFilters() {
   const { statusFilter, setFilter } = useConversationStore();
+  const { t } = useTranslations();
+
+  const filters = [
+    { value: "", label: t.conversations.filterAll },
+    { value: "active", label: t.conversations.filterActive },
+    { value: "unassigned", label: t.conversations.filterUnassigned },
+    { value: "resolved", label: t.conversations.filterResolved },
+  ];
 
   return (
     <div className="flex gap-1.5 overflow-x-auto">
