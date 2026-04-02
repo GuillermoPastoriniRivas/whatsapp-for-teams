@@ -53,9 +53,19 @@ jobs:
             docker load < hivvo-api.tar.gz
             docker load < hivvo-ui.tar.gz
 
+            # Enable CloudWatch logging via awslogs driver
+            export LOG_DRIVER=awslogs
+            export AWS_REGION=us-east-1
+
             # Restart services
             docker compose down
             docker compose up -d
+
+            # Verify health
+            echo "Waiting for health checks..."
+            sleep 20
+            docker compose ps
+            docker inspect --format='{{.State.Health.Status}}' hivvo-api hivvo-ui 2>/dev/null || true
 
             # Cleanup tarballs
             rm -f hivvo-api.tar.gz hivvo-ui.tar.gz
