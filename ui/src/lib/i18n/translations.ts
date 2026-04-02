@@ -3,6 +3,7 @@ const translations = {
     nav: {
       chats: "Chats",
       contacts: "Contactos",
+      agents: "Agentes",
       admin: "Admin",
       notifications: "Notificaciones",
       settings: "Ajustes",
@@ -72,10 +73,13 @@ const translations = {
       role: "Rol",
       signOut: "Cerrar sesion",
     },
+    agents: {
+      title: "Agentes",
+      team: "Equipo",
+      ai: "Agentes IA",
+    },
     admin: {
       title: "Panel de administracion",
-      agents: "Agentes",
-      aiAgents: "Agentes IA",
       phoneNumbers: "Numeros",
       phoneAccess: "Acceso",
     },
@@ -88,6 +92,7 @@ const translations = {
     nav: {
       chats: "Chats",
       contacts: "Contacts",
+      agents: "Agents",
       admin: "Admin",
       notifications: "Notifications",
       settings: "Settings",
@@ -157,10 +162,13 @@ const translations = {
       role: "Role",
       signOut: "Sign out",
     },
+    agents: {
+      title: "Agents",
+      team: "Team",
+      ai: "AI Agents",
+    },
     admin: {
       title: "Admin Panel",
-      agents: "Agents",
-      aiAgents: "AI Agents",
       phoneNumbers: "Phone Numbers",
       phoneAccess: "Phone Access",
     },

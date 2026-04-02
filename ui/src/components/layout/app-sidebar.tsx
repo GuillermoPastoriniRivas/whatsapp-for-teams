@@ -7,6 +7,7 @@ import {
   Settings,
   Shield,
   User,
+  Users,
   Bell,
   Contact,
   MessageSquare,
@@ -55,7 +56,10 @@ export function AppSidebar({ className }: { className?: string }) {
     { href: "/conversations", icon: MessageSquare, label: t.nav.chats },
     { href: "/contacts", icon: Contact, label: t.nav.contacts },
     ...(agent?.role === "admin"
-      ? [{ href: "/admin", icon: Shield, label: t.nav.admin }]
+      ? [
+          { href: "/agents", icon: Users, label: t.nav.agents },
+          { href: "/admin", icon: Shield, label: t.nav.admin },
+        ]
       : []),
   ];
 

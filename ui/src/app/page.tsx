@@ -400,8 +400,8 @@ export default function LandingPage() {
                  <div>
                   <h3 className="text-sm font-semibold leading-6 text-slate-900">Legal</h3>
                   <ul role="list" className="mt-6 space-y-4">
-                    <li><a href="#" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">Privacidad</a></li>
-                    <li><a href="#" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">Términos</a></li>
+                    <li><a href="/privacy" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">Privacidad</a></li>
+                    <li><a href="/terms" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">Términos</a></li>
                   </ul>
                 </div>
               </div>
