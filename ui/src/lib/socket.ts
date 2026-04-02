@@ -1,6 +1,9 @@
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+// NEXT_PUBLIC_API_URL includes /api (e.g. https://asis.chat/api)
+// Socket.io needs the base origin (e.g. https://asis.chat)
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const SOCKET_URL = API_URL.replace(/\/api\/?$/, "") || API_URL;
 
 let socket: Socket | null = null;
 let onAuthErrorCallback: (() => void) | null = null;
