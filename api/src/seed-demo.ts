@@ -436,7 +436,7 @@ async function seedDemo() {
     // Conv 1 — Sofia IA primero, handoff a Carlos
     { conversationId: conv1._id, tenantId: T, type: 'created', createdAt: ago(120) },
     { conversationId: conv1._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(119) },
-    { conversationId: conv1._id, tenantId: T, type: 'reassigned', performedBy: sofia._id.toString(), data: { agentName: 'Carlos Lopez', previousAgentName: 'Sofia IA' }, createdAt: ago(56) },
+    { conversationId: conv1._id, tenantId: T, type: 'reassigned', performedBy: sofia._id.toString(), data: { fromAgentName: 'Sofia IA', toAgentName: 'Carlos Lopez' }, createdAt: ago(56) },
     // Conv 2
     { conversationId: conv2._id, tenantId: T, type: 'created', createdAt: ago(45) },
     { conversationId: conv2._id, tenantId: T, type: 'assigned', performedBy: carlos._id.toString(), data: { agentName: 'Carlos Lopez' }, createdAt: ago(40) },
@@ -452,7 +452,7 @@ async function seedDemo() {
     // Conv 6 — Sofia IA primero, handoff a Ana
     { conversationId: conv6._id, tenantId: T, type: 'created', createdAt: ago(1500) },
     { conversationId: conv6._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(1499) },
-    { conversationId: conv6._id, tenantId: T, type: 'reassigned', performedBy: sofia._id.toString(), data: { agentName: 'Demo User', previousAgentName: 'Sofia IA' }, createdAt: ago(1491) },
+    { conversationId: conv6._id, tenantId: T, type: 'reassigned', performedBy: sofia._id.toString(), data: { fromAgentName: 'Sofia IA', toAgentName: 'Demo User' }, createdAt: ago(1491) },
     { conversationId: conv6._id, tenantId: T, type: 'resolved', performedBy: ana._id.toString(), data: { agentName: 'Demo User' }, createdAt: ago(1430) },
     // Conv 7
     { conversationId: conv7._id, tenantId: T, type: 'created', createdAt: ago(12) },
