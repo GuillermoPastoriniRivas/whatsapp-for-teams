@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Query,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards,
   Inject, UsePipes, ForbiddenException, NotFoundException, ConflictException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
@@ -25,6 +25,8 @@ import type { UpdateAgentProfileRequestDto } from '../request-dtos/update-agent-
 import { GrantPhoneAccessRequestSchema } from '../request-dtos/grant-phone-access-request.dto.js';
 import type { GrantPhoneAccessRequestDto } from '../request-dtos/grant-phone-access-request.dto.js';
 import { AgentStatus } from '../../domain/enums/agent-status.enum.js';
+import { RequirePlanLimit } from '../decorators/require-plan-limit.decorator.js';
+import { PlanLimitGuard } from '../guards/plan-limit.guard.js';
 
 @ApiTags('Agents')
 @ApiBearerAuth('JWT')
@@ -44,6 +46,8 @@ export class AgentController {
   @Post()
   @Roles('admin')
   @DemoRestricted()
+  @UseGuards(PlanLimitGuard)
+  @RequirePlanLimit('human_agents')
   @ApiOperation({ summary: 'Create agent', description: 'Create a new agent in the tenant (admin only)' })
   @ApiBody({
     schema: {

@@ -14,5 +14,6 @@ export class Agent {
     public readonly activeCount: number,
     public readonly createdAt: Date,
     public readonly type: AgentType = AgentType.HUMAN,
+    public readonly frozen: boolean = false,
   ) {}
 }

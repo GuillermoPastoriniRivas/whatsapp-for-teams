@@ -82,3 +82,15 @@ export class DuplicateLabelNameError extends DomainError {
     super('DUPLICATE_LABEL_NAME', 'A label with this name already exists.');
   }
 }
+
+export class PlanLimitExceededError extends DomainError {
+  constructor(resource: string) {
+    super('PLAN_LIMIT_EXCEEDED', `Plan limit exceeded for ${resource}. Upgrade your plan to add more.`);
+  }
+}
+
+export class SubscriptionNotFoundError extends DomainError {
+  constructor() {
+    super('SUBSCRIPTION_NOT_FOUND', 'No active subscription found for this tenant.');
+  }
+}

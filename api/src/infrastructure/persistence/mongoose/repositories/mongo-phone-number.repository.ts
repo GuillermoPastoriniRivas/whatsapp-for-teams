@@ -39,4 +39,8 @@ export class MongoPhoneNumberRepository implements PhoneNumberRepository {
     const doc = await this.model.findByIdAndUpdate(id, { $set: data }, { returnDocument: 'after' });
     return doc ? PhoneNumberMapper.toDomain(doc) : null;
   }
+
+  async countByTenantId(tenantId: string): Promise<number> {
+    return this.model.countDocuments({ tenantId: new Types.ObjectId(tenantId) });
+  }
 }

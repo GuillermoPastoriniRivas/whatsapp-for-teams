@@ -4,8 +4,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Plus, Bot } from "lucide-react";
+import { User, Plus, Bot, AlertTriangle, Snowflake } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBillingStore } from "@/stores/billing.store";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import { CreateAgentPanel } from "./create-agent-panel";
 import { AgentDetailPanel } from "./agent-detail-panel";
 import type { Agent } from "@/types";
@@ -25,6 +27,19 @@ export function AgentList({ onPanelChange, onPanelClose }: Props) {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { usage, fetchUsage, toggleResource } = useBillingStore();
+  const { t } = useTranslations();
+  const agentUsage = usage?.humanAgents;
+  const atLimit = agentUsage ? !agentUsage.allowed : false;
+
+  const handleActivate = async (agentItem: Agent, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const activeAgents = agents.filter(a => a.type !== "ai" && !a.frozen);
+    const deactivateId = atLimit && activeAgents.length > 0 ? activeAgents[activeAgents.length - 1].id : undefined;
+    await toggleResource("human_agents", agentItem.id, deactivateId);
+    fetchAgents();
+    fetchUsage();
+  };
 
   const fetchAgents = () => {
     setLoading(true);
@@ -37,6 +52,7 @@ export function AgentList({ onPanelChange, onPanelClose }: Props) {
 
   useEffect(() => {
     fetchAgents();
+    fetchUsage();
   }, []);
 
   const closePanel = () => {
@@ -82,6 +98,7 @@ export function AgentList({ onPanelChange, onPanelClose }: Props) {
           <Button
             size="sm"
             onClick={openCreate}
+            disabled={atLimit}
             className="gap-1.5 bg-primary hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
@@ -90,6 +107,12 @@ export function AgentList({ onPanelChange, onPanelClose }: Props) {
         </div>
       </div>
 
+      {atLimit && (
+        <div className="mx-4 mt-2 md:mx-6 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span>Plan limit reached ({agentUsage!.current}/{agentUsage!.limit}). Upgrade to add more.</span>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
         {loading ? (
           <p className="text-sm text-muted-foreground p-4 md:p-6">Loading...</p>
@@ -109,7 +132,8 @@ export function AgentList({ onPanelChange, onPanelClose }: Props) {
                 onClick={() => openDetail(agent)}
                 className={cn(
                   "flex w-full items-center gap-3 px-4 py-3 md:px-6 text-left hover:bg-muted/50 transition-colors",
-                  selectedId === agent.id && "bg-primary/5"
+                  selectedId === agent.id && "bg-primary/5",
+                  agent.frozen && "opacity-50"
                 )}
               >
                 <div className={cn(
@@ -135,20 +159,34 @@ export function AgentList({ onPanelChange, onPanelClose }: Props) {
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={cn(
-                        "h-2.5 w-2.5 rounded-full",
-                        statusColors[agent.status]
-                      )}
-                    />
-                    <span className="text-xs text-muted-foreground capitalize hidden sm:inline">
-                      {agent.status}
-                    </span>
-                  </div>
-                  <Badge variant="secondary" className="text-[10px] h-5">
-                    {agent.activeCount}
-                  </Badge>
+                  {agent.frozen ? (
+                    <>
+                      <Badge variant="outline" className="text-[10px] h-5 bg-amber-50 text-amber-700 border-amber-200 gap-1">
+                        <Snowflake className="h-3 w-3" />
+                        {t.billing.frozen}
+                      </Badge>
+                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-primary" onClick={(e) => handleActivate(agent, e)}>
+                        {t.billing.activate}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "h-2.5 w-2.5 rounded-full",
+                            statusColors[agent.status]
+                          )}
+                        />
+                        <span className="text-xs text-muted-foreground capitalize hidden sm:inline">
+                          {agent.status}
+                        </span>
+                      </div>
+                      <Badge variant="secondary" className="text-[10px] h-5">
+                        {agent.activeCount}
+                      </Badge>
+                    </>
+                  )}
                 </div>
               </button>
             ))}

@@ -107,6 +107,9 @@ export default function LandingPage() {
             <button onClick={() => document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" })} className="hover:text-primary transition-colors">
               {t.landing.navFeatures}
             </button>
+            <button onClick={() => router.push("/pricing")} className="hover:text-primary transition-colors">
+              {t.landing.navPricing}
+            </button>
           </div>
 
           <div className="flex items-center gap-4">
@@ -392,6 +395,7 @@ export default function LandingPage() {
                   <ul role="list" className="mt-6 space-y-4">
                     <li><button onClick={() => document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.navFeatures}</button></li>
                     <li><button onClick={() => document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.navHowItWorks}</button></li>
+                    <li><button onClick={() => router.push("/pricing")} className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.navPricing}</button></li>
                   </ul>
                 </div>
                 <div className="mt-10 md:mt-0">

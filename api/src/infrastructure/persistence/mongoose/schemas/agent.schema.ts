@@ -32,6 +32,9 @@ export class AgentModel {
   @Prop({ required: true, enum: AgentType, default: AgentType.HUMAN })
   type: string;
 
+  @Prop({ default: false })
+  frozen: boolean;
+
   createdAt: Date;
 }
 

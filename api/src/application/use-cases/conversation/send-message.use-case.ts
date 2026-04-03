@@ -38,6 +38,9 @@ export class SendMessageUseCase {
 
     const contact = await this.contactRepo.findById(conversation.contactId);
     const phone = await this.phoneRepo.findById(conversation.phoneNumberId);
+    if (!phone || phone.status !== 'active') {
+      return err(new DomainError('PHONE_NUMBER_INACTIVE', 'This phone number is currently inactive.'));
+    }
     const agent = await this.agentRepo.findById(input.agentId);
 
     const { waMessageId } = await this.messagingApi.sendMessage({

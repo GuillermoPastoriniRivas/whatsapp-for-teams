@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param,
+  Controller, Get, Post, Patch, Delete, Body, Param, UseGuards,
   Inject, NotFoundException, HttpCode,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
@@ -20,6 +20,8 @@ import { CreateAiAgentRequestSchema } from '../request-dtos/create-ai-agent-requ
 import type { CreateAiAgentRequestDto } from '../request-dtos/create-ai-agent-request.dto.js';
 import { UpdateAiAgentConfigRequestSchema } from '../request-dtos/update-ai-agent-config-request.dto.js';
 import type { UpdateAiAgentConfigRequestDto } from '../request-dtos/update-ai-agent-config-request.dto.js';
+import { RequirePlanLimit } from '../decorators/require-plan-limit.decorator.js';
+import { PlanLimitGuard } from '../guards/plan-limit.guard.js';
 
 @ApiTags('AI Agents')
 @ApiBearerAuth('JWT')
@@ -39,6 +41,8 @@ export class AiAgentController {
   @Post()
   @Roles('admin')
   @DemoRestricted()
+  @UseGuards(PlanLimitGuard)
+  @RequirePlanLimit('ai_bots')
   @ApiOperation({ summary: 'Create AI agent', description: 'Create a new AI agent with LLM configuration (admin only)' })
   @ApiResponse({ status: 201, description: 'AI agent created' })
   async create(

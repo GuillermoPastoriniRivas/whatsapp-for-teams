@@ -14,4 +14,7 @@ export interface AgentRepository {
   updateName(id: string, name: string): Promise<Agent | null>;
   updateProfile(id: string, data: { name?: string; role?: AgentRole }): Promise<Agent | null>;
   delete(id: string): Promise<boolean>;
+  countByTenantIdAndType(tenantId: string, type: AgentType): Promise<number>;
+  updateFrozen(id: string, frozen: boolean): Promise<Agent | null>;
+  findByTenantIdAndType(tenantId: string, type: AgentType): Promise<Agent[]>;
 }

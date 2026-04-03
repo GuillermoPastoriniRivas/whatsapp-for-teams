@@ -24,4 +24,5 @@ export interface ConversationRepository {
   findActiveByAgentId(agentId: string): Promise<Conversation[]>;
   findActiveByAgentAndPhone(agentId: string, phoneNumberId: string): Promise<Conversation[]>;
   update(id: string, data: Partial<Conversation>): Promise<Conversation | null>;
+  countByTenantIdSince(tenantId: string, since: Date): Promise<number>;
 }

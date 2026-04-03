@@ -9,6 +9,7 @@ export interface Agent {
   status: "available" | "busy" | "offline";
   activeCount: number;
   type?: "human" | "ai";
+  frozen?: boolean;
 }
 
 export interface Conversation {
@@ -172,6 +173,63 @@ export interface AiAgentConfig {
     maxTokensPerDay: number;
   };
   isActive: boolean;
+}
+
+export type PlanTier = "free" | "pro" | "business" | "agencies";
+export type SubscriptionStatus = "active" | "canceled" | "past_due";
+
+export interface Subscription {
+  id: string;
+  tenantId: string;
+  plan: PlanTier;
+  status: SubscriptionStatus;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  createdAt: string;
+  canceledAt: string | null;
+  scheduledPlan: PlanTier | null;
+}
+
+export interface BillingRecord {
+  id: string;
+  tenantId: string;
+  eventType: string;
+  plan: PlanTier;
+  amountCents: number;
+  description: string;
+  createdAt: string;
+}
+
+export interface ResourceUsage {
+  current: number;
+  limit: number;
+  allowed: boolean;
+}
+
+export interface PlanUsage {
+  plan: PlanTier;
+  phoneNumbers: ResourceUsage;
+  humanAgents: ResourceUsage;
+  aiBots: ResourceUsage;
+  conversations: ResourceUsage;
+}
+
+export interface PlanLimits {
+  maxPhoneNumbers: number;
+  maxHumanAgents: number;
+  maxAiBots: number;
+  maxConversationsPerMonth: number;
+  webhooks: boolean;
+  apiAccess: boolean;
+  whiteLabel: boolean;
+  prioritySupport: boolean | "dedicated";
+  priceMonthly: number;
+}
+
+export interface SubscriptionInfo {
+  subscription: Subscription | null;
+  plan: PlanTier;
+  limits: PlanLimits;
 }
 
 export type ChatItem =

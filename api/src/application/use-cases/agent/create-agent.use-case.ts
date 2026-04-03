@@ -29,6 +29,7 @@ export class CreateAgentUseCase {
       status: AgentStatus.AVAILABLE,
       activeCount: 0,
       type: AgentType.HUMAN,
+      frozen: false,
     });
 
     return ok(agent);

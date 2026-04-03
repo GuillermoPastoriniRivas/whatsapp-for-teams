@@ -111,4 +111,11 @@ export class MongoConversationRepository implements ConversationRepository {
     const doc = await this.model.findByIdAndUpdate(id, { $set: updateData }, { returnDocument: 'after' });
     return doc ? ConversationMapper.toDomain(doc) : null;
   }
+
+  async countByTenantIdSince(tenantId: string, since: Date): Promise<number> {
+    return this.model.countDocuments({
+      tenantId: new Types.ObjectId(tenantId),
+      createdAt: { $gte: since },
+    });
+  }
 }

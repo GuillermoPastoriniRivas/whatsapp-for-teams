@@ -17,6 +17,7 @@ export class AgentMapper {
       doc.activeCount,
       doc.createdAt,
       (doc.type as AgentType) ?? AgentType.HUMAN,
+      doc.frozen ?? false,
     );
   }
 }

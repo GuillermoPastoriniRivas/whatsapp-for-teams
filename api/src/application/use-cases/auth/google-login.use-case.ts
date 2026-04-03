@@ -62,6 +62,7 @@ export class GoogleLoginUseCase {
         status: AgentStatus.AVAILABLE,
         activeCount: 0,
         type: AgentType.HUMAN,
+        frozen: false,
       });
     }
 

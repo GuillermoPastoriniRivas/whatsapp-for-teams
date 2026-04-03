@@ -35,6 +35,7 @@ export class HandleInboundMessageUseCase {
     // 1. Look up PhoneNumber → get tenantId
     const phone = await this.phoneRepo.findByPhoneNumberId(input.phoneNumberId);
     if (!phone) return;
+    if (phone.status !== 'active') return;
 
     const tenantId = phone.tenantId;
 

@@ -87,6 +87,22 @@ import { AiAgentController } from './controllers/ai-agent.controller.js';
 // Controllers — Label
 import { LabelController } from './controllers/label.controller.js';
 
+// Controllers — Billing
+import { BillingController } from './controllers/billing.controller.js';
+
+// Use Cases — Billing
+import { SubscribeUseCase } from '../application/use-cases/billing/subscribe.use-case.js';
+import { ChangePlanUseCase } from '../application/use-cases/billing/change-plan.use-case.js';
+import { CancelSubscriptionUseCase } from '../application/use-cases/billing/cancel-subscription.use-case.js';
+import { GetSubscriptionUseCase } from '../application/use-cases/billing/get-subscription.use-case.js';
+import { GetBillingHistoryUseCase } from '../application/use-cases/billing/get-billing-history.use-case.js';
+import { CheckPlanLimitUseCase } from '../application/use-cases/billing/check-plan-limit.use-case.js';
+import { EnforcePlanLimitsUseCase } from '../application/use-cases/billing/enforce-plan-limits.use-case.js';
+import { ToggleResourceUseCase } from '../application/use-cases/billing/toggle-resource.use-case.js';
+
+// Guards — Plan Limit
+import { PlanLimitGuard } from './guards/plan-limit.guard.js';
+
 // Queue Processors
 import { WebhookJobProcessor } from '../infrastructure/queue/webhook-job.processor.js';
 import { AiResponseJobProcessor } from '../infrastructure/queue/ai-response-job.processor.js';
@@ -364,6 +380,51 @@ const useCaseProviders = [
       new GetConversationLabelsUseCase(convLabelRepo, labelRepo),
     inject: ['ConversationLabelRepository', 'LabelRepository'],
   },
+
+  // Billing
+  {
+    provide: 'EnforcePlanLimitsUseCase',
+    useFactory: (subRepo: any, phoneRepo: any, agentRepo: any, aiConfigRepo: any) =>
+      new EnforcePlanLimitsUseCase(subRepo, phoneRepo, agentRepo, aiConfigRepo),
+    inject: ['SubscriptionRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository'],
+  },
+  {
+    provide: 'ToggleResourceUseCase',
+    useFactory: (subRepo: any, phoneRepo: any, agentRepo: any, aiConfigRepo: any) =>
+      new ToggleResourceUseCase(subRepo, phoneRepo, agentRepo, aiConfigRepo),
+    inject: ['SubscriptionRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository'],
+  },
+  {
+    provide: 'SubscribeUseCase',
+    useFactory: (subRepo: any, billingRepo: any, enforce: any) => new SubscribeUseCase(subRepo, billingRepo, enforce),
+    inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase'],
+  },
+  {
+    provide: 'ChangePlanUseCase',
+    useFactory: (subRepo: any, billingRepo: any, enforce: any) => new ChangePlanUseCase(subRepo, billingRepo, enforce),
+    inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase'],
+  },
+  {
+    provide: 'CancelSubscriptionUseCase',
+    useFactory: (subRepo: any, billingRepo: any, enforce: any) => new CancelSubscriptionUseCase(subRepo, billingRepo, enforce),
+    inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase'],
+  },
+  {
+    provide: 'GetSubscriptionUseCase',
+    useFactory: (subRepo: any, billingRepo: any, enforce: any) => new GetSubscriptionUseCase(subRepo, billingRepo, enforce),
+    inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase'],
+  },
+  {
+    provide: 'GetBillingHistoryUseCase',
+    useFactory: (billingRepo: any) => new GetBillingHistoryUseCase(billingRepo),
+    inject: ['BillingRecordRepository'],
+  },
+  {
+    provide: 'CheckPlanLimitUseCase',
+    useFactory: (subRepo: any, phoneRepo: any, agentRepo: any, convRepo: any, aiConfigRepo: any) =>
+      new CheckPlanLimitUseCase(subRepo, phoneRepo, agentRepo, convRepo, aiConfigRepo),
+    inject: ['SubscriptionRepository', 'PhoneNumberRepository', 'AgentRepository', 'ConversationRepository', 'AiAgentConfigRepository'],
+  },
 ];
 
 @Module({
@@ -378,11 +439,13 @@ const useCaseProviders = [
     ContactController,
     AiAgentController,
     LabelController,
+    BillingController,
   ],
   providers: [
     ...useCaseProviders,
     WebhookJobProcessor,
     AiResponseJobProcessor,
+    PlanLimitGuard,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: DemoGuard },

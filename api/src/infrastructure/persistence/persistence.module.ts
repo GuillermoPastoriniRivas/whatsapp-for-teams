@@ -28,6 +28,10 @@ import { MongoAiAgentConfigRepository } from './mongoose/repositories/mongo-ai-a
 import { MongoAiUsageRepository } from './mongoose/repositories/mongo-ai-usage.repository.js';
 import { MongoLabelRepository } from './mongoose/repositories/mongo-label.repository.js';
 import { MongoConversationLabelRepository } from './mongoose/repositories/mongo-conversation-label.repository.js';
+import { SubscriptionModel, SubscriptionSchema } from './mongoose/schemas/subscription.schema.js';
+import { BillingRecordModel, BillingRecordSchema } from './mongoose/schemas/billing-record.schema.js';
+import { MongoSubscriptionRepository } from './mongoose/repositories/mongo-subscription.repository.js';
+import { MongoBillingRecordRepository } from './mongoose/repositories/mongo-billing-record.repository.js';
 import { EncryptionService } from '../ai/encryption.service.js';
 
 const schemas = MongooseModule.forFeature([
@@ -45,6 +49,8 @@ const schemas = MongooseModule.forFeature([
   { name: AiUsageModel.name, schema: AiUsageSchema },
   { name: LabelModel.name, schema: LabelSchema },
   { name: ConversationLabelModel.name, schema: ConversationLabelSchema },
+  { name: SubscriptionModel.name, schema: SubscriptionSchema },
+  { name: BillingRecordModel.name, schema: BillingRecordSchema },
 ]);
 
 const repositories = [
@@ -62,6 +68,8 @@ const repositories = [
   { provide: 'AiUsageRepository', useClass: MongoAiUsageRepository },
   { provide: 'LabelRepository', useClass: MongoLabelRepository },
   { provide: 'ConversationLabelRepository', useClass: MongoConversationLabelRepository },
+  { provide: 'SubscriptionRepository', useClass: MongoSubscriptionRepository },
+  { provide: 'BillingRecordRepository', useClass: MongoBillingRecordRepository },
 ];
 
 @Module({

@@ -55,6 +55,7 @@ export class MongoAgentRepository implements AgentRepository {
     const filter: Record<string, unknown> = {
       _id: { $in: objectIds },
       status: AgentStatus.AVAILABLE,
+      frozen: { $ne: true },
     };
     if (excludeType) {
       filter.type = { $ne: excludeType };
@@ -86,5 +87,19 @@ export class MongoAgentRepository implements AgentRepository {
   async delete(id: string): Promise<boolean> {
     const result = await this.model.findByIdAndDelete(id);
     return result !== null;
+  }
+
+  async countByTenantIdAndType(tenantId: string, type: AgentType): Promise<number> {
+    return this.model.countDocuments({ tenantId: new Types.ObjectId(tenantId), type });
+  }
+
+  async updateFrozen(id: string, frozen: boolean): Promise<Agent | null> {
+    const doc = await this.model.findByIdAndUpdate(id, { $set: { frozen } }, { returnDocument: 'after' });
+    return doc ? AgentMapper.toDomain(doc) : null;
+  }
+
+  async findByTenantIdAndType(tenantId: string, type: AgentType): Promise<Agent[]> {
+    const docs = await this.model.find({ tenantId: new Types.ObjectId(tenantId), type }).sort({ createdAt: 1 });
+    return docs.map(AgentMapper.toDomain);
   }
 }

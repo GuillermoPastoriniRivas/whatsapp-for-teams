@@ -13,6 +13,7 @@ import {
   MessageSquare,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
@@ -65,12 +66,17 @@ export function AppSidebar({ className }: { className?: string }) {
 
   const bottomTabs = [
     { href: "/notifications", icon: Bell, label: t.nav.notifications },
+    ...(agent?.role === "admin"
+      ? [{ href: "/settings/billing", icon: CreditCard, label: t.nav.billing }]
+      : []),
     { href: "/settings", icon: Settings, label: t.nav.settings },
   ];
 
   const NavItem = ({ tab }: { tab: { href: string; icon: any; label: string } }) => {
     const isActive =
-      pathname.startsWith(tab.href);
+      tab.href === "/settings"
+        ? pathname === "/settings"
+        : pathname.startsWith(tab.href);
 
     const linkContent = (
       <Link

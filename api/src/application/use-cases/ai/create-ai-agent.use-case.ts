@@ -26,6 +26,7 @@ export class CreateAiAgentUseCase {
       status: AgentStatus.AVAILABLE,
       activeCount: 0,
       type: AgentType.AI,
+      frozen: false,
     });
 
     const config = await this.configRepo.create({

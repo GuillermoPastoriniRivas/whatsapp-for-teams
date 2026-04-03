@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Inject, UsePipes, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Inject, UsePipes, UseGuards, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { RegisterPhoneNumberUseCase } from '../../application/use-cases/phone-number/register-phone-number.use-case.js';
 import { ListPhoneNumbersUseCase } from '../../application/use-cases/phone-number/list-phone-numbers.use-case.js';
@@ -12,6 +12,8 @@ import { RegisterPhoneNumberRequestSchema } from '../request-dtos/register-phone
 import type { RegisterPhoneNumberRequestDto } from '../request-dtos/register-phone-number-request.dto.js';
 import { UpdatePhoneNumberRequestSchema } from '../request-dtos/update-phone-number-request.dto.js';
 import type { UpdatePhoneNumberRequestDto } from '../request-dtos/update-phone-number-request.dto.js';
+import { RequirePlanLimit } from '../decorators/require-plan-limit.decorator.js';
+import { PlanLimitGuard } from '../guards/plan-limit.guard.js';
 
 @ApiTags('Phone Numbers')
 @ApiBearerAuth('JWT')
@@ -26,6 +28,8 @@ export class PhoneNumberController {
   @Post()
   @Roles('admin')
   @DemoRestricted()
+  @UseGuards(PlanLimitGuard)
+  @RequirePlanLimit('phone_numbers')
   @ApiOperation({ summary: 'Register phone number', description: 'Register a new WhatsApp phone number for the tenant (admin only)' })
   @ApiBody({
     schema: {
