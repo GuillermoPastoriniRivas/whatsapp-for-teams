@@ -21,6 +21,7 @@ import { LoginUseCase } from '../application/use-cases/auth/login.use-case.js';
 import { RefreshTokenUseCase } from '../application/use-cases/auth/refresh-token.use-case.js';
 import { GetCurrentAgentUseCase } from '../application/use-cases/auth/get-current-agent.use-case.js';
 import { DemoLoginUseCase } from '../application/use-cases/auth/demo-login.use-case.js';
+import { GoogleLoginUseCase } from '../application/use-cases/auth/google-login.use-case.js';
 
 // Use Cases — Agent
 import { CreateAgentUseCase } from '../application/use-cases/agent/create-agent.use-case.js';
@@ -101,6 +102,12 @@ const useCaseProviders = [
     useFactory: (agentRepo: any, refreshTokenRepo: any, tokenProvider: any) =>
       new DemoLoginUseCase(agentRepo, refreshTokenRepo, tokenProvider),
     inject: ['AgentRepository', 'RefreshTokenRepository', 'TokenProviderPort'],
+  },
+  {
+    provide: 'GoogleLoginUseCase',
+    useFactory: (agentRepo: any, refreshTokenRepo: any, tokenProvider: any, tenantRepo: any) =>
+      new GoogleLoginUseCase(agentRepo, refreshTokenRepo, tokenProvider, tenantRepo, process.env.GOOGLE_CLIENT_ID ?? ''),
+    inject: ['AgentRepository', 'RefreshTokenRepository', 'TokenProviderPort', 'TenantRepository'],
   },
 
   // Agent

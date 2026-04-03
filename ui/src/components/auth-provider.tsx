@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
 import { onUnauthorized } from "@/lib/api";
 import { onSocketAuthError, reconnectSocket } from "@/lib/socket";
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const agent = useAuthStore((s) => s.agent);

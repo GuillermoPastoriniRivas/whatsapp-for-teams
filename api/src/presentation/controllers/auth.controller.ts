@@ -4,11 +4,14 @@ import { LoginUseCase } from '../../application/use-cases/auth/login.use-case.js
 import { RefreshTokenUseCase } from '../../application/use-cases/auth/refresh-token.use-case.js';
 import { GetCurrentAgentUseCase } from '../../application/use-cases/auth/get-current-agent.use-case.js';
 import { DemoLoginUseCase } from '../../application/use-cases/auth/demo-login.use-case.js';
+import { GoogleLoginUseCase } from '../../application/use-cases/auth/google-login.use-case.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import { LoginRequestSchema } from '../request-dtos/login-request.dto.js';
 import type { LoginRequestDto } from '../request-dtos/login-request.dto.js';
 import { RefreshTokenRequestSchema } from '../request-dtos/refresh-token-request.dto.js';
 import type { RefreshTokenRequestDto } from '../request-dtos/refresh-token-request.dto.js';
+import { GoogleLoginRequestSchema } from '../request-dtos/google-login-request.dto.js';
+import type { GoogleLoginRequestDto } from '../request-dtos/google-login-request.dto.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { Public } from '../decorators/public.decorator.js';
@@ -21,6 +24,7 @@ export class AuthController {
     @Inject('RefreshTokenUseCase') private readonly refreshTokenUseCase: RefreshTokenUseCase,
     @Inject('GetCurrentAgentUseCase') private readonly getCurrentAgentUseCase: GetCurrentAgentUseCase,
     @Inject('DemoLoginUseCase') private readonly demoLoginUseCase: DemoLoginUseCase,
+    @Inject('GoogleLoginUseCase') private readonly googleLoginUseCase: GoogleLoginUseCase,
   ) {}
 
   @Public()
@@ -88,6 +92,28 @@ export class AuthController {
   @ApiResponse({ status: 503, description: 'Demo not configured' })
   async demoLogin() {
     const result = await this.demoLoginUseCase.execute();
+    if (!result.ok) throw new UnauthorizedException(result.error.message);
+    return result.value;
+  }
+
+  @Public()
+  @Post('google')
+  @HttpCode(200)
+  @UsePipes(new ZodValidationPipe(GoogleLoginRequestSchema))
+  @ApiOperation({ summary: 'Google login', description: 'Authenticate with a Google ID token. Creates a new tenant if the email is not registered.' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['credential'],
+      properties: {
+        credential: { type: 'string', description: 'Google ID token from frontend' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'JWT access and refresh tokens' })
+  @ApiResponse({ status: 401, description: 'Invalid Google token or unverified email' })
+  async googleLogin(@Body() body: GoogleLoginRequestDto) {
+    const result = await this.googleLoginUseCase.execute(body);
     if (!result.ok) throw new UnauthorizedException(result.error.message);
     return result.value;
   }

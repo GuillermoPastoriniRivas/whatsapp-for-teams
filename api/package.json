@@ -35,6 +35,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.17",
     "bcrypt": "^6.0.0",
+    "google-auth-library": "^10.6.2",
     "mongoose": "^9.3.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",

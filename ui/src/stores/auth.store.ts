@@ -12,6 +12,7 @@ interface AuthState {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   demoLogin: () => Promise<void>;
+  googleLogin: (credential: string) => Promise<void>;
   logout: () => void;
   hydrate: () => void;
 }
@@ -64,6 +65,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
     } catch (err: any) {
       set({ error: err.message || "Demo login failed", isLoading: false });
+    }
+  },
+
+  googleLogin: async (credential) => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await api.post<LoginResponse>("/auth/google", { credential });
+      api.setToken(data.accessToken);
+      connectSocket(data.accessToken);
+
+      localStorage.setItem("accessToken", data.accessToken);
+      localStorage.setItem("refreshToken", data.refreshToken);
+      localStorage.setItem("agent", JSON.stringify(data.agent));
+
+      set({
+        agent: data.agent,
+        accessToken: data.accessToken,
+        isLoading: false,
+      });
+    } catch (err: any) {
+      set({ error: err.message || "Google login failed", isLoading: false });
     }
   },
 

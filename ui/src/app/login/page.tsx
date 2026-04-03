@@ -14,11 +14,15 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { LanguageToggle } from "@/components/layout/language-toggle";
+import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
   const demoLogin = useAuthStore((s) => s.demoLogin);
+  const googleLogin = useAuthStore((s) => s.googleLogin);
   const isLoading = useAuthStore((s) => s.isLoading);
   const error = useAuthStore((s) => s.error);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -42,7 +46,17 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleSuccess = async (response: { credential?: string }) => {
+    if (response.credential) {
+      await googleLogin(response.credential);
+      if (useAuthStore.getState().agent) {
+        router.push("/conversations");
+      }
+    }
+  };
+
   return (
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
     <div className="flex min-h-[100dvh]">
       {/* Left panel — branding (hidden on mobile) */}
       <div className="hidden w-1/2 flex-col justify-between bg-primary p-10 text-primary-foreground md:flex lg:p-14">
@@ -185,6 +199,24 @@ export default function LoginPage() {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-2 text-muted-foreground">
+                  o
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-center">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                width="384"
+              />
+            </div>
+
+            <div className="relative my-5">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
                   {t.login.demoDivider}
                 </span>
               </div>
@@ -202,5 +234,6 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+    </GoogleOAuthProvider>
   );
 }
