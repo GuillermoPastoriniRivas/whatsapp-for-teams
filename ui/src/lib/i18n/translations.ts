@@ -65,6 +65,11 @@ const translations = {
       internalNotes: "Notas internas",
       activity: "Actividad",
       loading: "Cargando...",
+      labels: "Etiquetas",
+      addLabel: "Agregar",
+      searchLabels: "Buscar etiquetas...",
+      noLabels: "Sin etiquetas disponibles",
+      removeLabel: "Quitar etiqueta",
     },
     settings: {
       profile: "Perfil",
@@ -82,6 +87,14 @@ const translations = {
       title: "Panel de administracion",
       phoneNumbers: "Numeros",
       phoneAccess: "Acceso",
+      labels: "Etiquetas",
+      createLabel: "Crear etiqueta",
+      labelName: "Nombre",
+      labelColor: "Color",
+      deleteLabel: "Eliminar",
+      deleteLabelConfirm: "Se quitara de todas las conversaciones. Continuar?",
+      editLabel: "Editar etiqueta",
+      labelNameExists: "Ya existe una etiqueta con ese nombre",
     },
     landing: {
       badge: "WhatsApp + IA para tu negocio",
@@ -152,6 +165,7 @@ const translations = {
     common: {
       loading: "Cargando...",
       demoBanner: "Estas en modo demo — los datos se reinician diariamente",
+      cancel: "Cancelar",
     },
   },
   en: {
@@ -220,6 +234,11 @@ const translations = {
       internalNotes: "Internal Notes",
       activity: "Activity",
       loading: "Loading...",
+      labels: "Labels",
+      addLabel: "Add",
+      searchLabels: "Search labels...",
+      noLabels: "No labels available",
+      removeLabel: "Remove label",
     },
     settings: {
       profile: "Profile",
@@ -237,6 +256,14 @@ const translations = {
       title: "Admin Panel",
       phoneNumbers: "Phone Numbers",
       phoneAccess: "Phone Access",
+      labels: "Labels",
+      createLabel: "Create label",
+      labelName: "Name",
+      labelColor: "Color",
+      deleteLabel: "Delete",
+      deleteLabelConfirm: "This will remove it from all conversations. Continue?",
+      editLabel: "Edit label",
+      labelNameExists: "A label with this name already exists",
     },
     landing: {
       badge: "WhatsApp + AI for your business",
@@ -307,6 +334,7 @@ const translations = {
     common: {
       loading: "Loading...",
       demoBanner: "You are in demo mode — data resets daily",
+      cancel: "Cancel",
     },
   },
 } as const;

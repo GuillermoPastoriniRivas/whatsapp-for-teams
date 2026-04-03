@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { LabelBadge } from "@/components/chat/label-badge";
 import { useConversationStore } from "@/stores/conversation.store";
 import type { Conversation } from "@/types";
 
@@ -102,6 +103,18 @@ export function ConversationItem({ conversation, onSelect }: Props) {
             </div>
           )}
         </div>
+        {conversation.labels && conversation.labels.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-0.5">
+            {conversation.labels.slice(0, 3).map((l) => (
+              <LabelBadge key={l.id} name={l.name} color={l.color} size="sm" />
+            ))}
+            {conversation.labels.length > 3 && (
+              <span className="text-[9px] text-muted-foreground leading-4">
+                +{conversation.labels.length - 3}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </button>
   );

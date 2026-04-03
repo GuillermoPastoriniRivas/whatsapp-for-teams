@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PhoneNumberList } from "@/components/admin/phone-number-list";
 import { PhoneAccessManager } from "@/components/admin/phone-access-manager";
+import { LabelManager } from "@/components/admin/label-manager";
 import { RightPanel } from "@/components/layout/right-panel";
 import { useAuthStore } from "@/stores/auth.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
@@ -42,6 +43,7 @@ export default function AdminPage() {
             <TabsList>
               <TabsTrigger value="phones">{t.admin.phoneNumbers}</TabsTrigger>
               <TabsTrigger value="access">{t.admin.phoneAccess}</TabsTrigger>
+              <TabsTrigger value="labels">{t.admin.labels}</TabsTrigger>
             </TabsList>
           </div>
           <TabsContent value="phones" className="mt-0 flex-1 min-h-0">
@@ -49,6 +51,9 @@ export default function AdminPage() {
           </TabsContent>
           <TabsContent value="access" className="mt-0 flex-1 min-h-0 overflow-y-auto px-4 pb-20 md:px-6 pt-4">
             <PhoneAccessManager />
+          </TabsContent>
+          <TabsContent value="labels" className="mt-0 flex-1 min-h-0 overflow-y-auto px-4 pb-20 md:px-6 pt-4">
+            <LabelManager />
           </TabsContent>
         </Tabs>
       </div>

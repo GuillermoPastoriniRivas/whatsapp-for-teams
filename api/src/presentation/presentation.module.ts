@@ -71,8 +71,20 @@ import { DeleteAiAgentUseCase } from '../application/use-cases/ai/delete-ai-agen
 import { ProcessAiResponseUseCase } from '../application/use-cases/ai/process-ai-response.use-case.js';
 import { HandoffToHumanUseCase } from '../application/use-cases/ai/handoff-to-human.use-case.js';
 
+// Use Cases — Label
+import { CreateLabelUseCase } from '../application/use-cases/label/create-label.use-case.js';
+import { ListLabelsUseCase } from '../application/use-cases/label/list-labels.use-case.js';
+import { UpdateLabelUseCase } from '../application/use-cases/label/update-label.use-case.js';
+import { DeleteLabelUseCase } from '../application/use-cases/label/delete-label.use-case.js';
+import { AssignLabelUseCase } from '../application/use-cases/label/assign-label.use-case.js';
+import { RemoveLabelUseCase } from '../application/use-cases/label/remove-label.use-case.js';
+import { GetConversationLabelsUseCase } from '../application/use-cases/label/get-conversation-labels.use-case.js';
+
 // Controllers — AI
 import { AiAgentController } from './controllers/ai-agent.controller.js';
+
+// Controllers — Label
+import { LabelController } from './controllers/label.controller.js';
 
 // Queue Processors
 import { WebhookJobProcessor } from '../infrastructure/queue/webhook-job.processor.js';
@@ -300,9 +312,50 @@ const useCaseProviders = [
   },
   {
     provide: 'ProcessAiResponseUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any) =>
-      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase'],
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any) =>
+      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository'],
+  },
+
+  // Label
+  {
+    provide: 'CreateLabelUseCase',
+    useFactory: (labelRepo: any) => new CreateLabelUseCase(labelRepo),
+    inject: ['LabelRepository'],
+  },
+  {
+    provide: 'ListLabelsUseCase',
+    useFactory: (labelRepo: any) => new ListLabelsUseCase(labelRepo),
+    inject: ['LabelRepository'],
+  },
+  {
+    provide: 'UpdateLabelUseCase',
+    useFactory: (labelRepo: any) => new UpdateLabelUseCase(labelRepo),
+    inject: ['LabelRepository'],
+  },
+  {
+    provide: 'DeleteLabelUseCase',
+    useFactory: (labelRepo: any, convLabelRepo: any, gateway: any) =>
+      new DeleteLabelUseCase(labelRepo, convLabelRepo, gateway),
+    inject: ['LabelRepository', 'ConversationLabelRepository', 'RealtimeGatewayPort'],
+  },
+  {
+    provide: 'AssignLabelUseCase',
+    useFactory: (convLabelRepo: any, convRepo: any, labelRepo: any, agentRepo: any, eventRepo: any, gateway: any) =>
+      new AssignLabelUseCase(convLabelRepo, convRepo, labelRepo, agentRepo, eventRepo, gateway),
+    inject: ['ConversationLabelRepository', 'ConversationRepository', 'LabelRepository', 'AgentRepository', 'ConversationEventRepository', 'RealtimeGatewayPort'],
+  },
+  {
+    provide: 'RemoveLabelUseCase',
+    useFactory: (convLabelRepo: any, convRepo: any, labelRepo: any, agentRepo: any, eventRepo: any, gateway: any) =>
+      new RemoveLabelUseCase(convLabelRepo, convRepo, labelRepo, agentRepo, eventRepo, gateway),
+    inject: ['ConversationLabelRepository', 'ConversationRepository', 'LabelRepository', 'AgentRepository', 'ConversationEventRepository', 'RealtimeGatewayPort'],
+  },
+  {
+    provide: 'GetConversationLabelsUseCase',
+    useFactory: (convLabelRepo: any, labelRepo: any) =>
+      new GetConversationLabelsUseCase(convLabelRepo, labelRepo),
+    inject: ['ConversationLabelRepository', 'LabelRepository'],
   },
 ];
 
@@ -317,6 +370,7 @@ const useCaseProviders = [
     WebhookController,
     ContactController,
     AiAgentController,
+    LabelController,
   ],
   providers: [
     ...useCaseProviders,

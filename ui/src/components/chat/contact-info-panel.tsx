@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Phone, Clock, StickyNote } from "lucide-react";
+import { User, Phone, Clock, StickyNote, Tag } from "lucide-react";
 import { api } from "@/lib/api";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { ActivityTimeline } from "./activity-timeline";
 import { ConversationNotes } from "./conversation-notes";
 import { ContactFields } from "./contact-fields";
+import { LabelPicker } from "./label-picker";
 import type { Conversation, ConversationEvent } from "@/types";
 
 interface Props {
@@ -89,6 +90,17 @@ export function ContactInfoPanel({ conversation }: Props) {
               {conversation?.status}
             </Badge>
           </div>
+        </div>
+
+        <Separator />
+
+        {/* Labels */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
+            <Tag className="h-3.5 w-3.5" />
+            {t.contactPanel.labels}
+          </h3>
+          {conversation && <LabelPicker conversationId={conversation.id} />}
         </div>
 
         <Separator />

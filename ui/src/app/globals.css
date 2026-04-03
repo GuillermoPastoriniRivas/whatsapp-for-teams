@@ -140,3 +140,7 @@
     @apply font-sans;
   }
 }
+
+.dark .label-badge {
+  background-color: var(--label-dark-bg) !important;
+}

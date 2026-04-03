@@ -7,4 +7,6 @@ export enum ConversationEventType {
   REOPENED = 'reopened',
   NOTE_ADDED = 'note_added',
   HANDOFF = 'handoff',
+  LABEL_ADDED = 'label_added',
+  LABEL_REMOVED = 'label_removed',
 }

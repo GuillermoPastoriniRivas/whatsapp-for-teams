@@ -8,6 +8,8 @@ import {
   PlusCircle,
   UserMinus,
   StickyNote,
+  Tag,
+  Tags,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ConversationEvent } from "@/types";
@@ -54,6 +56,16 @@ const eventConfig: Record<
     icon: StickyNote,
     color: "text-yellow-500",
     label: (data) => `${data.agentName} added a note`,
+  },
+  label_added: {
+    icon: Tag,
+    color: "text-teal-500",
+    label: (data) => `${data.agentName} added label "${data.labelName}"`,
+  },
+  label_removed: {
+    icon: Tags,
+    color: "text-slate-400",
+    label: (data) => `${data.agentName} removed label "${data.labelName}"`,
   },
 };
 

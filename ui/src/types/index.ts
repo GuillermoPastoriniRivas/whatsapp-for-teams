@@ -26,6 +26,7 @@ export interface Conversation {
   phoneLabel: string | null;
   phoneDisplay: string | null;
   agentName: string | null;
+  labels?: { id: string; name: string; color: string }[];
   contact: {
     id: string;
     name: string;
@@ -79,6 +80,23 @@ export interface PhoneNumber {
   status: "active" | "inactive";
 }
 
+export interface Label {
+  id: string;
+  tenantId: string;
+  name: string;
+  color: string;
+  createdAt: string;
+}
+
+export interface ConversationLabelEntry {
+  id: string;
+  labelId: string;
+  labelName: string;
+  labelColor: string;
+  assignedBy: string;
+  createdAt: string;
+}
+
 export interface ConversationEvent {
   id: string;
   conversationId: string;
@@ -91,7 +109,9 @@ export interface ConversationEvent {
     | "resolved"
     | "reopened"
     | "note_added"
-    | "handoff";
+    | "handoff"
+    | "label_added"
+    | "label_removed";
   performedBy: string | null;
   data: Record<string, unknown>;
   createdAt: string;

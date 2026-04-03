@@ -11,6 +11,10 @@ import { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { HandoffToHumanUseCase } from './handoff-to-human.use-case.js';
 import { HandoffDetectionDomainService } from '../../../domain/services/handoff-detection.domain-service.js';
+import { LabelRepository } from '../../../domain/repositories/label.repository.js';
+import { ConversationLabelRepository } from '../../../domain/repositories/conversation-label.repository.js';
+import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
+import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
@@ -70,6 +74,9 @@ export class ProcessAiResponseUseCase {
     private readonly messagingApi: MessagingApiPort,
     private readonly gateway: RealtimeGatewayPort,
     private readonly handoffUseCase: HandoffToHumanUseCase,
+    private readonly labelRepo: LabelRepository,
+    private readonly convLabelRepo: ConversationLabelRepository,
+    private readonly eventRepo: ConversationEventRepository,
   ) {}
 
   async execute(input: ProcessAiResponseInput): Promise<void> {
@@ -178,6 +185,13 @@ export class ProcessAiResponseUseCase {
       }
     }
 
+    // 7. Available labels for classification
+    const tenantLabels = await this.labelRepo.findByTenantId(conversation.tenantId);
+    if (tenantLabels.length > 0) {
+      const labelNames = tenantLabels.map((l) => l.name).join(', ');
+      promptParts.push(`## Conversation Labels\nYou can classify this conversation using labels. Available labels: ${labelNames}.\nTo add a label, include this exact text anywhere in your response: [LABEL:add:label_name]\nTo remove a label, include: [LABEL:remove:label_name]\nThese directives will be stripped from the message before sending to the customer. Only use labels when the conversation clearly fits a category. Do not mention labels to the customer.`);
+    }
+
     const systemPrompt = promptParts.join('\n\n');
 
     this.logger.log(`System prompt length: ${systemPrompt.length} chars. Knowledge base: ${config.knowledgeBase?.length || 0} chars`);
@@ -237,6 +251,58 @@ export class ProcessAiResponseUseCase {
       }
     }
 
+    // Parse and execute label directives
+    let responseContent = result.content;
+    const labelDirectives = responseContent.matchAll(/\[LABEL:(add|remove):([^\]]+)\]/gi);
+    for (const match of labelDirectives) {
+      const action = match[1].toLowerCase();
+      const labelName = match[2].trim();
+      const label = tenantLabels.find((l) => l.name.toLowerCase() === labelName.toLowerCase());
+      if (label) {
+        try {
+          if (action === 'add') {
+            await this.convLabelRepo.create({
+              conversationId: conversation.id,
+              tenantId: conversation.tenantId,
+              labelId: label.id,
+              assignedBy: agent.id,
+            });
+            await this.eventRepo.create({
+              conversationId: conversation.id,
+              tenantId: conversation.tenantId,
+              type: ConversationEventType.LABEL_ADDED,
+              performedBy: agent.id,
+              data: { agentName: agent.name, labelName: label.name, labelColor: label.color },
+            });
+            this.gateway.emitToConversation(conversation.id, 'label.assigned', {
+              conversationId: conversation.id,
+              label: { id: label.id, name: label.name, color: label.color },
+            });
+            this.logger.log(`AI agent ${agent.id} added label "${label.name}" to conversation ${conversation.id}`);
+          } else if (action === 'remove') {
+            await this.convLabelRepo.delete(conversation.id, label.id);
+            await this.eventRepo.create({
+              conversationId: conversation.id,
+              tenantId: conversation.tenantId,
+              type: ConversationEventType.LABEL_REMOVED,
+              performedBy: agent.id,
+              data: { agentName: agent.name, labelName: label.name, labelColor: label.color },
+            });
+            this.gateway.emitToConversation(conversation.id, 'label.removed', {
+              conversationId: conversation.id,
+              labelId: label.id,
+            });
+            this.logger.log(`AI agent ${agent.id} removed label "${label.name}" from conversation ${conversation.id}`);
+          }
+          this.gateway.emitToTenant(conversation.tenantId, 'conversation.updated', { conversationId: conversation.id });
+        } catch (error) {
+          this.logger.warn(`Failed to ${action} label "${labelName}": ${error}`);
+        }
+      }
+    }
+    // Strip label directives from the response
+    responseContent = responseContent.replace(/\[LABEL:(add|remove):[^\]]+\]/gi, '').trim();
+
     // Send response via WhatsApp
     const phone = await this.phoneRepo.findById(conversation.phoneNumberId);
     const contact = await this.contactRepo.findById(conversation.contactId);
@@ -248,7 +314,7 @@ export class ProcessAiResponseUseCase {
       phoneNumberId: phone.phoneNumberId,
       to: contact.waId,
       type: MessageType.TEXT,
-      body: result.content,
+      body: responseContent,
     });
 
     // Save outbound message
@@ -256,7 +322,7 @@ export class ProcessAiResponseUseCase {
       conversationId: conversation.id,
       direction: MessageDirection.OUTBOUND,
       messageType: MessageType.TEXT,
-      body: result.content,
+      body: responseContent,
       mediaUrl: null,
       mimeType: null,
       waMessageId,

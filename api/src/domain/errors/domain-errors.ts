@@ -64,3 +64,21 @@ export class CrossTenantAccessError extends DomainError {
     super('CROSS_TENANT_ACCESS', 'Cannot access resources from a different tenant.');
   }
 }
+
+export class LabelNotFoundError extends DomainError {
+  constructor() {
+    super('LABEL_NOT_FOUND', 'Label not found.');
+  }
+}
+
+export class LabelAlreadyAssignedError extends DomainError {
+  constructor() {
+    super('LABEL_ALREADY_ASSIGNED', 'This label is already assigned to the conversation.');
+  }
+}
+
+export class DuplicateLabelNameError extends DomainError {
+  constructor() {
+    super('DUPLICATE_LABEL_NAME', 'A label with this name already exists.');
+  }
+}

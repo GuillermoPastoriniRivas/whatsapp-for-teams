@@ -1,6 +1,6 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query,
-  Inject, UsePipes, NotFoundException, ForbiddenException,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query,
+  Inject, UsePipes, NotFoundException, ForbiddenException, ConflictException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { ListConversationsUseCase } from '../../application/use-cases/conversation/list-conversations.use-case.js';
@@ -12,6 +12,9 @@ import { ResolveConversationUseCase } from '../../application/use-cases/conversa
 import { GetConversationEventsUseCase } from '../../application/use-cases/conversation/get-conversation-events.use-case.js';
 import { AddConversationNoteUseCase } from '../../application/use-cases/conversation/add-conversation-note.use-case.js';
 import { GetConversationNotesUseCase } from '../../application/use-cases/conversation/get-conversation-notes.use-case.js';
+import { AssignLabelUseCase } from '../../application/use-cases/label/assign-label.use-case.js';
+import { RemoveLabelUseCase } from '../../application/use-cases/label/remove-label.use-case.js';
+import { GetConversationLabelsUseCase } from '../../application/use-cases/label/get-conversation-labels.use-case.js';
 import { Roles } from '../decorators/roles.decorator.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
@@ -24,10 +27,14 @@ import { ConversationQueryParamsSchema } from '../request-dtos/conversation-quer
 import type { ConversationQueryParamsDto } from '../request-dtos/conversation-query-params.dto.js';
 import { AddNoteRequestSchema } from '../request-dtos/add-note-request.dto.js';
 import type { AddNoteRequestDto } from '../request-dtos/add-note-request.dto.js';
+import { AssignLabelRequestSchema } from '../request-dtos/assign-label-request.dto.js';
+import type { AssignLabelRequestDto } from '../request-dtos/assign-label-request.dto.js';
 import { DomainError } from '../../domain/errors/domain-errors.js';
 import type { ContactRepository } from '../../domain/repositories/contact.repository.js';
 import type { AgentRepository } from '../../domain/repositories/agent.repository.js';
 import type { PhoneNumberRepository } from '../../domain/repositories/phone-number.repository.js';
+import type { ConversationLabelRepository } from '../../domain/repositories/conversation-label.repository.js';
+import type { LabelRepository } from '../../domain/repositories/label.repository.js';
 
 @ApiTags('Conversations')
 @ApiBearerAuth('JWT')
@@ -43,9 +50,14 @@ export class ConversationController {
     @Inject('GetConversationEventsUseCase') private readonly getConversationEvents: GetConversationEventsUseCase,
     @Inject('AddConversationNoteUseCase') private readonly addNote: AddConversationNoteUseCase,
     @Inject('GetConversationNotesUseCase') private readonly getNotes: GetConversationNotesUseCase,
+    @Inject('AssignLabelUseCase') private readonly assignLabel: AssignLabelUseCase,
+    @Inject('RemoveLabelUseCase') private readonly removeLabel: RemoveLabelUseCase,
+    @Inject('GetConversationLabelsUseCase') private readonly getConversationLabels: GetConversationLabelsUseCase,
     @Inject('ContactRepository') private readonly contactRepo: ContactRepository,
     @Inject('AgentRepository') private readonly agentRepo: AgentRepository,
     @Inject('PhoneNumberRepository') private readonly phoneRepo: PhoneNumberRepository,
+    @Inject('ConversationLabelRepository') private readonly convLabelRepo: ConversationLabelRepository,
+    @Inject('LabelRepository') private readonly labelRepo: LabelRepository,
   ) {}
 
   @Get()
@@ -75,6 +87,21 @@ export class ConversationController {
     const agentMap = new Map(agents.filter(Boolean).map((a) => [a!.id, a!.name]));
     const phoneMap = new Map(phones.filter(Boolean).map((p) => [p!.id, { label: p!.label, displayPhone: p!.displayPhone }]));
 
+    // Batch-lookup labels for all conversations
+    const conversationIds = result.data.map((c) => c.id);
+    const allConvLabels = await this.convLabelRepo.findByConversationIds(conversationIds);
+    const labelIds = [...new Set(allConvLabels.map((cl) => cl.labelId))];
+    const labels = labelIds.length > 0 ? await this.labelRepo.findByIds(labelIds) : [];
+    const labelMap = new Map(labels.map((l) => [l.id, l]));
+    const convLabelMap = new Map<string, { id: string; name: string; color: string }[]>();
+    for (const cl of allConvLabels) {
+      const label = labelMap.get(cl.labelId);
+      if (!label) continue;
+      const arr = convLabelMap.get(cl.conversationId) ?? [];
+      arr.push({ id: label.id, name: label.name, color: label.color });
+      convLabelMap.set(cl.conversationId, arr);
+    }
+
     // Enrich conversations
     const enriched = await Promise.all(
       result.data.map(async (conv) => {
@@ -88,6 +115,7 @@ export class ConversationController {
           agentName: conv.agentId ? (agentMap.get(conv.agentId) ?? null) : null,
           phoneLabel: phoneInfo?.label ?? null,
           phoneDisplay: phoneInfo?.displayPhone ?? null,
+          labels: convLabelMap.get(conv.id) ?? [],
         };
       }),
     );
@@ -106,6 +134,11 @@ export class ConversationController {
     const contact = await this.contactRepo.findById(result.value.contactId);
     const agent = result.value.agentId ? await this.agentRepo.findById(result.value.agentId) : null;
     const phone = await this.phoneRepo.findById(result.value.phoneNumberId);
+    const convLabels = await this.convLabelRepo.findByConversationId(id);
+    const detailLabelIds = [...new Set(convLabels.map((cl) => cl.labelId))];
+    const detailLabels = detailLabelIds.length > 0 ? await this.labelRepo.findByIds(detailLabelIds) : [];
+    const detailLabelMap = new Map(detailLabels.map((l) => [l.id, l]));
+
     return {
       ...result.value,
       contact: contact
@@ -123,6 +156,12 @@ export class ConversationController {
       agentName: agent?.name ?? null,
       phoneLabel: phone?.label ?? null,
       phoneDisplay: phone?.displayPhone ?? null,
+      labels: convLabels
+        .map((cl) => {
+          const l = detailLabelMap.get(cl.labelId);
+          return l ? { id: l.id, name: l.name, color: l.color } : null;
+        })
+        .filter(Boolean),
     };
   }
 
@@ -227,6 +266,49 @@ export class ConversationController {
     });
     if (!result.ok) throw new NotFoundException(result.error.message);
     return result.value;
+  }
+
+  @Get(':id/labels')
+  @ApiOperation({ summary: 'Get conversation labels', description: 'Get labels assigned to a conversation' })
+  async conversationLabels(@Param('id') id: string) {
+    return this.getConversationLabels.execute(id);
+  }
+
+  @Post(':id/labels')
+  @ApiOperation({ summary: 'Assign label', description: 'Assign a label to a conversation' })
+  async assignLabelToConversation(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(AssignLabelRequestSchema)) body: AssignLabelRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.assignLabel.execute({
+      conversationId: id,
+      labelId: body.labelId,
+      agentId: agent._id,
+      tenantId: agent.tenantId,
+    });
+    if (!result.ok) {
+      if (result.error.code === 'LABEL_ALREADY_ASSIGNED') throw new ConflictException(result.error.message);
+      throw new NotFoundException(result.error.message);
+    }
+    return result.value;
+  }
+
+  @Delete(':id/labels/:labelId')
+  @ApiOperation({ summary: 'Remove label', description: 'Remove a label from a conversation' })
+  async removeLabelFromConversation(
+    @Param('id') id: string,
+    @Param('labelId') labelId: string,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.removeLabel.execute({
+      conversationId: id,
+      labelId,
+      agentId: agent._id,
+      tenantId: agent.tenantId,
+    });
+    if (!result.ok) throw new NotFoundException(result.error.message);
+    return { removed: true };
   }
 
   @Patch(':id/assign')
