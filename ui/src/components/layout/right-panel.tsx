@@ -1,17 +1,33 @@
 "use client";
 
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface RightPanelProps {
   open: boolean;
   onClose: () => void;
+  onOpen?: () => void;
   children: React.ReactNode;
   className?: string;
 }
 
-export function RightPanel({ open, onClose, children, className }: RightPanelProps) {
-  if (!open) return null;
+export function RightPanel({ open, onClose, onOpen, children, className }: RightPanelProps) {
+  if (!open) {
+    // Desktop-only collapsed handle
+    if (!onOpen) return null;
+    return (
+      <div className="hidden md:flex relative">
+        <button
+          onClick={onOpen}
+          className="absolute -left-2 top-2 z-50 flex h-4 w-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground transition-colors"
+          aria-label="Open panel"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </button>
+        <div className="w-1 bg-muted/50 hover:bg-muted transition-colors cursor-pointer h-full" onClick={onOpen} />
+      </div>
+    );
+  }
 
   return (
     <div

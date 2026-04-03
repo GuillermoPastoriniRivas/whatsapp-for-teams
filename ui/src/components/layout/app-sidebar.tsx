@@ -174,9 +174,10 @@ export function AppSidebar({ className }: { className?: string }) {
           </div>
 
           {/* User avatar */}
-          <div
+          <Link
+            href="/settings"
             className={cn(
-              "mt-3 flex items-center gap-3 border-t pt-3",
+              "mt-3 flex items-center gap-3 border-t pt-3 rounded-xl transition-colors hover:bg-muted cursor-pointer",
               collapsed ? "justify-center" : "px-3"
             )}
           >
@@ -189,7 +190,7 @@ export function AppSidebar({ className }: { className?: string }) {
                 <span className="text-xs text-muted-foreground truncate capitalize">{agent.role}</span>
               </div>
             )}
-          </div>
+          </Link>
         </div>
       </div>
     </div>

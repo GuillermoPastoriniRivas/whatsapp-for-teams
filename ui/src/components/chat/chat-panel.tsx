@@ -12,6 +12,7 @@ import { ContactInfoPanel } from "./contact-info-panel";
 import { RightPanel } from "@/components/layout/right-panel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getSocket } from "@/lib/socket";
+import { useIsDesktop } from "@/lib/use-is-desktop";
 import type { ChatItem, ConversationEvent } from "@/types";
 
 const INLINE_EVENT_TYPES = new Set([
@@ -39,7 +40,13 @@ export function ChatPanel({ conversationId }: Props) {
   const convMessages = messages[conversationId] || [];
   const convEvents = events[conversationId] || [];
 
+  const isDesktop = useIsDesktop();
   const [contactInfoOpen, setContactInfoOpen] = useState(false);
+
+  // Open panel by default on desktop
+  useEffect(() => {
+    // if (isDesktop) setContactInfoOpen(true);
+  }, [isDesktop]);
 
   const chatItems: ChatItem[] = useMemo(() => {
     const items: ChatItem[] = [
@@ -126,6 +133,7 @@ export function ChatPanel({ conversationId }: Props) {
       <RightPanel
         open={contactInfoOpen}
         onClose={() => setContactInfoOpen(false)}
+        onOpen={() => setContactInfoOpen(true)}
       >
         <ContactInfoPanel conversation={conversation} />
       </RightPanel>

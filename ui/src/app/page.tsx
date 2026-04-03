@@ -414,7 +414,8 @@ export default function LandingPage() {
           </div>
           <div className="mt-16 border-t border-slate-200 pt-8 sm:mt-20 lg:mt-24 text-center">
             <p className="text-sm leading-5 text-slate-500">
-              &copy; {new Date().getFullYear()} asis.chat — {t.landing.footerRights}
+              &copy; {new Date().getFullYear()} asis.chat — {t.landing.footerRights}. Construido por{" "}
+              <a href="https://www.linkedin.com/in/guillermopastorini/" target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:text-primary font-medium transition-colors">Guillermo</a>.
             </p>
           </div>
         </div>

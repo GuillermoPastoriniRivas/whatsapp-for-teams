@@ -18,7 +18,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-4 space-y-4 pb-20">
+    <div className="p-4 space-y-4 pb-20 max-w-lg">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
