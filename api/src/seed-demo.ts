@@ -311,24 +311,27 @@ async function seedDemo() {
     await Message.insertMany(docs);
   }
 
-  // --- Conv 1: Maria → active, assigned to Ana (product & shipping inquiry) ---
+  // --- Conv 1: Maria → Sofia IA atiende, handoff a Carlos que sigue ---
   const conv1 = await Conversation.create({
     tenantId: T, phoneNumberId: phone._id, contactId: maria._id,
-    agentId: ana._id, status: 'active',
-    lastMessageAt: ago(25), lastInboundAt: ago(25),
+    agentId: carlos._id, status: 'active',
+    lastMessageAt: ago(15), lastInboundAt: ago(20),
   });
   await createMessages(conv1._id, [
     { dir: 'inbound', body: 'Hola! Queria saber si tienen la remera oversize en talle M', minutesAgo: 120 },
-    { dir: 'outbound', body: 'Hola Maria! Si, tenemos stock en M. La tenemos en negro, blanco y verde. Cual te interesa?', minutesAgo: 115, agentId: ana._id.toString(), agentName: 'Demo User' },
+    { dir: 'outbound', body: 'Hola Maria! Si, tenemos la remera oversize en talle M. La tenemos en negro, blanco y verde. Cual te interesa?', minutesAgo: 119, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
     { dir: 'inbound', body: 'La negra! Cuanto sale?', minutesAgo: 110 },
-    { dir: 'outbound', body: '$12.500. Hacemos envios a todo CABA en 24-48hs', minutesAgo: 105, agentId: ana._id.toString(), agentName: 'Demo User' },
-    { dir: 'inbound', body: 'Genial, y el envio cuanto sale?', minutesAgo: 60 },
-    { dir: 'outbound', body: 'El envio a CABA es gratis para compras mayores a $10.000! Asi que te queda sin cargo', minutesAgo: 55, agentId: ana._id.toString(), agentName: 'Demo User' },
-    { dir: 'inbound', body: 'Buenisimo! La quiero. Como pago?', minutesAgo: 30 },
-    { dir: 'outbound', body: 'Te paso el link de pago por MercadoPago. Aceptamos tarjeta y transferencia', minutesAgo: 25, agentId: ana._id.toString(), agentName: 'Demo User' },
+    { dir: 'outbound', body: 'La remera oversize negra en talle M sale $12.500. Hacemos envios a todo CABA en 24-48hs. Queres que te pase las opciones de pago?', minutesAgo: 109, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+    { dir: 'inbound', body: 'Si! Pero quiero hablar con alguien para que me asesore sobre combinaciones', minutesAgo: 65 },
+    { dir: 'outbound', body: 'Entendido! Te derivo con un miembro del equipo para que te asesore. En unos minutos se va a comunicar con vos.', minutesAgo: 64, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+    { dir: 'outbound', body: 'Hola Maria! Soy Carlos. Vi que te interesa la remera oversize negra. Te queda genial con un jean mom o una falda midi. Queres que te arme un combo?', minutesAgo: 55, agentId: carlos._id.toString(), agentName: 'Carlos Lopez' },
+    { dir: 'inbound', body: 'Siii! Armame un look completo', minutesAgo: 50 },
+    { dir: 'outbound', body: 'Dale! Te armo esto:\n- Remera oversize negra M: $12.500\n- Jean mom celeste S: $18.900\n- Cinturon trenzado: $4.200\nTotal: $35.600 con envio gratis a CABA', minutesAgo: 40, agentId: carlos._id.toString(), agentName: 'Carlos Lopez' },
+    { dir: 'inbound', body: 'Me encanta! Lo quiero. Como pago?', minutesAgo: 20 },
+    { dir: 'outbound', body: 'Te paso el link de pago por MercadoPago. Aceptamos tarjeta y transferencia. El envio te llega en 24-48hs!', minutesAgo: 15, agentId: carlos._id.toString(), agentName: 'Carlos Lopez' },
   ]);
 
-  // --- Conv 2: Juan → active, assigned to Carlos (order tracking) ---
+  // --- Conv 2: Juan → active, assigned to Carlos (order tracking, frustrated) ---
   const conv2 = await Conversation.create({
     tenantId: T, phoneNumberId: phone._id, contactId: juan._id,
     agentId: carlos._id, status: 'active',
@@ -342,30 +345,33 @@ async function seedDemo() {
     { dir: 'inbound', body: 'Ya estoy un poco cansado la verdad', minutesAgo: 10 },
   ]);
 
-  // --- Conv 3: Valentina → unassigned (pricing inquiry) ---
+  // --- Conv 3: Valentina → Sofia IA atiende (pricing inquiry, fully resolved by AI) ---
   const conv3 = await Conversation.create({
     tenantId: T, phoneNumberId: phone._id, contactId: valentina._id,
-    status: 'unassigned',
-    lastMessageAt: ago(5), lastInboundAt: ago(5),
+    agentId: sofia._id, status: 'active',
+    lastMessageAt: ago(3), lastInboundAt: ago(5),
   });
   await createMessages(conv3._id, [
     { dir: 'inbound', body: 'Hola, buenos dias! Vi en Instagram que tienen descuentos esta semana', minutesAgo: 8 },
-    { dir: 'inbound', body: 'Queria saber los precios de los buzos', minutesAgo: 7 },
-    { dir: 'inbound', body: 'Tienen talle S?', minutesAgo: 5 },
+    { dir: 'outbound', body: 'Hola Valentina! Si, esta semana tenemos 20% de descuento en buzos y camperas. Queres que te pase los precios?', minutesAgo: 7, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+    { dir: 'inbound', body: 'Sii! Queria saber los precios de los buzos. Tienen talle S?', minutesAgo: 5 },
+    { dir: 'outbound', body: 'Tenemos 3 modelos en talle S:\n- Buzo basico: $9.800 (con dto: $7.840)\n- Buzo canguro: $11.500 (con dto: $9.200)\n- Buzo oversize: $13.200 (con dto: $10.560)\nTodos con envio gratis a CABA!', minutesAgo: 3, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
   ]);
 
-  // --- Conv 4: Diego → unassigned (technical question) ---
+  // --- Conv 4: Diego → Sofia IA atiende (technical question) ---
   const conv4 = await Conversation.create({
     tenantId: T, phoneNumberId: phone._id, contactId: diego._id,
-    status: 'unassigned',
-    lastMessageAt: ago(3), lastInboundAt: ago(3),
+    agentId: sofia._id, status: 'active',
+    lastMessageAt: ago(1), lastInboundAt: ago(3),
   });
   await createMessages(conv4._id, [
     { dir: 'inbound', body: 'Hola, necesito saber las especificaciones tecnicas del parlante bluetooth que tienen publicado', minutesAgo: 4 },
-    { dir: 'inbound', body: 'Es resistente al agua?', minutesAgo: 3 },
+    { dir: 'outbound', body: 'Hola Diego! El parlante bluetooth tiene las siguientes especificaciones:\n- Bluetooth 5.3\n- Bateria: 12hs de reproduccion\n- Potencia: 20W\n- Resistencia: IPX7 (sumergible hasta 1m)\n- Peso: 540g\nQueres saber algo mas?', minutesAgo: 3, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+    { dir: 'inbound', body: 'Es resistente al agua? Lo necesito para la pileta', minutesAgo: 2 },
+    { dir: 'outbound', body: 'Si! Tiene certificacion IPX7, eso significa que aguanta sumergido en agua hasta 1 metro durante 30 minutos. Ideal para la pileta o la ducha. Sale $15.900, te interesa?', minutesAgo: 1, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
   ]);
 
-  // --- Conv 5: Camila → active, assigned to Sofia IA (returns policy) ---
+  // --- Conv 5: Camila → Sofia IA atiende (returns policy) ---
   const conv5 = await Conversation.create({
     tenantId: T, phoneNumberId: phone._id, contactId: camila._id,
     agentId: sofia._id, status: 'active',
@@ -380,7 +386,7 @@ async function seedDemo() {
     { dir: 'outbound', body: 'Tambien se puede! La devolucion se procesa en 5-7 dias habiles al mismo medio de pago que usaste. Solo necesitas el ticket y el producto en buen estado con las etiquetas', minutesAgo: 18, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
   ]);
 
-  // --- Conv 6: Sebastian → resolved (shipping issue resolved) ---
+  // --- Conv 6: Sebastian → resolved (shipping issue, Sofia IA + Ana) ---
   const conv6 = await Conversation.create({
     tenantId: T, phoneNumberId: phone._id, contactId: sebastian._id,
     agentId: ana._id, status: 'resolved',
@@ -389,38 +395,83 @@ async function seedDemo() {
   });
   await createMessages(conv6._id, [
     { dir: 'inbound', body: 'Hola, me llego el pedido equivocado. Pedi zapatillas talle 42 y me mandaron talle 38', minutesAgo: 1500 },
+    { dir: 'outbound', body: 'Hola Sebastian! Lamento el inconveniente. Te voy a derivar con un agente para que te solucione esto lo antes posible.', minutesAgo: 1498, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
     { dir: 'outbound', body: 'Hola Sebastian! Disculpa por el error. Te vamos a mandar el talle correcto por envio express sin costo', minutesAgo: 1490, agentId: ana._id.toString(), agentName: 'Demo User' },
     { dir: 'inbound', body: 'Y que hago con las que me llegaron?', minutesAgo: 1450 },
     { dir: 'outbound', body: 'Un cadete las pasa a buscar manana entre 10 y 14hs. No te preocupes por nada, nosotros nos encargamos!', minutesAgo: 1445, agentId: ana._id.toString(), agentName: 'Demo User' },
   ]);
 
-  console.log(`+ 6 conversations with messages`);
+  // --- Conv 7: Isabella → Sofia IA (horarios y ubicacion) ---
+  const conv7 = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: contacts[6]._id,
+    agentId: sofia._id, status: 'active',
+    lastMessageAt: ago(8), lastInboundAt: ago(10),
+  });
+  await createMessages(conv7._id, [
+    { dir: 'inbound', body: 'Hola! Donde queda el local? Y a que hora abren?', minutesAgo: 12 },
+    { dir: 'outbound', body: 'Hola Isabella! Nuestro local queda en Av. Santa Fe 1234, Palermo. El horario es Lunes a Viernes de 9 a 18hs y Sabados de 10 a 14hs. Te esperamos!', minutesAgo: 11, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+    { dir: 'inbound', body: 'Tienen estacionamiento?', minutesAgo: 10 },
+    { dir: 'outbound', body: 'No tenemos estacionamiento propio, pero hay un parking a media cuadra en Av. Santa Fe 1250. Los sabados suele haber lugar en la calle tambien.', minutesAgo: 8, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+  ]);
+
+  // --- Conv 8: Mateo → Sofia IA (mayoreo inquiry) ---
+  const conv8 = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: contacts[7]._id,
+    agentId: sofia._id, status: 'active',
+    lastMessageAt: ago(50), lastInboundAt: ago(55),
+  });
+  await createMessages(conv8._id, [
+    { dir: 'inbound', body: 'Buen dia, queria consultar si hacen precios por cantidad. Tengo un local y necesito remeras y buzos', minutesAgo: 60 },
+    { dir: 'outbound', body: 'Hola Mateo! Si, trabajamos con precios mayoristas a partir de 12 unidades por modelo. Queres que te pase la lista de precios mayorista?', minutesAgo: 59, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+    { dir: 'inbound', body: 'Dale si, pasame la lista. Necesito surtido de talles S a XL', minutesAgo: 55 },
+    { dir: 'outbound', body: 'Precios mayoristas (x12 unidades):\n- Remera basica: $6.500 c/u\n- Remera oversize: $8.900 c/u\n- Buzo canguro: $8.200 c/u\n- Buzo oversize: $9.500 c/u\nIncluye surtido de talles S a XL. Envio gratis a CABA, interior consultar.', minutesAgo: 54, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+    { dir: 'inbound', body: 'Bien, voy a revisar y te confirmo. Gracias!', minutesAgo: 52 },
+    { dir: 'outbound', body: 'Perfecto Mateo! Cuando quieras confirmar escribime y coordinamos. Tambien podemos armar un pedido personalizado si necesitas.', minutesAgo: 50, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+  ]);
+
+  console.log(`+ 8 conversations with messages`);
 
   // ── 9. Conversation Events ──
   const events = [
-    // Conv 1
+    // Conv 1 — Sofia IA primero, handoff a Carlos
     { conversationId: conv1._id, tenantId: T, type: 'created', createdAt: ago(120) },
-    { conversationId: conv1._id, tenantId: T, type: 'assigned', performedBy: ana._id.toString(), data: { agentName: 'Demo User' }, createdAt: ago(115) },
+    { conversationId: conv1._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(119) },
+    { conversationId: conv1._id, tenantId: T, type: 'reassigned', performedBy: sofia._id.toString(), data: { agentName: 'Carlos Lopez', previousAgentName: 'Sofia IA' }, createdAt: ago(56) },
     // Conv 2
     { conversationId: conv2._id, tenantId: T, type: 'created', createdAt: ago(45) },
     { conversationId: conv2._id, tenantId: T, type: 'assigned', performedBy: carlos._id.toString(), data: { agentName: 'Carlos Lopez' }, createdAt: ago(40) },
     // Conv 3
     { conversationId: conv3._id, tenantId: T, type: 'created', createdAt: ago(8) },
+    { conversationId: conv3._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(7) },
     // Conv 4
     { conversationId: conv4._id, tenantId: T, type: 'created', createdAt: ago(4) },
+    { conversationId: conv4._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(3) },
     // Conv 5
     { conversationId: conv5._id, tenantId: T, type: 'created', createdAt: ago(45) },
     { conversationId: conv5._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(44) },
-    // Conv 6
+    // Conv 6 — Sofia IA primero, handoff a Ana
     { conversationId: conv6._id, tenantId: T, type: 'created', createdAt: ago(1500) },
-    { conversationId: conv6._id, tenantId: T, type: 'assigned', performedBy: ana._id.toString(), data: { agentName: 'Demo User' }, createdAt: ago(1490) },
+    { conversationId: conv6._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(1499) },
+    { conversationId: conv6._id, tenantId: T, type: 'reassigned', performedBy: sofia._id.toString(), data: { agentName: 'Demo User', previousAgentName: 'Sofia IA' }, createdAt: ago(1491) },
     { conversationId: conv6._id, tenantId: T, type: 'resolved', performedBy: ana._id.toString(), data: { agentName: 'Demo User' }, createdAt: ago(1430) },
+    // Conv 7
+    { conversationId: conv7._id, tenantId: T, type: 'created', createdAt: ago(12) },
+    { conversationId: conv7._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(11) },
+    // Conv 8
+    { conversationId: conv8._id, tenantId: T, type: 'created', createdAt: ago(60) },
+    { conversationId: conv8._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(59) },
   ];
   await ConvEvent.insertMany(events);
   console.log(`+ ${events.length} conversation events`);
 
   // ── 10. Conversation Notes ──
   await ConvNote.insertMany([
+    {
+      conversationId: conv1._id, tenantId: T,
+      authorId: sofia._id.toString(), authorName: 'Sofia IA',
+      body: 'Cliente pidio hablar con una persona para asesoramiento de combinaciones. Derivado a Carlos.',
+      createdAt: ago(57),
+    },
     {
       conversationId: conv2._id, tenantId: T,
       authorId: carlos._id.toString(), authorName: 'Carlos Lopez',
@@ -434,30 +485,32 @@ async function seedDemo() {
       createdAt: ago(1435),
     },
   ]);
-  console.log(`+ 2 conversation notes`);
+  console.log(`+ 3 conversation notes`);
 
   // ── 11. Labels ──
   const labels = await Label.insertMany([
-    { tenantId: T, name: 'VIP', color: '#f59e0b' },
-    { tenantId: T, name: 'Urgente', color: '#ef4444' },
-    { tenantId: T, name: 'Nuevo', color: '#3b82f6' },
-    { tenantId: T, name: 'Envio', color: '#8b5cf6' },
-    { tenantId: T, name: 'Devolucion', color: '#f97316' },
-    { tenantId: T, name: 'Mayorista', color: '#10b981' },
+    { tenantId: T, name: 'VIP', color: 'yellow' },
+    { tenantId: T, name: 'Urgente', color: 'red' },
+    { tenantId: T, name: 'Nuevo', color: 'blue' },
+    { tenantId: T, name: 'Envio', color: 'purple' },
+    { tenantId: T, name: 'Devolucion', color: 'orange' },
+    { tenantId: T, name: 'Mayorista', color: 'green' },
   ]);
-  const [lVip, lUrgente, lNuevo, lEnvio, lDevolucion] = labels;
+  const [lVip, lUrgente, lNuevo, lEnvio, lDevolucion, lMayorista] = labels;
   console.log(`+ 6 labels`);
 
   // ── 12. Conversation Labels ──
   await ConvLabel.insertMany([
-    { conversationId: conv1._id, tenantId: T, labelId: lVip._id, assignedBy: ana._id.toString() },
+    { conversationId: conv1._id, tenantId: T, labelId: lVip._id, assignedBy: carlos._id.toString() },
     { conversationId: conv2._id, tenantId: T, labelId: lUrgente._id, assignedBy: carlos._id.toString() },
     { conversationId: conv2._id, tenantId: T, labelId: lEnvio._id, assignedBy: carlos._id.toString() },
-    { conversationId: conv3._id, tenantId: T, labelId: lNuevo._id, assignedBy: ana._id.toString() },
+    { conversationId: conv3._id, tenantId: T, labelId: lNuevo._id, assignedBy: sofia._id.toString() },
     { conversationId: conv5._id, tenantId: T, labelId: lDevolucion._id, assignedBy: sofia._id.toString() },
     { conversationId: conv6._id, tenantId: T, labelId: lEnvio._id, assignedBy: ana._id.toString() },
+    { conversationId: conv7._id, tenantId: T, labelId: lNuevo._id, assignedBy: sofia._id.toString() },
+    { conversationId: conv8._id, tenantId: T, labelId: lMayorista._id, assignedBy: sofia._id.toString() },
   ]);
-  console.log(`+ 6 conversation-label assignments`);
+  console.log(`+ 8 conversation-label assignments`);
 
   // ── Done ──
   console.log('\n--- Demo seed complete ---');
