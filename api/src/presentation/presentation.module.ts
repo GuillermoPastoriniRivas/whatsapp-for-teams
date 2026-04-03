@@ -49,6 +49,7 @@ import { ResolveConversationUseCase } from '../application/use-cases/conversatio
 import { GetConversationEventsUseCase } from '../application/use-cases/conversation/get-conversation-events.use-case.js';
 import { AddConversationNoteUseCase } from '../application/use-cases/conversation/add-conversation-note.use-case.js';
 import { GetConversationNotesUseCase } from '../application/use-cases/conversation/get-conversation-notes.use-case.js';
+import { DemoAiReplyUseCase } from '../application/use-cases/conversation/demo-ai-reply.use-case.js';
 
 // Use Cases — Contact
 import { UpdateContactUseCase } from '../application/use-cases/contact/update-contact.use-case.js';
@@ -233,6 +234,12 @@ const useCaseProviders = [
     provide: 'GetConversationNotesUseCase',
     useFactory: (noteRepo: any) => new GetConversationNotesUseCase(noteRepo),
     inject: ['ConversationNoteRepository'],
+  },
+  {
+    provide: 'DemoAiReplyUseCase',
+    useFactory: (convRepo: any, msgRepo: any, agentRepo: any, tenantRepo: any, gateway: any) =>
+      new DemoAiReplyUseCase(convRepo, msgRepo, agentRepo, tenantRepo, gateway),
+    inject: ['ConversationRepository', 'MessageRepository', 'AgentRepository', 'TenantRepository', 'RealtimeGatewayPort'],
   },
   {
     provide: 'ResolveConversationUseCase',

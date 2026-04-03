@@ -118,6 +118,21 @@ const ConversationNoteSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+const LabelSchema = new Schema({
+  tenantId: Types.ObjectId,
+  name: String,
+  color: String,
+  createdAt: { type: Date, default: Date.now },
+});
+
+const ConversationLabelSchema = new Schema({
+  conversationId: Types.ObjectId,
+  tenantId: Types.ObjectId,
+  labelId: Types.ObjectId,
+  assignedBy: String,
+  createdAt: { type: Date, default: Date.now },
+});
+
 const AiAgentConfigSchema = new Schema({
   agentId: Types.ObjectId,
   tenantId: Types.ObjectId,
@@ -154,6 +169,8 @@ async function seedDemo() {
   const ConvEvent = model('ConversationEvent', ConversationEventSchema, 'conversation_events');
   const ConvNote = model('ConversationNote', ConversationNoteSchema, 'conversation_notes');
   const AiConfig = model('AiAgentConfig', AiAgentConfigSchema, 'ai_agent_configs');
+  const Label = model('Label', LabelSchema, 'labels');
+  const ConvLabel = model('ConversationLabel', ConversationLabelSchema, 'conversation_labels');
 
   // ── 1. Clean existing demo data ──
   const existingTenant = await Tenant.findOne({ slug: 'demo-asis-chat' });
@@ -173,6 +190,8 @@ async function seedDemo() {
     await Conversation.deleteMany({ tenantId: tid });
     await Contact.deleteMany({ tenantId: tid });
     await AiConfig.deleteMany({ tenantId: tid });
+    await ConvLabel.deleteMany({ tenantId: tid });
+    await Label.deleteMany({ tenantId: tid });
     await Access.deleteMany({ agentId: { $in: agentIds } });
     await PhoneNumber.deleteMany({ tenantId: tid });
     await Agent.deleteMany({ tenantId: tid });
@@ -416,6 +435,29 @@ async function seedDemo() {
     },
   ]);
   console.log(`+ 2 conversation notes`);
+
+  // ── 11. Labels ──
+  const labels = await Label.insertMany([
+    { tenantId: T, name: 'VIP', color: '#f59e0b' },
+    { tenantId: T, name: 'Urgente', color: '#ef4444' },
+    { tenantId: T, name: 'Nuevo', color: '#3b82f6' },
+    { tenantId: T, name: 'Envio', color: '#8b5cf6' },
+    { tenantId: T, name: 'Devolucion', color: '#f97316' },
+    { tenantId: T, name: 'Mayorista', color: '#10b981' },
+  ]);
+  const [lVip, lUrgente, lNuevo, lEnvio, lDevolucion] = labels;
+  console.log(`+ 6 labels`);
+
+  // ── 12. Conversation Labels ──
+  await ConvLabel.insertMany([
+    { conversationId: conv1._id, tenantId: T, labelId: lVip._id, assignedBy: ana._id.toString() },
+    { conversationId: conv2._id, tenantId: T, labelId: lUrgente._id, assignedBy: carlos._id.toString() },
+    { conversationId: conv2._id, tenantId: T, labelId: lEnvio._id, assignedBy: carlos._id.toString() },
+    { conversationId: conv3._id, tenantId: T, labelId: lNuevo._id, assignedBy: ana._id.toString() },
+    { conversationId: conv5._id, tenantId: T, labelId: lDevolucion._id, assignedBy: sofia._id.toString() },
+    { conversationId: conv6._id, tenantId: T, labelId: lEnvio._id, assignedBy: ana._id.toString() },
+  ]);
+  console.log(`+ 6 conversation-label assignments`);
 
   // ── Done ──
   console.log('\n--- Demo seed complete ---');

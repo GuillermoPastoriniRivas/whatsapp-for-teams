@@ -72,6 +72,18 @@ export const useMessageStore = create<MessageState>((set, get) => ({
       { body }
     );
     get().appendMessage(conversationId, message);
+
+    // Trigger mock AI reply in demo mode
+    try {
+      const stored = localStorage.getItem("agent");
+      const agent = stored ? JSON.parse(stored) : null;
+      if (agent?.email === "demo@asis.chat") {
+        api.post(`/conversations/${conversationId}/demo-ai-reply`).catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
+
     return message;
   },
 }));

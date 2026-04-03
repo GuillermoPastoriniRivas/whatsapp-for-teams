@@ -5,10 +5,17 @@ import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
 import { onUnauthorized } from "@/lib/api";
 import { onSocketAuthError, reconnectSocket } from "@/lib/socket";
+
+function isDemoHost(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.hostname.includes("demo.");
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const agent = useAuthStore((s) => s.agent);
   const [hydrated, setHydrated] = useState(false);
+  const [autoLoggingIn, setAutoLoggingIn] = useState(false);
 
   useEffect(() => {
     const forceLogout = () => {
@@ -40,12 +47,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
+
+    // Auto-login for demo subdomain
+    if (!agent && isDemoHost()) {
+      setAutoLoggingIn(true);
+      useAuthStore
+        .getState()
+        .demoLogin()
+        .then(() => {
+          setAutoLoggingIn(false);
+          if (useAuthStore.getState().agent) {
+            window.location.href = "/conversations";
+          }
+        })
+        .catch(() => {
+          setAutoLoggingIn(false);
+        });
+      return;
+    }
+
     if (!agent && pathname !== "/login") {
       window.location.href = "/login";
     }
   }, [hydrated, agent, pathname]);
 
-  if (!hydrated) return null;
+  if (!hydrated || autoLoggingIn) return null;
 
   return <>{children}</>;
 }

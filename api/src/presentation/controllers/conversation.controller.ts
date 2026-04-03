@@ -29,6 +29,7 @@ import { AddNoteRequestSchema } from '../request-dtos/add-note-request.dto.js';
 import type { AddNoteRequestDto } from '../request-dtos/add-note-request.dto.js';
 import { AssignLabelRequestSchema } from '../request-dtos/assign-label-request.dto.js';
 import type { AssignLabelRequestDto } from '../request-dtos/assign-label-request.dto.js';
+import { DemoAiReplyUseCase } from '../../application/use-cases/conversation/demo-ai-reply.use-case.js';
 import { DomainError } from '../../domain/errors/domain-errors.js';
 import type { ContactRepository } from '../../domain/repositories/contact.repository.js';
 import type { AgentRepository } from '../../domain/repositories/agent.repository.js';
@@ -58,6 +59,7 @@ export class ConversationController {
     @Inject('PhoneNumberRepository') private readonly phoneRepo: PhoneNumberRepository,
     @Inject('ConversationLabelRepository') private readonly convLabelRepo: ConversationLabelRepository,
     @Inject('LabelRepository') private readonly labelRepo: LabelRepository,
+    @Inject('DemoAiReplyUseCase') private readonly demoAiReply: DemoAiReplyUseCase,
   ) {}
 
   @Get()
@@ -229,6 +231,16 @@ export class ConversationController {
       throw new NotFoundException(error.message);
     }
     return result.value;
+  }
+
+  @Post(':id/demo-ai-reply')
+  @ApiOperation({ summary: 'Trigger demo AI reply', description: 'Triggers a mock AI reply for demo conversations assigned to AI agents' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 201, description: 'Demo AI reply triggered' })
+  async demoAiReplyEndpoint(@Param('id') id: string) {
+    // Fire and forget — the use case handles validation and delay internally
+    this.demoAiReply.execute(id).catch(() => {});
+    return { ok: true };
   }
 
   @Get(':id/notes')

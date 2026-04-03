@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PresentationModule } from './presentation/presentation.module.js';
+import { DemoModule } from './infrastructure/demo/demo.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import appConfig from './config/app.config.js';
@@ -19,6 +20,7 @@ import appConfig from './config/app.config.js';
       }),
     }),
     PresentationModule,
+    DemoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

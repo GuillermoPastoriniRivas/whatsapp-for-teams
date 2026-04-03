@@ -73,7 +73,15 @@ export default function LandingPage() {
   useEffect(() => {
     useAuthStore.getState().hydrate();
     setHydrated(true);
-  }, []);
+
+    // Skip landing page on demo subdomain
+    const isDemo =
+      typeof window !== "undefined" && window.location.hostname.includes("demo.");
+    if (isDemo) {
+      router.replace("/conversations");
+      return;
+    }
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-primary/20 selection:text-primary-foreground font-sans overflow-x-hidden">
