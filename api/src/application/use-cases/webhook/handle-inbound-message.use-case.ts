@@ -61,13 +61,14 @@ export class HandleInboundMessageUseCase {
         lastInboundAt: now,
       });
 
-      await this.eventRepo.create({
+      const createdEvent = await this.eventRepo.create({
         conversationId: conversation.id,
         tenantId,
         type: ConversationEventType.CREATED,
         performedBy: null,
         data: { contactName: contact.name, contactPhone: contact.phone },
       });
+      this.gateway.emitToConversation(conversation.id, 'conversation.event', createdEvent);
 
       needsAssignment = true;
     } else if (conversation.status === ConversationStatus.RESOLVED) {
@@ -81,13 +82,14 @@ export class HandleInboundMessageUseCase {
       } as any);
       conversation = (await this.conversationRepo.findById(conversation.id))!;
 
-      await this.eventRepo.create({
+      const reopenedEvent = await this.eventRepo.create({
         conversationId: conversation.id,
         tenantId,
         type: ConversationEventType.REOPENED,
         performedBy: null,
         data: { previouslyResolvedAt },
       });
+      this.gateway.emitToConversation(conversation.id, 'conversation.event', reopenedEvent);
 
       needsAssignment = true;
     }

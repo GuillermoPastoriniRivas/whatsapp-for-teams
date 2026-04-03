@@ -40,13 +40,14 @@ export class ResolveConversationUseCase {
       agentId: null,
     } as any);
 
-    await this.eventRepo.create({
+    const event = await this.eventRepo.create({
       conversationId: conversation.id,
       tenantId: conversation.tenantId,
       type: ConversationEventType.RESOLVED,
       performedBy: input.agentId,
       data: { agentId: input.agentId, agentName: agent?.name ?? 'Unknown' },
     });
+    this.gateway.emitToConversation(conversation.id, 'conversation.event', event);
 
     this.gateway.emitToTenant(conversation.tenantId, 'conversation.resolved', {
       conversationId: conversation.id,

@@ -174,6 +174,10 @@ export interface AiAgentConfig {
   isActive: boolean;
 }
 
+export type ChatItem =
+  | { kind: "message"; data: Message }
+  | { kind: "event"; data: ConversationEvent };
+
 export interface AiAgentWithConfig {
   id: string;
   name: string;

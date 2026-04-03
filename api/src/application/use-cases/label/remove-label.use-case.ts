@@ -38,13 +38,14 @@ export class RemoveLabelUseCase {
     const agent = await this.agentRepo.findById(input.agentId);
     const agentName = agent?.name ?? 'Unknown';
 
-    await this.eventRepo.create({
+    const event = await this.eventRepo.create({
       conversationId: input.conversationId,
       tenantId: input.tenantId,
       type: ConversationEventType.LABEL_REMOVED,
       performedBy: input.agentId,
       data: { agentName, labelName, labelColor },
     });
+    this.gateway.emitToConversation(input.conversationId, 'conversation.event', event);
 
     this.gateway.emitToConversation(input.conversationId, 'label.removed', {
       conversationId: input.conversationId,

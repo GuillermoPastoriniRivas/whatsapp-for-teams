@@ -46,13 +46,14 @@ export class HandoffToHumanUseCase {
     });
 
     // Create handoff event
-    await this.eventRepo.create({
+    const event = await this.eventRepo.create({
       conversationId: input.conversationId,
       tenantId: input.tenantId,
       type: ConversationEventType.HANDOFF,
       performedBy: input.aiAgentId,
       data: { reason: input.reason, aiAgentName: aiName },
     });
+    this.gateway.emitToConversation(input.conversationId, 'conversation.event', event);
 
     // Decrement AI agent's active count
     await this.agentRepo.incrementActiveCount(input.aiAgentId, -1);

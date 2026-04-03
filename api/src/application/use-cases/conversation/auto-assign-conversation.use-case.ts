@@ -44,13 +44,14 @@ export class AutoAssignConversationUseCase {
         status: ConversationStatus.UNASSIGNED,
       } as any);
 
-      await this.eventRepo.create({
+      const event = await this.eventRepo.create({
         conversationId,
         tenantId: conversation.tenantId,
         type: ConversationEventType.UNASSIGNED,
         performedBy: null,
         data: { reason: 'No available agents' },
       });
+      this.gateway.emitToConversation(conversationId, 'conversation.event', event);
 
       this.gateway.emitToTenant(conversation.tenantId, 'conversation.unassigned', { conversationId });
       return null;
@@ -62,13 +63,14 @@ export class AutoAssignConversationUseCase {
       status: ConversationStatus.ACTIVE,
     } as any);
 
-    await this.eventRepo.create({
+    const assignEvent = await this.eventRepo.create({
       conversationId,
       tenantId: conversation.tenantId,
       type: ConversationEventType.ASSIGNED,
       performedBy: null,
       data: { agentId: agent.id, agentName: agent.name, auto: true },
     });
+    this.gateway.emitToConversation(conversationId, 'conversation.event', assignEvent);
 
     this.gateway.emitToAgent(agent.id, 'conversation.new', { conversationId });
 

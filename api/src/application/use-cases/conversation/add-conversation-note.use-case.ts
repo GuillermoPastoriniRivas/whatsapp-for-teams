@@ -39,13 +39,14 @@ export class AddConversationNoteUseCase {
       body: input.body,
     });
 
-    await this.eventRepo.create({
+    const event = await this.eventRepo.create({
       conversationId: input.conversationId,
       tenantId: input.tenantId,
       type: ConversationEventType.NOTE_ADDED,
       performedBy: input.agentId,
       data: { agentName: authorName, bodyPreview: input.body.substring(0, 80) },
     });
+    this.gateway.emitToConversation(input.conversationId, 'conversation.event', event);
 
     this.gateway.emitToConversation(input.conversationId, 'note.new', note);
 

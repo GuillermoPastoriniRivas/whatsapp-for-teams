@@ -50,7 +50,7 @@ export class AssignConversationUseCase {
 
     // Write event
     const isReassign = !!oldAgentId;
-    await this.eventRepo.create({
+    const event = await this.eventRepo.create({
       conversationId: conversation.id,
       tenantId: conversation.tenantId,
       type: isReassign ? ConversationEventType.REASSIGNED : ConversationEventType.ASSIGNED,
@@ -59,6 +59,7 @@ export class AssignConversationUseCase {
         ? { fromAgentId: oldAgentId, fromAgentName: oldAgentName, toAgentId: input.agentId, toAgentName: newAgent.name }
         : { agentId: input.agentId, agentName: newAgent.name },
     });
+    this.gateway.emitToConversation(conversation.id, 'conversation.event', event);
 
     this.gateway.emitToAgent(input.agentId, 'conversation.assigned', updated);
 

@@ -44,13 +44,14 @@ export class AssignLabelUseCase {
       const agent = await this.agentRepo.findById(input.agentId);
       const agentName = agent?.name ?? 'Unknown';
 
-      await this.eventRepo.create({
+      const event = await this.eventRepo.create({
         conversationId: input.conversationId,
         tenantId: input.tenantId,
         type: ConversationEventType.LABEL_ADDED,
         performedBy: input.agentId,
         data: { agentName, labelName: label.name, labelColor: label.color },
       });
+      this.gateway.emitToConversation(input.conversationId, 'conversation.event', event);
 
       this.gateway.emitToConversation(input.conversationId, 'label.assigned', {
         conversationId: input.conversationId,
