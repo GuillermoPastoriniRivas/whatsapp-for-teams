@@ -98,6 +98,8 @@ const translations = {
       unknown: "Desconocido",
       unassigned: "Sin asignar",
       sendError: "Error al enviar mensaje",
+      today: "Hoy",
+      yesterday: "Ayer",
     },
     contacts: {
       title: "Contactos",
@@ -376,6 +378,8 @@ const translations = {
       unknown: "Unknown",
       unassigned: "Unassigned",
       sendError: "Failed to send message",
+      today: "Today",
+      yesterday: "Yesterday",
     },
     contacts: {
       title: "Contacts",

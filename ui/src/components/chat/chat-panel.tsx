@@ -13,7 +13,51 @@ import { RightPanel } from "@/components/layout/right-panel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getSocket } from "@/lib/socket";
 import { useIsDesktop } from "@/lib/use-is-desktop";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import type { ChatItem, ConversationEvent } from "@/types";
+
+function formatDateLabel(
+  dateStr: string,
+  locale: "es" | "en",
+  labels: { today: string; yesterday: string },
+): string {
+  const loc = locale === "es" ? "es" : "en";
+  const d = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = today.getTime() - target.getTime();
+  const dayMs = 86_400_000;
+
+  if (diff === 0) return labels.today;
+  if (diff === dayMs) return labels.yesterday;
+  if (diff < 7 * dayMs) {
+    return d.toLocaleDateString(loc, { weekday: "long" });
+  }
+  return d.toLocaleDateString(loc, {
+    day: "numeric",
+    month: "long",
+    year: d.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+  });
+}
+
+function DateSeparator({
+  date,
+  locale,
+  labels,
+}: {
+  date: string;
+  locale: "es" | "en";
+  labels: { today: string; yesterday: string };
+}) {
+  return (
+    <div className="flex justify-center my-3">
+      <span className="bg-muted/80 dark:bg-muted/50 rounded-lg px-3 py-1 text-xs text-muted-foreground font-medium shadow-sm">
+        {formatDateLabel(date, locale, labels)}
+      </span>
+    </div>
+  );
+}
 
 const INLINE_EVENT_TYPES = new Set([
   "assigned",
@@ -36,6 +80,7 @@ export function ChatPanel({ conversationId }: Props) {
   const conversation = useConversationStore((s) =>
     s.conversations.find((c) => c.id === conversationId)
   );
+  const { t, locale } = useTranslations();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const convMessages = messages[conversationId] || [];
   const convEvents = events[conversationId] || [];
@@ -49,7 +94,11 @@ export function ChatPanel({ conversationId }: Props) {
   }, [isDesktop]);
 
   const chatItems: ChatItem[] = useMemo(() => {
-    const items: ChatItem[] = [
+    type TimelineItem =
+      | { kind: "message"; data: (typeof convMessages)[number] }
+      | { kind: "event"; data: ConversationEvent };
+
+    const items: TimelineItem[] = [
       ...convMessages.map((m) => ({ kind: "message" as const, data: m })),
       ...convEvents
         .filter((e) => INLINE_EVENT_TYPES.has(e.type))
@@ -60,7 +109,21 @@ export function ChatPanel({ conversationId }: Props) {
       const tB = b.kind === "message" ? b.data.timestamp : b.data.createdAt;
       return new Date(tA).getTime() - new Date(tB).getTime();
     });
-    return items;
+
+    // Insert date separators when the day changes
+    const withDates: ChatItem[] = [];
+    let lastDate = "";
+    for (const item of items) {
+      const ts =
+        item.kind === "message" ? item.data.timestamp : item.data.createdAt;
+      const dateKey = new Date(ts).toDateString();
+      if (dateKey !== lastDate) {
+        withDates.push({ kind: "date", date: ts });
+        lastDate = dateKey;
+      }
+      withDates.push(item);
+    }
+    return withDates;
   }, [convMessages, convEvents]);
 
   useEffect(() => {
@@ -118,7 +181,9 @@ export function ChatPanel({ conversationId }: Props) {
         <ScrollArea ref={scrollAreaRef} className="flex-1 overflow-hidden w-full px-4 sm:px-[5%] md:px-[10%] lg:px-[15%]">
           <div className="flex flex-col py-6 min-h-full">
             {chatItems.map((item) =>
-              item.kind === "message" ? (
+              item.kind === "date" ? (
+                <DateSeparator key={`date-${item.date}`} date={item.date} locale={locale} labels={t.chat} />
+              ) : item.kind === "message" ? (
                 <MessageBubble key={item.data.id} message={item.data} />
               ) : (
                 <EventBubble key={item.data.id} event={item.data} />

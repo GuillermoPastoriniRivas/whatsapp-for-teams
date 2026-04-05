@@ -234,7 +234,8 @@ export interface SubscriptionInfo {
 
 export type ChatItem =
   | { kind: "message"; data: Message }
-  | { kind: "event"; data: ConversationEvent };
+  | { kind: "event"; data: ConversationEvent }
+  | { kind: "date"; date: string };
 
 export interface AiAgentWithConfig {
   id: string;
