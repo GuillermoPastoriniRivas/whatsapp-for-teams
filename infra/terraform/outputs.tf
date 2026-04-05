@@ -12,3 +12,15 @@ output "ssh_command" {
   description = "SSH command to connect"
   value       = "ssh -i ~/.ssh/${var.key_name}.pem ubuntu@${aws_eip.hivvo.public_ip}"
 }
+
+# ─── Email / Route 53 ───
+
+output "route53_nameservers" {
+  description = "Set these 4 nameservers in GoDaddy to delegate DNS to Route 53"
+  value       = aws_route53_zone.asis_chat.name_servers
+}
+
+output "ses_domain_identity_arn" {
+  description = "SES domain identity ARN (use in IAM policies if needed)"
+  value       = aws_ses_domain_identity.asis_chat.arn
+}
