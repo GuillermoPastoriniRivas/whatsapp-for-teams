@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UsePipes, Inject, HttpCode, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Get, Body, UsePipes, Inject, HttpCode, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { LoginUseCase } from '../../application/use-cases/auth/login.use-case.js';
@@ -6,6 +6,8 @@ import { RefreshTokenUseCase } from '../../application/use-cases/auth/refresh-to
 import { GetCurrentAgentUseCase } from '../../application/use-cases/auth/get-current-agent.use-case.js';
 import { DemoLoginUseCase } from '../../application/use-cases/auth/demo-login.use-case.js';
 import { GoogleLoginUseCase } from '../../application/use-cases/auth/google-login.use-case.js';
+import { ForgotPasswordUseCase } from '../../application/use-cases/auth/forgot-password.use-case.js';
+import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-password.use-case.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import { LoginRequestSchema } from '../request-dtos/login-request.dto.js';
 import type { LoginRequestDto } from '../request-dtos/login-request.dto.js';
@@ -13,6 +15,10 @@ import { RefreshTokenRequestSchema } from '../request-dtos/refresh-token-request
 import type { RefreshTokenRequestDto } from '../request-dtos/refresh-token-request.dto.js';
 import { GoogleLoginRequestSchema } from '../request-dtos/google-login-request.dto.js';
 import type { GoogleLoginRequestDto } from '../request-dtos/google-login-request.dto.js';
+import { ForgotPasswordRequestSchema } from '../request-dtos/forgot-password-request.dto.js';
+import type { ForgotPasswordRequestDto } from '../request-dtos/forgot-password-request.dto.js';
+import { ResetPasswordRequestSchema } from '../request-dtos/reset-password-request.dto.js';
+import type { ResetPasswordRequestDto } from '../request-dtos/reset-password-request.dto.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { Public } from '../decorators/public.decorator.js';
@@ -26,6 +32,8 @@ export class AuthController {
     @Inject('GetCurrentAgentUseCase') private readonly getCurrentAgentUseCase: GetCurrentAgentUseCase,
     @Inject('DemoLoginUseCase') private readonly demoLoginUseCase: DemoLoginUseCase,
     @Inject('GoogleLoginUseCase') private readonly googleLoginUseCase: GoogleLoginUseCase,
+    @Inject('ForgotPasswordUseCase') private readonly forgotPasswordUseCase: ForgotPasswordUseCase,
+    @Inject('ResetPasswordUseCase') private readonly resetPasswordUseCase: ResetPasswordUseCase,
   ) {}
 
   @Public()
@@ -121,6 +129,51 @@ export class AuthController {
     const result = await this.googleLoginUseCase.execute(body);
     if (!result.ok) throw new UnauthorizedException(result.error.message);
     return result.value;
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(200)
+  @Throttle({ short: { ttl: 60000, limit: 3 } })
+  @UsePipes(new ZodValidationPipe(ForgotPasswordRequestSchema))
+  @ApiOperation({ summary: 'Forgot password', description: 'Send a password reset email. Always returns 200 to prevent email enumeration.' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: { type: 'string', format: 'email', example: 'agent@company.com' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Reset email sent if the account exists' })
+  async forgotPassword(@Body() body: ForgotPasswordRequestDto) {
+    await this.forgotPasswordUseCase.execute(body);
+    return { message: 'If an account with that email exists, a reset link has been sent.' };
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(200)
+  @Throttle({ short: { ttl: 60000, limit: 5 } })
+  @UsePipes(new ZodValidationPipe(ResetPasswordRequestSchema))
+  @ApiOperation({ summary: 'Reset password', description: 'Set a new password using a reset token received via email.' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['token', 'password'],
+      properties: {
+        token: { type: 'string' },
+        password: { type: 'string', minLength: 8 },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  async resetPassword(@Body() body: ResetPasswordRequestDto) {
+    const result = await this.resetPasswordUseCase.execute(body);
+    if (!result.ok) throw new BadRequestException(result.error.message);
+    return { message: 'Password has been reset successfully.' };
   }
 
   @Get('me')

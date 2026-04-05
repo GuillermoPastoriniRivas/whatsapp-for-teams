@@ -102,4 +102,9 @@ export class MongoAgentRepository implements AgentRepository {
     const docs = await this.model.find({ tenantId: new Types.ObjectId(tenantId), type }).sort({ createdAt: 1 });
     return docs.map(AgentMapper.toDomain);
   }
+
+  async updatePasswordHash(id: string, passwordHash: string): Promise<Agent | null> {
+    const doc = await this.model.findByIdAndUpdate(id, { $set: { passwordHash } }, { returnDocument: 'after' });
+    return doc ? AgentMapper.toDomain(doc) : null;
+  }
 }

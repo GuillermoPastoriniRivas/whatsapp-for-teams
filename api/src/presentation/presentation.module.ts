@@ -23,6 +23,8 @@ import { RefreshTokenUseCase } from '../application/use-cases/auth/refresh-token
 import { GetCurrentAgentUseCase } from '../application/use-cases/auth/get-current-agent.use-case.js';
 import { DemoLoginUseCase } from '../application/use-cases/auth/demo-login.use-case.js';
 import { GoogleLoginUseCase } from '../application/use-cases/auth/google-login.use-case.js';
+import { ForgotPasswordUseCase } from '../application/use-cases/auth/forgot-password.use-case.js';
+import { ResetPasswordUseCase } from '../application/use-cases/auth/reset-password.use-case.js';
 
 // Use Cases — Agent
 import { CreateAgentUseCase } from '../application/use-cases/agent/create-agent.use-case.js';
@@ -139,6 +141,18 @@ const useCaseProviders = [
     useFactory: (agentRepo: any, refreshTokenRepo: any, tokenProvider: any, tenantRepo: any) =>
       new GoogleLoginUseCase(agentRepo, refreshTokenRepo, tokenProvider, tenantRepo, process.env.GOOGLE_CLIENT_ID ?? ''),
     inject: ['AgentRepository', 'RefreshTokenRepository', 'TokenProviderPort', 'TenantRepository'],
+  },
+  {
+    provide: 'ForgotPasswordUseCase',
+    useFactory: (agentRepo: any, resetTokenRepo: any, jobQueue: any) =>
+      new ForgotPasswordUseCase(agentRepo, resetTokenRepo, jobQueue, process.env.FRONTEND_URL ?? 'http://localhost:3001', process.env.SES_FROM_EMAIL ?? 'no-reply@asis.chat'),
+    inject: ['AgentRepository', 'PasswordResetTokenRepository', 'JobQueuePort'],
+  },
+  {
+    provide: 'ResetPasswordUseCase',
+    useFactory: (resetTokenRepo: any, agentRepo: any, refreshTokenRepo: any, hasher: any) =>
+      new ResetPasswordUseCase(resetTokenRepo, agentRepo, refreshTokenRepo, hasher),
+    inject: ['PasswordResetTokenRepository', 'AgentRepository', 'RefreshTokenRepository', 'PasswordHasherPort'],
   },
 
   // Agent

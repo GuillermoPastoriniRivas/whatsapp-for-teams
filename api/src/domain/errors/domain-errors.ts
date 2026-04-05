@@ -94,3 +94,15 @@ export class SubscriptionNotFoundError extends DomainError {
     super('SUBSCRIPTION_NOT_FOUND', 'No active subscription found for this tenant.');
   }
 }
+
+export class InvalidTokenError extends DomainError {
+  constructor() {
+    super('INVALID_TOKEN', 'The token is invalid or has already been used.');
+  }
+}
+
+export class TokenExpiredError extends DomainError {
+  constructor() {
+    super('TOKEN_EXPIRED', 'The token has expired. Please request a new one.');
+  }
+}

@@ -17,4 +17,5 @@ export interface AgentRepository {
   countByTenantIdAndType(tenantId: string, type: AgentType): Promise<number>;
   updateFrozen(id: string, frozen: boolean): Promise<Agent | null>;
   findByTenantIdAndType(tenantId: string, type: AgentType): Promise<Agent[]>;
+  updatePasswordHash(id: string, passwordHash: string): Promise<Agent | null>;
 }
