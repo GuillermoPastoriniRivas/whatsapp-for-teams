@@ -93,6 +93,7 @@ import { LabelController } from './controllers/label.controller.js';
 
 // Controllers — Billing
 import { BillingController } from './controllers/billing.controller.js';
+import { PaymentWebhookController } from './controllers/payment-webhook.controller.js';
 
 // Use Cases — Billing
 import { SubscribeUseCase } from '../application/use-cases/billing/subscribe.use-case.js';
@@ -103,6 +104,8 @@ import { GetBillingHistoryUseCase } from '../application/use-cases/billing/get-b
 import { CheckPlanLimitUseCase } from '../application/use-cases/billing/check-plan-limit.use-case.js';
 import { EnforcePlanLimitsUseCase } from '../application/use-cases/billing/enforce-plan-limits.use-case.js';
 import { ToggleResourceUseCase } from '../application/use-cases/billing/toggle-resource.use-case.js';
+import { CreateCheckoutUseCase } from '../application/use-cases/billing/create-checkout.use-case.js';
+import { HandlePaymentWebhookUseCase } from '../application/use-cases/billing/handle-payment-webhook.use-case.js';
 
 // Guards — Plan Limit
 import { PlanLimitGuard } from './guards/plan-limit.guard.js';
@@ -429,8 +432,8 @@ const useCaseProviders = [
   },
   {
     provide: 'CancelSubscriptionUseCase',
-    useFactory: (subRepo: any, billingRepo: any, enforce: any) => new CancelSubscriptionUseCase(subRepo, billingRepo, enforce),
-    inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase'],
+    useFactory: (subRepo: any, billingRepo: any, enforce: any, paymentProvider: any) => new CancelSubscriptionUseCase(subRepo, billingRepo, enforce, paymentProvider),
+    inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase', 'PaymentProviderPort'],
   },
   {
     provide: 'GetSubscriptionUseCase',
@@ -448,6 +451,18 @@ const useCaseProviders = [
       new CheckPlanLimitUseCase(subRepo, phoneRepo, agentRepo, convRepo, aiConfigRepo),
     inject: ['SubscriptionRepository', 'PhoneNumberRepository', 'AgentRepository', 'ConversationRepository', 'AiAgentConfigRepository'],
   },
+  {
+    provide: 'CreateCheckoutUseCase',
+    useFactory: (subRepo: any, agentRepo: any, paymentProvider: any, providerResolver: any) =>
+      new CreateCheckoutUseCase(subRepo, agentRepo, paymentProvider, providerResolver),
+    inject: ['SubscriptionRepository', 'AgentRepository', 'PaymentProviderPort', 'PaymentProviderResolverPort'],
+  },
+  {
+    provide: 'HandlePaymentWebhookUseCase',
+    useFactory: (subRepo: any, billingRepo: any, enforce: any) =>
+      new HandlePaymentWebhookUseCase(subRepo, billingRepo, enforce),
+    inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase'],
+  },
 ];
 
 @Module({
@@ -463,6 +478,7 @@ const useCaseProviders = [
     AiAgentController,
     LabelController,
     BillingController,
+    PaymentWebhookController,
   ],
   providers: [
     ...useCaseProviders,

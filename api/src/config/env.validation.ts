@@ -13,4 +13,10 @@ export interface EnvironmentVariables {
   SES_FROM_EMAIL?: string;
   SES_REPLY_TO_EMAIL?: string;
   FRONTEND_URL?: string;
+  LEMON_SQUEEZY_API_KEY?: string;
+  LEMON_SQUEEZY_STORE_ID?: string;
+  LEMON_SQUEEZY_WEBHOOK_SECRET?: string;
+  LEMON_SQUEEZY_VARIANT_PRO?: string;
+  LEMON_SQUEEZY_VARIANT_BUSINESS?: string;
+  LEMON_SQUEEZY_VARIANT_AGENCIES?: string;
 }

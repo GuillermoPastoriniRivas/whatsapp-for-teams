@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
 import { useBillingStore } from "@/stores/billing.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
@@ -17,6 +17,7 @@ import {
   Building2,
   MessageSquare,
   ArrowLeft,
+  ExternalLink,
 } from "lucide-react";
 import type { PlanTier } from "@/types";
 
@@ -38,6 +39,8 @@ export default function BillingPage() {
   const router = useRouter();
   const agent = useAuthStore((s) => s.agent);
   const { t } = useTranslations();
+  const searchParams = useSearchParams();
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const {
     subscription,
     plan,
@@ -48,8 +51,11 @@ export default function BillingPage() {
     fetchUsage,
     fetchHistory,
     subscribe,
+    checkout,
+    getPortalUrl,
     changePlan,
     cancelSubscription,
+    pollSubscription,
   } = useBillingStore();
 
   useEffect(() => {
@@ -62,6 +68,17 @@ export default function BillingPage() {
     fetchHistory();
   }, [agent]);
 
+  // Handle post-checkout success redirect
+  useEffect(() => {
+    if (searchParams.get("success") === "true" && !checkoutSuccess) {
+      setCheckoutSuccess(true);
+      pollSubscription().then(() => {
+        fetchUsage();
+        fetchHistory();
+      });
+    }
+  }, [searchParams]);
+
   const planNames: Record<PlanTier, string> = {
     free: t.billing.freePlan,
     pro: t.billing.proPlan,
@@ -73,19 +90,36 @@ export default function BillingPage() {
     subscription_created: t.billing.subscriptionCreated,
     plan_changed: t.billing.planChanged,
     payment_success: t.billing.paymentSuccess,
+    payment_failed: t.billing.paymentFailed,
     subscription_canceled: t.billing.subscriptionCanceled,
+    subscription_renewed: t.billing.subscriptionRenewed,
   };
 
   const handlePlanAction = async (targetPlan: PlanTier) => {
     if (targetPlan === plan) return;
-    if (!subscription || subscription.status === "canceled") {
-      await subscribe(targetPlan);
-    } else {
-      await changePlan(targetPlan);
+
+    // Downgrade to free: cancel subscription
+    if (targetPlan === "free") {
+      await cancelSubscription();
+      fetchSubscription();
+      fetchUsage();
+      fetchHistory();
+      return;
     }
-    fetchSubscription();
-    fetchUsage();
-    fetchHistory();
+
+    // Paid plans: redirect to external checkout
+    if (!subscription || subscription.status === "canceled" || subscription.paymentProvider === "none") {
+      await checkout(targetPlan);
+      return;
+    }
+
+    // Already has external subscription: create new checkout for plan change
+    await checkout(targetPlan);
+  };
+
+  const handleManagePayment = async () => {
+    const url = await getPortalUrl();
+    if (url) window.open(url, "_blank");
   };
 
   const formatLimit = (current: number, limit: number) => {
@@ -116,6 +150,13 @@ export default function BillingPage() {
           <h1 className="text-2xl font-bold">{t.billing.title}</h1>
         </div>
       </div>
+
+      {/* Checkout Success Banner */}
+      {checkoutSuccess && (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          {isLoading ? t.billing.processingPayment : t.billing.checkoutSuccess}
+        </div>
+      )}
 
       {/* Current Plan + Usage */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -188,19 +229,32 @@ export default function BillingPage() {
               </div>
             )}
             {subscription && subscription.status === "active" && plan !== "free" && !subscription.scheduledPlan && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-red-600 border-red-200 hover:bg-red-50"
-                onClick={async () => {
-                  await cancelSubscription();
-                  fetchSubscription();
-                  fetchHistory();
-                }}
-                disabled={isLoading}
-              >
-                {t.billing.cancelSubscription}
-              </Button>
+              <div className="flex items-center gap-2">
+                {subscription.paymentProvider !== "none" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManagePayment}
+                    disabled={isLoading}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                    {t.billing.managePayment}
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={async () => {
+                    await cancelSubscription();
+                    fetchSubscription();
+                    fetchHistory();
+                  }}
+                  disabled={isLoading}
+                >
+                  {t.billing.cancelSubscription}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

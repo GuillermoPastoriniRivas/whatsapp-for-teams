@@ -31,4 +31,14 @@ export default () => ({
     replyToEmail: process.env.SES_REPLY_TO_EMAIL ?? 'contact@asis.chat',
   },
   frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3001',
+  lemonSqueezy: {
+    apiKey: process.env.LEMON_SQUEEZY_API_KEY ?? '',
+    storeId: process.env.LEMON_SQUEEZY_STORE_ID ?? '',
+    webhookSecret: process.env.LEMON_SQUEEZY_WEBHOOK_SECRET ?? '',
+    variants: {
+      pro: process.env.LEMON_SQUEEZY_VARIANT_PRO ?? '',
+      business: process.env.LEMON_SQUEEZY_VARIANT_BUSINESS ?? '',
+      agencies: process.env.LEMON_SQUEEZY_VARIANT_AGENCIES ?? '',
+    },
+  },
 });

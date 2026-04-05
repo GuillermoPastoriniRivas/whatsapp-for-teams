@@ -1,5 +1,6 @@
 import { Subscription } from '../../../../domain/entities/subscription.entity.js';
 import { PlanTier } from '../../../../domain/enums/plan-tier.enum.js';
+import { PaymentProvider } from '../../../../domain/enums/payment-provider.enum.js';
 import { SubscriptionStatus } from '../../../../domain/enums/subscription-status.enum.js';
 import { SubscriptionDocument } from '../schemas/subscription.schema.js';
 
@@ -15,6 +16,9 @@ export class SubscriptionMapper {
       doc.createdAt,
       doc.canceledAt,
       (doc.scheduledPlan as PlanTier) ?? null,
+      (doc.paymentProvider as PaymentProvider) ?? PaymentProvider.NONE,
+      doc.externalCustomerId ?? null,
+      doc.externalSubscriptionId ?? null,
     );
   }
 }

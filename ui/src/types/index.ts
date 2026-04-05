@@ -189,6 +189,9 @@ export interface Subscription {
   createdAt: string;
   canceledAt: string | null;
   scheduledPlan: PlanTier | null;
+  paymentProvider: "none" | "lemon_squeezy" | "stripe" | "mercado_pago";
+  externalCustomerId: string | null;
+  externalSubscriptionId: string | null;
 }
 
 export interface BillingRecord {

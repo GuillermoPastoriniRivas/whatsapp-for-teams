@@ -2,6 +2,7 @@ import { Subscription } from '../../../domain/entities/subscription.entity.js';
 import { SubscriptionRepository } from '../../../domain/repositories/subscription.repository.js';
 import { BillingRecordRepository } from '../../../domain/repositories/billing-record.repository.js';
 import { PlanTier } from '../../../domain/enums/plan-tier.enum.js';
+import { PaymentProvider } from '../../../domain/enums/payment-provider.enum.js';
 import { SubscriptionStatus } from '../../../domain/enums/subscription-status.enum.js';
 import { BillingEventType } from '../../../domain/enums/billing-event-type.enum.js';
 import { PLAN_LIMITS } from '../../../domain/constants/plan-limits.js';
@@ -22,6 +23,10 @@ export class SubscribeUseCase {
   ) {}
 
   async execute(input: SubscribeInput): Promise<Result<Subscription, DomainError>> {
+    if (input.plan !== PlanTier.FREE) {
+      return err(new DomainError('PAYMENT_REQUIRED', 'Paid plans require checkout. Use POST /billing/checkout.'));
+    }
+
     const existing = await this.subscriptionRepo.findByTenantId(input.tenantId);
     if (existing && existing.status === SubscriptionStatus.ACTIVE) {
       return err(new DomainError('SUBSCRIPTION_EXISTS', 'An active subscription already exists. Use change plan instead.'));
@@ -49,6 +54,9 @@ export class SubscribeUseCase {
         currentPeriodStart: now,
         currentPeriodEnd: periodEnd,
         scheduledPlan: null,
+        paymentProvider: PaymentProvider.NONE,
+        externalCustomerId: null,
+        externalSubscriptionId: null,
       });
     }
 

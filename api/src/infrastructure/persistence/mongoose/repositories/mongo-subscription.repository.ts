@@ -19,6 +19,9 @@ export class MongoSubscriptionRepository implements SubscriptionRepository {
       status: data.status,
       currentPeriodStart: data.currentPeriodStart,
       currentPeriodEnd: data.currentPeriodEnd,
+      paymentProvider: data.paymentProvider ?? 'none',
+      externalCustomerId: data.externalCustomerId ?? null,
+      externalSubscriptionId: data.externalSubscriptionId ?? null,
     });
     return SubscriptionMapper.toDomain(doc);
   }
@@ -28,7 +31,12 @@ export class MongoSubscriptionRepository implements SubscriptionRepository {
     return doc ? SubscriptionMapper.toDomain(doc) : null;
   }
 
-  async update(id: string, data: Partial<Pick<Subscription, 'plan' | 'status' | 'currentPeriodStart' | 'currentPeriodEnd' | 'canceledAt'>>): Promise<Subscription | null> {
+  async findByExternalSubscriptionId(externalSubscriptionId: string): Promise<Subscription | null> {
+    const doc = await this.model.findOne({ externalSubscriptionId });
+    return doc ? SubscriptionMapper.toDomain(doc) : null;
+  }
+
+  async update(id: string, data: Partial<Pick<Subscription, 'plan' | 'status' | 'currentPeriodStart' | 'currentPeriodEnd' | 'canceledAt' | 'scheduledPlan' | 'paymentProvider' | 'externalCustomerId' | 'externalSubscriptionId'>>): Promise<Subscription | null> {
     const doc = await this.model.findByIdAndUpdate(id, { $set: data }, { returnDocument: 'after' });
     return doc ? SubscriptionMapper.toDomain(doc) : null;
   }

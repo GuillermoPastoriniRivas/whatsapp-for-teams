@@ -213,9 +213,9 @@ export default function PricingPage() {
                   }
                   onClick={() => {
                     if (agent) {
-                      router.push("/settings/billing");
+                      router.push(`/settings/billing?plan=${plan.key}`);
                     } else {
-                      router.push("/login");
+                      router.push(`/login?redirect=/settings/billing&plan=${plan.key}`);
                     }
                   }}
                 >

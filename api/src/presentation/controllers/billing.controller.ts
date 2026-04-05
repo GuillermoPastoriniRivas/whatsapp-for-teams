@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Body,
-  Inject, ForbiddenException, ConflictException,
+  Inject, ForbiddenException, ConflictException, BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SubscribeUseCase } from '../../application/use-cases/billing/subscribe.use-case.js';
@@ -10,7 +10,10 @@ import { GetSubscriptionUseCase } from '../../application/use-cases/billing/get-
 import { GetBillingHistoryUseCase } from '../../application/use-cases/billing/get-billing-history.use-case.js';
 import { CheckPlanLimitUseCase } from '../../application/use-cases/billing/check-plan-limit.use-case.js';
 import { ToggleResourceUseCase } from '../../application/use-cases/billing/toggle-resource.use-case.js';
+import type { CreateCheckoutUseCase } from '../../application/use-cases/billing/create-checkout.use-case.js';
+import type { PaymentProviderPort } from '../../application/ports/payment-provider.port.js';
 import { PlanTier } from '../../domain/enums/plan-tier.enum.js';
+import { PaymentProvider } from '../../domain/enums/payment-provider.enum.js';
 import { Roles } from '../decorators/roles.decorator.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
@@ -21,6 +24,8 @@ import { ChangePlanRequestSchema } from '../request-dtos/change-plan-request.dto
 import type { ChangePlanRequestDto } from '../request-dtos/change-plan-request.dto.js';
 import { ToggleResourceRequestSchema } from '../request-dtos/toggle-resource-request.dto.js';
 import type { ToggleResourceRequestDto } from '../request-dtos/toggle-resource-request.dto.js';
+import { CheckoutRequestSchema } from '../request-dtos/checkout-request.dto.js';
+import type { CheckoutRequestDto } from '../request-dtos/checkout-request.dto.js';
 
 @ApiTags('Billing')
 @ApiBearerAuth('JWT')
@@ -34,12 +39,43 @@ export class BillingController {
     @Inject('GetBillingHistoryUseCase') private readonly getHistory: GetBillingHistoryUseCase,
     @Inject('CheckPlanLimitUseCase') private readonly checkLimit: CheckPlanLimitUseCase,
     @Inject('ToggleResourceUseCase') private readonly toggleResource: ToggleResourceUseCase,
+    @Inject('CreateCheckoutUseCase') private readonly createCheckout: CreateCheckoutUseCase,
+    @Inject('PaymentProviderPort') private readonly paymentProvider: PaymentProviderPort,
   ) {}
 
   @Get('subscription')
   @ApiOperation({ summary: 'Get current subscription', description: 'Get the current subscription and plan limits for the tenant' })
   async getSubscription(@CurrentAgent() agent: RequestAgent) {
     return this.getSub.execute(agent.tenantId);
+  }
+
+  @Post('checkout')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Create checkout session', description: 'Creates an external payment checkout URL for a paid plan.' })
+  async checkout(
+    @Body(new ZodValidationPipe(CheckoutRequestSchema)) body: CheckoutRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.createCheckout.execute({
+      tenantId: agent.tenantId,
+      agentId: agent._id,
+      plan: body.plan as PlanTier,
+      countryCode: body.countryCode ?? null,
+    });
+    if (!result.ok) throw new BadRequestException(result.error.message);
+    return result.value;
+  }
+
+  @Get('portal')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Get customer portal URL', description: 'Returns the payment provider customer portal URL for managing payment methods.' })
+  async getPortal(@CurrentAgent() agent: RequestAgent) {
+    const sub = await this.getSub.execute(agent.tenantId);
+    if (!sub.subscription?.externalCustomerId || sub.subscription.paymentProvider === PaymentProvider.NONE) {
+      return { portalUrl: null };
+    }
+    const portalUrl = await this.paymentProvider.getCustomerPortalUrl(sub.subscription.externalCustomerId);
+    return { portalUrl };
   }
 
   @Post('subscribe')

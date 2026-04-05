@@ -2,6 +2,7 @@ import { Subscription } from '../../../domain/entities/subscription.entity.js';
 import { SubscriptionRepository } from '../../../domain/repositories/subscription.repository.js';
 import { BillingRecordRepository } from '../../../domain/repositories/billing-record.repository.js';
 import { PlanTier } from '../../../domain/enums/plan-tier.enum.js';
+import { PaymentProvider } from '../../../domain/enums/payment-provider.enum.js';
 import { SubscriptionStatus } from '../../../domain/enums/subscription-status.enum.js';
 import { BillingEventType } from '../../../domain/enums/billing-event-type.enum.js';
 import { PLAN_LIMITS, PlanLimits } from '../../../domain/constants/plan-limits.js';
@@ -24,10 +25,18 @@ export class GetSubscriptionUseCase {
     let subscription = await this.subscriptionRepo.findByTenantId(tenantId);
 
     // Lazy period check: if period has expired, handle renewal or scheduled downgrade
+    // For paid plans with a payment provider, renewals are handled by webhooks — mark as PAST_DUE instead
     if (subscription && subscription.status === SubscriptionStatus.ACTIVE) {
       const now = new Date();
       if (now >= subscription.currentPeriodEnd) {
-        subscription = await this.handlePeriodExpiry(subscription);
+        if (subscription.paymentProvider !== PaymentProvider.NONE) {
+          // External provider handles renewal via webhooks; if period expired without renewal, mark past due
+          subscription = (await this.subscriptionRepo.update(subscription.id, {
+            status: SubscriptionStatus.PAST_DUE,
+          }))!;
+        } else {
+          subscription = await this.handlePeriodExpiry(subscription);
+        }
       }
     }
 

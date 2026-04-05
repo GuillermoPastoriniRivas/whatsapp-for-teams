@@ -20,11 +20,14 @@ interface BillingState {
 
   fetchSubscription: () => Promise<void>;
   subscribe: (plan: PlanTier) => Promise<void>;
+  checkout: (plan: PlanTier, countryCode?: string) => Promise<void>;
+  getPortalUrl: () => Promise<string | null>;
   changePlan: (newPlan: PlanTier) => Promise<void>;
   cancelSubscription: () => Promise<void>;
   fetchHistory: () => Promise<void>;
   fetchUsage: () => Promise<void>;
   toggleResource: (resourceType: string, activateId: string, deactivateId?: string) => Promise<boolean>;
+  pollSubscription: () => Promise<void>;
 }
 
 export const useBillingStore = create<BillingState>((set) => ({
@@ -57,6 +60,25 @@ export const useBillingStore = create<BillingState>((set) => ({
       set({ subscription: sub, plan: sub.plan, isLoading: false });
     } catch {
       set({ isLoading: false });
+    }
+  },
+
+  checkout: async (plan, countryCode?) => {
+    set({ isLoading: true });
+    try {
+      const data = await api.post<{ checkoutUrl: string }>("/billing/checkout", { plan, countryCode });
+      window.location.href = data.checkoutUrl;
+    } catch {
+      set({ isLoading: false });
+    }
+  },
+
+  getPortalUrl: async () => {
+    try {
+      const data = await api.get<{ portalUrl: string | null }>("/billing/portal");
+      return data.portalUrl;
+    } catch {
+      return null;
     }
   },
 
@@ -105,5 +127,22 @@ export const useBillingStore = create<BillingState>((set) => ({
     } catch {
       return false;
     }
+  },
+
+  pollSubscription: async () => {
+    const maxAttempts = 15;
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      try {
+        const data = await api.get<SubscriptionInfo>("/billing/subscription");
+        if (data.subscription && data.subscription.status === "active" && data.plan !== "free") {
+          set({ subscription: data.subscription, plan: data.plan, limits: data.limits, isLoading: false });
+          return;
+        }
+      } catch {
+        // continue polling
+      }
+    }
+    set({ isLoading: false });
   },
 }));

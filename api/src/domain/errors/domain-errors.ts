@@ -106,3 +106,21 @@ export class TokenExpiredError extends DomainError {
     super('TOKEN_EXPIRED', 'The token has expired. Please request a new one.');
   }
 }
+
+export class CheckoutCreationError extends DomainError {
+  constructor(detail?: string) {
+    super('CHECKOUT_CREATION_FAILED', detail ?? 'Failed to create checkout session.');
+  }
+}
+
+export class WebhookVerificationError extends DomainError {
+  constructor() {
+    super('WEBHOOK_VERIFICATION_FAILED', 'Webhook signature verification failed.');
+  }
+}
+
+export class PaymentProviderError extends DomainError {
+  constructor(detail?: string) {
+    super('PAYMENT_PROVIDER_ERROR', detail ?? 'Payment provider returned an error.');
+  }
+}

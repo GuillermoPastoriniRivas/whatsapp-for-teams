@@ -26,6 +26,15 @@ export class SubscriptionModel {
   @Prop({ type: String, default: null })
   scheduledPlan: string | null;
 
+  @Prop({ type: String, enum: ['none', 'lemon_squeezy', 'stripe', 'mercado_pago'], default: 'none' })
+  paymentProvider: string;
+
+  @Prop({ type: String, default: null })
+  externalCustomerId: string | null;
+
+  @Prop({ type: String, default: null, index: true })
+  externalSubscriptionId: string | null;
+
   createdAt: Date;
 }
 
