@@ -207,6 +207,9 @@ const translations = {
       step3Title: "La IA te ayuda",
       step3Desc:
         "Configura agentes de IA con tu propio modelo de lenguaje. Responden automaticamente y escalan al humano cuando no pueden resolver.",
+      pricingLabel: "Precios",
+      pricingTitle: "Planes simples",
+      pricingSubtitle: "Elige el plan que mejor se adapte a tu equipo. Todos incluyen WhatsApp multi-numero y agentes de IA.",
     },
     legal: {
       backToHome: "Volver al inicio",
@@ -488,6 +491,9 @@ const translations = {
       step3Title: "AI helps you out",
       step3Desc:
         "Set up AI agents with your own language model. They reply automatically and escalate to a human when they can't resolve.",
+      pricingLabel: "Pricing",
+      pricingTitle: "Simple plans",
+      pricingSubtitle: "Choose the plan that fits your team. All plans include multi-number WhatsApp and AI agents.",
     },
     legal: {
       backToHome: "Back to home",
