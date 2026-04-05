@@ -14,7 +14,7 @@ export function DemoBanner() {
   if (agent?.email !== "demo@asis.chat") return null;
 
   const handleCreateAccount = () => {
-    logout();
+    // logout();
     router.push("/signup");
   };
 

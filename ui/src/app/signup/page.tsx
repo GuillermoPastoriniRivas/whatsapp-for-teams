@@ -160,7 +160,14 @@ export default function SignupPage() {
               </div>
 
               <div className="flex justify-center">
-                <GoogleLogin onSuccess={handleGoogleSuccess} width="384" />
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  width="384"
+                  shape="pill"
+                  size="large"
+                  theme="filled_blue"
+                  text="signup_with"
+                />
               </div>
 
               <div className="relative my-5">

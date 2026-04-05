@@ -150,6 +150,10 @@ export default function LoginPage() {
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 width="384"
+                shape="pill"
+                size="large"
+                theme="filled_blue"
+                text="signin_with"
               />
             </div>
 
