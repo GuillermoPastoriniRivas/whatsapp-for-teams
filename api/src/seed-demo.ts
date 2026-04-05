@@ -83,6 +83,7 @@ const ConversationSchema = new Schema({
   lastInboundAt: Date,
   resolvedAt: { type: Date, default: null },
   closedBy: { type: String, default: null },
+  summary: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -141,6 +142,7 @@ const AiAgentConfigSchema = new Schema({
   apiKey: String,
   systemPrompt: String,
   knowledgeBase: { type: String, default: '' },
+  goals: { type: String, default: '' },
   persona: Object,
   handoffRules: Object,
   contextConfig: Object,
@@ -181,21 +183,34 @@ async function seedDemo() {
     const agents = await Agent.find({ tenantId: tid });
     const agentIds = agents.map((a) => a._id);
 
+    // Get conversation IDs FIRST, then delete messages before conversations
     const conversations = await Conversation.find({ tenantId: tid });
     const convIds = conversations.map((c) => c._id);
-
     await Message.deleteMany({ conversationId: { $in: convIds } });
+
+    // Also clean orphan messages (from previous incomplete cleanups)
+    const allConvIds = await Conversation.distinct('_id') as Types.ObjectId[];
+    const orphanResult = await Message.deleteMany({ conversationId: { $nin: allConvIds } });
+    if (orphanResult.deletedCount > 0) console.log(`  Cleaned ${orphanResult.deletedCount} orphan messages`);
+
     await ConvEvent.deleteMany({ tenantId: tid });
     await ConvNote.deleteMany({ tenantId: tid });
+    await ConvLabel.deleteMany({ tenantId: tid });
     await Conversation.deleteMany({ tenantId: tid });
     await Contact.deleteMany({ tenantId: tid });
     await AiConfig.deleteMany({ tenantId: tid });
-    await ConvLabel.deleteMany({ tenantId: tid });
     await Label.deleteMany({ tenantId: tid });
     await Access.deleteMany({ agentId: { $in: agentIds } });
     await PhoneNumber.deleteMany({ tenantId: tid });
     await Agent.deleteMany({ tenantId: tid });
     await Tenant.deleteOne({ _id: tid });
+
+    // Clean Agenda jobs and subscriptions
+    const db = connection.db;
+    if (db) {
+      await db.collection('jobs').deleteMany({ 'data.tenantId': tid.toString() });
+      await db.collection('subscriptions').deleteMany({ tenantId: tid });
+    }
 
     console.log('Cleaned.\n');
   }
@@ -239,7 +254,8 @@ async function seedDemo() {
     model: 'claude-sonnet-4-20250514',
     apiKey: 'demo-key-not-real',
     systemPrompt: 'Sos Sofia, asistente virtual de la tienda. Respondé consultas sobre productos, envios, devoluciones y horarios de atencion. Sé amable, concisa y usa español latinoamericano. Si el cliente pide hablar con un humano o tiene un problema que no podes resolver, hace el handoff.',
-    knowledgeBase: 'Horarios: Lunes a Viernes 9-18hs, Sábados 10-14hs.\nEnvios: CABA 24-48hs, Interior 3-5 dias habiles.\nDevoluciones: hasta 30 dias con ticket de compra.\nMedios de pago: Efectivo, transferencia, tarjetas de crédito/débito.',
+    knowledgeBase: 'Horarios: Lunes a Viernes 9-18hs, Sábados 10-14hs.\nEnvios: CABA 24-48hs, Interior 3-5 dias habiles.\nDevoluciones: hasta 30 dias con ticket de compra.\nMedios de pago: Efectivo, transferencia, tarjetas de crédito/débito.\nDireccion: Av. Santa Fe 1234, Palermo, CABA.\nPrecios mayoristas (x12 unidades): Remera basica $6.500, Remera oversize $8.900, Buzo canguro $8.200, Buzo oversize $9.500.',
+    goals: 'Califica leads:\n- Pregunta nombre completo y empresa\n- Pregunta presupuesto aproximado\n- Pregunta timeline (cuando necesitan)\n\nSi el presupuesto es mayor a $50.000 o el volumen es de 50+ unidades, marca como lead calificado.\n\nRecolecta datos:\n- Siempre pregunta el nombre si no lo sabes\n- Si el cliente quiere comprar, pregunta direccion de envio\n- Guarda cualquier dato que el cliente mencione (email, empresa, talle, etc.)',
     persona: {
       role: 'Asistente virtual de soporte',
       tone: 'Amable y profesional',
@@ -280,18 +296,19 @@ async function seedDemo() {
 
   // ── 7. Contacts ──
   const contacts = await Contact.insertMany([
-    { tenantId: T, waId: '5491155551001', name: 'Maria Gonzalez', phone: '+54 9 11 5555-1001', company: 'Tienda Ropa BA', lastSeenAt: ago(30) },
+    { tenantId: T, waId: '5491155551001', name: 'Maria Gonzalez', phone: '+54 9 11 5555-1001', company: 'Tienda Ropa BA', customFields: { direccion: 'Palermo, CABA', presupuesto: '$35.600' }, lastSeenAt: ago(30) },
     { tenantId: T, waId: '5491155551002', name: 'Juan Rodriguez', phone: '+54 9 11 5555-1002', notes: 'Cliente frecuente', lastSeenAt: ago(15) },
-    { tenantId: T, waId: '5491155551003', name: 'Valentina Ramirez', phone: '+54 9 11 5555-1003', email: 'vale@email.com', lastSeenAt: ago(5) },
+    { tenantId: T, waId: '5491155551003', name: 'Valentina Ramirez', phone: '+54 9 11 5555-1003', email: 'vale@email.com', customFields: { talle: 'S', interes: 'buzos y camperas' }, lastSeenAt: ago(5) },
     { tenantId: T, waId: '5491155551004', name: 'Diego Torres', phone: '+54 9 11 5555-1004', company: 'Torres Electronica', lastSeenAt: ago(3) },
     { tenantId: T, waId: '5491155551005', name: 'Camila Herrera', phone: '+54 9 11 5555-1005', lastSeenAt: ago(20) },
     { tenantId: T, waId: '5491155551006', name: 'Sebastian Morales', phone: '+54 9 11 5555-1006', company: 'Morales y Cia', lastSeenAt: ago(1440) },
     { tenantId: T, waId: '5491155551007', name: 'Isabella Acosta', phone: '+54 9 11 5555-1007', email: 'isa.acosta@gmail.com', lastSeenAt: ago(4320) },
-    { tenantId: T, waId: '5491155551008', name: 'Mateo Vargas', phone: '+54 9 11 5555-1008', notes: 'Consulto por mayoreo', lastSeenAt: ago(60) },
+    { tenantId: T, waId: '5491155551008', name: 'Mateo Vargas', phone: '+54 9 11 5555-1008', notes: 'Consulto por mayoreo', customFields: { tipo_cliente: 'mayorista', productos: 'remeras y buzos', cantidad_minima: '12 unidades' }, lastSeenAt: ago(60) },
+    { tenantId: T, waId: '5491155551009', name: 'Florencia Diaz', phone: '+54 9 351 555-1009', email: 'florencia@tiendacba.com', company: '3 sucursales en Cordoba', customFields: { ciudad: 'Cordoba', volumen_mensual: '200 unidades', tipo_cliente: 'mayorista premium' }, lastSeenAt: ago(25) },
   ]);
-  console.log(`+ 8 contacts`);
+  console.log(`+ 9 contacts`);
 
-  const [maria, juan, valentina, diego, camila, sebastian] = contacts;
+  const [maria, juan, valentina, diego, camila, sebastian, _isabella, _mateo, florencia] = contacts;
 
   // ── 8. Conversations & Messages ──
 
@@ -316,6 +333,7 @@ async function seedDemo() {
     tenantId: T, phoneNumberId: phone._id, contactId: maria._id,
     agentId: carlos._id, status: 'active',
     lastMessageAt: ago(15), lastInboundAt: ago(20),
+    summary: 'Cliente interesada en remera oversize negra M ($12.500). Pidio hablar con humano para asesoramiento de combinaciones. Carlos armo look completo por $35.600. Cliente quiere comprar, se le paso link de MercadoPago.',
   });
   await createMessages(conv1._id, [
     { dir: 'inbound', body: 'Hola! Queria saber si tienen la remera oversize en talle M', minutesAgo: 120 },
@@ -350,6 +368,7 @@ async function seedDemo() {
     tenantId: T, phoneNumberId: phone._id, contactId: valentina._id,
     agentId: sofia._id, status: 'active',
     lastMessageAt: ago(3), lastInboundAt: ago(5),
+    summary: 'Cliente consulta descuentos de la semana. Interesada en buzos talle S. Se le informaron 3 modelos con precios y descuento 20%.',
   });
   await createMessages(conv3._id, [
     { dir: 'inbound', body: 'Hola, buenos dias! Vi en Instagram que tienen descuentos esta semana', minutesAgo: 8 },
@@ -376,6 +395,7 @@ async function seedDemo() {
     tenantId: T, phoneNumberId: phone._id, contactId: camila._id,
     agentId: sofia._id, status: 'active',
     lastMessageAt: ago(18), lastInboundAt: ago(20),
+    summary: 'Cliente quiere cambiar campera por talle incorrecto. Se le explico proceso de cambio y devolucion. Horarios y requisitos informados.',
   });
   await createMessages(conv5._id, [
     { dir: 'inbound', body: 'Hola, compre una campera la semana pasada y me queda grande. Puedo cambiarla?', minutesAgo: 45 },
@@ -419,6 +439,7 @@ async function seedDemo() {
     tenantId: T, phoneNumberId: phone._id, contactId: contacts[7]._id,
     agentId: sofia._id, status: 'active',
     lastMessageAt: ago(50), lastInboundAt: ago(55),
+    summary: 'Consulta mayorista. Tiene local, necesita remeras y buzos surtido S-XL. Se le paso lista de precios mayoristas (x12 unidades). Quedo en confirmar.',
   });
   await createMessages(conv8._id, [
     { dir: 'inbound', body: 'Buen dia, queria consultar si hacen precios por cantidad. Tengo un local y necesito remeras y buzos', minutesAgo: 60 },
@@ -429,7 +450,25 @@ async function seedDemo() {
     { dir: 'outbound', body: 'Perfecto Mateo! Cuando quieras confirmar escribime y coordinamos. Tambien podemos armar un pedido personalizado si necesitas.', minutesAgo: 50, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
   ]);
 
-  console.log(`+ 8 conversations with messages`);
+  // --- Conv 9: Florencia → Sofia IA (lead qualification flow — showcases goals + data collection) ---
+  const conv9 = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: florencia._id,
+    agentId: sofia._id, status: 'active',
+    lastMessageAt: ago(22), lastInboundAt: ago(25),
+    summary: 'Lead mayorista calificado. Florencia tiene 3 sucursales en Cordoba, necesita 200 unidades/mes de remeras y buzos. Se le paso lista de precios premium. Pidio email para seguir por ahi.',
+  });
+  await createMessages(conv9._id, [
+    { dir: 'inbound', body: 'Hola! Vi que hacen ropa por mayor. Me interesa para mi tienda', minutesAgo: 35 },
+    { dir: 'outbound', body: 'Hola Florencia! Si, trabajamos con mayoristas. Contame, que tipo de productos necesitas?', minutesAgo: 34, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+    { dir: 'inbound', body: 'Necesito remeras y buzos. Tengo 3 sucursales en Cordoba', minutesAgo: 32 },
+    { dir: 'outbound', body: 'Genial! Para darte los mejores precios, me contas que cantidad aproximada necesitarias por mes?', minutesAgo: 31, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+    { dir: 'inbound', body: 'Unas 200 unidades por mes masomenos', minutesAgo: 29 },
+    { dir: 'outbound', body: 'Excelente! Con ese volumen tenemos precios mayoristas premium. Te paso la lista:\n- Remera basica: $5.800 c/u\n- Remera oversize: $7.900 c/u\n- Buzo canguro: $7.200 c/u\n- Buzo oversize: $8.500 c/u\nSurtido de talles S a XL. Envio a Cordoba incluido para pedidos de 200+ unidades.', minutesAgo: 28, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+    { dir: 'inbound', body: 'Muy buenos precios! Pasame tu email asi te mando los datos de facturacion', minutesAgo: 25 },
+    { dir: 'outbound', body: 'El mail de ventas mayoristas es ventas@tienda.com. Tambien te podemos mandar un catalogo completo por ahi. Cualquier cosa escribime!', minutesAgo: 22, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+  ]);
+
+  console.log(`+ 9 conversations with messages`);
 
   // ── 9. Conversation Events ──
   const events = [
@@ -460,6 +499,19 @@ async function seedDemo() {
     // Conv 8
     { conversationId: conv8._id, tenantId: T, type: 'created', createdAt: ago(60) },
     { conversationId: conv8._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(59) },
+    { conversationId: conv8._id, tenantId: T, type: 'contact_updated', performedBy: sofia._id.toString(), data: { fields: ['tipo_cliente', 'productos', 'cantidad_minima'], source: 'ai' }, createdAt: ago(58) },
+    { conversationId: conv8._id, tenantId: T, type: 'goal_completed', performedBy: sofia._id.toString(), data: { goal: 'lead_qualified', agentName: 'Sofia IA' }, createdAt: ago(54) },
+    // Conv 9 — Florencia lead qualification
+    { conversationId: conv9._id, tenantId: T, type: 'created', createdAt: ago(35) },
+    { conversationId: conv9._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(34) },
+    { conversationId: conv9._id, tenantId: T, type: 'contact_updated', performedBy: sofia._id.toString(), data: { fields: ['name', 'company', 'ciudad'], source: 'ai' }, createdAt: ago(31) },
+    { conversationId: conv9._id, tenantId: T, type: 'contact_updated', performedBy: sofia._id.toString(), data: { fields: ['volumen_mensual', 'tipo_cliente'], source: 'ai' }, createdAt: ago(28) },
+    { conversationId: conv9._id, tenantId: T, type: 'goal_completed', performedBy: sofia._id.toString(), data: { goal: 'lead_qualified', agentName: 'Sofia IA' }, createdAt: ago(28) },
+    { conversationId: conv9._id, tenantId: T, type: 'contact_updated', performedBy: sofia._id.toString(), data: { fields: ['email'], source: 'ai' }, createdAt: ago(22) },
+    // Conv 1 — contact data collected by Sofia before handoff
+    { conversationId: conv1._id, tenantId: T, type: 'contact_updated', performedBy: sofia._id.toString(), data: { fields: ['direccion', 'presupuesto'], source: 'ai' }, createdAt: ago(109) },
+    // Conv 3 — contact data collected by Sofia
+    { conversationId: conv3._id, tenantId: T, type: 'contact_updated', performedBy: sofia._id.toString(), data: { fields: ['talle', 'interes'], source: 'ai' }, createdAt: ago(5) },
   ];
   await ConvEvent.insertMany(events);
   console.log(`+ ${events.length} conversation events`);
@@ -509,8 +561,10 @@ async function seedDemo() {
     { conversationId: conv6._id, tenantId: T, labelId: lEnvio._id, assignedBy: ana._id.toString() },
     { conversationId: conv7._id, tenantId: T, labelId: lNuevo._id, assignedBy: sofia._id.toString() },
     { conversationId: conv8._id, tenantId: T, labelId: lMayorista._id, assignedBy: sofia._id.toString() },
+    { conversationId: conv9._id, tenantId: T, labelId: lMayorista._id, assignedBy: sofia._id.toString() },
+    { conversationId: conv9._id, tenantId: T, labelId: lVip._id, assignedBy: sofia._id.toString() },
   ]);
-  console.log(`+ 8 conversation-label assignments`);
+  console.log(`+ 10 conversation-label assignments`);
 
   // ── Done ──
   console.log('\n--- Demo seed complete ---');
