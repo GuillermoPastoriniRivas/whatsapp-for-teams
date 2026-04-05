@@ -279,7 +279,8 @@ const translations = {
     },
     common: {
       loading: "Cargando...",
-      demoBanner: "Estas en modo demo — los datos se reinician diariamente",
+      demoBanner: "Estas explorando el demo de asis.chat",
+      demoCta: "Crea tu cuenta gratis",
       cancel: "Cancelar",
     },
   },
@@ -563,7 +564,8 @@ const translations = {
     },
     common: {
       loading: "Loading...",
-      demoBanner: "You are in demo mode — data resets daily",
+      demoBanner: "You're exploring the asis.chat demo",
+      demoCta: "Create your free account",
       cancel: "Cancel",
     },
   },
