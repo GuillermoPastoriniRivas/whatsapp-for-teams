@@ -23,8 +23,15 @@ import { AsisLogo } from "@/components/brand/asis-logo";
 export default function LandingPage() {
   const router = useRouter();
   const agent = useAuthStore((s) => s.agent);
+  const demoLogin = useAuthStore((s) => s.demoLogin);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const [hydrated, setHydrated] = useState(false);
   const { t } = useTranslations();
+
+  const handleDemoLogin = async () => {
+    await demoLogin();
+    router.push("/conversations");
+  };
 
   const features = [
     {
@@ -130,7 +137,8 @@ export default function LandingPage() {
                 </Button>
                 <Button
                   className="rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-md transition-transform hover:scale-105"
-                  onClick={() => router.push("/login")}
+                  disabled={isLoading}
+                  onClick={handleDemoLogin}
                 >
                   {t.landing.navDemo}
                 </Button>
@@ -158,7 +166,8 @@ export default function LandingPage() {
               <Button
                 size="lg"
                 className="rounded-full h-14 px-8 text-base bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30 transition-all hover:scale-105"
-                onClick={() => router.push("/login")}
+                disabled={isLoading}
+                onClick={handleDemoLogin}
               >
                 {t.landing.ctaDemo}
                 <ArrowRight className="ml-2 h-5 w-5 text-white" />
@@ -367,7 +376,7 @@ export default function LandingPage() {
             {t.landing.ctaSubtitle}
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Button size="lg" className="rounded-full bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20 h-14 px-8 text-lg font-semibold transition-transform hover:scale-105" onClick={() => router.push("/login")}>
+            <Button size="lg" className="rounded-full bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20 h-14 px-8 text-lg font-semibold transition-transform hover:scale-105" disabled={isLoading} onClick={handleDemoLogin}>
               {t.landing.ctaDemo}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
