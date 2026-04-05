@@ -34,7 +34,7 @@ export class SesEmailService implements EmailServicePort {
     );
 
     const command = new SendEmailCommand({
-      Source: message.from ?? this.defaultFrom,
+      Source: message.from ?? `asis.chat <${this.defaultFrom}>`,
       ReplyToAddresses: [message.replyTo ?? this.defaultReplyTo],
       Destination: { ToAddresses: toAddresses },
       Message: {
