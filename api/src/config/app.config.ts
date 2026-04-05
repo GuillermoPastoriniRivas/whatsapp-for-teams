@@ -23,4 +23,12 @@ export default () => ({
     apiVersion: process.env.META_API_VERSION ?? 'v21.0',
     webhookVerifyToken: process.env.META_WEBHOOK_VERIFY_TOKEN ?? '',
   },
+  ses: {
+    region: process.env.AWS_SES_REGION ?? process.env.AWS_REGION ?? 'us-east-1',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? '',
+    fromEmail: process.env.SES_FROM_EMAIL ?? 'no-reply@asis.chat',
+    replyToEmail: process.env.SES_REPLY_TO_EMAIL ?? 'contact@asis.chat',
+  },
+  frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3001',
 });

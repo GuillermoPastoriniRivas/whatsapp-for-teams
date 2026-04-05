@@ -107,6 +107,7 @@ import { PlanLimitGuard } from './guards/plan-limit.guard.js';
 // Queue Processors
 import { WebhookJobProcessor } from '../infrastructure/queue/webhook-job.processor.js';
 import { AiResponseJobProcessor } from '../infrastructure/queue/ai-response-job.processor.js';
+import { EmailJobProcessor } from '../infrastructure/queue/email-job.processor.js';
 
 const useCaseProviders = [
   // Auth
@@ -446,6 +447,7 @@ const useCaseProviders = [
     ...useCaseProviders,
     WebhookJobProcessor,
     AiResponseJobProcessor,
+    EmailJobProcessor,
     PlanLimitGuard,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
