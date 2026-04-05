@@ -1,5 +1,6 @@
 import { Controller, Post, Get, Body, UsePipes, Inject, HttpCode, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { LoginUseCase } from '../../application/use-cases/auth/login.use-case.js';
 import { RefreshTokenUseCase } from '../../application/use-cases/auth/refresh-token.use-case.js';
 import { GetCurrentAgentUseCase } from '../../application/use-cases/auth/get-current-agent.use-case.js';
@@ -30,6 +31,7 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(200)
+  @Throttle({ short: { ttl: 60000, limit: 5 } })
   @UsePipes(new ZodValidationPipe(LoginRequestSchema))
   @ApiOperation({ summary: 'Login', description: 'Authenticate with email and password to obtain JWT tokens' })
   @ApiBody({
@@ -59,6 +61,7 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(200)
+  @Throttle({ short: { ttl: 60000, limit: 10 } })
   @UsePipes(new ZodValidationPipe(RefreshTokenRequestSchema))
   @ApiOperation({ summary: 'Refresh token', description: 'Exchange a refresh token for a new access token' })
   @ApiBody({
@@ -87,6 +90,7 @@ export class AuthController {
   @Public()
   @Post('demo-login')
   @HttpCode(200)
+  @Throttle({ short: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: 'Demo login', description: 'Login as the demo agent without credentials' })
   @ApiResponse({ status: 200, description: 'JWT access and refresh tokens' })
   @ApiResponse({ status: 503, description: 'Demo not configured' })
@@ -99,6 +103,7 @@ export class AuthController {
   @Public()
   @Post('google')
   @HttpCode(200)
+  @Throttle({ short: { ttl: 60000, limit: 5 } })
   @UsePipes(new ZodValidationPipe(GoogleLoginRequestSchema))
   @ApiOperation({ summary: 'Google login', description: 'Authenticate with a Google ID token. Creates a new tenant if the email is not registered.' })
   @ApiBody({

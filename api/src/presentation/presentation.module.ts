@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module.js';
 
 // Guards
@@ -446,6 +447,7 @@ const useCaseProviders = [
     WebhookJobProcessor,
     AiResponseJobProcessor,
     PlanLimitGuard,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: DemoGuard },

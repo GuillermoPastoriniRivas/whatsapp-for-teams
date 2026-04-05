@@ -36,6 +36,7 @@ import type { AgentRepository } from '../../domain/repositories/agent.repository
 import type { PhoneNumberRepository } from '../../domain/repositories/phone-number.repository.js';
 import type { ConversationLabelRepository } from '../../domain/repositories/conversation-label.repository.js';
 import type { LabelRepository } from '../../domain/repositories/label.repository.js';
+import type { ConversationRepository } from '../../domain/repositories/conversation.repository.js';
 
 @ApiTags('Conversations')
 @ApiBearerAuth('JWT')
@@ -60,7 +61,15 @@ export class ConversationController {
     @Inject('ConversationLabelRepository') private readonly convLabelRepo: ConversationLabelRepository,
     @Inject('LabelRepository') private readonly labelRepo: LabelRepository,
     @Inject('DemoAiReplyUseCase') private readonly demoAiReply: DemoAiReplyUseCase,
+    @Inject('ConversationRepository') private readonly conversationRepo: ConversationRepository,
   ) {}
+
+  /** Verify conversation belongs to the agent's tenant. Throws if not found or wrong tenant. */
+  private async verifyTenantAccess(conversationId: string, tenantId: string): Promise<void> {
+    const conv = await this.conversationRepo.findById(conversationId);
+    if (!conv) throw new NotFoundException('Conversation not found');
+    if (conv.tenantId !== tenantId) throw new ForbiddenException('Access denied');
+  }
 
   @Get()
   @ApiOperation({ summary: 'List conversations', description: 'List conversations with filtering and pagination. Agents see their own + unassigned; admins see all.' })
@@ -130,11 +139,12 @@ export class ConversationController {
   @ApiParam({ name: 'id', description: 'Conversation ID' })
   @ApiResponse({ status: 200, description: 'Conversation detail with enriched data' })
   @ApiResponse({ status: 404, description: 'Conversation not found' })
-  async detail(@Param('id') id: string) {
+  async detail(@Param('id') id: string, @CurrentAgent() agent: RequestAgent) {
+    await this.verifyTenantAccess(id, agent.tenantId);
     const result = await this.getDetail.execute(id);
     if (!result.ok) throw new NotFoundException(result.error.message);
     const contact = await this.contactRepo.findById(result.value.contactId);
-    const agent = result.value.agentId ? await this.agentRepo.findById(result.value.agentId) : null;
+    const assignedAgent = result.value.agentId ? await this.agentRepo.findById(result.value.agentId) : null;
     const phone = await this.phoneRepo.findById(result.value.phoneNumberId);
     const convLabels = await this.convLabelRepo.findByConversationId(id);
     const detailLabelIds = [...new Set(convLabels.map((cl) => cl.labelId))];
@@ -155,7 +165,7 @@ export class ConversationController {
             notes: contact.notes,
           }
         : null,
-      agentName: agent?.name ?? null,
+      agentName: assignedAgent?.name ?? null,
       phoneLabel: phone?.label ?? null,
       phoneDisplay: phone?.displayPhone ?? null,
       labels: convLabels
@@ -171,7 +181,8 @@ export class ConversationController {
   @ApiOperation({ summary: 'Get conversation events', description: 'Get the event timeline for a conversation (assignments, status changes, etc.)' })
   @ApiParam({ name: 'id', description: 'Conversation ID' })
   @ApiResponse({ status: 200, description: 'List of conversation events' })
-  async events(@Param('id') id: string) {
+  async events(@Param('id') id: string, @CurrentAgent() agent: RequestAgent) {
+    await this.verifyTenantAccess(id, agent.tenantId);
     return this.getConversationEvents.execute(id);
   }
 
@@ -184,9 +195,11 @@ export class ConversationController {
   @ApiResponse({ status: 404, description: 'Conversation not found' })
   async messages(
     @Param('id') id: string,
+    @CurrentAgent() agent: RequestAgent,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    await this.verifyTenantAccess(id, agent.tenantId);
     const result = await this.getMessages.execute({
       conversationId: id,
       page: Math.max(1, parseInt(page ?? '1', 10)),
@@ -217,6 +230,7 @@ export class ConversationController {
     @Body(new ZodValidationPipe(SendMessageRequestSchema)) body: SendMessageRequestDto,
     @CurrentAgent() agent: RequestAgent,
   ) {
+    await this.verifyTenantAccess(id, agent.tenantId);
     const result = await this.sendMessage.execute({
       conversationId: id,
       agentId: agent._id,
@@ -237,7 +251,8 @@ export class ConversationController {
   @ApiOperation({ summary: 'Trigger demo AI reply', description: 'Triggers a mock AI reply for demo conversations assigned to AI agents' })
   @ApiParam({ name: 'id', description: 'Conversation ID' })
   @ApiResponse({ status: 201, description: 'Demo AI reply triggered' })
-  async demoAiReplyEndpoint(@Param('id') id: string) {
+  async demoAiReplyEndpoint(@Param('id') id: string, @CurrentAgent() agent: RequestAgent) {
+    await this.verifyTenantAccess(id, agent.tenantId);
     // Fire and forget — the use case handles validation and delay internally
     this.demoAiReply.execute(id).catch(() => {});
     return { ok: true };
@@ -247,7 +262,8 @@ export class ConversationController {
   @ApiOperation({ summary: 'Get conversation notes', description: 'Get internal notes for a conversation' })
   @ApiParam({ name: 'id', description: 'Conversation ID' })
   @ApiResponse({ status: 200, description: 'List of notes' })
-  async notes(@Param('id') id: string) {
+  async notes(@Param('id') id: string, @CurrentAgent() agent: RequestAgent) {
+    await this.verifyTenantAccess(id, agent.tenantId);
     return this.getNotes.execute(id);
   }
 
@@ -282,7 +298,8 @@ export class ConversationController {
 
   @Get(':id/labels')
   @ApiOperation({ summary: 'Get conversation labels', description: 'Get labels assigned to a conversation' })
-  async conversationLabels(@Param('id') id: string) {
+  async conversationLabels(@Param('id') id: string, @CurrentAgent() agent: RequestAgent) {
+    await this.verifyTenantAccess(id, agent.tenantId);
     return this.getConversationLabels.execute(id);
   }
 
@@ -359,6 +376,7 @@ export class ConversationController {
   @ApiResponse({ status: 200, description: 'Conversation resolved' })
   @ApiResponse({ status: 404, description: 'Conversation not found' })
   async resolve(@Param('id') id: string, @CurrentAgent() agent: RequestAgent) {
+    await this.verifyTenantAccess(id, agent.tenantId);
     const result = await this.resolveConversation.execute({
       conversationId: id,
       agentId: agent._id,

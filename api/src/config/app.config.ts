@@ -1,12 +1,22 @@
+function requireEnv(key: string, fallbackForDev?: string): string {
+  const value = process.env[key];
+  if (value) return value;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  if (fallbackForDev !== undefined) return fallbackForDev;
+  throw new Error(`Missing required environment variable: ${key}`);
+}
+
 export default () => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
   mongodb: {
-    uri: process.env.MONGODB_URI ?? 'mongodb://localhost:27017/whatsapp-teams',
+    uri: requireEnv('MONGODB_URI', 'mongodb://localhost:27017/whatsapp-teams'),
   },
   jwt: {
-    secret: process.env.JWT_SECRET ?? 'secret-change-me',
+    secret: requireEnv('JWT_SECRET', 'dev-secret-do-not-use-in-prod'),
     expiresIn: process.env.JWT_EXPIRES_IN ?? '3d',
-    refreshSecret: process.env.JWT_REFRESH_SECRET ?? 'refresh-secret-change-me',
+    refreshSecret: requireEnv('JWT_REFRESH_SECRET', 'dev-refresh-secret-do-not-use-in-prod'),
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? '7d',
   },
   meta: {

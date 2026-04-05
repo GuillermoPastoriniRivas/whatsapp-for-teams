@@ -10,7 +10,15 @@ import { RealtimeGatewayPort } from '../../application/ports/realtime-gateway.po
 import type { TokenProviderPort } from '../../application/ports/token-provider.port.js';
 
 @Injectable()
-@WebSocketGateway({ namespace: '/ws', cors: { origin: '*' } })
+@WebSocketGateway({
+  namespace: '/ws',
+  cors: {
+    origin: process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+      : ['http://localhost:3000', 'http://localhost:3001'],
+    credentials: true,
+  },
+})
 export class SocketIoGatewayService
   implements RealtimeGatewayPort, OnGatewayConnection, OnGatewayDisconnect
 {
