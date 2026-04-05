@@ -9,4 +9,6 @@ export enum ConversationEventType {
   HANDOFF = 'handoff',
   LABEL_ADDED = 'label_added',
   LABEL_REMOVED = 'label_removed',
+  CONTACT_UPDATED = 'contact_updated',
+  GOAL_COMPLETED = 'goal_completed',
 }

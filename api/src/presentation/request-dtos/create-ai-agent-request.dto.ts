@@ -8,6 +8,7 @@ export const CreateAiAgentRequestSchema = z.object({
   apiKey: z.string().min(1),
   systemPrompt: z.string().optional(),
   knowledgeBase: z.string().optional(),
+  goals: z.string().optional(),
   persona: z.object({
     role: z.string().min(1),
     tone: z.string().min(1),

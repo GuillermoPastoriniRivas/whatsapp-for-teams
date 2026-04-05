@@ -65,9 +65,10 @@ export class MongoContactRepository implements ContactRepository {
 
   async update(
     id: string,
-    data: { email?: string | null; company?: string | null; notes?: string | null; customFields?: Record<string, string> },
+    data: { name?: string; email?: string | null; company?: string | null; notes?: string | null; customFields?: Record<string, string> },
   ): Promise<Contact | null> {
     const update: Record<string, unknown> = {};
+    if (data.name !== undefined) update.name = data.name;
     if (data.email !== undefined) update.email = data.email;
     if (data.company !== undefined) update.company = data.company;
     if (data.notes !== undefined) update.notes = data.notes;

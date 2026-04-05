@@ -26,7 +26,7 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
       config.id, config.agentId, config.tenantId, config.provider, config.model,
       data.apiKey, // Return unencrypted
       config.systemPrompt, config.knowledgeBase, config.persona,
-      config.handoffRules, config.contextConfig, config.rateLimits,
+      config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
       config.isActive, config.createdAt, config.updatedAt,
     );
   }
@@ -39,7 +39,7 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
       config.id, config.agentId, config.tenantId, config.provider, config.model,
       this.encryption.decrypt(config.apiKey),
       config.systemPrompt, config.knowledgeBase, config.persona,
-      config.handoffRules, config.contextConfig, config.rateLimits,
+      config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
       config.isActive, config.createdAt, config.updatedAt,
     );
   }
@@ -52,7 +52,7 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
         config.id, config.agentId, config.tenantId, config.provider, config.model,
         this.encryption.decrypt(config.apiKey),
         config.systemPrompt, config.knowledgeBase, config.persona,
-        config.handoffRules, config.contextConfig, config.rateLimits,
+        config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
         config.isActive, config.createdAt, config.updatedAt,
       );
     });
@@ -82,7 +82,7 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
       config.id, config.agentId, config.tenantId, config.provider, config.model,
       this.encryption.decrypt(config.apiKey),
       config.systemPrompt, config.knowledgeBase, config.persona,
-      config.handoffRules, config.contextConfig, config.rateLimits,
+      config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
       config.isActive, config.createdAt, config.updatedAt,
     );
   }

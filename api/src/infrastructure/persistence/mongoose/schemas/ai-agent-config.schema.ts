@@ -39,6 +39,9 @@ export class AiAgentConfigModel {
   @Prop({ type: Object, required: true })
   rateLimits: { maxMessagesPerDay: number; maxTokensPerDay: number };
 
+  @Prop({ required: false, default: '' })
+  goals: string;
+
   @Prop({ required: true, default: true })
   isActive: boolean;
 

@@ -9,6 +9,7 @@ export interface CreateAiAgentInput {
   apiKey: string;
   systemPrompt?: string;
   knowledgeBase?: string;
+  goals?: string;
   persona: AiPersona;
   handoffRules?: Partial<HandoffRules>;
   contextConfig?: Partial<AiContextConfig>;

@@ -37,6 +37,7 @@ export class CreateAiAgentUseCase {
       apiKey: input.apiKey,
       systemPrompt: input.systemPrompt ?? '',
       knowledgeBase: input.knowledgeBase ?? '',
+      goals: input.goals ?? '',
       persona: input.persona,
       handoffRules: {
         keywords: input.handoffRules?.keywords ?? [],

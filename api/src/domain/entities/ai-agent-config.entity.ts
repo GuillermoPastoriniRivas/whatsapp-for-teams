@@ -38,6 +38,7 @@ export class AiAgentConfig {
     public readonly handoffRules: HandoffRules,
     public readonly contextConfig: AiContextConfig,
     public readonly rateLimits: AiRateLimits,
+    public readonly goals: string,
     public readonly isActive: boolean,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,

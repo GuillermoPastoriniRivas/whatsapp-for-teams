@@ -152,6 +152,7 @@ export interface AiAgentConfig {
   apiKeySet: boolean;
   systemPrompt: string;
   knowledgeBase: string;
+  goals: string;
   persona: {
     role: string;
     tone: string;

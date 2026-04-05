@@ -33,6 +33,9 @@ export class ConversationModel {
   @Prop({ type: String, default: null })
   closedBy: string | null;
 
+  @Prop({ type: String, default: null })
+  summary: string | null;
+
   createdAt: Date;
 }
 

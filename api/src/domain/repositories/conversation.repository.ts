@@ -16,7 +16,7 @@ export interface PaginatedResult<T> {
 }
 
 export interface ConversationRepository {
-  create(conversation: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy'>): Promise<Conversation>;
+  create(conversation: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary'>): Promise<Conversation>;
   findById(id: string): Promise<Conversation | null>;
   findOpenByContactAndPhone(contactId: string, phoneNumberId: string): Promise<Conversation | null>;
   findByContactAndPhone(contactId: string, phoneNumberId: string): Promise<Conversation | null>;

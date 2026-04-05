@@ -11,6 +11,6 @@ export interface ContactRepository {
   findByTenantId(tenantId: string, options: { search?: string; page: number; limit: number }): Promise<PaginatedResult<Contact>>;
   update(
     id: string,
-    data: { email?: string | null; company?: string | null; notes?: string | null; customFields?: Record<string, string> },
+    data: { name?: string; email?: string | null; company?: string | null; notes?: string | null; customFields?: Record<string, string> },
   ): Promise<Contact | null>;
 }

@@ -16,6 +16,7 @@ export class ConversationMapper {
       doc.createdAt,
       doc.resolvedAt,
       doc.closedBy,
+      doc.summary ?? null,
     );
   }
 }

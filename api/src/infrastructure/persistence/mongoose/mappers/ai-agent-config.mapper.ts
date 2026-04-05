@@ -17,6 +17,7 @@ export class AiAgentConfigMapper {
       doc.handoffRules,
       doc.contextConfig,
       doc.rateLimits,
+      doc.goals ?? '',
       doc.isActive,
       doc.createdAt,
       doc.updatedAt,

@@ -41,8 +41,9 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
   const [language, setLanguage] = useState("es");
   const [instructions, setInstructions] = useState("");
   const [knowledgeBase, setKnowledgeBase] = useState("");
+  const [goals, setGoals] = useState("");
 
-  const totalSteps = 4;
+  const totalSteps = 5;
   const selectedProvider = providers.find((p) => p.value === provider);
 
   const handleSubmit = async () => {
@@ -56,6 +57,7 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
         model,
         apiKey,
         knowledgeBase,
+        goals,
         persona: { role, tone, language, instructions },
         handoffRules: { onCustomerRequest: true, maxConsecutiveFailures: 3 },
       });
@@ -73,6 +75,7 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
       case 2: return apiKey.trim().length > 0 && model.trim().length > 0;
       case 3: return role.trim().length > 0;
       case 4: return true;
+      case 5: return true;
       default: return false;
     }
   };
@@ -263,6 +266,41 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
               rows={10}
               className="font-mono text-sm"
             />
+          </>
+        )}
+
+        {step === 5 && (
+          <>
+            <h3 className="font-medium text-sm">Goals (Optional)</h3>
+            <p className="text-sm text-muted-foreground">
+              Define what your agent should accomplish. Write naturally — the AI will figure out how.
+            </p>
+            <Textarea
+              value={goals}
+              onChange={(e) => setGoals(e.target.value)}
+              placeholder={`Example:\n\nQualify leads by asking:\n- Name and company\n- Budget range\n- Timeline for purchase\n\nIf budget is over $5,000, mark as qualified lead.`}
+              rows={8}
+              className="font-mono text-sm"
+            />
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Quick templates:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: "Qualify leads", text: "Qualify leads by asking:\n- Full name and company\n- Budget range\n- Timeline and urgency\n\nIf budget is over $5,000, mark as qualified lead." },
+                  { label: "Take orders", text: "Help customers place orders:\n- Ask what products/services they want\n- Confirm quantities\n- Collect delivery address\n- Summarize the order before confirming" },
+                  { label: "Schedule appointments", text: "Schedule appointments:\n- Ask what service they need\n- Suggest available times\n- Collect full name and phone\n- Confirm date, time, and service" },
+                ].map((t) => (
+                  <button
+                    key={t.label}
+                    type="button"
+                    onClick={() => setGoals((prev) => prev ? `${prev}\n\n${t.text}` : t.text)}
+                    className="rounded-md border px-2.5 py-1 text-xs hover:bg-muted/50 transition-colors"
+                  >
+                    + {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </>
         )}
 

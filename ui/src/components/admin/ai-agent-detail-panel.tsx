@@ -52,6 +52,8 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
 
   const selectedProvider = providers.find((p) => p.value === provider);
 
+  const [goals, setGoals] = useState(agent.config.goals || "");
+
   const [testMessage, setTestMessage] = useState("");
   const [testResponse, setTestResponse] = useState("");
   const [testing, setTesting] = useState(false);
@@ -65,6 +67,7 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
     setPersonaTone(agent.config.persona.tone || "");
     setPersonaLanguage(agent.config.persona.language || "");
     setPersonaInstructions(agent.config.persona.instructions || "");
+    setGoals(agent.config.goals || "");
     setProvider(agent.config.provider || "openai");
     setModel(agent.config.model || "");
     setApiKey("");
@@ -85,6 +88,7 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
         provider,
         model,
         knowledgeBase,
+        goals,
         systemPrompt,
         persona: {
           role: personaRole,
@@ -163,6 +167,7 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
           <TabsList className="w-full">
             <TabsTrigger value="config" className="flex-1 text-xs">Config</TabsTrigger>
             <TabsTrigger value="knowledge" className="flex-1 text-xs">Knowledge</TabsTrigger>
+            <TabsTrigger value="goals" className="flex-1 text-xs">Goals</TabsTrigger>
             <TabsTrigger value="test" className="flex-1 text-xs">Test</TabsTrigger>
           </TabsList>
 
@@ -299,6 +304,38 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
               className="font-mono text-sm"
               placeholder="Business info, services, pricing, FAQs, policies..."
             />
+          </TabsContent>
+
+          <TabsContent value="goals" className="mt-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Define what your agent should accomplish during conversations. Write naturally — the AI will figure out how to achieve these goals.
+            </p>
+            <Textarea
+              value={goals}
+              onChange={(e) => setGoals(e.target.value)}
+              rows={10}
+              className="font-mono text-sm"
+              placeholder={`Example:\n\nQualify leads by asking:\n- Name and company\n- Budget range\n- Timeline for purchase\n\nIf budget is over $5,000, mark as qualified lead.\nIf they want to buy, collect delivery address.`}
+            />
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Quick templates:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: "Qualify leads", text: "Qualify leads by asking:\n- Full name and company\n- Budget range\n- Timeline and urgency\n- How they found us\n\nIf budget is over $5,000 and timeline is within 30 days, mark as qualified lead." },
+                  { label: "Take orders", text: "Help customers place orders:\n- Ask what products/services they want\n- Confirm quantities\n- Collect delivery address\n- Summarize the complete order before confirming\n\nAlways confirm the total before finalizing." },
+                  { label: "Schedule appointments", text: "Schedule appointments:\n- Ask what service they need\n- Suggest available times (Mon-Fri 9am-6pm)\n- Collect their full name and phone\n- Confirm the date, time, and service before finalizing" },
+                ].map((t) => (
+                  <button
+                    key={t.label}
+                    type="button"
+                    onClick={() => setGoals((prev) => prev ? `${prev}\n\n${t.text}` : t.text)}
+                    className="rounded-md border px-2.5 py-1 text-xs hover:bg-muted/50 transition-colors"
+                  >
+                    + {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="test" className="mt-4 space-y-3">
