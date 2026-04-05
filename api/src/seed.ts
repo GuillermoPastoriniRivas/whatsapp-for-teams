@@ -3,7 +3,6 @@
  *
  * Usage:
  *   npx ts-node --esm src/seed.ts
- *
  * Or via nest:
  *   npx nest start -- --entryFile seed
  */
