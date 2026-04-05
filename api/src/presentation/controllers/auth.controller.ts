@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UsePipes, Inject, HttpCode, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Body, UsePipes, Inject, HttpCode, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { LoginUseCase } from '../../application/use-cases/auth/login.use-case.js';
@@ -8,6 +8,8 @@ import { DemoLoginUseCase } from '../../application/use-cases/auth/demo-login.us
 import { GoogleLoginUseCase } from '../../application/use-cases/auth/google-login.use-case.js';
 import { ForgotPasswordUseCase } from '../../application/use-cases/auth/forgot-password.use-case.js';
 import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-password.use-case.js';
+import { SignupUseCase } from '../../application/use-cases/auth/signup.use-case.js';
+import { VerifyEmailUseCase } from '../../application/use-cases/auth/verify-email.use-case.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import { LoginRequestSchema } from '../request-dtos/login-request.dto.js';
 import type { LoginRequestDto } from '../request-dtos/login-request.dto.js';
@@ -19,6 +21,10 @@ import { ForgotPasswordRequestSchema } from '../request-dtos/forgot-password-req
 import type { ForgotPasswordRequestDto } from '../request-dtos/forgot-password-request.dto.js';
 import { ResetPasswordRequestSchema } from '../request-dtos/reset-password-request.dto.js';
 import type { ResetPasswordRequestDto } from '../request-dtos/reset-password-request.dto.js';
+import { SignupRequestSchema } from '../request-dtos/signup-request.dto.js';
+import type { SignupRequestDto } from '../request-dtos/signup-request.dto.js';
+import { VerifyEmailRequestSchema } from '../request-dtos/verify-email-request.dto.js';
+import type { VerifyEmailRequestDto } from '../request-dtos/verify-email-request.dto.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { Public } from '../decorators/public.decorator.js';
@@ -34,6 +40,8 @@ export class AuthController {
     @Inject('GoogleLoginUseCase') private readonly googleLoginUseCase: GoogleLoginUseCase,
     @Inject('ForgotPasswordUseCase') private readonly forgotPasswordUseCase: ForgotPasswordUseCase,
     @Inject('ResetPasswordUseCase') private readonly resetPasswordUseCase: ResetPasswordUseCase,
+    @Inject('SignupUseCase') private readonly signupUseCase: SignupUseCase,
+    @Inject('VerifyEmailUseCase') private readonly verifyEmailUseCase: VerifyEmailUseCase,
   ) {}
 
   @Public()
@@ -174,6 +182,54 @@ export class AuthController {
     const result = await this.resetPasswordUseCase.execute(body);
     if (!result.ok) throw new BadRequestException(result.error.message);
     return { message: 'Password has been reset successfully.' };
+  }
+
+  @Public()
+  @Post('signup')
+  @HttpCode(201)
+  @Throttle({ short: { ttl: 60000, limit: 5 } })
+  @UsePipes(new ZodValidationPipe(SignupRequestSchema))
+  @ApiOperation({ summary: 'Sign up', description: 'Create a new account with email and password. Returns JWT tokens immediately (email verification is soft).' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['name', 'email', 'password'],
+      properties: {
+        name: { type: 'string', example: 'Juan García' },
+        email: { type: 'string', format: 'email', example: 'juan@empresa.com' },
+        password: { type: 'string', minLength: 8, example: 'MiContrasena123' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Account created. Returns JWT tokens.' })
+  @ApiResponse({ status: 409, description: 'Email already registered' })
+  async signup(@Body() body: SignupRequestDto) {
+    const result = await this.signupUseCase.execute(body);
+    if (!result.ok) throw new ConflictException(result.error.message);
+    return result.value;
+  }
+
+  @Public()
+  @Post('verify-email')
+  @HttpCode(200)
+  @Throttle({ short: { ttl: 60000, limit: 10 } })
+  @UsePipes(new ZodValidationPipe(VerifyEmailRequestSchema))
+  @ApiOperation({ summary: 'Verify email', description: 'Confirm email address using a token received by email.' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['token'],
+      properties: {
+        token: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Email verified successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  async verifyEmail(@Body() body: VerifyEmailRequestDto) {
+    const result = await this.verifyEmailUseCase.execute(body);
+    if (!result.ok) throw new BadRequestException(result.error.message);
+    return { message: 'Email verified successfully.' };
   }
 
   @Get('me')

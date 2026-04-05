@@ -495,7 +495,7 @@ export default function LandingPage() {
                       if (agent) {
                         router.push("/settings/billing");
                       } else {
-                        router.push("/login");
+                        router.push("/signup");
                       }
                     }}
                   >

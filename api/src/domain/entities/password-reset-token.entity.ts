@@ -1,4 +1,4 @@
-export type PasswordResetTokenType = 'reset' | 'invitation';
+export type PasswordResetTokenType = 'reset' | 'invitation' | 'email_verification';
 
 export class PasswordResetToken {
   constructor(

@@ -18,4 +18,5 @@ export interface AgentRepository {
   updateFrozen(id: string, frozen: boolean): Promise<Agent | null>;
   findByTenantIdAndType(tenantId: string, type: AgentType): Promise<Agent[]>;
   updatePasswordHash(id: string, passwordHash: string): Promise<Agent | null>;
+  updateEmailVerified(id: string, emailVerified: boolean): Promise<Agent | null>;
 }

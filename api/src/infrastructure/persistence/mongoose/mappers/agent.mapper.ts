@@ -18,6 +18,7 @@ export class AgentMapper {
       doc.createdAt,
       (doc.type as AgentType) ?? AgentType.HUMAN,
       doc.frozen ?? false,
+      doc.emailVerified ?? true,
     );
   }
 }

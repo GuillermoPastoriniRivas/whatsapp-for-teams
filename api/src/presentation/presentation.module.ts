@@ -25,6 +25,8 @@ import { DemoLoginUseCase } from '../application/use-cases/auth/demo-login.use-c
 import { GoogleLoginUseCase } from '../application/use-cases/auth/google-login.use-case.js';
 import { ForgotPasswordUseCase } from '../application/use-cases/auth/forgot-password.use-case.js';
 import { ResetPasswordUseCase } from '../application/use-cases/auth/reset-password.use-case.js';
+import { SignupUseCase } from '../application/use-cases/auth/signup.use-case.js';
+import { VerifyEmailUseCase } from '../application/use-cases/auth/verify-email.use-case.js';
 
 // Use Cases — Agent
 import { CreateAgentUseCase } from '../application/use-cases/agent/create-agent.use-case.js';
@@ -157,6 +159,17 @@ const useCaseProviders = [
     useFactory: (resetTokenRepo: any, agentRepo: any, refreshTokenRepo: any, hasher: any) =>
       new ResetPasswordUseCase(resetTokenRepo, agentRepo, refreshTokenRepo, hasher),
     inject: ['PasswordResetTokenRepository', 'AgentRepository', 'RefreshTokenRepository', 'PasswordHasherPort'],
+  },
+  {
+    provide: 'SignupUseCase',
+    useFactory: (agentRepo: any, tenantRepo: any, refreshTokenRepo: any, resetTokenRepo: any, hasher: any, tokenProvider: any, jobQueue: any) =>
+      new SignupUseCase(agentRepo, tenantRepo, refreshTokenRepo, resetTokenRepo, hasher, tokenProvider, jobQueue, process.env.FRONTEND_URL ?? 'http://localhost:3001', process.env.SES_FROM_EMAIL ?? 'no-reply@asis.chat'),
+    inject: ['AgentRepository', 'TenantRepository', 'RefreshTokenRepository', 'PasswordResetTokenRepository', 'PasswordHasherPort', 'TokenProviderPort', 'JobQueuePort'],
+  },
+  {
+    provide: 'VerifyEmailUseCase',
+    useFactory: (resetTokenRepo: any, agentRepo: any) => new VerifyEmailUseCase(resetTokenRepo, agentRepo),
+    inject: ['PasswordResetTokenRepository', 'AgentRepository'],
   },
 
   // Agent

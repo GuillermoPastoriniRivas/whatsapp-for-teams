@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuthStore } from "@/stores/auth.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { Button } from "@/components/ui/button";
@@ -145,6 +146,24 @@ export default function LoginPage() {
               </p>
             </div>
 
+            <div className="flex justify-center">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                width="384"
+              />
+            </div>
+
+            <div className="relative my-5">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  o
+                </span>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <label
@@ -208,24 +227,6 @@ export default function LoginPage() {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-2 text-muted-foreground">
-                  o
-                </span>
-              </div>
-            </div>
-
-            <div className="flex justify-center">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                width="384"
-              />
-            </div>
-
-            <div className="relative my-5">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
                   {t.login.demoDivider}
                 </span>
               </div>
@@ -239,6 +240,13 @@ export default function LoginPage() {
             >
               {isLoading ? t.login.demoLoading : t.login.demoButton}
             </Button>
+
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              {t.login.noAccount}{" "}
+              <Link href="/signup" className="text-primary font-medium hover:underline">
+                {t.login.signupLink}
+              </Link>
+            </p>
           </div>
         </div>
       </div>

@@ -63,6 +63,7 @@ export class GoogleLoginUseCase {
         activeCount: 0,
         type: AgentType.HUMAN,
         frozen: false,
+        emailVerified: true,
       });
     }
 

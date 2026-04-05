@@ -107,4 +107,9 @@ export class MongoAgentRepository implements AgentRepository {
     const doc = await this.model.findByIdAndUpdate(id, { $set: { passwordHash } }, { returnDocument: 'after' });
     return doc ? AgentMapper.toDomain(doc) : null;
   }
+
+  async updateEmailVerified(id: string, emailVerified: boolean): Promise<Agent | null> {
+    const doc = await this.model.findByIdAndUpdate(id, { $set: { emailVerified } }, { returnDocument: 'after' });
+    return doc ? AgentMapper.toDomain(doc) : null;
+  }
 }

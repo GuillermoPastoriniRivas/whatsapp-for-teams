@@ -215,7 +215,7 @@ export default function PricingPage() {
                     if (agent) {
                       router.push(`/settings/billing?plan=${plan.key}`);
                     } else {
-                      router.push(`/login?redirect=/settings/billing&plan=${plan.key}`);
+                      router.push(`/signup?redirect=/settings/billing&plan=${plan.key}`);
                     }
                   }}
                 >

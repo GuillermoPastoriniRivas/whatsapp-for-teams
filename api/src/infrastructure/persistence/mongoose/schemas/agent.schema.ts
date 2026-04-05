@@ -35,6 +35,9 @@ export class AgentModel {
   @Prop({ default: false })
   frozen: boolean;
 
+  @Prop({ default: true })
+  emailVerified: boolean;
+
   createdAt: Date;
 }
 

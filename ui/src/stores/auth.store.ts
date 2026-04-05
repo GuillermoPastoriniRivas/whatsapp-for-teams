@@ -11,6 +11,7 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
+  signup: (name: string, email: string, password: string) => Promise<void>;
   demoLogin: () => Promise<void>;
   googleLogin: (credential: string) => Promise<void>;
   logout: () => void;
@@ -44,6 +45,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
     } catch (err: any) {
       set({ error: err.message || "Login failed", isLoading: false });
+    }
+  },
+
+  signup: async (name, email, password) => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await api.post<LoginResponse>("/auth/signup", {
+        name,
+        email,
+        password,
+      });
+      api.setToken(data.accessToken);
+      connectSocket(data.accessToken);
+
+      localStorage.setItem("accessToken", data.accessToken);
+      localStorage.setItem("refreshToken", data.refreshToken);
+      localStorage.setItem("agent", JSON.stringify(data.agent));
+
+      set({
+        agent: data.agent,
+        accessToken: data.accessToken,
+        isLoading: false,
+      });
+    } catch (err: any) {
+      set({ error: err.message || "Signup failed", isLoading: false });
     }
   },
 
