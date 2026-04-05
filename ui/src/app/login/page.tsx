@@ -180,6 +180,15 @@ export default function LoginPage() {
                   required
                   className="h-12 text-base px-4 rounded-xl"
                 />
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/forgot-password")}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {t.login.forgotPassword}
+                  </button>
+                </div>
               </div>
               {error && (
                 <p className="text-sm text-destructive">{error}</p>

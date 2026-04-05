@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateAgentUseCase } from '../../application/use-cases/agent/create-agent.use-case.js';
+import { InviteAgentUseCase } from '../../application/use-cases/agent/invite-agent.use-case.js';
 import { ListAgentsUseCase } from '../../application/use-cases/agent/list-agents.use-case.js';
 import { UpdateAgentStatusUseCase } from '../../application/use-cases/agent/update-agent-status.use-case.js';
 import { UpdateAgentProfileUseCase } from '../../application/use-cases/agent/update-agent-profile.use-case.js';
@@ -18,6 +19,8 @@ import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import { CreateAgentRequestSchema } from '../request-dtos/create-agent-request.dto.js';
 import type { CreateAgentRequestDto } from '../request-dtos/create-agent-request.dto.js';
+import { InviteAgentRequestSchema } from '../request-dtos/invite-agent-request.dto.js';
+import type { InviteAgentRequestDto } from '../request-dtos/invite-agent-request.dto.js';
 import { UpdateStatusRequestSchema } from '../request-dtos/update-status-request.dto.js';
 import type { UpdateStatusRequestDto } from '../request-dtos/update-status-request.dto.js';
 import { UpdateAgentProfileRequestSchema } from '../request-dtos/update-agent-profile-request.dto.js';
@@ -41,6 +44,7 @@ export class AgentController {
     @Inject('GrantPhoneAccessUseCase') private readonly grantAccess: GrantPhoneAccessUseCase,
     @Inject('RevokePhoneAccessUseCase') private readonly revokeAccess: RevokePhoneAccessUseCase,
     @Inject('GetAgentPhoneAccessUseCase') private readonly getAccess: GetAgentPhoneAccessUseCase,
+    @Inject('InviteAgentUseCase') private readonly inviteAgent: InviteAgentUseCase,
   ) {}
 
   @Post()
@@ -75,6 +79,41 @@ export class AgentController {
   @ApiResponse({ status: 409, description: 'Agent email already exists' })
   async create(@Body(new ZodValidationPipe(CreateAgentRequestSchema)) body: CreateAgentRequestDto, @CurrentAgent() agent: RequestAgent) {
     const result = await this.createAgent.execute({ ...body, tenantId: agent.tenantId });
+    if (!result.ok) throw new ConflictException(result.error.message);
+    const a = result.value;
+    return { id: a.id, name: a.name, email: a.email, role: a.role, status: a.status };
+  }
+
+  @Post('invite')
+  @Roles('admin')
+  @DemoRestricted()
+  @UseGuards(PlanLimitGuard)
+  @RequirePlanLimit('human_agents')
+  @ApiOperation({ summary: 'Invite agent', description: 'Invite a new agent via email. They will receive a link to set their password.' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['name', 'email'],
+      properties: {
+        name: { type: 'string', example: 'Jane Doe' },
+        email: { type: 'string', format: 'email', example: 'jane@company.com' },
+        role: { type: 'string', enum: ['admin', 'agent'], description: 'Defaults to agent' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Agent created and invitation email sent' })
+  @ApiResponse({ status: 403, description: 'Admin role required' })
+  @ApiResponse({ status: 409, description: 'Agent email already exists' })
+  async invite(@Body(new ZodValidationPipe(InviteAgentRequestSchema)) body: InviteAgentRequestDto, @CurrentAgent() agent: RequestAgent) {
+    const currentAgent = await this.listAgents.execute(agent.tenantId);
+    const inviter = currentAgent.find(a => a.id === agent._id);
+    const result = await this.inviteAgent.execute({
+      name: body.name,
+      email: body.email,
+      role: body.role as any,
+      tenantId: agent.tenantId,
+      inviterName: inviter?.name ?? 'Admin',
+    });
     if (!result.ok) throw new ConflictException(result.error.message);
     const a = result.value;
     return { id: a.id, name: a.name, email: a.email, role: a.role, status: a.status };

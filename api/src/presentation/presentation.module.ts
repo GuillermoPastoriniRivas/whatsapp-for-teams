@@ -28,6 +28,7 @@ import { ResetPasswordUseCase } from '../application/use-cases/auth/reset-passwo
 
 // Use Cases — Agent
 import { CreateAgentUseCase } from '../application/use-cases/agent/create-agent.use-case.js';
+import { InviteAgentUseCase } from '../application/use-cases/agent/invite-agent.use-case.js';
 import { ListAgentsUseCase } from '../application/use-cases/agent/list-agents.use-case.js';
 import { UpdateAgentStatusUseCase } from '../application/use-cases/agent/update-agent-status.use-case.js';
 import { UpdateAgentProfileUseCase } from '../application/use-cases/agent/update-agent-profile.use-case.js';
@@ -160,6 +161,12 @@ const useCaseProviders = [
     provide: 'CreateAgentUseCase',
     useFactory: (agentRepo: any, hasher: any) => new CreateAgentUseCase(agentRepo, hasher),
     inject: ['AgentRepository', 'PasswordHasherPort'],
+  },
+  {
+    provide: 'InviteAgentUseCase',
+    useFactory: (agentRepo: any, tenantRepo: any, resetTokenRepo: any, jobQueue: any) =>
+      new InviteAgentUseCase(agentRepo, tenantRepo, resetTokenRepo, jobQueue, process.env.FRONTEND_URL ?? 'http://localhost:3001', process.env.SES_FROM_EMAIL ?? 'no-reply@asis.chat'),
+    inject: ['AgentRepository', 'TenantRepository', 'PasswordResetTokenRepository', 'JobQueuePort'],
   },
   {
     provide: 'ListAgentsUseCase',
