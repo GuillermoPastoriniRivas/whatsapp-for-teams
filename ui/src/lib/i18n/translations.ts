@@ -185,6 +185,7 @@ const translations = {
         "Bandeja compartida de WhatsApp para equipos. Agentes humanos e IA en un solo lugar.",
       aiSuggestion: "IA ha generado una respuesta sugerida",
       whatsappAria: "Contactar por WhatsApp",
+      whatsappCta: "Escribinos por WhatsApp",
       feature1Title: "Todos tus numeros en una bandeja",
       feature1Desc:
         "Conecta varios numeros de WhatsApp Business y ve todas las conversaciones en un solo lugar. Tu equipo no necesita cambiar entre telefonos ni cuentas.",
@@ -465,6 +466,7 @@ const translations = {
         "Shared WhatsApp inbox for teams. Human and AI agents in one place.",
       aiSuggestion: "AI generated a suggested reply",
       whatsappAria: "Contact via WhatsApp",
+      whatsappCta: "Message us on WhatsApp",
       feature1Title: "All your numbers in one inbox",
       feature1Desc:
         "Connect multiple WhatsApp Business numbers and see all conversations in one place. Your team doesn't need to switch between phones or accounts.",
