@@ -19,6 +19,7 @@ export class AgentMapper {
       (doc.type as AgentType) ?? AgentType.HUMAN,
       doc.frozen ?? false,
       doc.emailVerified ?? true,
+      doc.requiresOnboarding ?? false,
     );
   }
 }

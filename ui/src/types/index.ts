@@ -10,6 +10,7 @@ export interface Agent {
   activeCount: number;
   type?: "human" | "ai";
   frozen?: boolean;
+  requiresOnboarding?: boolean;
 }
 
 export interface Conversation {

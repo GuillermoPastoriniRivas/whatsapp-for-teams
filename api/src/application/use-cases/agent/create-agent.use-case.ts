@@ -31,6 +31,7 @@ export class CreateAgentUseCase {
       type: AgentType.HUMAN,
       frozen: false,
       emailVerified: true,
+      requiresOnboarding: false,
     });
 
     return ok(agent);

@@ -68,6 +68,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!agent && pathname !== "/login") {
       window.location.href = "/login";
+      return;
+    }
+
+    // Redirect new admins who require onboarding
+    if (agent && !isDemoHost() && agent.requiresOnboarding === true && pathname !== "/onboarding") {
+      window.location.href = "/onboarding";
+      return;
     }
   }, [hydrated, agent, pathname]);
 

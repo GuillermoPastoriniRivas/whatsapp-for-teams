@@ -42,6 +42,7 @@ export class InviteAgentUseCase {
       type: AgentType.HUMAN,
       frozen: false,
       emailVerified: true,
+      requiresOnboarding: false,
     });
 
     // Generate invitation token

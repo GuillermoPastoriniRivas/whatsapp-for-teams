@@ -64,6 +64,7 @@ export class GoogleLoginUseCase {
         type: AgentType.HUMAN,
         frozen: false,
         emailVerified: true,
+        requiresOnboarding: true,
       });
     }
 
@@ -81,7 +82,7 @@ export class GoogleLoginUseCase {
     return ok({
       accessToken,
       refreshToken,
-      agent: { id: agent.id, name: agent.name, email: agent.email, role: agent.role },
+      agent: { id: agent.id, name: agent.name, email: agent.email, role: agent.role, requiresOnboarding: agent.requiresOnboarding },
     });
   }
 }

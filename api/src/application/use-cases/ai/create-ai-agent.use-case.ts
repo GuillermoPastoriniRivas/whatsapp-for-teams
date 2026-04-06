@@ -28,6 +28,7 @@ export class CreateAiAgentUseCase {
       type: AgentType.AI,
       frozen: false,
       emailVerified: true,
+      requiresOnboarding: false,
     });
 
     const config = await this.configRepo.create({

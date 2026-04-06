@@ -19,4 +19,5 @@ export interface AgentRepository {
   findByTenantIdAndType(tenantId: string, type: AgentType): Promise<Agent[]>;
   updatePasswordHash(id: string, passwordHash: string): Promise<Agent | null>;
   updateEmailVerified(id: string, emailVerified: boolean): Promise<Agent | null>;
+  updateRequiresOnboarding(id: string, value: boolean): Promise<Agent | null>;
 }

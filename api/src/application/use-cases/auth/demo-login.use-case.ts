@@ -31,7 +31,7 @@ export class DemoLoginUseCase {
     return ok({
       accessToken,
       refreshToken,
-      agent: { id: agent.id, name: agent.name, email: agent.email, role: agent.role },
+      agent: { id: agent.id, name: agent.name, email: agent.email, role: agent.role, requiresOnboarding: agent.requiresOnboarding },
     });
   }
 }

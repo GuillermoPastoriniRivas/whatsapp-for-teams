@@ -16,5 +16,6 @@ export class Agent {
     public readonly type: AgentType = AgentType.HUMAN,
     public readonly frozen: boolean = false,
     public readonly emailVerified: boolean = true,
+    public readonly requiresOnboarding: boolean = false,
   ) {}
 }

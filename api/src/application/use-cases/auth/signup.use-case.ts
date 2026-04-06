@@ -60,6 +60,7 @@ export class SignupUseCase {
       type: AgentType.HUMAN,
       frozen: false,
       emailVerified: false,
+      requiresOnboarding: true,
     });
 
     // 4. Generate email verification token
@@ -103,7 +104,7 @@ export class SignupUseCase {
     return ok({
       accessToken,
       refreshToken,
-      agent: { id: agent.id, name: agent.name, email: agent.email, role: agent.role },
+      agent: { id: agent.id, name: agent.name, email: agent.email, role: agent.role, requiresOnboarding: agent.requiresOnboarding },
     });
   }
 }

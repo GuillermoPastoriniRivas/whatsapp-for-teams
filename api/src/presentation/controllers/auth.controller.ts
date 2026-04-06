@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UsePipes, Inject, HttpCode, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Controller, Post, Patch, Get, Body, UsePipes, Inject, HttpCode, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { LoginUseCase } from '../../application/use-cases/auth/login.use-case.js';
@@ -10,6 +10,7 @@ import { ForgotPasswordUseCase } from '../../application/use-cases/auth/forgot-p
 import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-password.use-case.js';
 import { SignupUseCase } from '../../application/use-cases/auth/signup.use-case.js';
 import { VerifyEmailUseCase } from '../../application/use-cases/auth/verify-email.use-case.js';
+import { CompleteOnboardingUseCase } from '../../application/use-cases/auth/complete-onboarding.use-case.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import { LoginRequestSchema } from '../request-dtos/login-request.dto.js';
 import type { LoginRequestDto } from '../request-dtos/login-request.dto.js';
@@ -42,6 +43,7 @@ export class AuthController {
     @Inject('ResetPasswordUseCase') private readonly resetPasswordUseCase: ResetPasswordUseCase,
     @Inject('SignupUseCase') private readonly signupUseCase: SignupUseCase,
     @Inject('VerifyEmailUseCase') private readonly verifyEmailUseCase: VerifyEmailUseCase,
+    @Inject('CompleteOnboardingUseCase') private readonly completeOnboardingUseCase: CompleteOnboardingUseCase,
   ) {}
 
   @Public()
@@ -230,6 +232,16 @@ export class AuthController {
     const result = await this.verifyEmailUseCase.execute(body);
     if (!result.ok) throw new BadRequestException(result.error.message);
     return { message: 'Email verified successfully.' };
+  }
+
+  @Patch('complete-onboarding')
+  @HttpCode(200)
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Complete onboarding', description: 'Mark the current agent as having completed onboarding.' })
+  @ApiResponse({ status: 200, description: 'Onboarding marked as complete' })
+  async completeOnboarding(@CurrentAgent() agent: RequestAgent) {
+    await this.completeOnboardingUseCase.execute(agent._id);
+    return { ok: true };
   }
 
   @Get('me')

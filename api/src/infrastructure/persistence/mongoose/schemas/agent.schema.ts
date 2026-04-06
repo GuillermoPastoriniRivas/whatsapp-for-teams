@@ -38,6 +38,9 @@ export class AgentModel {
   @Prop({ default: true })
   emailVerified: boolean;
 
+  @Prop({ default: false })
+  requiresOnboarding: boolean;
+
   createdAt: Date;
 }
 

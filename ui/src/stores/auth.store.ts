@@ -6,7 +6,7 @@ import { connectSocket, disconnectSocket } from "@/lib/socket";
 import type { Agent, LoginResponse } from "@/types";
 
 interface AuthState {
-  agent: Pick<Agent, "id" | "name" | "email" | "role"> | null;
+  agent: Pick<Agent, "id" | "name" | "email" | "role" | "requiresOnboarding"> | null;
   accessToken: string | null;
   isLoading: boolean;
   error: string | null;
@@ -16,6 +16,7 @@ interface AuthState {
   googleLogin: (credential: string) => Promise<void>;
   logout: () => void;
   hydrate: () => void;
+  completeOnboarding: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -132,6 +133,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       api.setToken(token);
       connectSocket(token);
       set({ agent, accessToken: token });
+    }
+  },
+
+  completeOnboarding: async () => {
+    await api.patch("/auth/complete-onboarding");
+    const current = useAuthStore.getState().agent;
+    if (current) {
+      const updated = { ...current, requiresOnboarding: false };
+      localStorage.setItem("agent", JSON.stringify(updated));
+      set({ agent: updated });
     }
   },
 }));

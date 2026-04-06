@@ -6,5 +6,6 @@ export interface LoginOutput {
     name: string;
     email: string;
     role: string;
+    requiresOnboarding: boolean;
   };
 }

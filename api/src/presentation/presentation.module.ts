@@ -27,6 +27,7 @@ import { ForgotPasswordUseCase } from '../application/use-cases/auth/forgot-pass
 import { ResetPasswordUseCase } from '../application/use-cases/auth/reset-password.use-case.js';
 import { SignupUseCase } from '../application/use-cases/auth/signup.use-case.js';
 import { VerifyEmailUseCase } from '../application/use-cases/auth/verify-email.use-case.js';
+import { CompleteOnboardingUseCase } from '../application/use-cases/auth/complete-onboarding.use-case.js';
 
 // Use Cases — Agent
 import { CreateAgentUseCase } from '../application/use-cases/agent/create-agent.use-case.js';
@@ -170,6 +171,11 @@ const useCaseProviders = [
     provide: 'VerifyEmailUseCase',
     useFactory: (resetTokenRepo: any, agentRepo: any) => new VerifyEmailUseCase(resetTokenRepo, agentRepo),
     inject: ['PasswordResetTokenRepository', 'AgentRepository'],
+  },
+  {
+    provide: 'CompleteOnboardingUseCase',
+    useFactory: (agentRepo: any) => new CompleteOnboardingUseCase(agentRepo),
+    inject: ['AgentRepository'],
   },
 
   // Agent

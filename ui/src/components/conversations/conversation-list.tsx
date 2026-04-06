@@ -3,9 +3,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useConversationStore } from "@/stores/conversation.store";
+import { useAuthStore } from "@/stores/auth.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { ConversationItem } from "./conversation-item";
 import { ConversationFilters } from "./conversation-filters";
+import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { getSocket } from "@/lib/socket";
@@ -15,6 +17,7 @@ export function ConversationList() {
   const conversations = useConversationStore((s) => s.conversations);
   const isLoading = useConversationStore((s) => s.isLoading);
   const setActive = useConversationStore((s) => s.setActive);
+  const agent = useAuthStore((s) => s.agent);
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const { t } = useTranslations();
@@ -90,9 +93,13 @@ export function ConversationList() {
             {t.common.loading}
           </div>
         ) : filteredConversations.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">
-            {searchQuery ? t.conversations.noResults : t.conversations.noConversations}
-          </div>
+          !searchQuery && agent?.requiresOnboarding !== true ? (
+            <OnboardingChecklist />
+          ) : (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              {searchQuery ? t.conversations.noResults : t.conversations.noConversations}
+            </div>
+          )
         ) : (
           <div className="divide-y">
             {filteredConversations.map((conv) => (

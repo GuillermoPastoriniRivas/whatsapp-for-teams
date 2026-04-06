@@ -18,7 +18,7 @@ async function bootstrap() {
     origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Signature'],
     maxAge: 86400,
   });
 
@@ -34,6 +34,8 @@ async function bootstrap() {
     .addTag('Contacts', 'Contact details & updates')
     .addTag('Tenants', 'Tenant management')
     .addTag('Webhooks', 'Inbound webhook receivers (Meta, Twilio)')
+    .addTag('Payment Webhooks', 'Payment provider webhook receivers (Lemon Squeezy)')
+    .addTag('Billing', 'Subscription management and billing')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
