@@ -42,14 +42,14 @@ export class MongoMessageRepository implements MessageRepository {
     const [docs, total] = await Promise.all([
       this.model
         .find(filter)
-        .sort({ timestamp: 1 })
+        .sort({ timestamp: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
       this.model.countDocuments(filter),
     ]);
 
     return {
-      data: docs.map(MessageMapper.toDomain),
+      data: docs.map(MessageMapper.toDomain).reverse(),
       meta: {
         total,
         page,
