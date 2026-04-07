@@ -35,7 +35,7 @@ export class MongoPhoneNumberRepository implements PhoneNumberRepository {
     return docs.map(PhoneNumberMapper.toDomain);
   }
 
-  async update(id: string, data: Partial<Pick<PhoneNumber, 'label' | 'status' | 'webhookSecret' | 'providerConfig' | 'wabaId' | 'phoneNumberId' | 'displayPhone'>>): Promise<PhoneNumber | null> {
+  async update(id: string, data: Partial<Pick<PhoneNumber, 'label' | 'status' | 'webhookSecret' | 'providerConfig' | 'wabaId' | 'phoneNumberId' | 'displayPhone' | 'plugins'>>): Promise<PhoneNumber | null> {
     const doc = await this.model.findByIdAndUpdate(id, { $set: data }, { returnDocument: 'after' });
     return doc ? PhoneNumberMapper.toDomain(doc) : null;
   }

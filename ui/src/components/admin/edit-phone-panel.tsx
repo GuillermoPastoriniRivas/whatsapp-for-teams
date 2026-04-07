@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
-import { Phone, Save } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Phone, Save, ShoppingBag } from "lucide-react";
+import { useTranslations } from "@/lib/i18n/use-translations";
+import { usePluginStore } from "@/stores/plugin.store";
 import type { PhoneNumber } from "@/types";
 
 type Provider = "meta" | "twilio" | "360dialog";
@@ -28,6 +31,7 @@ interface Props {
 export function EditPhonePanel({ phone, onUpdated }: Props) {
   const provider = phone.provider as Provider;
   const fields = providerConfigFields[provider] ?? [];
+  const { t } = useTranslations();
 
   const [providerConfig, setProviderConfig] = useState<Record<string, string>>(phone.providerConfig ?? {});
   const [wabaId, setWabaId] = useState(phone.wabaId ?? "");
@@ -35,6 +39,7 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
   const [displayPhone, setDisplayPhone] = useState(phone.displayPhone ?? "");
   const [label, setLabel] = useState(phone.label ?? "");
   const [webhookSecret, setWebhookSecret] = useState("");
+  const [plugins, setPlugins] = useState<string[]>(phone.plugins ?? []);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,9 +51,16 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
     setDisplayPhone(phone.displayPhone ?? "");
     setLabel(phone.label ?? "");
     setWebhookSecret("");
+    setPlugins(phone.plugins ?? []);
     setError(null);
     setSuccess(null);
   }, [phone.id]);
+
+  const togglePlugin = (plugin: string) => {
+    setPlugins((prev) =>
+      prev.includes(plugin) ? prev.filter((p) => p !== plugin) : [...prev, plugin]
+    );
+  };
 
   const handleConfigChange = (key: string, value: string) => {
     setProviderConfig((prev) => ({ ...prev, [key]: value }));
@@ -67,12 +79,15 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
         phoneNumberId,
         displayPhone,
         label,
+        plugins,
       };
       if (webhookSecret) body.webhookSecret = webhookSecret;
 
       await api.patch(`/phone-numbers/${phone.id}`, body);
       setSuccess("Saved successfully");
       onUpdated();
+      // Reload active plugins so sidebar reflects changes immediately
+      usePluginStore.getState().load();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to update";
       setError(message);
@@ -146,6 +161,50 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Label</label>
           <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Business Phone" />
+        </div>
+
+        {/* Plugins */}
+        <div className="space-y-3 rounded-lg border p-3">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t.admin.plugins}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t.admin.pluginsDescription}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => togglePlugin("orders")}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
+              plugins.includes("orders")
+                ? "border-primary bg-primary/5"
+                : "border-border hover:bg-muted/50"
+            )}
+          >
+            <div className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+              plugins.includes("orders")
+                ? "bg-primary/10 text-primary"
+                : "bg-muted text-muted-foreground"
+            )}>
+              <ShoppingBag className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">{t.admin.pluginOrders}</p>
+              <p className="text-xs text-muted-foreground">{t.admin.pluginOrdersDescription}</p>
+            </div>
+            <div className={cn(
+              "h-5 w-9 rounded-full transition-colors relative shrink-0",
+              plugins.includes("orders") ? "bg-primary" : "bg-muted-foreground/30"
+            )}>
+              <div className={cn(
+                "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform",
+                plugins.includes("orders") ? "translate-x-4" : "translate-x-0.5"
+              )} />
+            </div>
+          </button>
         </div>
 
         <div className="space-y-1.5">

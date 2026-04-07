@@ -12,3 +12,5 @@ export type { AiPersona, HandoffRules, AiContextConfig, AiRateLimits } from './a
 export { AiUsage } from './ai-usage.entity.js';
 export { Subscription } from './subscription.entity.js';
 export { BillingRecord } from './billing-record.entity.js';
+export { Order } from './order.entity.js';
+export type { OrderItem } from './order.entity.js';

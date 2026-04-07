@@ -44,6 +44,7 @@ import { GetAgentPhoneAccessUseCase } from '../application/use-cases/agent/get-a
 import { RegisterPhoneNumberUseCase } from '../application/use-cases/phone-number/register-phone-number.use-case.js';
 import { ListPhoneNumbersUseCase } from '../application/use-cases/phone-number/list-phone-numbers.use-case.js';
 import { UpdatePhoneNumberUseCase } from '../application/use-cases/phone-number/update-phone-number.use-case.js';
+import { GetActivePluginsUseCase } from '../application/use-cases/phone-number/get-active-plugins.use-case.js';
 
 // Use Cases — Conversation
 import { ListConversationsUseCase } from '../application/use-cases/conversation/list-conversations.use-case.js';
@@ -79,6 +80,12 @@ import { DeleteAiAgentUseCase } from '../application/use-cases/ai/delete-ai-agen
 import { ProcessAiResponseUseCase } from '../application/use-cases/ai/process-ai-response.use-case.js';
 import { HandoffToHumanUseCase } from '../application/use-cases/ai/handoff-to-human.use-case.js';
 
+// Use Cases — Order
+import { CreateOrderUseCase } from '../application/use-cases/order/create-order.use-case.js';
+import { ListOrdersUseCase } from '../application/use-cases/order/list-orders.use-case.js';
+import { GetOrderUseCase } from '../application/use-cases/order/get-order.use-case.js';
+import { UpdateOrderStatusUseCase } from '../application/use-cases/order/update-order-status.use-case.js';
+
 // Use Cases — Label
 import { CreateLabelUseCase } from '../application/use-cases/label/create-label.use-case.js';
 import { ListLabelsUseCase } from '../application/use-cases/label/list-labels.use-case.js';
@@ -90,6 +97,9 @@ import { GetConversationLabelsUseCase } from '../application/use-cases/label/get
 
 // Controllers — AI
 import { AiAgentController } from './controllers/ai-agent.controller.js';
+
+// Controllers — Order
+import { OrderController } from './controllers/order.controller.js';
 
 // Controllers — Label
 import { LabelController } from './controllers/label.controller.js';
@@ -251,6 +261,11 @@ const useCaseProviders = [
     useFactory: (phoneRepo: any) => new UpdatePhoneNumberUseCase(phoneRepo),
     inject: ['PhoneNumberRepository'],
   },
+  {
+    provide: 'GetActivePluginsUseCase',
+    useFactory: (phoneRepo: any) => new GetActivePluginsUseCase(phoneRepo),
+    inject: ['PhoneNumberRepository'],
+  },
 
   // Conversation
   {
@@ -380,9 +395,9 @@ const useCaseProviders = [
   },
   {
     provide: 'ProcessAiResponseUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any) =>
-      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository'],
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, createOrder: any) =>
+      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, createOrder),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', 'CreateOrderUseCase'],
   },
 
   // Label
@@ -424,6 +439,29 @@ const useCaseProviders = [
     useFactory: (convLabelRepo: any, labelRepo: any) =>
       new GetConversationLabelsUseCase(convLabelRepo, labelRepo),
     inject: ['ConversationLabelRepository', 'LabelRepository'],
+  },
+
+  // Order
+  {
+    provide: 'CreateOrderUseCase',
+    useFactory: (orderRepo: any, eventRepo: any, gateway: any) =>
+      new CreateOrderUseCase(orderRepo, eventRepo, gateway),
+    inject: ['OrderRepository', 'ConversationEventRepository', 'RealtimeGatewayPort'],
+  },
+  {
+    provide: 'ListOrdersUseCase',
+    useFactory: (orderRepo: any) => new ListOrdersUseCase(orderRepo),
+    inject: ['OrderRepository'],
+  },
+  {
+    provide: 'GetOrderUseCase',
+    useFactory: (orderRepo: any) => new GetOrderUseCase(orderRepo),
+    inject: ['OrderRepository'],
+  },
+  {
+    provide: 'UpdateOrderStatusUseCase',
+    useFactory: (orderRepo: any, gateway: any) => new UpdateOrderStatusUseCase(orderRepo, gateway),
+    inject: ['OrderRepository', 'RealtimeGatewayPort'],
   },
 
   // Billing
@@ -496,6 +534,7 @@ const useCaseProviders = [
     ContactController,
     AiAgentController,
     LabelController,
+    OrderController,
     BillingController,
     PaymentWebhookController,
   ],

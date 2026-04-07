@@ -1,4 +1,5 @@
 import { MessagingProvider } from '../enums/messaging-provider.enum.js';
+import { PhoneNumberPlugin } from '../enums/phone-number-plugin.enum.js';
 import { PhoneNumberStatus } from '../enums/phone-number-status.enum.js';
 
 export class PhoneNumber {
@@ -13,6 +14,7 @@ export class PhoneNumber {
     public readonly label: string,
     public readonly webhookSecret: string,
     public readonly status: PhoneNumberStatus,
+    public readonly plugins: PhoneNumberPlugin[],
     public readonly createdAt: Date,
   ) {}
 }

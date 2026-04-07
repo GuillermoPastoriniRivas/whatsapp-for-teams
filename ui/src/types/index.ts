@@ -80,6 +80,7 @@ export interface PhoneNumber {
   displayPhone: string;
   label: string;
   status: "active" | "inactive";
+  plugins?: string[];
 }
 
 export interface Label {
@@ -241,6 +242,42 @@ export type ChatItem =
   | { kind: "message"; data: Message }
   | { kind: "event"; data: ConversationEvent }
   | { kind: "date"; date: string };
+
+// Orders
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "on_the_way"
+  | "delivered"
+  | "cancelled";
+
+export interface OrderItem {
+  name: string;
+  quantity: number;
+  unitPrice?: number;
+  notes?: string;
+}
+
+export interface Order {
+  id: string;
+  tenantId: string;
+  conversationId: string;
+  contactId: string;
+  phoneNumberId: string;
+  createdByAgentId: string | null;
+  status: OrderStatus;
+  items: OrderItem[];
+  deliveryType: "delivery" | "pickup";
+  deliveryAddress: string | null;
+  deliveryNotes: string | null;
+  estimatedTotal: number | null;
+  currency: string | null;
+  createdAt: string;
+  updatedAt: string;
+  contactName?: string;
+}
 
 export interface AiAgentWithConfig {
   id: string;

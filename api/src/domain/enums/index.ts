@@ -12,3 +12,5 @@ export { AiProvider } from './ai-provider.enum.js';
 export { PlanTier } from './plan-tier.enum.js';
 export { SubscriptionStatus } from './subscription-status.enum.js';
 export { BillingEventType } from './billing-event-type.enum.js';
+export { OrderStatus } from './order-status.enum.js';
+export { PhoneNumberPlugin } from './phone-number-plugin.enum.js';

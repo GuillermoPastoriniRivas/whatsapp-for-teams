@@ -11,3 +11,4 @@ export type { AiAgentConfigRepository } from './ai-agent-config.repository.js';
 export type { AiUsageRepository } from './ai-usage.repository.js';
 export type { SubscriptionRepository } from './subscription.repository.js';
 export type { BillingRecordRepository } from './billing-record.repository.js';
+export type { OrderRepository, OrderFilters, PaginatedOrders } from './order.repository.js';

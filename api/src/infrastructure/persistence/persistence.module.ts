@@ -33,7 +33,9 @@ import { BillingRecordModel, BillingRecordSchema } from './mongoose/schemas/bill
 import { MongoSubscriptionRepository } from './mongoose/repositories/mongo-subscription.repository.js';
 import { MongoBillingRecordRepository } from './mongoose/repositories/mongo-billing-record.repository.js';
 import { PasswordResetTokenModel, PasswordResetTokenSchema } from './mongoose/schemas/password-reset-token.schema.js';
+import { OrderModel, OrderSchema } from './mongoose/schemas/order.schema.js';
 import { MongoPasswordResetTokenRepository } from './mongoose/repositories/mongo-password-reset-token.repository.js';
+import { MongoOrderRepository } from './mongoose/repositories/mongo-order.repository.js';
 import { EncryptionService } from '../ai/encryption.service.js';
 
 const schemas = MongooseModule.forFeature([
@@ -54,6 +56,7 @@ const schemas = MongooseModule.forFeature([
   { name: SubscriptionModel.name, schema: SubscriptionSchema },
   { name: BillingRecordModel.name, schema: BillingRecordSchema },
   { name: PasswordResetTokenModel.name, schema: PasswordResetTokenSchema },
+  { name: OrderModel.name, schema: OrderSchema },
 ]);
 
 const repositories = [
@@ -74,6 +77,7 @@ const repositories = [
   { provide: 'SubscriptionRepository', useClass: MongoSubscriptionRepository },
   { provide: 'BillingRecordRepository', useClass: MongoBillingRecordRepository },
   { provide: 'PasswordResetTokenRepository', useClass: MongoPasswordResetTokenRepository },
+  { provide: 'OrderRepository', useClass: MongoOrderRepository },
 ];
 
 @Module({

@@ -1,14 +1,23 @@
 "use client";
 
+import { useEffect } from "react";
 import { AuthProvider } from "@/components/auth-provider";
 import { AppHeader } from "@/components/layout/app-header";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { DemoBanner } from "@/components/demo-banner";
+import { usePluginStore } from "@/stores/plugin.store";
+
+function PluginLoader() {
+  const load = usePluginStore((s) => s.load);
+  useEffect(() => { load(); }, [load]);
+  return null;
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
+      <PluginLoader />
       <div className="flex flex-col h-screen w-full overflow-hidden bg-background font-sans">
         <DemoBanner />
         <div className="flex flex-1 overflow-hidden">

@@ -14,6 +14,9 @@ import { HandoffDetectionDomainService } from '../../../domain/services/handoff-
 import { DirectiveEngineDomainService } from '../../../domain/services/directive-engine.domain-service.js';
 import { ContactDirectiveHandler } from './handlers/contact-directive.handler.js';
 import { HandoffDirectiveHandler } from './handlers/handoff-directive.handler.js';
+import { OrderDirectiveHandler } from './handlers/order-directive.handler.js';
+import { CreateOrderUseCase } from '../order/create-order.use-case.js';
+import { PhoneNumberPlugin } from '../../../domain/enums/phone-number-plugin.enum.js';
 import { LabelRepository } from '../../../domain/repositories/label.repository.js';
 import { ConversationLabelRepository } from '../../../domain/repositories/conversation-label.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
@@ -65,6 +68,7 @@ export class ProcessAiResponseUseCase {
   private readonly directiveEngine = new DirectiveEngineDomainService();
   private readonly contactHandler: ContactDirectiveHandler;
   private readonly handoffHandler: HandoffDirectiveHandler;
+  private readonly orderHandler: OrderDirectiveHandler;
 
   constructor(
     private readonly conversationRepo: ConversationRepository,
@@ -81,9 +85,11 @@ export class ProcessAiResponseUseCase {
     private readonly labelRepo: LabelRepository,
     private readonly convLabelRepo: ConversationLabelRepository,
     private readonly eventRepo: ConversationEventRepository,
+    private readonly createOrderUseCase: CreateOrderUseCase,
   ) {
     this.contactHandler = new ContactDirectiveHandler(this.contactRepo, this.eventRepo, this.gateway);
     this.handoffHandler = new HandoffDirectiveHandler(this.handoffUseCase);
+    this.orderHandler = new OrderDirectiveHandler(this.createOrderUseCase);
   }
 
   async execute(input: ProcessAiResponseInput): Promise<void> {
@@ -145,8 +151,11 @@ export class ProcessAiResponseUseCase {
     this.logger.log(`Conversation ${input.conversationId}: ${messages.length} messages loaded, chatHistory has ${chatHistory.length} entries`);
     this.logger.debug(`chatHistory: ${JSON.stringify(chatHistory)}`);
 
+    // Load phone early — used for system prompt (plugin check) and later for sending
+    const phone = await this.phoneRepo.findById(conversation.phoneNumberId);
+
     // Build system prompt
-    const systemPrompt = await this.buildSystemPrompt(config, conversation, chatHistory);
+    const systemPrompt = await this.buildSystemPrompt(config, conversation, chatHistory, phone);
 
     this.logger.log(`System prompt length: ${systemPrompt.length} chars. Knowledge base: ${config.knowledgeBase?.length || 0} chars`);
     this.logger.debug(`System prompt preview: ${systemPrompt.substring(0, 500)}...`);
@@ -252,10 +261,22 @@ export class ProcessAiResponseUseCase {
       }
     }
 
+    // Execute order directives (create orders from AI)
+    if (!phone) return;
+
+    if (phone.plugins.includes(PhoneNumberPlugin.ORDERS)) {
+      await this.orderHandler.handle(
+        this.directiveEngine.filterByType(directives, 'ORDER'),
+        conversation.id,
+        conversation.contactId,
+        conversation.phoneNumberId,
+        conversation.tenantId,
+      );
+    }
+
     // Send response via WhatsApp
-    const phone = await this.phoneRepo.findById(conversation.phoneNumberId);
     const contact = await this.contactRepo.findById(conversation.contactId);
-    if (!phone || !contact) return;
+    if (!contact) return;
 
     const { waMessageId } = await this.messagingApi.sendMessage({
       provider: phone.provider,
@@ -303,6 +324,7 @@ export class ProcessAiResponseUseCase {
     config: any,
     conversation: any,
     chatHistory: Array<{ role: string; content: string }>,
+    phone?: any,
   ): Promise<string> {
     const promptParts: string[] = [];
 
@@ -379,7 +401,23 @@ export class ProcessAiResponseUseCase {
     // 12. Conversation summary directive
     promptParts.push(`## Conversation Tracking\nAfter each substantive exchange, update your internal summary of this conversation:\n[SUMMARY:set:brief summary of what was discussed, data collected, customer needs]\nThis summary helps human agents if they take over. Keep it concise and factual.`);
 
-    // 13. Directive rules
+    // 13. Order management (only if phone has ORDERS plugin)
+    if (phone?.plugins?.includes(PhoneNumberPlugin.ORDERS)) {
+      promptParts.push(`## Order Management
+When a customer confirms their food order, create it using this invisible directive:
+[ORDER:create:{"items":[{"name":"Item name","quantity":1,"unitPrice":850,"notes":"special request"}],"type":"delivery","address":"full delivery address","notes":"any delivery notes","total":1700,"currency":"ARS"}]
+
+Rules:
+- Only emit this directive AFTER the customer explicitly confirms the order ("sí, confirmo", "dale", "listo", etc.)
+- Always confirm the full order summary with the customer BEFORE emitting the directive
+- Include unitPrice per item if known from the menu. Set total as the sum of all items
+- For pickup orders, set "type" to "pickup" and omit "address"
+- After emitting [ORDER:create:...], tell the customer their order was received and give an estimated time if available
+- Do NOT emit this directive multiple times for the same order
+- If the customer wants to modify after confirming, create a new order with the updated items`);
+    }
+
+    // 14. Directive rules
     promptParts.push(`## Important: Directives\nAll text inside square brackets [LIKE:this:example] are invisible directives — they are automatically stripped before the message reaches the customer. You can include multiple directives in a single response. Never mention directives to the customer.`);
 
     return promptParts.join('\n\n');
