@@ -91,77 +91,96 @@ export function CreateOrderSheet({
           <SheetTitle>{t.orders.createOrder}</SheetTitle>
         </SheetHeader>
 
-        <div className="mt-6 space-y-5">
+        <div className="mt-6 space-y-6">
           {/* Items */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium">{t.orders.items}</label>
-            {items.map((item, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <div className="flex-1 space-y-1">
-                  <Input
-                    placeholder={t.orders.itemName}
-                    value={item.name}
-                    onChange={(e) => updateItem(i, "name", e.target.value)}
-                  />
+          <section>
+            <label className="text-sm font-semibold text-foreground mb-3 block">
+              {t.orders.items}
+            </label>
+            <div className="space-y-3">
+              {items.map((item, i) => (
+                <div
+                  key={i}
+                  className="rounded-lg border bg-muted/30 p-3 space-y-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder={t.orders.itemName}
+                      value={item.name}
+                      onChange={(e) => updateItem(i, "name", e.target.value)}
+                      className="flex-1 bg-background"
+                    />
+                    {items.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeItem(i)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                   <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder={t.orders.quantity}
-                      min={1}
-                      value={item.quantity}
-                      onChange={(e) =>
-                        updateItem(i, "quantity", parseInt(e.target.value) || 1)
-                      }
-                      className="w-20"
-                    />
-                    <Input
-                      type="number"
-                      placeholder={t.orders.unitPrice}
-                      min={0}
-                      value={item.unitPrice ?? ""}
-                      onChange={(e) =>
-                        updateItem(
-                          i,
-                          "unitPrice",
-                          e.target.value ? Number(e.target.value) : 0
-                        )
-                      }
-                      className="flex-1"
-                    />
+                    <div className="w-20">
+                      <label className="text-xs text-muted-foreground mb-1 block">
+                        {t.orders.quantity}
+                      </label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={item.quantity}
+                        onChange={(e) =>
+                          updateItem(i, "quantity", parseInt(e.target.value) || 1)
+                        }
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs text-muted-foreground mb-1 block">
+                        {t.orders.unitPrice}
+                      </label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={item.unitPrice ?? ""}
+                        onChange={(e) =>
+                          updateItem(
+                            i,
+                            "unitPrice",
+                            e.target.value ? Number(e.target.value) : 0
+                          )
+                        }
+                        className="bg-background"
+                      />
+                    </div>
                   </div>
                 </div>
-                {items.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 w-9 p-0 text-muted-foreground"
-                    onClick={() => removeItem(i)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
             <Button
               variant="outline"
               size="sm"
-              className="w-full"
+              className="w-full mt-3"
               onClick={() => setItems((prev) => [...prev, emptyItem()])}
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-1.5" />
               {t.orders.addItem}
             </Button>
-          </div>
+          </section>
+
+          <div className="border-t" />
 
           {/* Delivery type */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
+          <section className="space-y-3">
+            <label className="text-sm font-semibold text-foreground block">
               {t.orders.deliveryType}
             </label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 variant={deliveryType === "delivery" ? "default" : "outline"}
                 size="sm"
+                className="w-full"
                 onClick={() => setDeliveryType("delivery")}
               >
                 {t.orders.delivery}
@@ -169,41 +188,46 @@ export function CreateOrderSheet({
               <Button
                 variant={deliveryType === "pickup" ? "default" : "outline"}
                 size="sm"
+                className="w-full"
                 onClick={() => setDeliveryType("pickup")}
               >
                 {t.orders.pickup}
               </Button>
             </div>
-          </div>
 
-          {/* Address (only for delivery) */}
-          {deliveryType === "delivery" && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {t.orders.deliveryAddress}
+            {/* Address (only for delivery) */}
+            {deliveryType === "delivery" && (
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">
+                  {t.orders.deliveryAddress}
+                </label>
+                <Input
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  placeholder={t.orders.address}
+                />
+              </div>
+            )}
+
+            {/* Notes */}
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">
+                {t.orders.notes}
               </label>
-              <Input
-                value={deliveryAddress}
-                onChange={(e) => setDeliveryAddress(e.target.value)}
-                placeholder={t.orders.address}
+              <Textarea
+                value={deliveryNotes}
+                onChange={(e) => setDeliveryNotes(e.target.value)}
+                placeholder={t.orders.deliveryNotes}
+                rows={2}
               />
             </div>
-          )}
+          </section>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{t.orders.notes}</label>
-            <Textarea
-              value={deliveryNotes}
-              onChange={(e) => setDeliveryNotes(e.target.value)}
-              placeholder={t.orders.deliveryNotes}
-              rows={2}
-            />
-          </div>
+          <div className="border-t" />
 
           {/* Total */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
+          <section className="space-y-1.5">
+            <label className="text-sm font-semibold text-foreground block">
               {t.orders.estimatedTotal}
             </label>
             <Input
@@ -211,11 +235,12 @@ export function CreateOrderSheet({
               min={0}
               value={estimatedTotal}
               onChange={(e) => setEstimatedTotal(e.target.value)}
+              placeholder="0.00"
             />
-          </div>
+          </section>
 
           {/* Submit */}
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-3 pt-4 border-t">
             <Button
               variant="outline"
               className="flex-1"
