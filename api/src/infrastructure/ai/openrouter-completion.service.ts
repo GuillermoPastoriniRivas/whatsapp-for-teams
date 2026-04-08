@@ -22,7 +22,6 @@ export class OpenRouterCompletionService {
       body: JSON.stringify({
         model: params.model,
         messages,
-        max_tokens: params.maxTokens ?? 1024,
       }),
     });
 

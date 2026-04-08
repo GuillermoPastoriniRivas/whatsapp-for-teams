@@ -39,6 +39,7 @@ const BASE_SYSTEM_PROMPT = `You are an AI assistant operating inside a shared Wh
 ## How you work
 - You communicate with customers through WhatsApp on behalf of a business.
 - You share the phone number with human agents from the same team. Customers don't know whether they're talking to a human or an AI unless they ask.
+- Each message in the conversation history includes a timestamp prefix in [ISO 8601] format. Use these to understand time gaps between messages, detect when a customer returns after hours or days, and adjust your greeting accordingly (e.g. "Hola de nuevo" if they wrote days ago). NEVER include these timestamps in your own responses — they are metadata for your context only.
 
 ## What you can do
 - Answer questions using the business knowledge provided to you.
@@ -132,20 +133,19 @@ export class ProcessAiResponseUseCase {
     }
 
     // Build conversation history — get the LAST N messages
-    const { meta } = await this.messageRepo.findByConversationId(input.conversationId, 1, 1);
-    const totalMessages = meta.total;
+    // The repo sorts by timestamp DESC, so page 1 already contains the most recent messages.
+    // It then reverses them to chronological order before returning.
     const historyLimit = config.contextConfig.maxHistoryMessages;
-    const lastPage = Math.max(1, Math.ceil(totalMessages / historyLimit));
     const { data: messages } = await this.messageRepo.findByConversationId(
       input.conversationId,
-      lastPage,
+      1,
       historyLimit,
     );
     const sortedMessages = messages;
 
     const chatHistory = sortedMessages.map((m) => ({
       role: (m.direction === MessageDirection.INBOUND ? 'user' : 'assistant') as 'user' | 'assistant',
-      content: m.body ?? '',
+      content: `[${m.timestamp.toISOString()}] ${m.body ?? ''}`,
     }));
 
     this.logger.log(`Conversation ${input.conversationId}: ${messages.length} messages loaded, chatHistory has ${chatHistory.length} entries`);
@@ -213,8 +213,11 @@ export class ProcessAiResponseUseCase {
       }
     }
 
+    // Strip any timestamp prefixes the LLM may have echoed from chat history
+    const strippedContent = result.content.replace(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\]\s?/g, '');
+
     // Parse directives from LLM output
-    const { cleanContent: responseContent, directives } = this.directiveEngine.parse(result.content);
+    const { cleanContent: responseContent, directives } = this.directiveEngine.parse(strippedContent);
 
     // Execute label directives
     const tenantLabels = await this.labelRepo.findByTenantId(conversation.tenantId);

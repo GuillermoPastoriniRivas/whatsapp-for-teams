@@ -17,7 +17,6 @@ export class AnthropicCompletionService {
       },
       body: JSON.stringify({
         model: params.model,
-        max_tokens: params.maxTokens ?? 1024,
         system: params.systemPrompt,
         messages: params.messages,
       }),
