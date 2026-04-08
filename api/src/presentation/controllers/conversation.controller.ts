@@ -163,6 +163,7 @@ export class ConversationController {
             email: contact.email,
             company: contact.company,
             notes: contact.notes,
+            customFields: contact.customFields,
           }
         : null,
       agentName: assignedAgent?.name ?? null,

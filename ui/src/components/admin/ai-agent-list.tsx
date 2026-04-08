@@ -161,9 +161,15 @@ export function AiAgentList({ onPanelChange, onPanelClose }: Props) {
                         <Snowflake className="h-3 w-3" />
                         {t.billing.frozen}
                       </Badge>
-                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-primary" onClick={(e) => handleActivate(agent, e)}>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="inline-flex shrink-0 items-center justify-center h-6 px-2 text-[10px] text-primary rounded-md hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                        onClick={(e) => handleActivate(agent, e)}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleActivate(agent, e as unknown as React.MouseEvent); } }}
+                      >
                         {t.billing.activate}
-                      </Button>
+                      </span>
                     </>
                   ) : (
                     <>

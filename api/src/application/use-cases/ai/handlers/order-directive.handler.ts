@@ -1,45 +1,55 @@
 import { Logger } from '@nestjs/common';
 import { CreateOrderUseCase } from '../../order/create-order.use-case.js';
-import type { Directive } from '../../../../domain/services/directive-engine.domain-service.js';
+
+export interface OrderActionParams {
+  items: Array<{ name: string; quantity: number; unitPrice: number; notes?: string }>;
+  type: string;
+  address?: string;
+  notes?: string;
+  total?: number;
+  currency?: string;
+}
 
 export class OrderDirectiveHandler {
   private readonly logger = new Logger(OrderDirectiveHandler.name);
 
   constructor(private readonly createOrder: CreateOrderUseCase) {}
 
-  async handle(
-    directives: Directive[],
+  async handleAction(
+    params: OrderActionParams,
     conversationId: string,
     contactId: string,
     phoneNumberId: string,
     tenantId: string,
-  ): Promise<void> {
-    const orderDirectives = directives.filter(
-      (d) => d.type === 'ORDER' && d.action === 'create',
-    );
-
-    for (const d of orderDirectives) {
-      try {
-        const payload = JSON.parse(d.key);
-
-        await this.createOrder.execute({
-          tenantId,
-          conversationId,
-          contactId,
-          phoneNumberId,
-          createdByAgentId: null,
-          items: Array.isArray(payload.items) ? payload.items : [],
-          deliveryType: payload.type === 'delivery' ? 'delivery' : 'pickup',
-          deliveryAddress: payload.address ?? null,
-          deliveryNotes: payload.notes ?? null,
-          estimatedTotal: typeof payload.total === 'number' ? payload.total : null,
-          currency: payload.currency ?? null,
-        });
-
-        this.logger.log(`Order created from AI directive for conversation ${conversationId}`);
-      } catch (error) {
-        this.logger.warn(`Failed to parse/create order directive: ${error}`);
-      }
+  ): Promise<string> {
+    const items = Array.isArray(params.items) ? params.items : [];
+    if (items.length === 0) {
+      this.logger.warn(`Order action with no items for conversation ${conversationId}`);
+      return 'No items provided for order';
     }
+
+    this.logger.log(`Creating order: ${items.length} items, total: ${params.total}, type: ${params.type}, conversation: ${conversationId}`);
+
+    const result = await this.createOrder.execute({
+      tenantId,
+      conversationId,
+      contactId,
+      phoneNumberId,
+      createdByAgentId: null,
+      items,
+      deliveryType: params.type === 'delivery' ? 'delivery' : 'pickup',
+      deliveryAddress: params.address ?? null,
+      deliveryNotes: params.notes ?? null,
+      estimatedTotal: typeof params.total === 'number' ? params.total : null,
+      currency: params.currency ?? null,
+    });
+
+    if (!result.ok) {
+      this.logger.warn(`Order creation failed: ${(result as any).error}`);
+      throw new Error(`Order creation failed: ${(result as any).error}`);
+    }
+
+    this.logger.log(`Order created: id=${result.value.id}, conversation=${conversationId}`);
+    return `Order created successfully (${items.length} items, total: ${params.total ?? 'N/A'})`;
   }
 }

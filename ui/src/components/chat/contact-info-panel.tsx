@@ -64,6 +64,7 @@ export function ContactInfoPanel({ conversation }: Props) {
                 email: contact.email ?? null,
                 company: contact.company ?? null,
                 notes: contact.notes ?? null,
+                customFields: contact.customFields ?? {},
               }}
               onUpdated={() => {}}
             />

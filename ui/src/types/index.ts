@@ -38,6 +38,7 @@ export interface Conversation {
     email: string | null;
     company: string | null;
     notes: string | null;
+    customFields: Record<string, string>;
   } | null;
 }
 

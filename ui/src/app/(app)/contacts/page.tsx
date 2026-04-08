@@ -200,6 +200,7 @@ export default function ContactsPage() {
                     email: selected.email ?? null,
                     company: selected.company ?? null,
                     notes: selected.notes ?? null,
+                    customFields: selected.customFields ?? {},
                   }}
                   onUpdated={(fields) =>
                     handleContactUpdated(selected.id, fields)

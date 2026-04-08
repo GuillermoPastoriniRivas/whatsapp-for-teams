@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Mail, Building2, Loader2 } from "lucide-react";
+import { Mail, Building2, Loader2, TextIcon } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface ContactData {
@@ -10,6 +10,7 @@ interface ContactData {
   email: string | null;
   company: string | null;
   notes: string | null;
+  customFields: Record<string, string>;
 }
 
 interface Props {
@@ -110,6 +111,17 @@ export function ContactFields({ contact, onUpdated }: Props) {
     onUpdated({ [field]: value });
   };
 
+  const saveCustomField = async (key: string, value: string | null) => {
+    const updated = { ...contact.customFields };
+    if (value === null) {
+      delete updated[key];
+    } else {
+      updated[key] = value;
+    }
+    await api.patch(`/contacts/${contact.id}`, { customFields: updated });
+    onUpdated({ customFields: updated } as Partial<ContactData>);
+  };
+
   return (
     <div className="space-y-0.5">
       <InlineField
@@ -125,6 +137,15 @@ export function ContactFields({ contact, onUpdated }: Props) {
         value={contact.company}
         onSave={(v) => saveField("company", v)}
       />
+      {Object.entries(contact.customFields).map(([key, value]) => (
+        <InlineField
+          key={key}
+          icon={TextIcon}
+          label={key}
+          value={value}
+          onSave={(v) => saveCustomField(key, v)}
+        />
+      ))}
     </div>
   );
 }

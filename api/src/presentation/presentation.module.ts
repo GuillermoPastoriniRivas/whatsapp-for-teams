@@ -395,9 +395,9 @@ const useCaseProviders = [
   },
   {
     provide: 'ProcessAiResponseUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, createOrder: any) =>
-      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, createOrder),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', 'CreateOrderUseCase'],
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, createOrder: any, orderRepo: any) =>
+      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, createOrder, orderRepo),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', 'CreateOrderUseCase', 'OrderRepository'],
   },
 
   // Label

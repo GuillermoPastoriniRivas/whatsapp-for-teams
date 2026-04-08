@@ -74,6 +74,7 @@ export function ContactInfoSheet({ open, onOpenChange, conversation }: Props) {
                   email: contact.email ?? null,
                   company: contact.company ?? null,
                   notes: contact.notes ?? null,
+                  customFields: contact.customFields ?? {},
                 }}
                 onUpdated={() => {
                   // Fields update in-place via the component's own state
