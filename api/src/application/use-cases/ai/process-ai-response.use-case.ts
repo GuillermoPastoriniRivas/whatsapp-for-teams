@@ -173,8 +173,8 @@ export class ProcessAiResponseUseCase {
         systemPrompt: intentPrompt,
         messages: chatHistory,
       });
-    } catch (error) {
-      this.logger.error(`AI intent step failed for agent ${agent.id}: ${error}`);
+    } catch (error: any) {
+      this.logger.error(`AI intent step failed for agent ${agent.id}: ${error.message}`, error.stack);
       throw error;
     }
 
@@ -256,8 +256,8 @@ export class ProcessAiResponseUseCase {
         systemPrompt: responsePrompt,
         messages: chatHistory,
       });
-    } catch (error) {
-      this.logger.error(`AI response step failed for agent ${agent.id}: ${error}`);
+    } catch (error: any) {
+      this.logger.error(`AI response step failed for agent ${agent.id}: ${error.message}`, error.stack);
       throw error;
     }
 

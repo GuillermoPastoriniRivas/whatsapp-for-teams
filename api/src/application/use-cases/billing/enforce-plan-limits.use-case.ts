@@ -18,6 +18,17 @@ export class EnforcePlanLimitsUseCase {
 
   async execute(tenantId: string): Promise<void> {
     const sub = await this.subscriptionRepo.findByTenantId(tenantId);
+
+    // Expired free trial: freeze all resources
+    if (sub?.status === SubscriptionStatus.EXPIRED) {
+      await Promise.all([
+        this.enforcePhones(tenantId, 0),
+        this.enforceHumanAgents(tenantId, 0),
+        this.enforceAiBots(tenantId, 0),
+      ]);
+      return;
+    }
+
     const plan = sub?.status === SubscriptionStatus.ACTIVE ? sub.plan : PlanTier.FREE;
     const limits = PLAN_LIMITS[plan];
 

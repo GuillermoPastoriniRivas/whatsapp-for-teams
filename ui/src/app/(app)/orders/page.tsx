@@ -118,7 +118,7 @@ export default function OrdersPage() {
       <TableHead>{t.orders.contact}</TableHead>
       <TableHead>{t.orders.items}</TableHead>
       <TableHead>{t.orders.deliveryType}</TableHead>
-      <TableHead>{t.orders.progress}</TableHead>
+      <TableHead>{t.orders.status}</TableHead>
       <TableHead>{t.orders.total}</TableHead>
       <TableHead>{t.orders.time}</TableHead>
       <TableHead>{t.orders.actions}</TableHead>

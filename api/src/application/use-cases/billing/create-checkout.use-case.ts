@@ -27,6 +27,10 @@ export class CreateCheckoutUseCase {
       return err(new DomainError('INVALID_PLAN', 'Free plan does not require checkout. Use POST /billing/subscribe.'));
     }
 
+    if (input.plan === PlanTier.AGENCIES) {
+      return err(new DomainError('CONTACT_REQUIRED', 'Agencies plan requires contacting sales.'));
+    }
+
     const existing = await this.subscriptionRepo.findByTenantId(input.tenantId);
     if (existing && existing.status === SubscriptionStatus.ACTIVE && existing.plan === input.plan) {
       return err(new DomainError('SUBSCRIPTION_EXISTS', `Already subscribed to ${input.plan} plan.`));

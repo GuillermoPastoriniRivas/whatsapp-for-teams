@@ -327,6 +327,11 @@ const translations = {
       redirectingToCheckout: "Redirigiendo al pago...",
       paymentFailed: "Error en el pago",
       subscriptionRenewed: "Suscripcion renovada",
+      trialExpired: "Tu prueba ha expirado",
+      trialExpiredMessage: "Tu periodo de prueba de 30 dias ha finalizado. Tus numeros de telefono han sido desconectados. Mejora tu plan para reactivarlos.",
+      contactUs: "Contactanos",
+      whatsappSupport: "Soporte por WhatsApp",
+      startTrial: "Comenzar prueba gratis",
     },
     signup: {
       title: "Crea tu cuenta",
@@ -809,6 +814,11 @@ const translations = {
       redirectingToCheckout: "Redirecting to checkout...",
       paymentFailed: "Payment failed",
       subscriptionRenewed: "Subscription renewed",
+      trialExpired: "Your trial has expired",
+      trialExpiredMessage: "Your 30-day free trial has ended. Your phone numbers have been disconnected. Upgrade your plan to reactivate them.",
+      contactUs: "Contact us",
+      whatsappSupport: "WhatsApp support",
+      startTrial: "Start free trial",
     },
     onboarding: {
       skip: "Skip",

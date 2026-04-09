@@ -180,7 +180,7 @@ export interface AiAgentConfig {
 }
 
 export type PlanTier = "free" | "pro" | "business" | "agencies";
-export type SubscriptionStatus = "active" | "canceled" | "past_due";
+export type SubscriptionStatus = "active" | "canceled" | "past_due" | "expired";
 
 export interface Subscription {
   id: string;
@@ -230,6 +230,7 @@ export interface PlanLimits {
   apiAccess: boolean;
   whiteLabel: boolean;
   prioritySupport: boolean | "dedicated";
+  whatsappSupport: boolean;
   priceMonthly: number;
 }
 

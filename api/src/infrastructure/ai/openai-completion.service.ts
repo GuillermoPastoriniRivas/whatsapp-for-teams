@@ -15,17 +15,25 @@ export class OpenAiCompletionService {
 
     this.logger.log(`OpenAI request: model=${params.model}, messages=${messages.length}, systemPrompt=${params.systemPrompt.length} chars`);
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${params.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: params.model,
-        messages,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${params.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: params.model,
+          messages,
+        }),
+        signal: AbortSignal.timeout(120_000),
+      });
+    } catch (error: any) {
+      const cause = error.cause ? ` | cause: ${error.cause.message ?? error.cause}` : '';
+      this.logger.error(`OpenAI fetch failed: ${error.message}${cause} (model=${params.model})`);
+      throw new Error(`OpenAI fetch failed: ${error.message}${cause}`, { cause: error });
+    }
 
     if (!response.ok) {
       const error = await response.text();

@@ -19,6 +19,7 @@ import {
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
 import { usePluginStore } from "@/stores/plugin.store";
+import { useBillingStore } from "@/stores/billing.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
 import { AsisLogo } from "@/components/brand/asis-logo";
@@ -39,7 +40,9 @@ export function AppSidebar({ className }: { className?: string }) {
     Object.values(s.unreadCounts).reduce((sum, n) => sum + n, 0)
   );
   const hasOrders = usePluginStore((s) => s.has("orders"));
+  const billingPlan = useBillingStore((s) => s.plan);
   const { t } = useTranslations();
+  const showWhatsAppSupport = ["pro", "business", "agencies"].includes(billingPlan);
 
   const [collapsed, setCollapsed] = useState(false);
 
@@ -179,6 +182,39 @@ export function AppSidebar({ className }: { className?: string }) {
           {bottomTabs.map((tab) => (
             <NavItem key={tab.href} tab={tab} />
           ))}
+
+          {/* WhatsApp support */}
+          {showWhatsAppSupport && (
+            collapsed ? (
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <a
+                      href="https://wa.me/5493442670825"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-11 w-11 items-center justify-center rounded-xl transition-all text-green-600 hover:bg-green-50"
+                    >
+                      <MessageSquare className="h-5 w-5 shrink-0" />
+                    </a>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="font-semibold">
+                    {t.billing.whatsappSupport}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <a
+                href="https://wa.me/5493442670825"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-11 w-full items-center gap-3 rounded-xl px-3 transition-all text-green-600 hover:bg-green-50"
+              >
+                <MessageSquare className="h-5 w-5 shrink-0" />
+                <span className="text-sm font-medium">{t.billing.whatsappSupport}</span>
+              </a>
+            )
+          )}
 
           {/* Language toggle */}
           <div className="mt-1">

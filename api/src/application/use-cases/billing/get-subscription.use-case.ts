@@ -84,8 +84,15 @@ export class GetSubscriptionUseCase {
       await this.enforceLimits.execute(subscription.tenantId);
 
       return updated!;
+    } else if (subscription.plan === PlanTier.FREE) {
+      // Free trial expired — mark as EXPIRED, do NOT renew
+      const updated = await this.subscriptionRepo.update(subscription.id, {
+        status: SubscriptionStatus.EXPIRED,
+      });
+      await this.enforceLimits.execute(subscription.tenantId);
+      return updated!;
     } else {
-      // Auto-renew current plan
+      // Auto-renew current paid plan
       const limits = PLAN_LIMITS[subscription.plan];
 
       const updated = await this.subscriptionRepo.update(subscription.id, {

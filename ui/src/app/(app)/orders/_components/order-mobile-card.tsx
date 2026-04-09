@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { STATUS_CONFIG, timeAgo } from "./order-constants";
-import { OrderStatusStepper } from "./order-status-stepper";
 import type { Order, OrderStatus } from "@/types";
 
 interface OrderMobileCardProps {
@@ -51,9 +50,6 @@ export function OrderMobileCard({
           {statusLabel}
         </Badge>
       </div>
-
-      {/* Stepper (active only) */}
-      {!isCompleted && <OrderStatusStepper status={order.status} />}
 
       {/* Order details */}
       <div className="space-y-1.5 text-sm">

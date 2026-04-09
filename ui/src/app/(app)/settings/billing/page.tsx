@@ -28,11 +28,11 @@ const PLAN_ICONS: Record<PlanTier, typeof MessageSquare> = {
   business: Crown,
   agencies: Building2,
 };
-const PLAN_PRICES: Record<PlanTier, number> = {
+const PLAN_PRICES: Record<PlanTier, number | null> = {
   free: 0,
   pro: 49,
   business: 99,
-  agencies: 299,
+  agencies: null,
 };
 
 export default function BillingPage() {
@@ -158,6 +158,14 @@ export default function BillingPage() {
         </div>
       )}
 
+      {/* Trial Expired Banner */}
+      {subscription?.status === "expired" && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <p className="font-semibold">{t.billing.trialExpired}</p>
+          <p>{t.billing.trialExpiredMessage}</p>
+        </div>
+      )}
+
       {/* Current Plan + Usage */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Current Plan Card */}
@@ -187,11 +195,15 @@ export default function BillingPage() {
               {subscription && (
                 <Badge
                   variant={
-                    subscription.status === "active" ? "default" : "secondary"
+                    subscription.status === "active" ? "default"
+                    : subscription.status === "expired" ? "destructive"
+                    : "secondary"
                   }
                 >
                   {subscription.status === "active"
                     ? t.billing.active
+                    : subscription.status === "expired"
+                    ? t.billing.trialExpired
                     : t.billing.canceled}
                 </Badge>
               )}
@@ -348,10 +360,16 @@ export default function BillingPage() {
                     </span>
                   </div>
                   <p className="text-2xl font-bold mb-3">
-                    ${PLAN_PRICES[tierKey]}
-                    <span className="text-sm font-normal text-muted-foreground">
-                      {PLAN_PRICES[tierKey] > 0 && t.billing.perMonth}
-                    </span>
+                    {PLAN_PRICES[tierKey] !== null ? (
+                      <>
+                        ${PLAN_PRICES[tierKey]}
+                        <span className="text-sm font-normal text-muted-foreground">
+                          {PLAN_PRICES[tierKey]! > 0 && t.billing.perMonth}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-lg">{t.billing.contactUs}</span>
+                    )}
                   </p>
                   {isCurrent ? (
                     <Badge variant="secondary" className="self-start">
@@ -361,6 +379,15 @@ export default function BillingPage() {
                     <Badge variant="outline" className="self-start bg-amber-50 text-amber-700 border-amber-200">
                       {t.billing.scheduled}
                     </Badge>
+                  ) : tierKey === "agencies" ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-auto"
+                      onClick={() => window.open("https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies", "_blank")}
+                    >
+                      {t.billing.contactUs}
+                    </Button>
                   ) : (
                     <Button
                       size="sm"

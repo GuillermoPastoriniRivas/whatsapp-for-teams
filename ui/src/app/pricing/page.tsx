@@ -26,24 +26,28 @@ const PLANS = [
     price: 0,
     icon: MessageSquare,
     popular: false,
+    contactSales: false,
   },
   {
     key: "pro" as const,
     price: 49,
     icon: Zap,
     popular: true,
+    contactSales: false,
   },
   {
     key: "business" as const,
     price: 99,
     icon: Crown,
     popular: false,
+    contactSales: false,
   },
   {
     key: "agencies" as const,
-    price: 299,
+    price: null,
     icon: Building2,
     popular: false,
+    contactSales: true,
   },
 ];
 
@@ -87,6 +91,10 @@ export default function PricingPage() {
     {
       label: t.billing.whiteLabel,
       values: [false, false, false, true],
+    },
+    {
+      label: t.billing.whatsappSupport,
+      values: [false, true, true, true],
     },
     {
       label: t.billing.prioritySupport,
@@ -161,13 +169,21 @@ export default function PricingPage() {
                     </h3>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-slate-900">
-                      ${plan.price}
-                    </span>
-                    {plan.price > 0 && (
-                      <span className="text-slate-500 text-sm">
-                        {t.billing.perMonth}
+                    {plan.contactSales ? (
+                      <span className="text-2xl font-bold text-slate-900">
+                        {t.billing.contactUs}
                       </span>
+                    ) : (
+                      <>
+                        <span className="text-4xl font-bold text-slate-900">
+                          ${plan.price}
+                        </span>
+                        {plan.price! > 0 && (
+                          <span className="text-slate-500 text-sm">
+                            {t.billing.perMonth}
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -212,6 +228,10 @@ export default function PricingPage() {
                     plan.popular || plan.price === 0 ? "default" : "outline"
                   }
                   onClick={() => {
+                    if (plan.contactSales) {
+                      window.open("https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies", "_blank");
+                      return;
+                    }
                     if (agent) {
                       router.push(`/settings/billing?plan=${plan.key}`);
                     } else {
@@ -219,8 +239,10 @@ export default function PricingPage() {
                     }
                   }}
                 >
-                  {plan.price === 0
-                    ? t.billing.getStarted
+                  {plan.contactSales
+                    ? t.billing.contactUs
+                    : plan.price === 0
+                    ? t.billing.startTrial
                     : t.billing.subscribe}
                 </Button>
               </div>

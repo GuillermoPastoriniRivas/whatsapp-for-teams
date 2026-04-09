@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { TableRow, TableCell } from "@/components/ui/table";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { STATUS_CONFIG, timeAgo } from "./order-constants";
-import { OrderStatusStepper } from "./order-status-stepper";
 import type { Order, OrderStatus } from "@/types";
 
 interface OrderTableRowProps {
@@ -69,18 +68,14 @@ export function OrderTableRow({
         </Badge>
       </TableCell>
 
-      {/* Progress stepper (only for active) */}
+      {/* Status */}
       <TableCell>
-        {!isCompleted ? (
-          <OrderStatusStepper status={order.status} />
-        ) : (
-          <Badge
-            variant="secondary"
-            className={`text-xs font-medium ${config.color}`}
-          >
-            {statusLabel}
-          </Badge>
-        )}
+        <Badge
+          variant="secondary"
+          className={`text-xs font-medium ${config.color}`}
+        >
+          {statusLabel}
+        </Badge>
       </TableCell>
 
       {/* Total */}

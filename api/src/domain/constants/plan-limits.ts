@@ -9,6 +9,7 @@ export interface PlanLimits {
   apiAccess: boolean;
   whiteLabel: boolean;
   prioritySupport: boolean | 'dedicated';
+  whatsappSupport: boolean;
   priceMonthly: number;
 }
 
@@ -22,6 +23,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     apiAccess: false,
     whiteLabel: false,
     prioritySupport: false,
+    whatsappSupport: false,
     priceMonthly: 0,
   },
   [PlanTier.PRO]: {
@@ -33,6 +35,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     apiAccess: false,
     whiteLabel: false,
     prioritySupport: false,
+    whatsappSupport: true,
     priceMonthly: 4900,
   },
   [PlanTier.BUSINESS]: {
@@ -44,6 +47,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     apiAccess: true,
     whiteLabel: false,
     prioritySupport: true,
+    whatsappSupport: true,
     priceMonthly: 9900,
   },
   [PlanTier.AGENCIES]: {
@@ -55,6 +59,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     apiAccess: true,
     whiteLabel: true,
     prioritySupport: 'dedicated',
-    priceMonthly: 29900,
+    whatsappSupport: true,
+    priceMonthly: 0,
   },
 };

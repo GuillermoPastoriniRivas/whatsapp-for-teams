@@ -25,10 +25,26 @@ export class AgendaQueueService implements JobQueuePort, OnModuleInit, OnModuleD
   /**
    * Register a job handler. Must be called before onModuleInit (i.e. during DI setup).
    */
-  define(jobName: string, handler: JobHandler, concurrency?: number): void {
+  define(jobName: string, handler: JobHandler, concurrency?: number, maxRetries = 3): void {
     this.handlers.set(jobName, handler);
     this.agenda.define(jobName, async (job) => {
-      await handler(job.attrs.data);
+      const attempt = (job.attrs.failCount ?? 0) + 1;
+      try {
+        await handler(job.attrs.data);
+      } catch (error: any) {
+        this.logger.error(`Job "${jobName}" failed (attempt ${attempt}/${maxRetries}): ${error.message}`, error.stack);
+
+        if (attempt < maxRetries) {
+          const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 30_000);
+          this.logger.log(`Job "${jobName}" will retry in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+          job.attrs.nextRunAt = new Date(Date.now() + delayMs);
+          await job.save();
+          return; // don't rethrow — Agenda will re-run at nextRunAt
+        }
+
+        this.logger.error(`Job "${jobName}" exhausted ${maxRetries} retries, giving up. Data: ${JSON.stringify(job.attrs.data)}`);
+        throw error;
+      }
     }, { concurrency: concurrency ?? 5 });
   }
 
