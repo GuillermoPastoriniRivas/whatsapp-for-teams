@@ -1,4 +1,6 @@
 import { Logger } from '@nestjs/common';
+import { access } from 'fs/promises';
+import { join } from 'path';
 import { ConversationRepository } from '../../../domain/repositories/conversation.repository.js';
 import { MessageRepository } from '../../../domain/repositories/message.repository.js';
 import { ContactRepository } from '../../../domain/repositories/contact.repository.js';
@@ -54,6 +56,7 @@ export class ProcessAiResponseUseCase {
     private readonly convLabelRepo: ConversationLabelRepository,
     private readonly eventRepo: ConversationEventRepository,
     private readonly pluginRegistry: PluginRegistry,
+    private readonly apiBaseUrl: string,
   ) {
     this.contactHandler = new ContactDirectiveHandler(this.contactRepo, this.eventRepo, this.gateway);
     this.handoffHandler = new HandoffDirectiveHandler(this.handoffUseCase);
@@ -264,6 +267,46 @@ export class ProcessAiResponseUseCase {
       actionResults,
     );
 
+    // ── Menu image shortcut (skip LLM response if image exists) ────────
+    if (intentResult.intent === 'browse_menu') {
+      const menuImageUrl = await this.resolveMenuImageUrl(conversation.tenantId);
+      if (menuImageUrl) {
+        const sendContact = contact ?? await this.contactRepo.findById(conversation.contactId);
+        if (!sendContact) return;
+
+        const caption = '¡Acá va nuestro menú! Decime qué te gustaría pedir 😊';
+        const { waMessageId } = await this.messagingApi.sendMessage({
+          provider: phone.provider,
+          providerConfig: phone.providerConfig,
+          phoneNumberId: phone.phoneNumberId,
+          to: sendContact.waId,
+          type: MessageType.IMAGE,
+          body: caption,
+          mediaUrl: menuImageUrl,
+        });
+
+        const message = await this.messageRepo.upsertByWaMessageId({
+          conversationId: conversation.id,
+          direction: MessageDirection.OUTBOUND,
+          messageType: MessageType.IMAGE,
+          body: caption,
+          mediaUrl: menuImageUrl,
+          mimeType: menuImageUrl.endsWith('.png') ? 'image/png' : 'image/jpeg',
+          waMessageId,
+          waStatus: MessageWaStatus.SENT,
+          timestamp: new Date(),
+          senderAgentId: agent.id,
+          senderAgentName: agent.name,
+        });
+
+        await this.usageRepo.incrementUsage(config.tenantId, agent.id, today, 1, intentLlmResult.tokensUsed.total);
+        await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date() } as any);
+        this.gateway.emitToConversation(conversation.id, 'message.new', message);
+        this.gateway.emitToTenant(conversation.tenantId, 'conversation.updated', { conversationId: conversation.id });
+        return;
+      }
+    }
+
     // ── STEP 2: Response Generation ──────────────────────────────────────
     const responsePrompt = buildResponsePrompt({
       ...dateCtx,
@@ -409,6 +452,19 @@ export class ProcessAiResponseUseCase {
       actions: Array.isArray(parsed.actions) ? parsed.actions : [],
       responseHint: typeof parsed.responseHint === 'string' ? parsed.responseHint : 'Respond naturally',
     };
+  }
+
+  private async resolveMenuImageUrl(tenantId: string): Promise<string | null> {
+    for (const ext of ['jpeg', 'jpg', 'png']) {
+      const filePath = join(process.cwd(), 'public', 'menus', `${tenantId}.${ext}`);
+      try {
+        await access(filePath);
+        return `${this.apiBaseUrl}/public/menus/${tenantId}.${ext}`;
+      } catch {
+        // file not found, try next extension
+      }
+    }
+    return null;
   }
 
   private sortActionsByPriority(actions: CognitiveAction[]): CognitiveAction[] {

@@ -7,6 +7,7 @@ export interface SendMessageParams {
   to: string;
   type: string;
   body?: string;
+  mediaUrl?: string;
 }
 
 export interface SendMessageResult {

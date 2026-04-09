@@ -22,6 +22,10 @@ export class KapsoWhatsAppService {
 
     if (params.type === 'text' && params.body) {
       body.text = { body: params.body };
+    } else if (params.type === 'image' && params.mediaUrl) {
+      const image: Record<string, string> = { link: params.mediaUrl };
+      if (params.body) image.caption = params.body;
+      body.image = image;
     }
 
     const response = await fetch(url, {

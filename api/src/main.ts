@@ -1,12 +1,15 @@
+import { join } from 'path';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
 import { GlobalExceptionFilter } from './presentation/filters/global-exception.filter.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
+  app.useStaticAssets(join(__dirname, '..', 'public'), { prefix: '/public' });
   app.setGlobalPrefix('api');
   app.use(helmet());
   app.useGlobalFilters(new GlobalExceptionFilter());

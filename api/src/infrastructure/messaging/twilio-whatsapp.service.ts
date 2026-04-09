@@ -20,6 +20,10 @@ export class TwilioWhatsAppService {
       Body: params.body ?? '',
     });
 
+    if (params.mediaUrl) {
+      formBody.set('MediaUrl', params.mediaUrl);
+    }
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
