@@ -9,9 +9,9 @@ import { GlobalExceptionFilter } from './presentation/filters/global-exception.f
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
-  app.useStaticAssets(join(__dirname, '..', 'public'), { prefix: '/public' });
+  app.use(helmet({ crossOriginResourcePolicy: false }));
+  app.useStaticAssets(join(process.cwd(), 'public'), { prefix: '/public' });
   app.setGlobalPrefix('api');
-  app.use(helmet());
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   const allowedOrigins = process.env.ALLOWED_ORIGINS

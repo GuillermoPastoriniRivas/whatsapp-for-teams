@@ -188,7 +188,7 @@ export default function BillingPage() {
                   <p className="font-bold text-lg">{planNames[plan]}</p>
                   <p className="text-sm text-muted-foreground">
                     ${PLAN_PRICES[plan]}
-                    {PLAN_PRICES[plan] > 0 && t.billing.perMonth}
+                    {(PLAN_PRICES[plan] ?? 0) > 0 && t.billing.perMonth}
                   </p>
                 </div>
               </div>
