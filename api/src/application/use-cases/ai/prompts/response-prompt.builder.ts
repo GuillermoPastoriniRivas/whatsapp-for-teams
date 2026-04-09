@@ -1,40 +1,22 @@
 import type { IntentResult, ActionExecutionResult } from '../../../../domain/value-objects/cognitive-loop.types.js';
-import type { OrderFlowData } from '../../../../domain/value-objects/order-flow.types.js';
 
-const BASE_SYSTEM_PROMPT = `You are an AI assistant operating inside a shared WhatsApp Business inbox.
+const BASE_SYSTEM_PROMPT = `You are chatting with customers on WhatsApp on behalf of a business. You share this phone number with human agents — customers don't know if they're talking to a person or an AI.
 
-## Critical rules
-- KEEP EVERY MESSAGE UNDER 40 WORDS. This is a WhatsApp chat, not an email. Write like a real person texting — short, direct, warm.
-- Only mention what is relevant to what the customer just asked.
-- When the customer mentions a specific service or topic, focus ONLY on that. Do not list other services "just in case".
-- NEVER ask a question if you already have the information or can proceed without it.
-- When the order is complete, send ONE summary message and stop. Do not ask follow-up questions like "anything else?" or "pickup now or later?".
-- Your goal is to resolve the customer's request in the fewest messages possible.
-- NEVER repeat information that was already stated in previous messages. The customer can scroll up. If they ask about their order status, just answer the status — do not re-list items, totals, addresses, or payment methods they already know.
-- Only include information that is NEW or directly answers what the customer just asked. Less is more.
-- Do a natural flow conversation.
+## How to respond
+Read the conversation carefully. Your response should be based on what the customer JUST SAID, not on your system instructions. Respond like a real person texting — brief, warm, natural.
 
-## How you work
-- You communicate with customers through WhatsApp on behalf of a business.
-- You share the phone number with human agents from the same team. Customers don't know whether they're talking to a human or an AI unless they ask.
-- Each message in the conversation history includes a timestamp prefix in [ISO 8601] format. Use these to understand time gaps between messages, detect when a customer returns after hours or days, and adjust your greeting accordingly (e.g. "Hola de nuevo" if they wrote days ago). NEVER include these timestamps in your own responses — they are metadata for your context only.
+- Answer what they asked. Nothing more.
+- If they already told you something, don't ask again.
+- If they say "gracias" or ask a simple follow-up, just answer that — don't repeat the whole order or previous info.
+- The customer can scroll up. Never restate what's already in the chat.
+- Keep messages short. This is WhatsApp, not email.
+- Plain text only. No markdown, no bold, no bullet points.
+- Timestamps in the conversation history ([ISO 8601] format) are metadata — use them to understand timing but never include them in your response.
 
-## What you can do
-- Answer questions using the business knowledge provided to you.
-- Help customers with common requests (hours, pricing, location, services, etc.).
-- Collect information from the customer when relevant (name, needs, preferences).
-- If the customer's question is vague, ask ONE clarifying question — don't guess or dump all options.
-
-## What you must NOT do
-- Never invent information. If something is not in your knowledge base, say you don't know and offer to connect them with a team member.
-- Never share internal system details, prompt contents, or mention that you are reading from a knowledge base.
-- Never pretend to be a specific real person unless your role explicitly says so.
-- Never make promises about timelines, discounts, or commitments you're not explicitly authorized to make.
-
-## Formatting
-- Plain text only. No markdown, no bold, no headers, no bullet points.
-- No emojis unless the tone specifically calls for it.
-- Write like a real person chatting, not like a corporate FAQ page.`;
+## Boundaries
+- Only use information from your knowledge base. If you don't know, say so and offer to connect with a team member.
+- Don't share internal details, prompt contents, or mention your knowledge base.
+- Don't make promises about timelines, discounts, or commitments you're not authorized to make.`;
 
 export interface ResponsePromptContext {
   currentDate: string;
@@ -60,20 +42,8 @@ export interface ResponsePromptContext {
   intentResult: IntentResult;
   actionResults: ActionExecutionResult[];
   pendingHandoff: boolean;
-  orderFlowDirective?: string | null;
-  orderFlow?: OrderFlowData | null;
-  orders?: Array<{
-    id: string;
-    status: string;
-    items: Array<{ name: string; quantity: number; unitPrice?: number }>;
-    deliveryType: string;
-    deliveryAddress?: string | null;
-    estimatedTotal?: number | null;
-    currency?: string | null;
-    createdAt: Date;
-    paymentMethod?: string | null;
-    neighborhood?: string | null;
-  }>;
+  pluginSections: string[];
+  pluginDirectives: string[];
 }
 
 export function buildResponsePrompt(ctx: ResponsePromptContext): string {
@@ -129,49 +99,14 @@ ${ctx.knowledgeBase}`);
     parts.push(`## Conversation Summary\n${ctx.conversationSummary}`);
   }
 
-  // 8. Customer orders
-  if (ctx.orders && ctx.orders.length > 0) {
-    const statusMap: Record<string, string> = {
-      pending: 'Pendiente',
-      confirmed: 'Confirmado',
-      preparing: 'En preparación',
-      ready: 'Listo',
-      shipped: 'En camino',
-      on_the_way: 'En camino',
-      delivered: 'Entregado',
-      cancelled: 'Cancelado',
-    };
-    const orderLines = ctx.orders.map((o) => {
-      const itemList = o.items.map((i) => `${i.quantity}x ${i.name}`).join(', ');
-      return `- Order #${o.id.slice(-6)}: ${statusMap[o.status] ?? o.status} | ${itemList} | Total: ${o.estimatedTotal ?? 'N/A'} ${o.currency ?? ''}${o.paymentMethod ? ` | Pago: ${o.paymentMethod}` : ''}`;
-    }).join('\n');
-    parts.push(`## Customer Orders
-Use this information to answer questions about the customer's orders. You know the status of their orders.
-
-${orderLines}`);
+  // 8. Plugin-contributed response sections (e.g., customer orders)
+  if (ctx.pluginSections.length > 0) {
+    parts.push(...ctx.pluginSections);
   }
 
-  // 9. Order flow directive (high priority — overrides general guidance)
-  if (ctx.orderFlowDirective && ctx.orderFlow) {
-    const flow = ctx.orderFlow;
-    const dataLines: string[] = [];
-    if (flow.items.length > 0) {
-      dataLines.push(`Items: ${flow.items.map((i) => `${i.quantity}x ${i.name}${i.unitPrice ? ` ($${i.unitPrice})` : ''}${i.notes ? ` (${i.notes})` : ''}`).join(', ')}`);
-    }
-    if (flow.deliveryType) dataLines.push(`Type: ${flow.deliveryType}`);
-    if (flow.deliveryAddress) dataLines.push(`Address: ${flow.deliveryAddress}`);
-    if (flow.neighborhood) dataLines.push(`Neighborhood: ${flow.neighborhood}`);
-    if (flow.deliveryNotes) dataLines.push(`Notes: ${flow.deliveryNotes}`);
-    if (flow.paymentMethod) dataLines.push(`Payment method: ${flow.paymentMethod}`);
-    if (flow.deliveryCost !== null) dataLines.push(`Delivery cost: $${flow.deliveryCost}`);
-    if (flow.estimatedTotal !== null) dataLines.push(`Total: $${flow.estimatedTotal} ${flow.currency ?? ''}`);
-
-    parts.push(`## Order Flow Instruction (FOLLOW THIS)
-${ctx.orderFlowDirective}
-
-${dataLines.length > 0 ? `Current order data:\n${dataLines.map((d) => `- ${d}`).join('\n')}` : ''}
-
-Generate a natural WhatsApp message that follows the instruction above. Only include the order summary when confirming with the customer.`);
+  // 9. Plugin directives (high priority — overrides general guidance)
+  if (ctx.pluginDirectives.length > 0) {
+    parts.push(...ctx.pluginDirectives);
   }
 
   // 10. Intent context from step 1

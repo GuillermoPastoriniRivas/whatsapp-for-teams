@@ -1,9 +1,15 @@
+/**
+ * Lifecycle state for order collection flows.
+ *
+ * This is NOT a step-by-step state machine — the "what to ask next"
+ * is derived from data completeness by the SlotFillingEngine.
+ * These states only track the lifecycle: idle → collecting → completed.
+ */
 export enum OrderFlowState {
+  /** No active order flow */
   IDLE = 'idle',
-  BROWSING_MENU = 'browsing_menu',
-  COLLECTING_ITEMS = 'collecting_items',
-  COLLECTING_ADDRESS = 'collecting_address',
-  COLLECTING_PAYMENT = 'collecting_payment',
-  CONFIRMING_ORDER = 'confirming_order',
+  /** Actively collecting order data */
+  COLLECTING = 'collecting',
+  /** Order was just created */
   ORDER_CREATED = 'order_created',
 }

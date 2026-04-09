@@ -36,24 +36,6 @@ export class ConversationModel {
   @Prop({ type: String, default: null })
   summary: string | null;
 
-  @Prop({ type: Object, default: null })
-  orderFlow: {
-    state: string;
-    items: Array<{ name: string; quantity: number; unitPrice?: number; notes?: string }>;
-    deliveryType: string | null;
-    deliveryAddress: string | null;
-    deliveryNotes: string | null;
-    estimatedTotal: number | null;
-    currency: string | null;
-    paymentMethod: string | null;
-    customerName: string | null;
-    customerPhone: string | null;
-    neighborhood: string | null;
-    deliveryCost: number | null;
-    source: string | null;
-    updatedAt: Date;
-  } | null;
-
   createdAt: Date;
 }
 

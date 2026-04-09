@@ -7,18 +7,110 @@ import type {
   LastOrderDefaults,
 } from '../value-objects/order-flow.types.js';
 import { createDefaultOrderFlow } from '../value-objects/order-flow.types.js';
-import { DeliveryCostDomainService } from './delivery-cost.domain-service.js';
+import { SlotFillingEngine } from './slot-filling.engine.js';
+import type { SlotDefinition, SlotFillingAdapter } from '../value-objects/slot-filling.types.js';
 
 /**
- * Pure domain service — no side effects, no repository calls.
- * Controls the order flow state machine: given current state + customer input,
- * returns the next state, a directive for the response LLM, and whether an order should be created.
+ * Domain service for the order collection flow.
+ *
+ * Uses SlotFillingEngine for data-completeness-driven flow instead of
+ * a rigid state machine. Data is never silently dropped — every customer
+ * input is always applied, and "what to ask next" is derived from which
+ * slots are still missing.
  */
-export class OrderFlowDomainService {
-  private readonly deliveryCost = new DeliveryCostDomainService();
+export class OrderFlowDomainService implements SlotFillingAdapter {
+
+  private readonly engine = new SlotFillingEngine();
+
+  // ── Slot definitions ──────────────────────────────────────────────────
+
+  getSlotDefinitions(): SlotDefinition[] {
+    return [
+      {
+        key: 'items',
+        required: true,
+        priority: 1,
+        askDirective: 'Ask the customer what they would like to order. Show relevant menu options from the knowledge base.',
+      },
+      {
+        key: 'deliveryType',
+        required: true,
+        priority: 2,
+        askDirective: 'Ask the customer if they want delivery (domicilio) or pickup (recoger en tienda).',
+      },
+      {
+        key: 'deliveryAddress',
+        required: true,
+        priority: 3,
+        askDirective: 'Ask the customer for their delivery address and neighborhood (barrio) to calculate the delivery cost.',
+        condition: (data) => data.deliveryType === 'delivery',
+      },
+      {
+        key: 'paymentMethod',
+        required: true,
+        priority: 4,
+        askDirective: 'Ask the customer for their payment method (Efectivo, Nequi, Daviplata, or Tarjeta).',
+      },
+    ];
+  }
+
+  // ── SlotFillingAdapter: map AI input → slot values ────────────────────
+
+  mapInputToSlots(input: Record<string, unknown>): Record<string, unknown> {
+    const ci = input as unknown as CustomerInput;
+    const slots: Record<string, unknown> = {};
+
+    if (ci.items?.length) slots.items = ci.items;
+    if (ci.deliveryType) slots.deliveryType = ci.deliveryType;
+    if (ci.address) slots.deliveryAddress = ci.address;
+    if (ci.neighborhood) slots.neighborhood = ci.neighborhood;
+    if (ci.deliveryNotes) slots.deliveryNotes = ci.deliveryNotes;
+    if (ci.paymentMethod) slots.paymentMethod = ci.paymentMethod;
+    if (ci.customerName) slots.customerName = ci.customerName;
+    if (ci.customerPhone) slots.customerPhone = ci.customerPhone;
+    if (ci.currency) slots.currency = ci.currency;
+    if (ci.deliveryCost !== undefined) slots.deliveryCost = ci.deliveryCost;
+    if (ci.source) slots.source = ci.source;
+
+    // When switching to pickup, clear delivery-specific fields
+    if (ci.deliveryType === 'pickup') {
+      slots.deliveryAddress = null;
+      slots.neighborhood = null;
+      slots.deliveryCost = null;
+    }
+
+    return slots;
+  }
+
+  isSlotFilled(_key: string, value: unknown): boolean {
+    if (value === null || value === undefined) return false;
+    if (Array.isArray(value)) return value.length > 0;
+    return true;
+  }
+
+  enrichDirective(directive: string, slotKey: string, defaults: Record<string, unknown> | null): string {
+    if (!defaults) return directive;
+
+    const suggestions: Record<string, string> = {
+      deliveryType: defaults.deliveryType
+        ? ` The customer previously chose ${defaults.deliveryType === 'delivery' ? 'delivery (domicilio)' : 'pickup (recoger en tienda)'}. You can suggest this option.`
+        : '',
+      deliveryAddress: defaults.deliveryAddress
+        ? ` The customer's last delivery was to: ${defaults.deliveryAddress}${defaults.neighborhood ? ` (${defaults.neighborhood})` : ''}. Suggest using this address.`
+        : '',
+      paymentMethod: defaults.paymentMethod
+        ? ` The customer previously paid with ${defaults.paymentMethod}. Suggest this payment method.`
+        : '',
+    };
+
+    return directive + (suggestions[slotKey] ?? '');
+  }
+
+  // ── Main transition logic ─────────────────────────────────────────────
 
   transition(current: OrderFlowData, input: CustomerInput, lastOrderDefaults?: LastOrderDefaults): TransitionResult {
-    // Cancel from any state
+    // ── Global intents (work from any lifecycle state) ──
+
     if (input.intent === 'cancel_order') {
       return {
         newFlow: createDefaultOrderFlow(),
@@ -27,376 +119,155 @@ export class OrderFlowDomainService {
       };
     }
 
-    // Track order — respond with status info without changing state
     if (input.intent === 'track_order') {
       return this.noChange(current, 'The customer is asking about their order status. Use the existing order data to inform them about the current status of their order(s).');
     }
 
-    switch (current.state) {
-      case OrderFlowState.IDLE:
-      case OrderFlowState.ORDER_CREATED:
-        return this.fromIdle(current, input, lastOrderDefaults);
-      case OrderFlowState.BROWSING_MENU:
-        return this.fromBrowsingMenu(current, input);
-      case OrderFlowState.COLLECTING_ITEMS:
-        return this.fromCollectingItems(current, input);
-      case OrderFlowState.COLLECTING_ADDRESS:
-        return this.fromCollectingAddress(current, input);
-      case OrderFlowState.COLLECTING_PAYMENT:
-        return this.fromCollectingPayment(current, input);
-      case OrderFlowState.CONFIRMING_ORDER:
-        return this.fromConfirmingOrder(current, input);
-      default:
-        return this.noChange(current, 'Respond naturally to the customer.');
-    }
-  }
-
-  // ── State handlers ────────────────────────────────────────────────────
-
-  private fromIdle(current: OrderFlowData, input: CustomerInput, defaults?: LastOrderDefaults): TransitionResult {
     if (input.intent === 'browse_menu') {
+      // If we're collecting, keep the data. If idle, stay idle.
+      const state = current.state === OrderFlowState.COLLECTING ? OrderFlowState.COLLECTING : current.state;
       return this.noChange(
-        { ...current, state: OrderFlowState.BROWSING_MENU, updatedAt: new Date() },
+        { ...current, state, updatedAt: new Date() },
         'Help the customer browse the menu. Describe available products based on business knowledge.',
       );
     }
 
-    if (input.intent === 'add_items' && input.items?.length) {
-      // Start a new order flow, pre-filling with last order defaults if available
-      const base = createDefaultOrderFlow();
-      const prefilled = defaults ? this.applyDefaults(base, defaults) : base;
-      const flow = this.applyData(prefilled, input);
+    // ── IDLE / ORDER_CREATED: start a new flow or respond naturally ──
 
-      // Inject delivery cost if neighborhood is known
-      const withCost = this.injectDeliveryCost(flow);
-
-      return this.autoAdvance(withCost, defaults);
-    }
-
-    // Any other intent while idle — just respond normally
-    return this.noChange(current, 'Respond naturally to the customer.');
-  }
-
-  private fromBrowsingMenu(current: OrderFlowData, input: CustomerInput): TransitionResult {
-    if (input.intent === 'add_items' && input.items?.length) {
-      const flow = this.applyData(current, input);
-      const withCost = this.injectDeliveryCost(flow);
-      return this.autoAdvance(withCost);
-    }
-
-    if (input.intent === 'browse_menu' || input.intent === 'other') {
-      return this.noChange(current, 'Continue helping the customer browse the menu.');
-    }
-
-    return this.noChange(current, 'Respond naturally to the customer.');
-  }
-
-  private fromCollectingItems(current: OrderFlowData, input: CustomerInput): TransitionResult {
-    if (input.intent === 'add_items' && input.items?.length) {
-      const flow = this.applyData(current, input);
-      const withCost = this.injectDeliveryCost(flow);
-      return this.autoAdvance(withCost);
-    }
-
-    if (input.intent === 'modify_items') {
-      if (input.items?.length) {
-        // Replace items entirely
-        const flow: OrderFlowData = {
-          ...current,
-          items: input.items,
-          estimatedTotal: input.estimatedTotal ?? this.calculateTotal(input.items, current.deliveryCost),
-          currency: input.currency ?? current.currency,
-          updatedAt: new Date(),
-        };
-        return this.autoAdvance(flow);
+    if (current.state === OrderFlowState.IDLE || current.state === OrderFlowState.ORDER_CREATED) {
+      if (input.intent === 'add_items' && input.items?.length) {
+        // Start new collecting flow
+        const base = createDefaultOrderFlow();
+        base.state = OrderFlowState.COLLECTING;
+        return this.runEngine(base, input, lastOrderDefaults);
       }
-      return this.noChange(current, 'Ask the customer what items they want to change.');
+
+      // Not starting a new order — respond naturally
+      return this.noChange(current, 'Respond naturally to the customer.');
     }
 
-    if (input.intent === 'set_delivery_type' && input.deliveryType) {
-      const flow = this.applyData(current, input);
-      const withCost = this.injectDeliveryCost(flow);
-      return this.autoAdvance(withCost);
-    }
+    // ── COLLECTING: always apply data, let engine decide what's next ──
 
-    if (input.intent === 'set_payment_method' && input.paymentMethod) {
-      const flow = this.applyData(current, input);
-      return this.autoAdvance(flow);
-    }
-
-    if (input.intent === 'other') {
-      return this.autoAdvance(current);
-    }
-
-    return this.autoAdvance(this.applyData(current, input));
-  }
-
-  private fromCollectingAddress(current: OrderFlowData, input: CustomerInput): TransitionResult {
-    if (input.intent === 'set_address' && input.address) {
-      const flow: OrderFlowData = {
-        ...current,
-        deliveryAddress: input.address,
-        deliveryNotes: input.deliveryNotes ?? current.deliveryNotes,
-        neighborhood: input.neighborhood ?? current.neighborhood,
-        updatedAt: new Date(),
-      };
-      const withCost = this.injectDeliveryCost(flow);
-      return this.autoAdvance(withCost);
-    }
-
-    // Customer may provide address + payment + other data in one message
-    if (input.intent === 'add_items' && input.items?.length) {
-      const flow = this.applyData(current, input);
-      const withCost = this.injectDeliveryCost(flow);
-      return this.autoAdvance(withCost);
+    // Handle confirmation
+    if (input.intent === 'confirm_order' && input.confirmed === false) {
+      // Customer rejected — stay collecting, let them modify
+      return this.noChange(current, 'The customer did not confirm. Ask what they would like to change.');
     }
 
     if (input.intent === 'modify_items') {
-      const flow: OrderFlowData = {
+      // Replace items if new ones provided, otherwise keep current
+      const updated: OrderFlowData = {
         ...current,
-        state: OrderFlowState.COLLECTING_ITEMS,
         items: input.items?.length ? input.items : current.items,
         updatedAt: new Date(),
       };
-      return this.autoAdvance(flow);
+      // Recalculate total
+      updated.estimatedTotal = this.calculateTotal(updated.items, updated.deliveryCost);
+      return this.runEngine(updated, {} as CustomerInput, lastOrderDefaults);
     }
 
-    // Apply any data the customer provides (address in params, neighborhood, etc.)
-    if (input.address || input.neighborhood) {
-      const flow = this.applyData(current, input);
-      const withCost = this.injectDeliveryCost(flow);
-      return this.autoAdvance(withCost);
-    }
-
-    // Customer said something but didn't provide address
-    return this.noChange(current, 'Ask the customer for their delivery address and neighborhood (barrio).');
+    // Default: apply ALL data and let the engine decide
+    return this.runEngine(current, input, lastOrderDefaults);
   }
 
-  private fromCollectingPayment(current: OrderFlowData, input: CustomerInput): TransitionResult {
-    if (input.intent === 'set_payment_method' && input.paymentMethod) {
-      const flow: OrderFlowData = {
-        ...current,
-        paymentMethod: input.paymentMethod,
-        updatedAt: new Date(),
-      };
-      return this.autoAdvance(flow);
+  // ── Engine integration ────────────────────────────────────────────────
+
+  private runEngine(flow: OrderFlowData, input: CustomerInput, defaults?: LastOrderDefaults): TransitionResult {
+    // Convert OrderFlowData to a generic record for the engine
+    const currentData = this.flowToRecord(flow);
+    const rawInput = input as unknown as Record<string, unknown>;
+
+    // Convert defaults to a generic record
+    const defaultsRecord = defaults ? {
+      deliveryType: defaults.deliveryType,
+      deliveryAddress: defaults.deliveryAddress,
+      neighborhood: defaults.neighborhood,
+      paymentMethod: defaults.paymentMethod,
+      customerName: defaults.customerName,
+      deliveryCost: defaults.deliveryCost,
+    } : null;
+
+    const result = this.engine.transition(currentData, rawInput, this, defaultsRecord);
+
+    // Convert back to OrderFlowData
+    const newFlow = this.recordToFlow(result.data, flow);
+
+    // Handle item merging (engine does simple overwrite, we need merge)
+    if (input.items?.length && flow.items.length > 0) {
+      newFlow.items = this.mergeItems(flow.items, input.items);
     }
 
-    // Customer may say payment method in a natural way captured as other intent
-    if (input.paymentMethod) {
-      const flow: OrderFlowData = {
-        ...current,
-        paymentMethod: input.paymentMethod,
-        updatedAt: new Date(),
-      };
-      return this.autoAdvance(flow);
-    }
+    // Recalculate total after merge
+    newFlow.estimatedTotal = input.estimatedTotal ?? this.calculateTotal(newFlow.items, newFlow.deliveryCost);
 
-    if (input.intent === 'modify_items') {
-      const flow: OrderFlowData = {
-        ...current,
-        state: OrderFlowState.COLLECTING_ITEMS,
-        items: input.items?.length ? input.items : current.items,
-        updatedAt: new Date(),
-      };
-      return this.autoAdvance(flow);
-    }
-
-    return this.noChange(current, 'Ask the customer for their payment method (Efectivo, Nequi, Daviplata, or Tarjeta).');
-  }
-
-  private fromConfirmingOrder(current: OrderFlowData, input: CustomerInput): TransitionResult {
-    if (input.intent === 'confirm_order' && input.confirmed === true) {
+    if (result.shouldComplete) {
+      // Web orders or confirmed orders → create immediately
       const orderData = {
-        items: current.items,
-        type: current.deliveryType!,
-        address: current.deliveryAddress ?? undefined,
-        notes: current.deliveryNotes ?? undefined,
-        total: current.estimatedTotal ?? undefined,
-        currency: current.currency ?? undefined,
-        paymentMethod: current.paymentMethod ?? undefined,
-        customerName: current.customerName ?? undefined,
-        customerPhone: current.customerPhone ?? undefined,
-        deliveryCost: current.deliveryCost ?? undefined,
-        neighborhood: current.neighborhood ?? undefined,
+        items: newFlow.items,
+        type: newFlow.deliveryType!,
+        address: newFlow.deliveryAddress ?? undefined,
+        notes: newFlow.deliveryNotes ?? undefined,
+        total: newFlow.estimatedTotal ?? undefined,
+        currency: newFlow.currency ?? undefined,
+        paymentMethod: newFlow.paymentMethod ?? undefined,
+        customerName: newFlow.customerName ?? undefined,
+        customerPhone: newFlow.customerPhone ?? undefined,
+        deliveryCost: newFlow.deliveryCost ?? undefined,
+        neighborhood: newFlow.neighborhood ?? undefined,
       };
 
       return {
-        newFlow: { ...current, state: OrderFlowState.ORDER_CREATED, updatedAt: new Date() },
-        directive: 'Tell the customer their order has been created successfully. Include a brief summary with the total (including delivery cost if applicable).',
+        newFlow: { ...newFlow, state: OrderFlowState.ORDER_CREATED, updatedAt: new Date() },
+        directive: 'The order has been created. Send a SHORT confirmation with the total (including delivery if applicable). Do NOT repeat the full list of items or details the customer already knows — they can scroll up.',
         shouldCreateOrder: true,
         orderData,
       };
     }
 
-    if (input.intent === 'confirm_order' && input.confirmed === false) {
-      return {
-        newFlow: { ...current, state: OrderFlowState.COLLECTING_ITEMS, updatedAt: new Date() },
-        directive: 'The customer did not confirm. Ask what they would like to change.',
-        shouldCreateOrder: false,
-      };
-    }
-
-    if (input.intent === 'modify_items') {
-      const flow: OrderFlowData = {
-        ...current,
-        state: OrderFlowState.COLLECTING_ITEMS,
-        items: input.items?.length ? input.items : current.items,
-        updatedAt: new Date(),
-      };
-      return this.autoAdvance(flow);
-    }
-
-    if (input.intent === 'add_items' && input.items?.length) {
-      const flow = this.applyData({ ...current, state: OrderFlowState.COLLECTING_ITEMS }, input);
-      return this.autoAdvance(flow);
-    }
-
-    // Still waiting for confirmation
-    return this.noChange(current, this.buildConfirmationDirective(current));
-  }
-
-  // ── Auto-advance logic ────────────────────────────────────────────────
-
-  private autoAdvance(flow: OrderFlowData, defaults?: LastOrderDefaults): TransitionResult {
-    // No items yet — stay or move to collecting_items
-    if (flow.items.length === 0) {
-      return this.noChange(
-        { ...flow, state: OrderFlowState.COLLECTING_ITEMS, updatedAt: new Date() },
-        'Ask the customer what they would like to order.',
-      );
-    }
-
-    // Has items but no delivery type
-    if (!flow.deliveryType) {
-      // Build directive that suggests previous delivery type if available
-      const suggestion = defaults?.deliveryType
-        ? ` The customer previously chose ${defaults.deliveryType === 'delivery' ? 'delivery' : 'pickup'}. You can suggest this.`
-        : '';
-      return this.noChange(
-        { ...flow, state: OrderFlowState.COLLECTING_ITEMS, updatedAt: new Date() },
-        `Ask the customer if they want delivery or pickup.${suggestion}`,
-      );
-    }
-
-    // Delivery but no address
-    if (flow.deliveryType === 'delivery' && !flow.deliveryAddress) {
-      const suggestion = defaults?.deliveryAddress
-        ? ` The customer's last delivery address was: ${defaults.deliveryAddress}${defaults.neighborhood ? ` (${defaults.neighborhood})` : ''}. Suggest using this address.`
-        : '';
-      return this.noChange(
-        { ...flow, state: OrderFlowState.COLLECTING_ADDRESS, updatedAt: new Date() },
-        `Ask the customer for their delivery address and neighborhood (barrio).${suggestion}`,
-      );
-    }
-
-    // Delivery but no payment method
-    if (!flow.paymentMethod) {
-      const suggestion = defaults?.paymentMethod
-        ? ` The customer previously paid with ${defaults.paymentMethod}. Suggest using this payment method.`
-        : '';
-      return this.noChange(
-        { ...flow, state: OrderFlowState.COLLECTING_PAYMENT, updatedAt: new Date() },
-        `Ask the customer for their payment method (Efectivo, Nequi, Daviplata, or Tarjeta).${suggestion}`,
-      );
-    }
-
-    // All data collected — move to confirmation
-    return this.noChange(
-      { ...flow, state: OrderFlowState.CONFIRMING_ORDER, updatedAt: new Date() },
-      this.buildConfirmationDirective(flow),
-    );
+    // Still collecting — build directive with context
+    return {
+      newFlow: { ...newFlow, state: OrderFlowState.COLLECTING, updatedAt: new Date() },
+      directive: result.directive,
+      shouldCreateOrder: false,
+    };
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
 
-  private applyDefaults(flow: OrderFlowData, defaults: LastOrderDefaults): OrderFlowData {
+  private flowToRecord(flow: OrderFlowData): Record<string, unknown> {
     return {
-      ...flow,
-      deliveryType: defaults.deliveryType ?? flow.deliveryType,
-      deliveryAddress: defaults.deliveryAddress ?? flow.deliveryAddress,
-      neighborhood: defaults.neighborhood ?? flow.neighborhood,
-      paymentMethod: defaults.paymentMethod ?? flow.paymentMethod,
-      customerName: defaults.customerName ?? flow.customerName,
-      deliveryCost: defaults.deliveryCost ?? flow.deliveryCost,
-      updatedAt: new Date(),
+      items: flow.items,
+      deliveryType: flow.deliveryType,
+      deliveryAddress: flow.deliveryAddress,
+      deliveryNotes: flow.deliveryNotes,
+      estimatedTotal: flow.estimatedTotal,
+      currency: flow.currency,
+      paymentMethod: flow.paymentMethod,
+      customerName: flow.customerName,
+      customerPhone: flow.customerPhone,
+      neighborhood: flow.neighborhood,
+      deliveryCost: flow.deliveryCost,
+      source: flow.source,
     };
   }
 
-  private applyData(flow: OrderFlowData, input: CustomerInput): OrderFlowData {
-    const updated = { ...flow, updatedAt: new Date() };
-
-    if (input.items?.length) {
-      updated.items = this.mergeItems(flow.items, input.items);
-      updated.estimatedTotal = input.estimatedTotal ?? this.calculateTotal(updated.items, updated.deliveryCost);
-    }
-
-    if (input.deliveryType) {
-      updated.deliveryType = input.deliveryType;
-      // If switching to pickup, clear delivery-specific data
-      if (input.deliveryType === 'pickup') {
-        updated.deliveryAddress = null;
-        updated.neighborhood = null;
-        updated.deliveryCost = null;
-        // Recalculate total without delivery cost
-        updated.estimatedTotal = this.calculateTotal(updated.items, null);
-      }
-    }
-
-    if (input.address) {
-      updated.deliveryAddress = input.address;
-    }
-
-    if (input.deliveryNotes) {
-      updated.deliveryNotes = input.deliveryNotes;
-    }
-
-    if (input.currency) {
-      updated.currency = input.currency;
-    }
-
-    if (input.paymentMethod) {
-      updated.paymentMethod = input.paymentMethod;
-    }
-
-    if (input.customerName) {
-      updated.customerName = input.customerName;
-    }
-
-    if (input.customerPhone) {
-      updated.customerPhone = input.customerPhone;
-    }
-
-    if (input.neighborhood) {
-      updated.neighborhood = input.neighborhood;
-    }
-
-    if (input.deliveryCost !== undefined) {
-      updated.deliveryCost = input.deliveryCost;
-    }
-
-    if (input.source) {
-      updated.source = input.source;
-    }
-
-    return updated;
-  }
-
-  /** Inject delivery cost based on neighborhood if not already set */
-  private injectDeliveryCost(flow: OrderFlowData): OrderFlowData {
-    if (flow.deliveryType !== 'delivery' || !flow.neighborhood || flow.deliveryCost !== null) {
-      return flow;
-    }
-
-    const result = this.deliveryCost.lookup(flow.neighborhood);
-    if (result.found && result.cost !== null) {
-      const updated = { ...flow, deliveryCost: result.cost };
-      // Recalculate total with delivery cost
-      updated.estimatedTotal = this.calculateTotal(updated.items, updated.deliveryCost);
-      return updated;
-    }
-
-    return flow;
+  private recordToFlow(data: Record<string, unknown>, base: OrderFlowData): OrderFlowData {
+    return {
+      ...base,
+      items: (data.items as OrderFlowItem[]) ?? base.items,
+      deliveryType: (data.deliveryType as OrderFlowData['deliveryType']) ?? base.deliveryType,
+      deliveryAddress: (data.deliveryAddress as string | null) ?? base.deliveryAddress,
+      deliveryNotes: (data.deliveryNotes as string | null) ?? base.deliveryNotes,
+      estimatedTotal: (data.estimatedTotal as number | null) ?? base.estimatedTotal,
+      currency: (data.currency as string | null) ?? base.currency,
+      paymentMethod: (data.paymentMethod as string | null) ?? base.paymentMethod,
+      customerName: (data.customerName as string | null) ?? base.customerName,
+      customerPhone: (data.customerPhone as string | null) ?? base.customerPhone,
+      neighborhood: (data.neighborhood as string | null) ?? base.neighborhood,
+      deliveryCost: (data.deliveryCost as number | null) ?? base.deliveryCost,
+      source: (data.source as OrderFlowData['source']) ?? base.source,
+      updatedAt: new Date(),
+    };
   }
 
   private mergeItems(existing: OrderFlowItem[], incoming: OrderFlowItem[]): OrderFlowItem[] {
@@ -406,7 +277,6 @@ export class OrderFlowDomainService {
         (e) => e.name.toLowerCase().trim() === item.name.toLowerCase().trim(),
       );
       if (idx >= 0) {
-        // Update existing item
         merged[idx] = { ...merged[idx], ...item };
       } else {
         merged.push(item);
@@ -420,30 +290,6 @@ export class OrderFlowDomainService {
     if (!allHavePrices) return null;
     const itemsTotal = items.reduce((sum, i) => sum + i.quantity * (i.unitPrice ?? 0), 0);
     return itemsTotal + (deliveryCost ?? 0);
-  }
-
-  private buildConfirmationDirective(flow: OrderFlowData): string {
-    const itemsSummary = flow.items
-      .map((i) => `${i.quantity}x ${i.name}${i.unitPrice ? ` ($${i.unitPrice.toLocaleString('es-CO')})` : ''}${i.notes ? ` (${i.notes})` : ''}`)
-      .join(', ');
-
-    const deliveryInfo = flow.deliveryType === 'pickup'
-      ? 'Retiro en tienda'
-      : `Domicilio a ${flow.deliveryAddress ?? 'TBD'}${flow.neighborhood ? ` (${flow.neighborhood})` : ''}`;
-
-    const deliveryCostInfo = flow.deliveryCost !== null
-      ? `Costo de domicilio: $${flow.deliveryCost.toLocaleString('es-CO')}`
-      : '';
-
-    const total = flow.estimatedTotal !== null
-      ? `Total: $${flow.estimatedTotal.toLocaleString('es-CO')} ${flow.currency ?? 'COP'}`
-      : '';
-
-    const paymentInfo = flow.paymentMethod
-      ? `Medio de pago: ${flow.paymentMethod}`
-      : '';
-
-    return `Confirm the order with the customer. Summary: ${itemsSummary}. ${deliveryInfo}. ${deliveryCostInfo}. ${total}. ${paymentInfo}. Ask them to confirm or make changes.`.trim();
   }
 
   private noChange(flow: OrderFlowData, directive: string): TransitionResult {

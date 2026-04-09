@@ -1,13 +1,14 @@
-export type IntentType =
+export type CoreIntentType =
   | 'respond'
-  | 'create_order'
-  | 'extract_order_data'
   | 'update_contact'
   | 'add_label'
   | 'remove_label'
   | 'escalate'
   | 'complete_goal'
   | 'update_summary';
+
+// Open to extension by plugins (e.g., 'extract_order_data', 'create_order', 'check_availability')
+export type IntentType = CoreIntentType | (string & {});
 
 export interface CognitiveAction {
   type: IntentType;

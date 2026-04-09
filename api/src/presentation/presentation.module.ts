@@ -79,6 +79,9 @@ import { UpdateAiAgentConfigUseCase } from '../application/use-cases/ai/update-a
 import { DeleteAiAgentUseCase } from '../application/use-cases/ai/delete-ai-agent.use-case.js';
 import { ProcessAiResponseUseCase } from '../application/use-cases/ai/process-ai-response.use-case.js';
 import { HandoffToHumanUseCase } from '../application/use-cases/ai/handoff-to-human.use-case.js';
+import { PluginRegistry } from '../application/use-cases/ai/plugin-registry.js';
+import { OrdersPlugin } from '../application/plugins/orders/orders.plugin.js';
+import { OrderDirectiveHandler } from '../application/use-cases/ai/handlers/order-directive.handler.js';
 
 // Use Cases — Order
 import { CreateOrderUseCase } from '../application/use-cases/order/create-order.use-case.js';
@@ -320,9 +323,9 @@ const useCaseProviders = [
   },
   {
     provide: 'ResolveConversationUseCase',
-    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any) =>
-      new ResolveConversationUseCase(convRepo, agentRepo, gateway, eventRepo),
-    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository'],
+    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any, pluginRegistry: any) =>
+      new ResolveConversationUseCase(convRepo, agentRepo, gateway, eventRepo, pluginRegistry),
+    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository', PluginRegistry],
   },
 
   // Tenant
@@ -396,9 +399,9 @@ const useCaseProviders = [
   },
   {
     provide: 'ProcessAiResponseUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, createOrder: any, orderRepo: any) =>
-      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, createOrder, orderRepo),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', 'CreateOrderUseCase', 'OrderRepository'],
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, pluginRegistry: any) =>
+      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, pluginRegistry),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', PluginRegistry],
   },
 
   // Label
@@ -526,6 +529,24 @@ const useCaseProviders = [
     useFactory: (subRepo: any, billingRepo: any, enforce: any) =>
       new HandlePaymentWebhookUseCase(subRepo, billingRepo, enforce),
     inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase'],
+  },
+
+  // Plugin Infrastructure
+  {
+    provide: OrderDirectiveHandler,
+    useFactory: (createOrder: any) => new OrderDirectiveHandler(createOrder),
+    inject: ['CreateOrderUseCase'],
+  },
+  {
+    provide: OrdersPlugin,
+    useFactory: (stateRepo: any, orderRepo: any, orderHandler: any) =>
+      new OrdersPlugin(stateRepo, orderRepo, orderHandler),
+    inject: ['PluginStateRepository', 'OrderRepository', OrderDirectiveHandler],
+  },
+  {
+    provide: PluginRegistry,
+    useFactory: (ordersPlugin: any) => new PluginRegistry([ordersPlugin]),
+    inject: [OrdersPlugin],
   },
 ];
 

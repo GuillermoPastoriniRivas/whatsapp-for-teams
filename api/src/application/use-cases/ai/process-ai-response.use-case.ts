@@ -13,10 +13,6 @@ import { HandoffToHumanUseCase } from './handoff-to-human.use-case.js';
 import { HandoffDetectionDomainService } from '../../../domain/services/handoff-detection.domain-service.js';
 import { ContactDirectiveHandler } from './handlers/contact-directive.handler.js';
 import { HandoffDirectiveHandler } from './handlers/handoff-directive.handler.js';
-import { OrderDirectiveHandler } from './handlers/order-directive.handler.js';
-import { CreateOrderUseCase } from '../order/create-order.use-case.js';
-import { OrderRepository } from '../../../domain/repositories/order.repository.js';
-import { PhoneNumberPlugin } from '../../../domain/enums/phone-number-plugin.enum.js';
 import { LabelRepository } from '../../../domain/repositories/label.repository.js';
 import { ConversationLabelRepository } from '../../../domain/repositories/conversation-label.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
@@ -27,12 +23,9 @@ import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
 import { buildIntentPrompt } from './prompts/intent-prompt.builder.js';
 import { buildResponsePrompt } from './prompts/response-prompt.builder.js';
+import { PluginRegistry } from './plugin-registry.js';
+import type { PluginContext } from '../../../domain/value-objects/plugin.types.js';
 import type { IntentResult, CognitiveAction, ActionExecutionResult } from '../../../domain/value-objects/cognitive-loop.types.js';
-import { OrderFlowState } from '../../../domain/enums/order-flow-state.enum.js';
-import { OrderFlowDomainService } from '../../../domain/services/order-flow.domain-service.js';
-import { DeliveryCostDomainService } from '../../../domain/services/delivery-cost.domain-service.js';
-import type { OrderFlowData, CustomerInput, LastOrderDefaults } from '../../../domain/value-objects/order-flow.types.js';
-import { createDefaultOrderFlow } from '../../../domain/value-objects/order-flow.types.js';
 
 export interface ProcessAiResponseInput {
   conversationId: string;
@@ -42,11 +35,8 @@ export interface ProcessAiResponseInput {
 export class ProcessAiResponseUseCase {
   private readonly logger = new Logger(ProcessAiResponseUseCase.name);
   private readonly handoffDetection = new HandoffDetectionDomainService();
-  private readonly orderFlowService = new OrderFlowDomainService();
-  private readonly deliveryCostService = new DeliveryCostDomainService();
   private readonly contactHandler: ContactDirectiveHandler;
   private readonly handoffHandler: HandoffDirectiveHandler;
-  private readonly orderHandler: OrderDirectiveHandler;
 
   constructor(
     private readonly conversationRepo: ConversationRepository,
@@ -63,12 +53,10 @@ export class ProcessAiResponseUseCase {
     private readonly labelRepo: LabelRepository,
     private readonly convLabelRepo: ConversationLabelRepository,
     private readonly eventRepo: ConversationEventRepository,
-    private readonly createOrderUseCase: CreateOrderUseCase,
-    private readonly orderRepo: OrderRepository,
+    private readonly pluginRegistry: PluginRegistry,
   ) {
     this.contactHandler = new ContactDirectiveHandler(this.contactRepo, this.eventRepo, this.gateway);
     this.handoffHandler = new HandoffDirectiveHandler(this.handoffUseCase);
-    this.orderHandler = new OrderDirectiveHandler(this.createOrderUseCase);
   }
 
   async execute(input: ProcessAiResponseInput): Promise<void> {
@@ -132,33 +120,33 @@ export class ProcessAiResponseUseCase {
 
     const tenantLabels = await this.labelRepo.findByTenantId(conversation.tenantId);
 
-    // Load orders for this conversation (if orders plugin active)
-    const ordersPluginActive = phone.plugins?.includes(PhoneNumberPlugin.ORDERS) ?? false;
-    const orders = ordersPluginActive
-      ? await this.orderRepo.findByConversationId(conversation.id)
-      : [];
+    // ── Build plugin context & collect prompt contributions ──────────────
+    const enabledPlugins = phone.plugins ?? [];
 
-    // Initialize order flow state (if orders plugin active)
-    let orderFlow: OrderFlowData | null = null;
-    let lastOrderDefaults: LastOrderDefaults | null = null;
-    if (ordersPluginActive) {
-      orderFlow = conversation.orderFlow ?? createDefaultOrderFlow();
+    const pluginCtx: PluginContext = {
+      conversationId: conversation.id,
+      contactId: conversation.contactId,
+      phoneNumberId: conversation.phoneNumberId,
+      tenantId: conversation.tenantId,
+      agentId: agent.id,
+      agentName: agent.name,
+      phone,
+      contact: contact ? {
+        name: contact.name,
+        phone: contact.phone ?? undefined,
+        email: contact.email ?? undefined,
+        company: contact.company ?? undefined,
+        notes: contact.notes ?? undefined,
+        customFields: contact.customFields ?? undefined,
+      } : null,
+      tenantLabels: tenantLabels.map((l: any) => ({ id: l.id, name: l.name, color: l.color })),
+      conversationSummary: conversation.summary ?? null,
+    };
 
-      // Build defaults from last completed order for recurring customers
-      const lastCompletedOrder = orders.find(
-        (o) => o.status === 'delivered' || o.status === 'confirmed' || o.status === 'pending',
-      );
-      if (lastCompletedOrder) {
-        lastOrderDefaults = {
-          deliveryType: lastCompletedOrder.deliveryType,
-          deliveryAddress: lastCompletedOrder.deliveryAddress ?? undefined,
-          neighborhood: lastCompletedOrder.neighborhood ?? undefined,
-          paymentMethod: lastCompletedOrder.paymentMethod ?? undefined,
-          customerName: lastCompletedOrder.customerName ?? undefined,
-          deliveryCost: lastCompletedOrder.deliveryCost ?? undefined,
-        };
-      }
-    }
+    const { intentSections, responseSections } = await this.pluginRegistry.buildAllPromptContributions(
+      pluginCtx,
+      enabledPlugins,
+    );
 
     const now = new Date();
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -171,29 +159,28 @@ export class ProcessAiResponseUseCase {
     this.logger.log(`Conversation ${input.conversationId}: ${messages.length} messages loaded`);
 
     // ── STEP 1: Intent Detection ─────────────────────────────────────────
+    const contactData = contact ? {
+      name: contact.name,
+      phone: contact.phone ?? undefined,
+      email: contact.email ?? undefined,
+      company: contact.company ?? undefined,
+      notes: contact.notes ?? undefined,
+      customFields: contact.customFields ?? undefined,
+    } : undefined;
+
     const intentPrompt = buildIntentPrompt({
       ...dateCtx,
-      contact: contact ? {
-        name: contact.name,
-        phone: contact.phone ?? undefined,
-        email: contact.email ?? undefined,
-        company: contact.company ?? undefined,
-        notes: contact.notes ?? undefined,
-        customFields: contact.customFields ?? undefined,
-      } : undefined,
+      contact: contactData,
       conversationSummary: conversation.summary ?? undefined,
       knowledgeBase: config.knowledgeBase || undefined,
       goals: config.goals || undefined,
       labels: tenantLabels.map((l: any) => l.name),
-      phonePlugins: phone.plugins ?? [],
       handoffRules: {
         keywords: config.handoffRules.keywords,
         urgencyKeywords: config.handoffRules.urgencyKeywords,
         onCustomerRequest: config.handoffRules.onCustomerRequest,
       },
-      orders: orders.length > 0 ? orders : undefined,
-      orderFlow,
-      lastOrderDefaults,
+      pluginSections: intentSections,
     });
 
     let intentLlmResult: { content: string; tokensUsed: { prompt: number; completion: number; total: number } };
@@ -218,26 +205,36 @@ export class ProcessAiResponseUseCase {
     const actionResults: ActionExecutionResult[] = [];
     let pendingHandoff: { reason: string; summary: string | null } | null = null;
 
-    // Sort actions by priority: escalate first
     const sortedActions = this.sortActionsByPriority(intentResult.actions);
 
     for (const action of sortedActions) {
-      // If escalation is pending, skip non-escalate actions
       if (pendingHandoff && action.type !== 'escalate') continue;
 
+      // Try plugin handler first
+      const plugin = this.pluginRegistry.findPluginForAction(action.type, enabledPlugins);
+      if (plugin) {
+        try {
+          const pluginResult = await plugin.executeAction(action, pluginCtx, actionResults);
+          if (pluginResult.handled) {
+            actionResults.push({ action, success: true, result: pluginResult.result });
+            continue;
+          }
+        } catch (error: any) {
+          this.logger.warn(`Plugin action ${action.type} failed: ${error.message}`);
+          actionResults.push({ action, success: false, error: error.message });
+          continue;
+        }
+      }
+
+      // Core action handlers
       try {
-        const result = await this.executeAction(action, {
+        const result = await this.executeCoreAction(action, {
           conversationId: conversation.id,
           contactId: conversation.contactId,
-          phoneNumberId: conversation.phoneNumberId,
           tenantId: conversation.tenantId,
           agentId: agent.id,
           agentName: agent.name,
-          phone,
           tenantLabels,
-          conversationSummary: conversation.summary ?? null,
-          orders,
-          orderFlow,
         });
 
         if (action.type === 'escalate') {
@@ -259,65 +256,13 @@ export class ProcessAiResponseUseCase {
       this.logger.log(`[CognitiveLoop] Actions: ${actionSummary}`);
     }
 
-    // ── Order Flow State Machine ─────────────────────────────────────────
-    let orderFlowDirective: string | null = null;
-
-    if (orderFlow) {
-      const extractAction = actionResults.find(
-        (r) => r.action.type === 'extract_order_data' && r.success,
-      );
-
-      if (extractAction) {
-        const customerInput = extractAction.action.params as unknown as CustomerInput;
-
-        // Inject delivery cost deterministically if neighborhood is provided but cost is missing
-        if (customerInput.neighborhood && customerInput.deliveryCost === undefined) {
-          const costResult = this.deliveryCostService.lookup(customerInput.neighborhood);
-          if (costResult.found && costResult.cost !== null) {
-            customerInput.deliveryCost = costResult.cost;
-          }
-        }
-
-        const transition = this.orderFlowService.transition(orderFlow, customerInput, lastOrderDefaults ?? undefined);
-
-        orderFlow = transition.newFlow;
-        orderFlowDirective = transition.directive;
-
-        // Persist updated order flow
-        await this.conversationRepo.update(conversation.id, { orderFlow } as any);
-
-        // If order should be created, do it now
-        if (transition.shouldCreateOrder && transition.orderData) {
-          this.logger.log(`[OrderFlow] Creating order from state machine: ${JSON.stringify(transition.orderData)}`);
-          try {
-            const orderResult = await this.orderHandler.handleAction(
-              transition.orderData as any,
-              conversation.id,
-              conversation.contactId,
-              conversation.phoneNumberId,
-              conversation.tenantId,
-            );
-            actionResults.push({
-              action: { type: 'create_order', params: transition.orderData as any },
-              success: true,
-              result: orderResult,
-            });
-
-            // Reset flow after successful order creation
-            orderFlow = createDefaultOrderFlow();
-            await this.conversationRepo.update(conversation.id, { orderFlow } as any);
-            this.logger.log(`[OrderFlow] Order created, flow reset to idle`);
-          } catch (error: any) {
-            this.logger.warn(`[OrderFlow] Order creation failed: ${error.message}`);
-            actionResults.push({
-              action: { type: 'create_order', params: transition.orderData as any },
-              success: false,
-              error: error.message,
-            });
-          }
-        }
-      }
-    }
+    // ── Plugin post-actions (state machines, directives) ─────────────────
+    const pluginDirectives = await this.pluginRegistry.runAfterActions(
+      pluginCtx,
+      enabledPlugins,
+      intentResult,
+      actionResults,
+    );
 
     // ── STEP 2: Response Generation ──────────────────────────────────────
     const responsePrompt = buildResponsePrompt({
@@ -325,21 +270,13 @@ export class ProcessAiResponseUseCase {
       persona: config.persona,
       adminSystemPrompt: config.systemPrompt || undefined,
       knowledgeBase: config.knowledgeBase || undefined,
-      contact: contact ? {
-        name: contact.name,
-        phone: contact.phone ?? undefined,
-        email: contact.email ?? undefined,
-        company: contact.company ?? undefined,
-        notes: contact.notes ?? undefined,
-        customFields: contact.customFields ?? undefined,
-      } : undefined,
+      contact: contactData,
       conversationSummary: conversation.summary ?? undefined,
       intentResult,
       actionResults,
       pendingHandoff: !!pendingHandoff,
-      orderFlowDirective,
-      orderFlow,
-      orders: orders.length > 0 ? orders : undefined,
+      pluginSections: responseSections,
+      pluginDirectives,
     });
 
     let responseLlmResult: { content: string; tokensUsed: { prompt: number; completion: number; total: number } };
@@ -444,10 +381,8 @@ export class ProcessAiResponseUseCase {
     };
 
     try {
-      // Try direct parse
       return this.validateIntentResult(JSON.parse(raw));
     } catch {
-      // Try extracting from code fence
       const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (fenceMatch) {
         try {
@@ -455,7 +390,6 @@ export class ProcessAiResponseUseCase {
         } catch { /* fall through */ }
       }
 
-      // Try extracting first JSON object
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
@@ -478,34 +412,27 @@ export class ProcessAiResponseUseCase {
   }
 
   private sortActionsByPriority(actions: CognitiveAction[]): CognitiveAction[] {
-    const priority: Record<string, number> = {
+    const corePriority: Record<string, number> = {
       escalate: 0,
-      extract_order_data: 1,
-      create_order: 2,
       update_contact: 3,
       add_label: 4,
       remove_label: 5,
       update_summary: 6,
       complete_goal: 7,
-      respond: 8,
+      respond: 99,
     };
-    return [...actions].sort((a, b) => (priority[a.type] ?? 99) - (priority[b.type] ?? 99));
+    return [...actions].sort((a, b) => (corePriority[a.type] ?? 50) - (corePriority[b.type] ?? 50));
   }
 
-  private async executeAction(
+  private async executeCoreAction(
     action: CognitiveAction,
     ctx: {
       conversationId: string;
       contactId: string;
-      phoneNumberId: string;
       tenantId: string;
       agentId: string;
       agentName: string;
-      phone: any;
       tenantLabels: any[];
-      conversationSummary: string | null;
-      orders: any[];
-      orderFlow: OrderFlowData | null;
     },
   ): Promise<string> {
     switch (action.type) {
@@ -517,49 +444,6 @@ export class ProcessAiResponseUseCase {
           ctx.tenantId,
           ctx.agentId,
         );
-
-      case 'extract_order_data':
-        // Data extraction is handled after all actions execute (state machine block)
-        // Just acknowledge it here so it shows as successful in actionResults
-        return 'Order data extracted';
-
-      case 'create_order': {
-        // Block direct create_order when order flow state machine is active
-        if (ctx.orderFlow && ctx.orderFlow.state !== OrderFlowState.IDLE && ctx.orderFlow.state !== OrderFlowState.ORDER_CREATED) {
-          this.logger.warn(`[CognitiveLoop] create_order BLOCKED: order flow state machine is active (state: ${ctx.orderFlow.state})`);
-          return 'Order creation is managed by the order flow state machine. Use extract_order_data instead.';
-        }
-
-        if (!ctx.phone.plugins?.includes(PhoneNumberPlugin.ORDERS)) {
-          this.logger.warn(`[CognitiveLoop] create_order SKIPPED: Orders plugin not enabled`);
-          return 'Orders plugin not enabled';
-        }
-
-        // Deduplication: skip if a similar pending/confirmed order exists recently
-        const newItems = (action.params.items as any[]) ?? [];
-        const isDuplicate = ctx.orders.some((existing: any) => {
-          if (existing.status !== 'pending' && existing.status !== 'confirmed') return false;
-          const ageMs = Date.now() - new Date(existing.createdAt).getTime();
-          if (ageMs > 30 * 60 * 1000) return false;
-          return this.isSameItemSet(existing.items, newItems);
-        });
-
-        if (isDuplicate) {
-          this.logger.warn(`[CognitiveLoop] create_order SKIPPED: duplicate order detected`);
-          return 'Order already exists with the same items (skipped duplicate)';
-        }
-
-        this.logger.log(`[CognitiveLoop] create_order: ${JSON.stringify(action.params)}`);
-        const orderResult = await this.orderHandler.handleAction(
-          action.params as any,
-          ctx.conversationId,
-          ctx.contactId,
-          ctx.phoneNumberId,
-          ctx.tenantId,
-        );
-        this.logger.log(`[CognitiveLoop] create_order DONE: ${orderResult}`);
-        return orderResult;
-      }
 
       case 'add_label':
       case 'remove_label': {
@@ -630,7 +514,6 @@ export class ProcessAiResponseUseCase {
       }
 
       case 'escalate':
-        // Don't execute handoff here — just return result. Handoff runs after message is sent.
         return `Handoff scheduled: ${action.params.reason}`;
 
       case 'respond':
@@ -639,15 +522,5 @@ export class ProcessAiResponseUseCase {
       default:
         return `Unknown action type: ${action.type}`;
     }
-  }
-
-  private isSameItemSet(
-    a: Array<{ name: string; quantity: number }>,
-    b: Array<{ name: string; quantity: number }>,
-  ): boolean {
-    if (a.length !== b.length) return false;
-    const normalize = (items: typeof a) =>
-      items.map((i) => `${i.name.toLowerCase().trim()}:${i.quantity}`).sort().join('|');
-    return normalize(a) === normalize(b);
   }
 }

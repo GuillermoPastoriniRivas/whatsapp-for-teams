@@ -56,14 +56,21 @@ export function OrderMobileCard({
         {/* Items - full list, no truncation */}
         <div className="space-y-0.5">
           {order.items.map((item, i) => (
-            <div key={i} className="flex items-center justify-between text-muted-foreground">
-              <span>
-                {item.quantity}x {item.name}
-              </span>
-              {item.unitPrice != null && (
-                <span className="text-xs">
-                  {order.currency ?? "$"} {(item.quantity * item.unitPrice).toLocaleString()}
+            <div key={i}>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>
+                  {item.quantity}x {item.name}
                 </span>
+                {item.unitPrice != null && (
+                  <span className="text-xs">
+                    {order.currency ?? "$"} {(item.quantity * item.unitPrice).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              {item.notes && (
+                <p className="text-xs text-muted-foreground/70 italic ml-4">
+                  {item.notes}
+                </p>
               )}
             </div>
           ))}

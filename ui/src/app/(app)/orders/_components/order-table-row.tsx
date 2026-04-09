@@ -32,7 +32,10 @@ export function OrderTableRow({
     t.orders[order.status as keyof typeof t.orders] ?? order.status;
 
   const itemsSummary = order.items
-    .map((item) => `${item.quantity}x ${item.name}`)
+    .map((item) => {
+      const base = `${item.quantity}x ${item.name}`;
+      return item.notes ? `${base} (${item.notes})` : base;
+    })
     .join(", ");
 
   return (

@@ -18,7 +18,7 @@ export class MongoConversationRepository implements ConversationRepository {
     @InjectModel(ConversationModel.name) private readonly model: Model<ConversationDocument>,
   ) {}
 
-  async create(data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'orderFlow'>): Promise<Conversation> {
+  async create(data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy'>): Promise<Conversation> {
     const doc = await this.model.create({
       tenantId: new Types.ObjectId(data.tenantId),
       phoneNumberId: new Types.ObjectId(data.phoneNumberId),

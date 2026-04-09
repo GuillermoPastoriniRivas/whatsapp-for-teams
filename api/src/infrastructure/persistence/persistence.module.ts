@@ -36,6 +36,8 @@ import { PasswordResetTokenModel, PasswordResetTokenSchema } from './mongoose/sc
 import { OrderModel, OrderSchema } from './mongoose/schemas/order.schema.js';
 import { MongoPasswordResetTokenRepository } from './mongoose/repositories/mongo-password-reset-token.repository.js';
 import { MongoOrderRepository } from './mongoose/repositories/mongo-order.repository.js';
+import { PluginStateModel, PluginStateSchema } from './mongoose/schemas/plugin-state.schema.js';
+import { MongoPluginStateRepository } from './mongoose/repositories/mongo-plugin-state.repository.js';
 import { EncryptionService } from '../ai/encryption.service.js';
 
 const schemas = MongooseModule.forFeature([
@@ -57,6 +59,7 @@ const schemas = MongooseModule.forFeature([
   { name: BillingRecordModel.name, schema: BillingRecordSchema },
   { name: PasswordResetTokenModel.name, schema: PasswordResetTokenSchema },
   { name: OrderModel.name, schema: OrderSchema },
+  { name: PluginStateModel.name, schema: PluginStateSchema },
 ]);
 
 const repositories = [
@@ -78,6 +81,7 @@ const repositories = [
   { provide: 'BillingRecordRepository', useClass: MongoBillingRecordRepository },
   { provide: 'PasswordResetTokenRepository', useClass: MongoPasswordResetTokenRepository },
   { provide: 'OrderRepository', useClass: MongoOrderRepository },
+  { provide: 'PluginStateRepository', useClass: MongoPluginStateRepository },
 ];
 
 @Module({
