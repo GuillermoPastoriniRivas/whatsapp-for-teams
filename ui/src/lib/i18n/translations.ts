@@ -330,7 +330,7 @@ const translations = {
       trialExpired: "Tu prueba ha expirado",
       trialExpiredMessage: "Tu periodo de prueba de 30 dias ha finalizado. Tus numeros de telefono han sido desconectados. Mejora tu plan para reactivarlos.",
       contactUs: "Contactanos",
-      whatsappSupport: "Soporte por WhatsApp",
+      whatsappSupport: "Soporte",
       startTrial: "Comenzar prueba gratis",
     },
     signup: {

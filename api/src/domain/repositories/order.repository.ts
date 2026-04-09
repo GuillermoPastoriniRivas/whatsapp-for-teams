@@ -20,4 +20,6 @@ export interface OrderRepository {
   findByConversationId(conversationId: string): Promise<Order[]>;
   findByFilters(filters: OrderFilters): Promise<PaginatedOrders>;
   updateStatus(id: string, status: OrderStatus): Promise<Order | null>;
+  update(id: string, data: Partial<Pick<Order, 'items' | 'estimatedTotal' | 'deliveryAddress' | 'deliveryNotes' | 'paymentMethod' | 'neighborhood' | 'deliveryCost' | 'status'>>): Promise<Order | null>;
+  findByContactId(contactId: string): Promise<Order[]>;
 }

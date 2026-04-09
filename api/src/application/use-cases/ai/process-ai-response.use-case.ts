@@ -28,6 +28,11 @@ import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js
 import { buildIntentPrompt } from './prompts/intent-prompt.builder.js';
 import { buildResponsePrompt } from './prompts/response-prompt.builder.js';
 import type { IntentResult, CognitiveAction, ActionExecutionResult } from '../../../domain/value-objects/cognitive-loop.types.js';
+import { OrderFlowState } from '../../../domain/enums/order-flow-state.enum.js';
+import { OrderFlowDomainService } from '../../../domain/services/order-flow.domain-service.js';
+import { DeliveryCostDomainService } from '../../../domain/services/delivery-cost.domain-service.js';
+import type { OrderFlowData, CustomerInput, LastOrderDefaults } from '../../../domain/value-objects/order-flow.types.js';
+import { createDefaultOrderFlow } from '../../../domain/value-objects/order-flow.types.js';
 
 export interface ProcessAiResponseInput {
   conversationId: string;
@@ -37,6 +42,8 @@ export interface ProcessAiResponseInput {
 export class ProcessAiResponseUseCase {
   private readonly logger = new Logger(ProcessAiResponseUseCase.name);
   private readonly handoffDetection = new HandoffDetectionDomainService();
+  private readonly orderFlowService = new OrderFlowDomainService();
+  private readonly deliveryCostService = new DeliveryCostDomainService();
   private readonly contactHandler: ContactDirectiveHandler;
   private readonly handoffHandler: HandoffDirectiveHandler;
   private readonly orderHandler: OrderDirectiveHandler;
@@ -126,9 +133,32 @@ export class ProcessAiResponseUseCase {
     const tenantLabels = await this.labelRepo.findByTenantId(conversation.tenantId);
 
     // Load orders for this conversation (if orders plugin active)
-    const orders = phone.plugins?.includes(PhoneNumberPlugin.ORDERS)
+    const ordersPluginActive = phone.plugins?.includes(PhoneNumberPlugin.ORDERS) ?? false;
+    const orders = ordersPluginActive
       ? await this.orderRepo.findByConversationId(conversation.id)
       : [];
+
+    // Initialize order flow state (if orders plugin active)
+    let orderFlow: OrderFlowData | null = null;
+    let lastOrderDefaults: LastOrderDefaults | null = null;
+    if (ordersPluginActive) {
+      orderFlow = conversation.orderFlow ?? createDefaultOrderFlow();
+
+      // Build defaults from last completed order for recurring customers
+      const lastCompletedOrder = orders.find(
+        (o) => o.status === 'delivered' || o.status === 'confirmed' || o.status === 'pending',
+      );
+      if (lastCompletedOrder) {
+        lastOrderDefaults = {
+          deliveryType: lastCompletedOrder.deliveryType,
+          deliveryAddress: lastCompletedOrder.deliveryAddress ?? undefined,
+          neighborhood: lastCompletedOrder.neighborhood ?? undefined,
+          paymentMethod: lastCompletedOrder.paymentMethod ?? undefined,
+          customerName: lastCompletedOrder.customerName ?? undefined,
+          deliveryCost: lastCompletedOrder.deliveryCost ?? undefined,
+        };
+      }
+    }
 
     const now = new Date();
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -162,6 +192,8 @@ export class ProcessAiResponseUseCase {
         onCustomerRequest: config.handoffRules.onCustomerRequest,
       },
       orders: orders.length > 0 ? orders : undefined,
+      orderFlow,
+      lastOrderDefaults,
     });
 
     let intentLlmResult: { content: string; tokensUsed: { prompt: number; completion: number; total: number } };
@@ -205,6 +237,7 @@ export class ProcessAiResponseUseCase {
           tenantLabels,
           conversationSummary: conversation.summary ?? null,
           orders,
+          orderFlow,
         });
 
         if (action.type === 'escalate') {
@@ -226,6 +259,66 @@ export class ProcessAiResponseUseCase {
       this.logger.log(`[CognitiveLoop] Actions: ${actionSummary}`);
     }
 
+    // ── Order Flow State Machine ─────────────────────────────────────────
+    let orderFlowDirective: string | null = null;
+
+    if (orderFlow) {
+      const extractAction = actionResults.find(
+        (r) => r.action.type === 'extract_order_data' && r.success,
+      );
+
+      if (extractAction) {
+        const customerInput = extractAction.action.params as unknown as CustomerInput;
+
+        // Inject delivery cost deterministically if neighborhood is provided but cost is missing
+        if (customerInput.neighborhood && customerInput.deliveryCost === undefined) {
+          const costResult = this.deliveryCostService.lookup(customerInput.neighborhood);
+          if (costResult.found && costResult.cost !== null) {
+            customerInput.deliveryCost = costResult.cost;
+          }
+        }
+
+        const transition = this.orderFlowService.transition(orderFlow, customerInput, lastOrderDefaults ?? undefined);
+
+        orderFlow = transition.newFlow;
+        orderFlowDirective = transition.directive;
+
+        // Persist updated order flow
+        await this.conversationRepo.update(conversation.id, { orderFlow } as any);
+
+        // If order should be created, do it now
+        if (transition.shouldCreateOrder && transition.orderData) {
+          this.logger.log(`[OrderFlow] Creating order from state machine: ${JSON.stringify(transition.orderData)}`);
+          try {
+            const orderResult = await this.orderHandler.handleAction(
+              transition.orderData as any,
+              conversation.id,
+              conversation.contactId,
+              conversation.phoneNumberId,
+              conversation.tenantId,
+            );
+            actionResults.push({
+              action: { type: 'create_order', params: transition.orderData as any },
+              success: true,
+              result: orderResult,
+            });
+
+            // Reset flow after successful order creation
+            orderFlow = createDefaultOrderFlow();
+            await this.conversationRepo.update(conversation.id, { orderFlow } as any);
+            this.logger.log(`[OrderFlow] Order created, flow reset to idle`);
+          } catch (error: any) {
+            this.logger.warn(`[OrderFlow] Order creation failed: ${error.message}`);
+            actionResults.push({
+              action: { type: 'create_order', params: transition.orderData as any },
+              success: false,
+              error: error.message,
+            });
+          }
+        }
+      }
+    }
+
     // ── STEP 2: Response Generation ──────────────────────────────────────
     const responsePrompt = buildResponsePrompt({
       ...dateCtx,
@@ -244,6 +337,8 @@ export class ProcessAiResponseUseCase {
       intentResult,
       actionResults,
       pendingHandoff: !!pendingHandoff,
+      orderFlowDirective,
+      orderFlow,
       orders: orders.length > 0 ? orders : undefined,
     });
 
@@ -385,13 +480,14 @@ export class ProcessAiResponseUseCase {
   private sortActionsByPriority(actions: CognitiveAction[]): CognitiveAction[] {
     const priority: Record<string, number> = {
       escalate: 0,
-      create_order: 1,
-      update_contact: 2,
-      add_label: 3,
-      remove_label: 4,
-      update_summary: 5,
-      complete_goal: 6,
-      respond: 7,
+      extract_order_data: 1,
+      create_order: 2,
+      update_contact: 3,
+      add_label: 4,
+      remove_label: 5,
+      update_summary: 6,
+      complete_goal: 7,
+      respond: 8,
     };
     return [...actions].sort((a, b) => (priority[a.type] ?? 99) - (priority[b.type] ?? 99));
   }
@@ -409,6 +505,7 @@ export class ProcessAiResponseUseCase {
       tenantLabels: any[];
       conversationSummary: string | null;
       orders: any[];
+      orderFlow: OrderFlowData | null;
     },
   ): Promise<string> {
     switch (action.type) {
@@ -421,7 +518,18 @@ export class ProcessAiResponseUseCase {
           ctx.agentId,
         );
 
+      case 'extract_order_data':
+        // Data extraction is handled after all actions execute (state machine block)
+        // Just acknowledge it here so it shows as successful in actionResults
+        return 'Order data extracted';
+
       case 'create_order': {
+        // Block direct create_order when order flow state machine is active
+        if (ctx.orderFlow && ctx.orderFlow.state !== OrderFlowState.IDLE && ctx.orderFlow.state !== OrderFlowState.ORDER_CREATED) {
+          this.logger.warn(`[CognitiveLoop] create_order BLOCKED: order flow state machine is active (state: ${ctx.orderFlow.state})`);
+          return 'Order creation is managed by the order flow state machine. Use extract_order_data instead.';
+        }
+
         if (!ctx.phone.plugins?.includes(PhoneNumberPlugin.ORDERS)) {
           this.logger.warn(`[CognitiveLoop] create_order SKIPPED: Orders plugin not enabled`);
           return 'Orders plugin not enabled';

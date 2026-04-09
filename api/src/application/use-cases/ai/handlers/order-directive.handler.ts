@@ -8,6 +8,11 @@ export interface OrderActionParams {
   notes?: string;
   total?: number;
   currency?: string;
+  paymentMethod?: string;
+  customerName?: string;
+  customerPhone?: string;
+  deliveryCost?: number;
+  neighborhood?: string;
 }
 
 export class OrderDirectiveHandler {
@@ -42,6 +47,11 @@ export class OrderDirectiveHandler {
       deliveryNotes: params.notes ?? null,
       estimatedTotal: typeof params.total === 'number' ? params.total : null,
       currency: params.currency ?? null,
+      paymentMethod: params.paymentMethod ?? null,
+      customerName: params.customerName ?? null,
+      customerPhone: params.customerPhone ?? null,
+      deliveryCost: typeof params.deliveryCost === 'number' ? params.deliveryCost : null,
+      neighborhood: params.neighborhood ?? null,
     });
 
     if (!result.ok) {

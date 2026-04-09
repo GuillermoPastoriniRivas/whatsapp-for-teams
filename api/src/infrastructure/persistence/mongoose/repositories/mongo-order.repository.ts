@@ -27,6 +27,11 @@ export class MongoOrderRepository implements OrderRepository {
       deliveryNotes: data.deliveryNotes,
       estimatedTotal: data.estimatedTotal,
       currency: data.currency,
+      paymentMethod: data.paymentMethod,
+      customerName: data.customerName,
+      customerPhone: data.customerPhone,
+      deliveryCost: data.deliveryCost,
+      neighborhood: data.neighborhood,
     });
     return OrderMapper.toDomain(doc);
   }
@@ -71,5 +76,21 @@ export class MongoOrderRepository implements OrderRepository {
       { returnDocument: 'after' },
     );
     return doc ? OrderMapper.toDomain(doc) : null;
+  }
+
+  async update(id: string, data: Partial<Pick<Order, 'items' | 'estimatedTotal' | 'deliveryAddress' | 'deliveryNotes' | 'paymentMethod' | 'neighborhood' | 'deliveryCost' | 'status'>>): Promise<Order | null> {
+    const doc = await this.model.findByIdAndUpdate(
+      id,
+      { $set: data },
+      { returnDocument: 'after' },
+    );
+    return doc ? OrderMapper.toDomain(doc) : null;
+  }
+
+  async findByContactId(contactId: string): Promise<Order[]> {
+    const docs = await this.model
+      .find({ contactId: new Types.ObjectId(contactId) })
+      .sort({ createdAt: -1 });
+    return docs.map(OrderMapper.toDomain);
   }
 }

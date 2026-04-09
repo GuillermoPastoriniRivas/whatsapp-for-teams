@@ -25,6 +25,11 @@ export class OrderMapper {
       doc.currency,
       doc.createdAt,
       doc.updatedAt,
+      (doc as any).paymentMethod ?? null,
+      (doc as any).customerName ?? null,
+      (doc as any).customerPhone ?? null,
+      (doc as any).deliveryCost ?? null,
+      (doc as any).neighborhood ?? null,
     );
   }
 }

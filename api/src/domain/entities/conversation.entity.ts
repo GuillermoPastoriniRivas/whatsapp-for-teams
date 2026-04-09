@@ -1,4 +1,5 @@
 import { ConversationStatus } from '../enums/conversation-status.enum.js';
+import type { OrderFlowData } from '../value-objects/order-flow.types.js';
 
 export class Conversation {
   constructor(
@@ -14,5 +15,6 @@ export class Conversation {
     public readonly resolvedAt: Date | null,
     public readonly closedBy: string | null,
     public readonly summary: string | null = null,
+    public readonly orderFlow: OrderFlowData | null = null,
   ) {}
 }

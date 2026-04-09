@@ -1,6 +1,7 @@
 export type IntentType =
   | 'respond'
   | 'create_order'
+  | 'extract_order_data'
   | 'update_contact'
   | 'add_label'
   | 'remove_label'

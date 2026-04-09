@@ -1,4 +1,5 @@
 import type { IntentResult, ActionExecutionResult } from '../../../../domain/value-objects/cognitive-loop.types.js';
+import type { OrderFlowData } from '../../../../domain/value-objects/order-flow.types.js';
 
 const BASE_SYSTEM_PROMPT = `You are an AI assistant operating inside a shared WhatsApp Business inbox.
 
@@ -59,6 +60,8 @@ export interface ResponsePromptContext {
   intentResult: IntentResult;
   actionResults: ActionExecutionResult[];
   pendingHandoff: boolean;
+  orderFlowDirective?: string | null;
+  orderFlow?: OrderFlowData | null;
   orders?: Array<{
     id: string;
     status: string;
@@ -68,6 +71,8 @@ export interface ResponsePromptContext {
     estimatedTotal?: number | null;
     currency?: string | null;
     createdAt: Date;
+    paymentMethod?: string | null;
+    neighborhood?: string | null;
   }>;
 }
 
@@ -131,13 +136,14 @@ ${ctx.knowledgeBase}`);
       confirmed: 'Confirmado',
       preparing: 'En preparación',
       ready: 'Listo',
+      shipped: 'En camino',
       on_the_way: 'En camino',
       delivered: 'Entregado',
       cancelled: 'Cancelado',
     };
     const orderLines = ctx.orders.map((o) => {
       const itemList = o.items.map((i) => `${i.quantity}x ${i.name}`).join(', ');
-      return `- Order #${o.id.slice(-6)}: ${statusMap[o.status] ?? o.status} | ${itemList} | Total: ${o.estimatedTotal ?? 'N/A'} ${o.currency ?? ''}`;
+      return `- Order #${o.id.slice(-6)}: ${statusMap[o.status] ?? o.status} | ${itemList} | Total: ${o.estimatedTotal ?? 'N/A'} ${o.currency ?? ''}${o.paymentMethod ? ` | Pago: ${o.paymentMethod}` : ''}`;
     }).join('\n');
     parts.push(`## Customer Orders
 Use this information to answer questions about the customer's orders. You know the status of their orders.
@@ -145,12 +151,35 @@ Use this information to answer questions about the customer's orders. You know t
 ${orderLines}`);
   }
 
-  // 9. Intent context from step 1
+  // 9. Order flow directive (high priority — overrides general guidance)
+  if (ctx.orderFlowDirective && ctx.orderFlow) {
+    const flow = ctx.orderFlow;
+    const dataLines: string[] = [];
+    if (flow.items.length > 0) {
+      dataLines.push(`Items: ${flow.items.map((i) => `${i.quantity}x ${i.name}${i.unitPrice ? ` ($${i.unitPrice})` : ''}${i.notes ? ` (${i.notes})` : ''}`).join(', ')}`);
+    }
+    if (flow.deliveryType) dataLines.push(`Type: ${flow.deliveryType}`);
+    if (flow.deliveryAddress) dataLines.push(`Address: ${flow.deliveryAddress}`);
+    if (flow.neighborhood) dataLines.push(`Neighborhood: ${flow.neighborhood}`);
+    if (flow.deliveryNotes) dataLines.push(`Notes: ${flow.deliveryNotes}`);
+    if (flow.paymentMethod) dataLines.push(`Payment method: ${flow.paymentMethod}`);
+    if (flow.deliveryCost !== null) dataLines.push(`Delivery cost: $${flow.deliveryCost}`);
+    if (flow.estimatedTotal !== null) dataLines.push(`Total: $${flow.estimatedTotal} ${flow.currency ?? ''}`);
+
+    parts.push(`## Order Flow Instruction (FOLLOW THIS)
+${ctx.orderFlowDirective}
+
+${dataLines.length > 0 ? `Current order data:\n${dataLines.map((d) => `- ${d}`).join('\n')}` : ''}
+
+Generate a natural WhatsApp message that follows the instruction above. Only include the order summary when confirming with the customer.`);
+  }
+
+  // 10. Intent context from step 1
   parts.push(`## What the customer wants
 Intent: ${ctx.intentResult.intent}
 Guidance: ${ctx.intentResult.responseHint}`);
 
-  // 9. Action results (what was already done)
+  // 11. Action results (what was already done)
   if (ctx.actionResults.length > 0) {
     const resultLines = ctx.actionResults
       .map((r) => `- ${r.action.type}: ${r.success ? r.result ?? 'done' : `failed: ${r.error}`}`)
@@ -161,7 +190,7 @@ The following actions were automatically executed based on the customer's messag
 ${resultLines}`);
   }
 
-  // 10. Handoff instruction
+  // 12. Handoff instruction
   if (ctx.pendingHandoff) {
     parts.push(`## Handoff
 This conversation is being transferred to a human team member. Include a warm farewell and let the customer know someone from the team will follow up shortly.`);

@@ -38,6 +38,7 @@ export class ResolveConversationUseCase {
       resolvedAt: new Date(),
       closedBy: input.agentId,
       agentId: null,
+      orderFlow: null,
     } as any);
 
     const event = await this.eventRepo.create({

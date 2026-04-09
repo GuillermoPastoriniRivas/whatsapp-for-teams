@@ -24,5 +24,10 @@ export class Order {
     public readonly currency: string | null,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
+    public readonly paymentMethod: string | null = null,
+    public readonly customerName: string | null = null,
+    public readonly customerPhone: string | null = null,
+    public readonly deliveryCost: number | null = null,
+    public readonly neighborhood: string | null = null,
   ) {}
 }

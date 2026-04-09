@@ -19,6 +19,11 @@ export interface CreateOrderInput {
   deliveryNotes?: string | null;
   estimatedTotal?: number | null;
   currency?: string | null;
+  paymentMethod?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  deliveryCost?: number | null;
+  neighborhood?: string | null;
 }
 
 export class CreateOrderUseCase {
@@ -42,6 +47,11 @@ export class CreateOrderUseCase {
       deliveryNotes: input.deliveryNotes ?? null,
       estimatedTotal: input.estimatedTotal ?? null,
       currency: input.currency ?? null,
+      paymentMethod: input.paymentMethod ?? null,
+      customerName: input.customerName ?? null,
+      customerPhone: input.customerPhone ?? null,
+      deliveryCost: input.deliveryCost ?? null,
+      neighborhood: input.neighborhood ?? null,
     });
 
     await this.eventRepo.create({

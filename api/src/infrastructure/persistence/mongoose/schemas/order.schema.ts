@@ -57,6 +57,21 @@ export class OrderModel {
   @Prop({ type: String, default: null })
   currency: string | null;
 
+  @Prop({ type: String, default: null })
+  paymentMethod: string | null;
+
+  @Prop({ type: String, default: null })
+  customerName: string | null;
+
+  @Prop({ type: String, default: null })
+  customerPhone: string | null;
+
+  @Prop({ type: Number, default: null })
+  deliveryCost: number | null;
+
+  @Prop({ type: String, default: null })
+  neighborhood: string | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
