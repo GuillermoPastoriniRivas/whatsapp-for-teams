@@ -156,7 +156,7 @@ Respond with a JSON object with this exact structure:
 **escalate** - Transfer to human agent:
 { "type": "escalate", "params": { "reason": "Customer frustrated with delivery delay" } }
 
-**create_order** - Create an order (only after customer confirms):
+**create_order** - Create an order when the customer has specified what they want. If they listed items, that IS the order — create it directly. Do NOT wait for a separate confirmation message.
 { "type": "create_order", "params": { "items": [{"name": "Pizza grande", "quantity": 2, "unitPrice": 850}], "type": "delivery", "address": "Av. Corrientes 1234", "notes": "sin cebolla", "total": 1700, "currency": "ARS" } }
 
 ### Rules:

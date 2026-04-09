@@ -42,4 +42,5 @@ export class ConversationModel {
 export const ConversationSchema = SchemaFactory.createForClass(ConversationModel);
 
 ConversationSchema.index({ tenantId: 1, status: 1 });
+ConversationSchema.index({ contactId: 1, phoneNumberId: 1 }, { unique: true });
 ConversationSchema.index({ contactId: 1, phoneNumberId: 1, status: 1 });

@@ -5,6 +5,7 @@ import {
   ConversationRepository,
   ConversationFilters,
   PaginatedResult,
+  FindOrCreateResult,
 } from '../../../../domain/repositories/conversation.repository.js';
 import { Conversation } from '../../../../domain/entities/conversation.entity.js';
 import { ConversationStatus } from '../../../../domain/enums/conversation-status.enum.js';
@@ -28,6 +29,32 @@ export class MongoConversationRepository implements ConversationRepository {
       lastInboundAt: data.lastInboundAt,
     });
     return ConversationMapper.toDomain(doc);
+  }
+
+  async findOrCreateByContactAndPhone(
+    data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary'>,
+  ): Promise<FindOrCreateResult> {
+    const result = await this.model.findOneAndUpdate(
+      {
+        contactId: new Types.ObjectId(data.contactId),
+        phoneNumberId: new Types.ObjectId(data.phoneNumberId),
+      },
+      {
+        $setOnInsert: {
+          tenantId: new Types.ObjectId(data.tenantId),
+          phoneNumberId: new Types.ObjectId(data.phoneNumberId),
+          contactId: new Types.ObjectId(data.contactId),
+          agentId: data.agentId ? new Types.ObjectId(data.agentId) : null,
+          status: data.status,
+          lastMessageAt: data.lastMessageAt,
+          lastInboundAt: data.lastInboundAt,
+        },
+      },
+      { upsert: true, returnDocument: 'after', includeResultMetadata: true },
+    );
+    const doc = result.value!;
+    const created = !!result.lastErrorObject?.upserted;
+    return { conversation: ConversationMapper.toDomain(doc), created };
   }
 
   async findById(id: string): Promise<Conversation | null> {

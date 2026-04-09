@@ -46,22 +46,22 @@ export class HandleInboundMessageUseCase {
       profilePicUrl: input.profilePicUrl ?? null,
     });
 
-    // 3. Find existing Conversation (any status) or create new one
-    let conversation = await this.conversationRepo.findByContactAndPhone(contact.id, phone.id);
+    // 3. Atomic find-or-create Conversation (prevents race condition duplicates)
     const now = new Date();
     let needsAssignment = false;
 
-    if (!conversation) {
-      conversation = await this.conversationRepo.create({
-        tenantId,
-        phoneNumberId: phone.id,
-        contactId: contact.id,
-        agentId: null,
-        status: ConversationStatus.UNASSIGNED,
-        lastMessageAt: now,
-        lastInboundAt: now,
-      });
+    const { conversation: foundConversation, created } = await this.conversationRepo.findOrCreateByContactAndPhone({
+      tenantId,
+      phoneNumberId: phone.id,
+      contactId: contact.id,
+      agentId: null,
+      status: ConversationStatus.UNASSIGNED,
+      lastMessageAt: now,
+      lastInboundAt: now,
+    });
+    let conversation = foundConversation;
 
+    if (created) {
       const createdEvent = await this.eventRepo.create({
         conversationId: conversation.id,
         tenantId,
