@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { Phone } from "lucide-react";
 
-type Provider = "meta" | "twilio" | "360dialog";
+type Provider = "meta" | "twilio" | "360dialog" | "kapso";
 
 const providerConfigFields: Record<Provider, { key: string; label: string }[]> = {
   meta: [{ key: "accessToken", label: "Access Token" }],
@@ -16,6 +16,7 @@ const providerConfigFields: Record<Provider, { key: string; label: string }[]> =
     { key: "fromNumber", label: "From Number" },
   ],
   "360dialog": [{ key: "apiKey", label: "API Key" }],
+  kapso: [{ key: "apiKey", label: "API Key" }],
 };
 
 interface Props {
@@ -85,7 +86,7 @@ export function RegisterPhonePanel({ onCreated, onCancel }: Props) {
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Provider</label>
           <div className="flex gap-2">
-            {(["meta", "twilio", "360dialog"] as const).map((p) => (
+            {(["meta", "twilio", "360dialog", "kapso"] as const).map((p) => (
               <button
                 key={p}
                 type="button"
@@ -96,7 +97,7 @@ export function RegisterPhonePanel({ onCreated, onCancel }: Props) {
                     : "hover:bg-muted/50"
                 }`}
               >
-                {p === "360dialog" ? "360dialog" : p.charAt(0).toUpperCase() + p.slice(1)}
+                {p === "360dialog" ? "360dialog" : p === "kapso" ? "Kapso" : p.charAt(0).toUpperCase() + p.slice(1)}
               </button>
             ))}
           </div>

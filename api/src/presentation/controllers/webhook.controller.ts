@@ -76,6 +76,38 @@ export class WebhookController {
     return { status: 'ok' };
   }
 
+  // ── Kapso (Meta webhook forwarding) ────────────────────
+
+  @Post('kapso')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Receive webhook (Kapso)', description: 'Kapso Meta-forwarded webhook receiver for messages and status updates' })
+  @ApiResponse({ status: 200, description: 'Webhook processed' })
+  async receiveKapso(@Req() req: Request, @Body() body: MetaWebhookPayload) {
+    // Kapso forwards the exact Meta payload — extract phone_number_id the same way
+    const phoneNumberId = body?.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
+    if (!phoneNumberId) {
+      this.logger.warn('Kapso webhook: cannot determine phone_number_id');
+      return { status: 'ignored' };
+    }
+
+    const { messages, statuses } = parseMetaWebhook(body);
+
+    for (const parsed of messages) {
+      const input = mapMetaMessageToInbound(parsed, phoneNumberId, 'v24.0');
+      if (!input) {
+        this.logger.warn(`Unsupported Kapso message type: ${parsed.message.type} (id=${parsed.message.id})`);
+        continue;
+      }
+      await this.queue.enqueue(INBOUND_MESSAGE_JOB, input);
+    }
+
+    for (const status of statuses) {
+      await this.queue.enqueue(STATUS_UPDATE_JOB, mapMetaStatusToUpdate(status));
+    }
+
+    return { status: 'ok' };
+  }
+
   // ── Twilio ────────────────────────────────────────────
 
   @Post('twilio')

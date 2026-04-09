@@ -11,7 +11,7 @@ import { useTranslations } from "@/lib/i18n/use-translations";
 import { usePluginStore } from "@/stores/plugin.store";
 import type { PhoneNumber } from "@/types";
 
-type Provider = "meta" | "twilio" | "360dialog";
+type Provider = "meta" | "twilio" | "360dialog" | "kapso";
 
 const providerConfigFields: Record<Provider, { key: string; label: string }[]> = {
   meta: [{ key: "accessToken", label: "Access Token" }],
@@ -21,6 +21,7 @@ const providerConfigFields: Record<Provider, { key: string; label: string }[]> =
     { key: "fromNumber", label: "From Number" },
   ],
   "360dialog": [{ key: "apiKey", label: "API Key" }],
+  kapso: [{ key: "apiKey", label: "API Key" }],
 };
 
 interface Props {
@@ -215,7 +216,7 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
             placeholder="Leave empty to keep current"
           />
           <p className="text-xs text-muted-foreground">
-            {provider === "meta" ? "Meta App Secret — found in Meta Developers > App Settings > Basic" : "Webhook secret for signature validation"}
+            {provider === "meta" ? "Meta App Secret — found in Meta Developers > App Settings > Basic" : provider === "kapso" ? "Not required for Kapso Meta webhook forwarding" : "Webhook secret for signature validation"}
           </p>
         </div>
 

@@ -4,12 +4,14 @@ import { MessagingProvider } from '../../domain/enums/messaging-provider.enum.js
 import { MessagingApiPort, SendMessageParams, SendMessageResult } from '../../application/ports/messaging-api.port.js';
 import { MetaCloudApiService } from './meta-cloud-api.service.js';
 import { TwilioWhatsAppService } from './twilio-whatsapp.service.js';
+import { KapsoWhatsAppService } from './kapso-whatsapp.service.js';
 
 @Injectable()
 export class MessagingApiStrategyService implements MessagingApiPort {
   constructor(
     private readonly metaService: MetaCloudApiService,
     private readonly twilioService: TwilioWhatsAppService,
+    private readonly kapsoService: KapsoWhatsAppService,
   ) {}
 
   async sendMessage(params: SendMessageParams): Promise<SendMessageResult> {
@@ -19,6 +21,9 @@ export class MessagingApiStrategyService implements MessagingApiPort {
 
       case MessagingProvider.TWILIO:
         return this.twilioService.sendMessage(params);
+
+      case MessagingProvider.KAPSO:
+        return this.kapsoService.sendMessage(params);
 
       case MessagingProvider.DIALOG_360:
         throw new Error('360Dialog provider not yet implemented');

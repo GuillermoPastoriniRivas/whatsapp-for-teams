@@ -74,7 +74,7 @@ export interface Message {
 export interface PhoneNumber {
   id: string;
   tenantId: string;
-  provider: "meta" | "twilio" | "360dialog";
+  provider: "meta" | "twilio" | "360dialog" | "kapso";
   providerConfig: Record<string, string>;
   wabaId: string;
   phoneNumberId: string;
