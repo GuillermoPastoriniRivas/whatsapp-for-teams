@@ -85,6 +85,7 @@ import { CreateOrderUseCase } from '../application/use-cases/order/create-order.
 import { ListOrdersUseCase } from '../application/use-cases/order/list-orders.use-case.js';
 import { GetOrderUseCase } from '../application/use-cases/order/get-order.use-case.js';
 import { UpdateOrderStatusUseCase } from '../application/use-cases/order/update-order-status.use-case.js';
+import { NotifyOrderStatusUseCase } from '../application/use-cases/order/notify-order-status.use-case.js';
 
 // Use Cases — Label
 import { CreateLabelUseCase } from '../application/use-cases/label/create-label.use-case.js';
@@ -459,9 +460,15 @@ const useCaseProviders = [
     inject: ['OrderRepository'],
   },
   {
+    provide: 'NotifyOrderStatusUseCase',
+    useFactory: (convRepo: any, contactRepo: any, phoneRepo: any, msgRepo: any, agentRepo: any, configRepo: any, aiCompletion: any, messagingApi: any, gateway: any) =>
+      new NotifyOrderStatusUseCase(convRepo, contactRepo, phoneRepo, msgRepo, agentRepo, configRepo, aiCompletion, messagingApi, gateway),
+    inject: ['ConversationRepository', 'ContactRepository', 'PhoneNumberRepository', 'MessageRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort'],
+  },
+  {
     provide: 'UpdateOrderStatusUseCase',
-    useFactory: (orderRepo: any, gateway: any) => new UpdateOrderStatusUseCase(orderRepo, gateway),
-    inject: ['OrderRepository', 'RealtimeGatewayPort'],
+    useFactory: (orderRepo: any, gateway: any, notifyOrderStatus: any) => new UpdateOrderStatusUseCase(orderRepo, gateway, notifyOrderStatus),
+    inject: ['OrderRepository', 'RealtimeGatewayPort', 'NotifyOrderStatusUseCase'],
   },
 
   // Billing

@@ -9,10 +9,8 @@ interface OrderState {
   total: number;
   page: number;
   pages: number;
-  statusFilter: OrderStatus | "";
   isLoading: boolean;
-  fetch: (status?: OrderStatus | "", page?: number) => Promise<void>;
-  setFilter: (status: OrderStatus | "") => void;
+  fetch: (page?: number) => Promise<void>;
   addOrder: (order: Order) => void;
   updateOrder: (order: Partial<Order> & { id: string }) => void;
   updateStatus: (orderId: string, status: OrderStatus) => Promise<void>;
@@ -23,15 +21,15 @@ export const useOrderStore = create<OrderState>((set, get) => ({
   total: 0,
   page: 1,
   pages: 1,
-  statusFilter: "",
   isLoading: false,
 
-  fetch: async (status?: OrderStatus | "", page = 1) => {
+  fetch: async (page = 1) => {
     set({ isLoading: true });
     try {
-      const filter = status ?? get().statusFilter;
-      const params = new URLSearchParams({ page: String(page), limit: "30" });
-      if (filter) params.set("status", filter);
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: "100",
+      });
 
       const data = await api.get<PaginatedResponse<Order>>(
         `/orders?${params}`
@@ -46,11 +44,6 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     } catch {
       set({ isLoading: false });
     }
-  },
-
-  setFilter: (status) => {
-    set({ statusFilter: status });
-    get().fetch(status);
   },
 
   addOrder: (order) => {
