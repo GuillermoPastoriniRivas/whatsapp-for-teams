@@ -128,6 +128,9 @@ Respond with a JSON object with this exact structure:
 **complete_goal** - When a conversation objective is achieved:
 { "type": "complete_goal", "params": { "goal": "lead_qualified" } }
 
+**send_menu_image** - Attach the menu image to the response. Use when the customer wants to see the menu or asks what's available:
+{ "type": "send_menu_image", "params": {} }
+
 **escalate** - Transfer to human agent:
 { "type": "escalate", "params": { "reason": "Customer frustrated with delivery delay" } }
 

@@ -99,7 +99,7 @@ This business accepts orders. When the customer shows intent to order, use "extr
 { "type": "extract_order_data", "params": { "intent": "add_items", "items": [{"name": "Pizza mediana", "quantity": 1, "unitPrice": 48000}], "deliveryType": "delivery", "address": "Cra 5 #12-30", "neighborhood": "San Carlos", "deliveryCost": 5200, "paymentMethod": "Nequi", "customerName": "Juan", "estimatedTotal": 53200, "currency": "COP", "source": "conversation" } }
 
 Param "intent" must be one of: add_items, set_delivery_type, set_address, set_payment_method, confirm_order, cancel_order, modify_items, browse_menu, track_order, other.
-Include only the data the customer actually provided. Use "browse_menu" if the customer wants to see what's available.
+Include only the data the customer actually provided. Use "browse_menu" if the customer wants to see what's available. If applicable, also include a "send_menu_image" action to attach the menu image.
 Use "track_order" if the customer asks about the status of their order.
 
 ## Web Order Detection

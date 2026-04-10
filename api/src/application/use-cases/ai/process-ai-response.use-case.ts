@@ -307,46 +307,6 @@ export class ProcessAiResponseUseCase {
       actionResults,
     );
 
-    // ── Menu image shortcut (skip LLM response if image exists) ────────
-    if (intentResult.intent === 'browse_menu') {
-      const menuImageUrl = await this.resolveMenuImageUrl(conversation.tenantId);
-      if (menuImageUrl) {
-        const sendContact = contact ?? await this.contactRepo.findById(conversation.contactId);
-        if (!sendContact) return;
-
-        const caption = '¡Acá va nuestro menú! Decime qué te gustaría pedir 😊';
-        const { waMessageId } = await this.messagingApi.sendMessage({
-          provider: phone.provider,
-          providerConfig: phone.providerConfig,
-          phoneNumberId: phone.phoneNumberId,
-          to: sendContact.waId,
-          type: MessageType.IMAGE,
-          body: caption,
-          mediaUrl: menuImageUrl,
-        });
-
-        const message = await this.messageRepo.upsertByWaMessageId({
-          conversationId: conversation.id,
-          direction: MessageDirection.OUTBOUND,
-          messageType: MessageType.IMAGE,
-          body: caption,
-          mediaUrl: menuImageUrl,
-          mimeType: menuImageUrl.endsWith('.png') ? 'image/png' : 'image/jpeg',
-          waMessageId,
-          waStatus: MessageWaStatus.SENT,
-          timestamp: new Date(),
-          senderAgentId: agent.id,
-          senderAgentName: agent.name,
-        });
-
-        await this.usageRepo.incrementUsage(config.tenantId, agent.id, today, 1, intentLlmResult.tokensUsed.total);
-        await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date() } as any);
-        this.gateway.emitToConversation(conversation.id, 'message.new', message);
-        this.gateway.emitToTenant(conversation.tenantId, 'conversation.updated', { conversationId: conversation.id });
-        return;
-      }
-    }
-
     // ── STEP 2: Response Generation ──────────────────────────────────────
     const responsePrompt = buildResponsePrompt({
       ...dateCtx,
@@ -460,6 +420,43 @@ export class ProcessAiResponseUseCase {
       this.gateway.emitToConversation(conversation.id, 'message.new', message);
     }
 
+    // ── Send menu image if action resolved one ──────────────────────────
+    const menuImageAction = actionResults.find(
+      (r) => r.action.type === 'send_menu_image' && r.success && r.result?.startsWith('menu_image_url:'),
+    );
+    if (menuImageAction) {
+      const mediaUrl = menuImageAction.result!.replace('menu_image_url:', '');
+
+      this.messagingApi.sendTypingIndicator(typingParams).catch(() => {});
+      await new Promise((r) => setTimeout(r, config.multiMessage?.interBubbleDelayMs ?? 1200));
+
+      const { waMessageId: imgWaId } = await this.messagingApi.sendMessage({
+        provider: phone.provider,
+        providerConfig: phone.providerConfig,
+        phoneNumberId: phone.phoneNumberId,
+        to: sendContact.waId,
+        type: MessageType.IMAGE,
+        body: '',
+        mediaUrl,
+      });
+
+      const imgMessage = await this.messageRepo.upsertByWaMessageId({
+        conversationId: conversation.id,
+        direction: MessageDirection.OUTBOUND,
+        messageType: MessageType.IMAGE,
+        body: null,
+        mediaUrl,
+        mimeType: mediaUrl.endsWith('.png') ? 'image/png' : 'image/jpeg',
+        waMessageId: imgWaId,
+        waStatus: MessageWaStatus.SENT,
+        timestamp: new Date(),
+        senderAgentId: agent.id,
+        senderAgentName: agent.name,
+      });
+
+      this.gateway.emitToConversation(conversation.id, 'message.new', imgMessage);
+    }
+
     await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date(), pendingAiSince: null } as any);
     this.gateway.emitToTenant(conversation.tenantId, 'conversation.updated', { conversationId: conversation.id });
 
@@ -537,6 +534,7 @@ export class ProcessAiResponseUseCase {
       remove_label: 5,
       update_summary: 6,
       complete_goal: 7,
+      send_menu_image: 90,
       respond: 99,
     };
     return [...actions].sort((a, b) => (corePriority[a.type] ?? 50) - (corePriority[b.type] ?? 50));
@@ -677,6 +675,11 @@ export class ProcessAiResponseUseCase {
 
       case 'escalate':
         return `Handoff scheduled: ${action.params.reason}`;
+
+      case 'send_menu_image': {
+        const url = await this.resolveMenuImageUrl(ctx.tenantId);
+        return url ? `menu_image_url:${url}` : 'No menu image available';
+      }
 
       case 'respond':
         return 'No action needed';
