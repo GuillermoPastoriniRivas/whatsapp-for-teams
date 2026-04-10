@@ -24,6 +24,8 @@ import {
   buildOrderFlowResponseDirective,
   type OrderPromptContext,
 } from './orders-prompt.builder.js';
+import type { ReviewOrderUseCase } from '../../use-cases/order/review-order.use-case.js';
+import type { OrderActionParams } from '../../use-cases/ai/handlers/order-directive.handler.js';
 
 @Injectable()
 export class OrdersPlugin implements CognitivePlugin {
@@ -37,6 +39,7 @@ export class OrdersPlugin implements CognitivePlugin {
     private readonly stateRepo: PluginStateRepository,
     private readonly orderRepo: OrderRepository,
     private readonly orderHandler: OrderDirectiveHandler,
+    private readonly reviewOrder: ReviewOrderUseCase,
   ) {}
 
   async buildPromptContributions(ctx: PluginContext): Promise<PluginPromptContribution> {
@@ -146,9 +149,26 @@ export class OrdersPlugin implements CognitivePlugin {
 
     if (transition.shouldCreateOrder && transition.orderData) {
       this.logger.log(`Creating order from state machine: ${JSON.stringify(transition.orderData)}`);
+
+      // LLM review pass: cross-check order against conversation (fail-open)
+      let finalOrderData: Record<string, unknown> = transition.orderData as Record<string, unknown>;
+      try {
+        const reviewResult = await this.reviewOrder.execute({
+          orderData: transition.orderData as unknown as OrderActionParams,
+          conversationId: ctx.conversationId,
+          agentId: ctx.agentId,
+        });
+        if (reviewResult.hadCorrections) {
+          this.logger.log(`Order review corrections: ${reviewResult.corrections.join('; ')}`);
+          finalOrderData = reviewResult.correctedOrder as unknown as Record<string, unknown>;
+        }
+      } catch (reviewError: any) {
+        this.logger.warn(`Order review failed, proceeding with original: ${reviewError.message}`);
+      }
+
       try {
         const orderResult = await this.orderHandler.handleAction(
-          transition.orderData as any,
+          finalOrderData as any,
           ctx.conversationId,
           ctx.contactId,
           ctx.phoneNumberId,
