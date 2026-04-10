@@ -21,6 +21,7 @@ export interface OrderFlowData {
   neighborhood: string | null;
   deliveryCost: number | null;
   source: 'web' | 'conversation' | null;
+  menuImageSent: boolean;
   updatedAt: Date;
 }
 
@@ -96,6 +97,7 @@ export function createDefaultOrderFlow(): OrderFlowData {
     neighborhood: null,
     deliveryCost: null,
     source: null,
+    menuImageSent: false,
     updatedAt: new Date(),
   };
 }

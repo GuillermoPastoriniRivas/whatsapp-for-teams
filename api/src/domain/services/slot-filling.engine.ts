@@ -44,7 +44,7 @@ export class SlotFillingEngine {
       return {
         data: updated,
         shouldComplete: true,
-        directive: 'All data collected. Confirm the order/booking with the customer with a brief summary.',
+        directive: 'All required data has been collected. Confirm the details with the customer with a brief summary before registering the order. Do NOT say the order is "ready" or "lista" — it has not been sent yet.',
         missingSlots: [],
         filledSlots: filled.map((s) => s.key),
       };

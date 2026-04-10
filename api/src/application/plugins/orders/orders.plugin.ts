@@ -115,6 +115,20 @@ export class OrdersPlugin implements CognitivePlugin {
       orderFlow.state = OrderFlowState.COLLECTING;
     }
 
+    // ── Menu image dedup: send once per order cycle, suppress repeats ──
+    const menuImg = actionResults.find(
+      (r) => r.action.type === 'send_menu_image' && r.success && r.result?.startsWith('menu_image_url:'),
+    );
+    if (menuImg) {
+      if (orderFlow.menuImageSent) {
+        menuImg.result = 'suppressed: menu image already sent';
+        this.logger.log('send_menu_image suppressed (already sent this order cycle)');
+      } else {
+        orderFlow.menuImageSent = true;
+        await this.stateRepo.setState(ctx.conversationId, this.pluginId, orderFlow);
+      }
+    }
+
     const extractAction = actionResults.find(
       (r) => r.action.type === 'extract_order_data' && r.success,
     );
@@ -126,6 +140,8 @@ export class OrdersPlugin implements CognitivePlugin {
     const customerInput = extractAction.action.params as unknown as CustomerInput;
     const transition = this.flowService.transition(orderFlow, customerInput, lastOrderDefaults ?? undefined);
 
+    // Save the flow state for directive building BEFORE any reset
+    const directiveFlow = transition.newFlow;
     orderFlow = transition.newFlow;
 
     if (transition.shouldCreateOrder && transition.orderData) {
@@ -159,7 +175,7 @@ export class OrdersPlugin implements CognitivePlugin {
     await this.stateRepo.setState(ctx.conversationId, this.pluginId, orderFlow);
 
     const responseDirective = transition.directive
-      ? buildOrderFlowResponseDirective(transition.directive, orderFlow)
+      ? buildOrderFlowResponseDirective(transition.directive, directiveFlow)
       : null;
 
     return { responseDirective };

@@ -128,7 +128,7 @@ Respond with a JSON object with this exact structure:
 **complete_goal** - When a conversation objective is achieved:
 { "type": "complete_goal", "params": { "goal": "lead_qualified" } }
 
-**send_menu_image** - Attach the menu image to the response. Use when the customer wants to see the menu or asks what's available:
+**send_menu_image** - Attach the menu image to the response. ONLY use when the customer explicitly asks to SEE or VIEW the full menu (e.g., "quiero ver el menú", "muéstrame la carta", "qué tienen", "pásame el menú"). Do NOT use when the customer asks a SPECIFIC question about a product (e.g., "de cuántos sabores puedo pedir?", "cuánto cuesta la familiar?", "qué ingredientes tiene?") — answer those from the knowledge base instead. Do NOT use when the customer is already in the middle of placing an order.
 { "type": "send_menu_image", "params": {} }
 
 **escalate** - Transfer to human agent:

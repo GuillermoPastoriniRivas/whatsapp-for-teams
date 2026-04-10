@@ -91,7 +91,8 @@ All other params are optional — only include what the customer actually said i
 CRITICAL: Only include data from the customer's CURRENT message. Do NOT repeat items or data that is already collected (shown above).
 IMPORTANT: Include ALL data the customer provides in a single message — even if it covers multiple fields at once (e.g. items + address + payment). The backend can handle everything at once.
 
-IMPORTANT: Do NOT use "create_order". The backend decides when the order is ready to be created.`);
+IMPORTANT: Do NOT use "create_order". The backend decides when the order is ready to be created.
+IMPORTANT: Do NOT include a "send_menu_image" action while collecting order data — the customer is already ordering.`);
   } else {
     sections.push(`## Order Management
 This business accepts orders. When the customer shows intent to order, use "extract_order_data" to capture their data. The backend manages the order flow.
@@ -99,7 +100,7 @@ This business accepts orders. When the customer shows intent to order, use "extr
 { "type": "extract_order_data", "params": { "intent": "add_items", "items": [{"name": "Pizza mediana", "quantity": 1, "unitPrice": 48000}], "deliveryType": "delivery", "address": "Cra 5 #12-30", "neighborhood": "San Carlos", "deliveryCost": 5200, "paymentMethod": "Nequi", "customerName": "Juan", "estimatedTotal": 53200, "currency": "COP", "source": "conversation" } }
 
 Param "intent" must be one of: add_items, set_delivery_type, set_address, set_payment_method, confirm_order, cancel_order, modify_items, browse_menu, track_order, other.
-Include only the data the customer actually provided. Use "browse_menu" if the customer wants to see what's available. If applicable, also include a "send_menu_image" action to attach the menu image.
+Include only the data the customer actually provided. Use "browse_menu" if the customer asks about the menu or products. Only include a "send_menu_image" action when the customer explicitly asks to VIEW the full menu — NOT when they ask a specific question about a product (sizes, prices, flavors, etc.).
 Use "track_order" if the customer asks about the status of their order.
 
 ## Web Order Detection
@@ -179,12 +180,18 @@ export function buildOrderFlowResponseDirective(
   // After order creation: just pass the directive, no data dump.
   // The conversation history already has everything — let the AI read it naturally.
   if (orderFlow.state === OrderFlowState.ORDER_CREATED) {
-    return `## Order Flow Instruction\n${directive}`;
+    return `## Order Flow Instruction
+${directive}
+
+NEVER say the order is "ready", "lista", or "prepared" — it was only registered. You do not know the preparation status.`;
   }
 
   // While collecting: pass the directive (which asks about ONE specific thing)
   return `## Order Flow Instruction
 ${directive}
 
-Only ask about ONE thing per message. Do not ask about multiple missing fields at once — the system will guide you to the next field after the customer responds.`;
+Only ask about ONE thing per message. Do not ask about multiple missing fields at once — the system will guide you to the next field after the customer responds.
+NEVER say the order is "ready" or "lista" — you are still collecting information.
+NEVER assume delivery type, payment method, address, or any data the customer has not explicitly provided.
+Do NOT send the menu image while collecting order data.`;
 }

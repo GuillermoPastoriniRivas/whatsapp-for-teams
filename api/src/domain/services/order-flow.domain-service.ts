@@ -30,26 +30,26 @@ export class OrderFlowDomainService implements SlotFillingAdapter {
         key: 'items',
         required: true,
         priority: 1,
-        askDirective: 'Ask the customer what they would like to order. Show relevant menu options from the knowledge base.',
+        askDirective: 'Ask the customer what they would like to order. Show relevant menu options from the knowledge base. Do NOT assume items or quantities — only record what the customer explicitly says.',
       },
       {
         key: 'deliveryType',
         required: true,
         priority: 2,
-        askDirective: 'Ask the customer if they want delivery (domicilio) or pickup (recoger en tienda).',
+        askDirective: 'Ask the customer if they want delivery (domicilio) or pickup (recoger en tienda). You MUST ask this question — do NOT assume or skip it. Wait for their answer before proceeding.',
       },
       {
         key: 'deliveryAddress',
         required: true,
         priority: 3,
-        askDirective: 'Ask the customer for their delivery address and neighborhood (barrio) to calculate the delivery cost.',
+        askDirective: 'Ask the customer for their delivery address and neighborhood (barrio) to calculate the delivery cost. Do NOT use an address unless the customer provides or confirms it.',
         condition: (data) => data.deliveryType === 'delivery',
       },
       {
         key: 'paymentMethod',
         required: true,
         priority: 4,
-        askDirective: 'Ask the customer for their payment method (Efectivo, Nequi, Daviplata, or Tarjeta).',
+        askDirective: 'Ask the customer for their payment method (Efectivo, Nequi, Daviplata, or Tarjeta). Do NOT assume a payment method — wait for the customer to choose.',
       },
     ];
   }
@@ -128,7 +128,7 @@ export class OrderFlowDomainService implements SlotFillingAdapter {
       const state = current.state === OrderFlowState.COLLECTING ? OrderFlowState.COLLECTING : current.state;
       return this.noChange(
         { ...current, state, updatedAt: new Date() },
-        'Help the customer browse the menu. Describe available products based on business knowledge.',
+        'Answer the customer\'s specific question about the menu using information from the business knowledge base. If they ask about sizes, flavors, prices, ingredients, or options — answer directly. Only describe the full menu if they ask what\'s available in general. Do NOT send the menu image as a substitute for answering a question.',
       );
     }
 
@@ -218,7 +218,7 @@ export class OrderFlowDomainService implements SlotFillingAdapter {
 
       return {
         newFlow: { ...newFlow, state: OrderFlowState.ORDER_CREATED, updatedAt: new Date() },
-        directive: 'The order has been created. Send a SHORT confirmation with the total (including delivery if applicable). Do NOT repeat the full list of items or details the customer already knows — they can scroll up.',
+        directive: 'The order has been REGISTERED and sent to the team for preparation. Send a SHORT confirmation with the total (including delivery if applicable). Do NOT repeat the full list of items or details the customer already knows — they can scroll up. IMPORTANT: Do NOT say the order is "ready" or "lista" — it has only been registered and still needs to be prepared. Do NOT mention preparation times or ETAs unless they are in the knowledge base.',
         shouldCreateOrder: true,
         orderData,
       };
