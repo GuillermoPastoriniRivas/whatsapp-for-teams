@@ -521,7 +521,7 @@ export class ProcessAiResponseUseCase {
       const filePath = join(process.cwd(), 'public', 'menus', `${tenantId}.${ext}`);
       try {
         await access(filePath);
-        return `${this.apiBaseUrl}/api/public/menus/${tenantId}.${ext}`;
+        return `${this.apiBaseUrl}/public/menus/${tenantId}.${ext}`;
       } catch {
         // file not found, try next extension
       }
