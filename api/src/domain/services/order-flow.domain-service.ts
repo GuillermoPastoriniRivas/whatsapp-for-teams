@@ -42,7 +42,14 @@ export class OrderFlowDomainService implements SlotFillingAdapter {
         key: 'deliveryAddress',
         required: true,
         priority: 3,
-        askDirective: 'Ask the customer for their delivery address and neighborhood (barrio) to calculate the delivery cost. Do NOT use an address unless the customer provides or confirms it.',
+        askDirective: 'Ask the customer for their delivery address. Do NOT use an address unless the customer provides or confirms it.',
+        condition: (data) => data.deliveryType === 'delivery',
+      },
+      {
+        key: 'neighborhood',
+        required: true,
+        priority: 3.5,
+        askDirective: 'We need the customer\'s neighborhood (barrio) to calculate the delivery cost. Ask: "¿En qué barrio queda esa dirección?" Do NOT guess the neighborhood. Do NOT say you will verify with the team.',
         condition: (data) => data.deliveryType === 'delivery',
       },
       {

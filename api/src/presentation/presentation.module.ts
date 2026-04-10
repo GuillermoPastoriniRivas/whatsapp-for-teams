@@ -89,6 +89,7 @@ import { ListOrdersUseCase } from '../application/use-cases/order/list-orders.us
 import { GetOrderUseCase } from '../application/use-cases/order/get-order.use-case.js';
 import { UpdateOrderStatusUseCase } from '../application/use-cases/order/update-order-status.use-case.js';
 import { NotifyOrderStatusUseCase } from '../application/use-cases/order/notify-order-status.use-case.js';
+import { ReviewOrderUseCase } from '../application/use-cases/order/review-order.use-case.js';
 
 // Use Cases — Label
 import { CreateLabelUseCase } from '../application/use-cases/label/create-label.use-case.js';
@@ -538,10 +539,16 @@ const useCaseProviders = [
     inject: ['CreateOrderUseCase'],
   },
   {
+    provide: ReviewOrderUseCase,
+    useFactory: (msgRepo: any, aiPort: any, configRepo: any) =>
+      new ReviewOrderUseCase(msgRepo, aiPort, configRepo),
+    inject: ['MessageRepository', 'AiCompletionPort', 'AiAgentConfigRepository'],
+  },
+  {
     provide: OrdersPlugin,
-    useFactory: (stateRepo: any, orderRepo: any, orderHandler: any) =>
-      new OrdersPlugin(stateRepo, orderRepo, orderHandler),
-    inject: ['PluginStateRepository', 'OrderRepository', OrderDirectiveHandler],
+    useFactory: (stateRepo: any, orderRepo: any, orderHandler: any, reviewOrder: any) =>
+      new OrdersPlugin(stateRepo, orderRepo, orderHandler, reviewOrder),
+    inject: ['PluginStateRepository', 'OrderRepository', OrderDirectiveHandler, ReviewOrderUseCase],
   },
   {
     provide: PluginRegistry,

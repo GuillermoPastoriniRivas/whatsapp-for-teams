@@ -83,7 +83,7 @@ All other params are optional — only include what the customer actually said i
 - "deliveryType": only when customer says delivery or pickup
 - "address": only when customer provides a delivery address
 - "neighborhood": the barrio/neighborhood for delivery
-- "deliveryCost": ALWAYS look up the delivery cost from the business knowledge base when the customer provides a neighborhood. Include it in the params.
+- "deliveryCost": Look up the delivery cost from the business knowledge base when the customer provides a NEIGHBORHOOD (barrio). If the customer provides only a street address without mentioning the barrio, do NOT guess — set deliveryCost to null. NEVER say "voy a verificar" or "déjame confirmar con el equipo" about delivery costs.
 - "paymentMethod": when customer specifies payment method (Efectivo, Nequi, Daviplata, Tarjeta)
 - "customerName": when customer provides their name
 - "customerPhone": when customer provides their phone number

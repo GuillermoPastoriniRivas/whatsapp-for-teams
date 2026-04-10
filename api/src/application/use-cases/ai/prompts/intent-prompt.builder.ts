@@ -146,7 +146,7 @@ Respond with a JSON object with this exact structure:
 - For "update_contact": ONLY extract data from messages with role "user" (the customer). NEVER use information from "assistant" messages (your own responses) to update contact data. For example, if YOU mentioned a business address, do NOT save it as the customer's address. Use "custom.direccion" for physical addresses.
 - For "extract_order_data": always include the "intent" param. Only include other params that the customer explicitly mentioned. Do NOT use "create_order" — the backend creates orders automatically when data is complete.
 - For "extract_order_data": ALWAYS include "unitPrice" for each item, using prices from the business knowledge base. This is critical for total calculation.
-- For "extract_order_data": When the customer provides a neighborhood/barrio, ALWAYS look up the delivery cost from the business knowledge base and include it as "deliveryCost". Also recalculate "estimatedTotal" including the delivery cost.
+- For "extract_order_data": When the customer provides a neighborhood/barrio that matches the knowledge base, look up and include "deliveryCost". If the customer gives only a street address without a recognizable barrio, include the address but omit deliveryCost — the system will ask for the barrio. NEVER say you need to "verify" or "check" the delivery cost.
 - For "escalate": takes priority over all other actions
 
 REMEMBER: Output ONLY a JSON object. Do NOT write any text, conversation, or explanation. Just JSON.`);
