@@ -50,6 +50,7 @@ export class OrderFlowDomainService implements SlotFillingAdapter {
         required: true,
         priority: 4,
         askDirective: 'Ask the customer for their payment method (Efectivo, Nequi, Daviplata, or Tarjeta). Do NOT assume a payment method — wait for the customer to choose.',
+        condition: (data) => data.deliveryType === 'delivery',
       },
     ];
   }
