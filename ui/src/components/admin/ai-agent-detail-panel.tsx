@@ -54,6 +54,12 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
 
   const [goals, setGoals] = useState(agent.config.goals || "");
 
+  const [multiMessageEnabled, setMultiMessageEnabled] = useState(agent.config.multiMessage?.enabled ?? false);
+  const [maxBubbles, setMaxBubbles] = useState(agent.config.multiMessage?.maxBubbles ?? 4);
+  const [interBubbleDelay, setInterBubbleDelay] = useState(agent.config.multiMessage?.interBubbleDelayMs ?? 1200);
+  const [debounceWindow, setDebounceWindow] = useState(agent.config.multiMessage?.debounceWindowMs ?? 2000);
+  const [debounceMaxWait, setDebounceMaxWait] = useState(agent.config.multiMessage?.debounceMaxWaitMs ?? 20000);
+
   const [testMessage, setTestMessage] = useState("");
   const [testResponse, setTestResponse] = useState("");
   const [testing, setTesting] = useState(false);
@@ -72,6 +78,11 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
     setModel(agent.config.model || "");
     setApiKey("");
     setShowApiKey(false);
+    setMultiMessageEnabled(agent.config.multiMessage?.enabled ?? false);
+    setMaxBubbles(agent.config.multiMessage?.maxBubbles ?? 4);
+    setInterBubbleDelay(agent.config.multiMessage?.interBubbleDelayMs ?? 1200);
+    setDebounceWindow(agent.config.multiMessage?.debounceWindowMs ?? 2000);
+    setDebounceMaxWait(agent.config.multiMessage?.debounceMaxWaitMs ?? 20000);
     setError(null);
     setSuccess(null);
     setTestResponse("");
@@ -96,6 +107,13 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
           language: personaLanguage,
           instructions: personaInstructions,
         },
+      };
+      payload.multiMessage = {
+        enabled: multiMessageEnabled,
+        maxBubbles,
+        interBubbleDelayMs: interBubbleDelay,
+        debounceWindowMs: debounceWindow,
+        debounceMaxWaitMs: debounceMaxWait,
       };
       if (apiKey.trim()) {
         payload.apiKey = apiKey;
@@ -290,6 +308,85 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
                 rows={3}
                 placeholder="Advanced: override the auto-generated system prompt"
               />
+            </div>
+
+            <hr className="my-1" />
+
+            {/* Multi-Message / Natural Conversation */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium">Natural conversation</label>
+                  <p className="text-xs text-muted-foreground">Multiple messages, typing indicators, and message accumulation</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMultiMessageEnabled(!multiMessageEnabled)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    multiMessageEnabled ? "bg-violet-600" : "bg-muted"
+                  }`}
+                >
+                  <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                    multiMessageEnabled ? "translate-x-4" : "translate-x-0"
+                  }`} />
+                </button>
+              </div>
+
+              {multiMessageEnabled && (
+                <div className="space-y-2.5 rounded-lg border p-3 bg-muted/30">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Max messages per response</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={maxBubbles}
+                        onChange={(e) => setMaxBubbles(Number(e.target.value))}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Delay between messages (ms)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={5000}
+                        step={100}
+                        value={interBubbleDelay}
+                        onChange={(e) => setInterBubbleDelay(Number(e.target.value))}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Wait for more messages (ms)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={10000}
+                        step={500}
+                        value={debounceWindow}
+                        onChange={(e) => setDebounceWindow(Number(e.target.value))}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Max wait time (ms)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={60000}
+                        step={1000}
+                        value={debounceMaxWait}
+                        onChange={(e) => setDebounceMaxWait(Number(e.target.value))}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </TabsContent>
 

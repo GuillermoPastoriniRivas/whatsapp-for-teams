@@ -29,6 +29,13 @@ export const UpdateAiAgentConfigRequestSchema = z.object({
     maxMessagesPerDay: z.number().min(0).optional(),
     maxTokensPerDay: z.number().min(0).optional(),
   }).optional(),
+  multiMessage: z.object({
+    enabled: z.boolean(),
+    maxBubbles: z.number().min(1).max(10).optional(),
+    interBubbleDelayMs: z.number().min(0).max(5000).optional(),
+    debounceWindowMs: z.number().min(0).max(10000).optional(),
+    debounceMaxWaitMs: z.number().min(0).max(60000).optional(),
+  }).optional(),
   isActive: z.boolean().optional(),
 });
 

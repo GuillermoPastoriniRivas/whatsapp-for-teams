@@ -14,6 +14,14 @@ export interface SendMessageResult {
   waMessageId: string;
 }
 
+export interface TypingIndicatorParams {
+  provider: MessagingProvider;
+  providerConfig: Record<string, string>;
+  phoneNumberId: string;
+  to: string;
+}
+
 export interface MessagingApiPort {
   sendMessage(params: SendMessageParams): Promise<SendMessageResult>;
+  sendTypingIndicator(params: TypingIndicatorParams): Promise<void>;
 }

@@ -52,6 +52,10 @@ export class AgendaQueueService implements JobQueuePort, OnModuleInit, OnModuleD
     await this.agenda.now(jobName, data as any);
   }
 
+  async schedule(jobName: string, data: unknown, when: Date): Promise<void> {
+    await this.agenda.schedule(when, jobName, data as any);
+  }
+
   async onModuleInit(): Promise<void> {
     await this.agenda.start();
     this.logger.log(`Agenda started – processing jobs: [${[...this.handlers.keys()].join(', ')}]`);

@@ -27,7 +27,7 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
       data.apiKey, // Return unencrypted
       config.systemPrompt, config.knowledgeBase, config.persona,
       config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
-      config.isActive, config.createdAt, config.updatedAt,
+      config.isActive, config.multiMessage, config.createdAt, config.updatedAt,
     );
   }
 
@@ -40,7 +40,7 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
       this.encryption.decrypt(config.apiKey),
       config.systemPrompt, config.knowledgeBase, config.persona,
       config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
-      config.isActive, config.createdAt, config.updatedAt,
+      config.isActive, config.multiMessage, config.createdAt, config.updatedAt,
     );
   }
 
@@ -53,7 +53,7 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
         this.encryption.decrypt(config.apiKey),
         config.systemPrompt, config.knowledgeBase, config.persona,
         config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
-        config.isActive, config.createdAt, config.updatedAt,
+        config.isActive, config.multiMessage, config.createdAt, config.updatedAt,
       );
     });
   }
@@ -83,7 +83,7 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
       this.encryption.decrypt(config.apiKey),
       config.systemPrompt, config.knowledgeBase, config.persona,
       config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
-      config.isActive, config.createdAt, config.updatedAt,
+      config.isActive, config.multiMessage, config.createdAt, config.updatedAt,
     );
   }
 

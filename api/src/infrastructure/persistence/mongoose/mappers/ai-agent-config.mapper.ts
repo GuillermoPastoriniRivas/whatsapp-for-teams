@@ -19,6 +19,7 @@ export class AiAgentConfigMapper {
       doc.rateLimits,
       doc.goals ?? '',
       doc.isActive,
+      doc.multiMessage ?? { enabled: false, maxBubbles: 4, interBubbleDelayMs: 1200, debounceWindowMs: 2000, debounceMaxWaitMs: 20000 },
       doc.createdAt,
       doc.updatedAt,
     );

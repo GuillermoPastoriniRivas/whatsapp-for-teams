@@ -14,5 +14,6 @@ export class Conversation {
     public readonly resolvedAt: Date | null,
     public readonly closedBy: string | null,
     public readonly summary: string | null = null,
+    public readonly pendingAiSince: Date | null = null,
   ) {}
 }

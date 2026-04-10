@@ -44,6 +44,7 @@ export interface ResponsePromptContext {
   pendingHandoff: boolean;
   pluginSections: string[];
   pluginDirectives: string[];
+  multiMessage?: { enabled: boolean; maxBubbles: number };
 }
 
 export function buildResponsePrompt(ctx: ResponsePromptContext): string {
@@ -125,7 +126,25 @@ The following actions were automatically executed based on the customer's messag
 ${resultLines}`);
   }
 
-  // 12. Handoff instruction
+  // 12. Multi-message format
+  if (ctx.multiMessage?.enabled) {
+    parts.push(`## Response Format
+IMPORTANT: Your response MUST be a JSON array of strings. Each string is a separate WhatsApp message.
+Use this to make the conversation feel natural, like a real person texting:
+- A greeting or acknowledgment first, then the actual answer
+- Break long answers into digestible chunks
+- A follow-up question as its own message
+
+Rules:
+- Maximum ${ctx.multiMessage.maxBubbles} messages
+- Each message: under 4000 characters, plain text, no markdown
+- Do NOT always split. Simple answers go in a single string: ["Yes, we open at 9"]
+- Multi-part responses: ["Hi! 👋", "Your order is confirmed for 8pm", "Need anything else?"]
+
+Respond ONLY with the JSON array. Nothing else.`);
+  }
+
+  // 13. Handoff instruction
   if (ctx.pendingHandoff) {
     parts.push(`## Handoff
 This conversation is being transferred to a human team member. Include a warm farewell and let the customer know someone from the team will follow up shortly.`);

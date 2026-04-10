@@ -176,6 +176,13 @@ export interface AiAgentConfig {
     maxMessagesPerDay: number;
     maxTokensPerDay: number;
   };
+  multiMessage?: {
+    enabled: boolean;
+    maxBubbles: number;
+    interBubbleDelayMs: number;
+    debounceWindowMs: number;
+    debounceMaxWaitMs: number;
+  };
   isActive: boolean;
 }
 

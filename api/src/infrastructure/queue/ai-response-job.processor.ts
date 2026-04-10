@@ -6,7 +6,8 @@ export const AI_RESPONSE_JOB = 'ai.process-response';
 
 export interface AiResponseJobData {
   conversationId: string;
-  messageBody: string;
+  messageBody?: string;
+  scheduledFor?: string;
 }
 
 @Injectable()
@@ -20,9 +21,9 @@ export class AiResponseJobProcessor implements OnModuleInit {
 
   onModuleInit(): void {
     this.queue.define(AI_RESPONSE_JOB, async (data) => {
-      const { conversationId, messageBody } = data as AiResponseJobData;
+      const { conversationId, messageBody, scheduledFor } = data as AiResponseJobData;
       this.logger.debug(`Processing AI response for conversation ${conversationId}`);
-      await this.processAi.execute({ conversationId, messageBody });
+      await this.processAi.execute({ conversationId, messageBody, scheduledFor });
     }, 3); // concurrency: 3 AI responses at a time
   }
 }

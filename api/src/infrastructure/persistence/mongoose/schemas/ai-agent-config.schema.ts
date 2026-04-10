@@ -45,6 +45,12 @@ export class AiAgentConfigModel {
   @Prop({ required: true, default: true })
   isActive: boolean;
 
+  @Prop({
+    type: Object,
+    default: { enabled: false, maxBubbles: 4, interBubbleDelayMs: 1200, debounceWindowMs: 2000, debounceMaxWaitMs: 20000 },
+  })
+  multiMessage: { enabled: boolean; maxBubbles: number; interBubbleDelayMs: number; debounceWindowMs: number; debounceMaxWaitMs: number };
+
   createdAt: Date;
   updatedAt: Date;
 }

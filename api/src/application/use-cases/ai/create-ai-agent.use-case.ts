@@ -56,6 +56,7 @@ export class CreateAiAgentUseCase {
         maxTokensPerDay: input.rateLimits?.maxTokensPerDay ?? 0,
       },
       isActive: true,
+      multiMessage: { enabled: false, maxBubbles: 4, interBubbleDelayMs: 1200, debounceWindowMs: 2000, debounceMaxWaitMs: 20000 },
     });
 
     return ok({ agent, config });

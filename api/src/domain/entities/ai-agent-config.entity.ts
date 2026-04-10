@@ -24,6 +24,14 @@ export interface AiRateLimits {
   maxTokensPerDay: number;
 }
 
+export interface AiMultiMessageConfig {
+  enabled: boolean;
+  maxBubbles: number;
+  interBubbleDelayMs: number;
+  debounceWindowMs: number;
+  debounceMaxWaitMs: number;
+}
+
 export class AiAgentConfig {
   constructor(
     public readonly id: string,
@@ -40,6 +48,7 @@ export class AiAgentConfig {
     public readonly rateLimits: AiRateLimits,
     public readonly goals: string,
     public readonly isActive: boolean,
+    public readonly multiMessage: AiMultiMessageConfig,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
   ) {}

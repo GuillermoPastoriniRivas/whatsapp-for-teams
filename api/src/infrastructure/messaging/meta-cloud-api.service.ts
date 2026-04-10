@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SendMessageParams, SendMessageResult } from '../../application/ports/messaging-api.port.js';
+import { SendMessageParams, SendMessageResult, TypingIndicatorParams } from '../../application/ports/messaging-api.port.js';
 
 @Injectable()
 export class MetaCloudApiService {
@@ -9,6 +9,32 @@ export class MetaCloudApiService {
 
   constructor(configService: ConfigService) {
     this.apiVersion = configService.get<string>('META_API_VERSION', 'v21.0');
+  }
+
+  async sendTypingIndicator(params: TypingIndicatorParams): Promise<void> {
+    const accessToken = params.providerConfig.accessToken;
+    if (!accessToken) return;
+
+    const url = `https://graph.facebook.com/${this.apiVersion}/${params.phoneNumberId}/messages`;
+
+    try {
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: params.to,
+          type: 'typing_indicator',
+          typing_indicator: { type: 'text' },
+        }),
+      });
+    } catch (error: any) {
+      this.logger.warn(`Typing indicator failed: ${error.message}`);
+    }
   }
 
   async sendMessage(params: SendMessageParams): Promise<SendMessageResult> {

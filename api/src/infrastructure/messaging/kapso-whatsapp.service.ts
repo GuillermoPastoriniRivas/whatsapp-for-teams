@@ -1,10 +1,36 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SendMessageParams, SendMessageResult } from '../../application/ports/messaging-api.port.js';
+import { SendMessageParams, SendMessageResult, TypingIndicatorParams } from '../../application/ports/messaging-api.port.js';
 
 @Injectable()
 export class KapsoWhatsAppService {
   private readonly logger = new Logger(KapsoWhatsAppService.name);
   private readonly baseUrl = 'https://api.kapso.ai/meta/whatsapp';
+
+  async sendTypingIndicator(params: TypingIndicatorParams): Promise<void> {
+    const apiKey = params.providerConfig.apiKey;
+    if (!apiKey) return;
+
+    const url = `${this.baseUrl}/v24.0/${params.phoneNumberId}/messages`;
+
+    try {
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey,
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: params.to,
+          type: 'typing_indicator',
+          typing_indicator: { type: 'text' },
+        }),
+      });
+    } catch (error: any) {
+      this.logger.warn(`Typing indicator failed: ${error.message}`);
+    }
+  }
 
   async sendMessage(params: SendMessageParams): Promise<SendMessageResult> {
     const apiKey = params.providerConfig.apiKey;

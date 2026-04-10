@@ -36,6 +36,9 @@ export class ConversationModel {
   @Prop({ type: String, default: null })
   summary: string | null;
 
+  @Prop({ type: Date, default: null })
+  pendingAiSince!: Date | null;
+
   createdAt: Date;
 }
 

@@ -31,7 +31,8 @@ import type { IntentResult, CognitiveAction, ActionExecutionResult } from '../..
 
 export interface ProcessAiResponseInput {
   conversationId: string;
-  messageBody: string;
+  messageBody?: string;
+  scheduledFor?: string;
 }
 
 export class ProcessAiResponseUseCase {
@@ -72,12 +73,35 @@ export class ProcessAiResponseUseCase {
     const config = await this.configRepo.findByAgentId(agent.id);
     if (!config || !config.isActive) return;
 
+    // Debounce idempotency check: if pendingAiSince is null, another job already processed this
+    if (config.multiMessage?.enabled && !conversation.pendingAiSince) {
+      this.logger.debug(`Skipping AI response for ${input.conversationId} — already processed (pendingAiSince is null)`);
+      return;
+    }
+
+    // Debounce freshness check: if there are newer messages within debounce window, let the newer job handle it
+    if (config.multiMessage?.enabled && input.scheduledFor) {
+      const scheduledTime = new Date(input.scheduledFor).getTime();
+      const hardCap = conversation.pendingAiSince!.getTime() + config.multiMessage.debounceMaxWaitMs;
+      const isHardCap = scheduledTime >= hardCap;
+
+      if (!isHardCap) {
+        const lastInbound = conversation.lastInboundAt.getTime();
+        const debounceDeadline = lastInbound + config.multiMessage.debounceWindowMs;
+        if (debounceDeadline > scheduledTime) {
+          this.logger.debug(`Skipping AI response for ${input.conversationId} — newer messages arrived, a later job will handle it`);
+          return;
+        }
+      }
+    }
+
     // Check rate limits
     const today = new Date().toISOString().slice(0, 10);
     if (config.rateLimits.maxMessagesPerDay > 0) {
       const usage = await this.usageRepo.getUsage(config.tenantId, agent.id, today);
       if (usage && usage.messageCount >= config.rateLimits.maxMessagesPerDay) {
         this.logger.warn(`AI agent ${agent.id} exceeded daily message limit`);
+        await this.conversationRepo.update(input.conversationId, { pendingAiSince: null } as any);
         await this.handoffUseCase.execute({
           conversationId: input.conversationId,
           aiAgentId: agent.id,
@@ -86,19 +110,6 @@ export class ProcessAiResponseUseCase {
         });
         return;
       }
-    }
-
-    // Pre-check handoff rules (keyword-based, fast path)
-    const preCheck = this.handoffDetection.shouldHandoff(input.messageBody, config.handoffRules, 0);
-    if (preCheck.trigger) {
-      this.logger.log(`AI handoff pre-check triggered: ${preCheck.reason}`);
-      await this.handoffUseCase.execute({
-        conversationId: input.conversationId,
-        aiAgentId: agent.id,
-        tenantId: conversation.tenantId,
-        reason: preCheck.reason,
-      });
-      return;
     }
 
     // ── Load shared context ──────────────────────────────────────────────
@@ -113,6 +124,25 @@ export class ProcessAiResponseUseCase {
       role: (m.direction === MessageDirection.INBOUND ? 'user' : 'assistant') as 'user' | 'assistant',
       content: `[${m.timestamp.toISOString()}] ${m.body ?? ''}`,
     }));
+
+    // Pre-check handoff rules (keyword-based, fast path) — scan recent inbound messages
+    const recentInboundText = messages
+      .filter((m) => m.direction === MessageDirection.INBOUND)
+      .slice(0, 5)
+      .map((m) => m.body ?? '')
+      .join(' ');
+    const preCheck = this.handoffDetection.shouldHandoff(recentInboundText, config.handoffRules, 0);
+    if (preCheck.trigger) {
+      this.logger.log(`AI handoff pre-check triggered: ${preCheck.reason}`);
+      await this.conversationRepo.update(input.conversationId, { pendingAiSince: null } as any);
+      await this.handoffUseCase.execute({
+        conversationId: input.conversationId,
+        aiAgentId: agent.id,
+        tenantId: conversation.tenantId,
+        reason: preCheck.reason,
+      });
+      return;
+    }
 
     const phone = await this.phoneRepo.findById(conversation.phoneNumberId);
     if (!phone) return;
@@ -186,6 +216,15 @@ export class ProcessAiResponseUseCase {
       pluginSections: intentSections,
     });
 
+    // Send typing indicator while LLM is processing
+    const typingParams = {
+      provider: phone.provider,
+      providerConfig: phone.providerConfig,
+      phoneNumberId: phone.phoneNumberId,
+      to: (contact ?? await this.contactRepo.findById(conversation.contactId))!.waId,
+    };
+    const typingLoop = this.startTypingLoop(typingParams);
+
     let intentLlmResult: { content: string; tokensUsed: { prompt: number; completion: number; total: number } };
     try {
       intentLlmResult = await this.aiCompletion.complete({
@@ -196,6 +235,7 @@ export class ProcessAiResponseUseCase {
         messages: chatHistory,
       });
     } catch (error: any) {
+      typingLoop.stop();
       this.logger.error(`AI intent step failed for agent ${agent.id}: ${error.message}`, error.stack);
       throw error;
     }
@@ -320,7 +360,11 @@ export class ProcessAiResponseUseCase {
       pendingHandoff: !!pendingHandoff,
       pluginSections: responseSections,
       pluginDirectives,
+      multiMessage: config.multiMessage?.enabled ? { enabled: true, maxBubbles: config.multiMessage.maxBubbles } : undefined,
     });
+
+    // Refresh typing indicator for Step 2
+    typingLoop.refresh();
 
     let responseLlmResult: { content: string; tokensUsed: { prompt: number; completion: number; total: number } };
     try {
@@ -332,13 +376,12 @@ export class ProcessAiResponseUseCase {
         messages: chatHistory,
       });
     } catch (error: any) {
+      typingLoop.stop();
       this.logger.error(`AI response step failed for agent ${agent.id}: ${error.message}`, error.stack);
       throw error;
     }
 
-    // Record usage (both calls combined)
-    const totalTokens = intentLlmResult.tokensUsed.total + responseLlmResult.tokensUsed.total;
-    await this.usageRepo.incrementUsage(config.tenantId, agent.id, today, 1, totalTokens);
+    typingLoop.stop();
 
     // Post-check: is the response low-confidence?
     if (this.handoffDetection.isLowConfidenceResponse(responseLlmResult.content)) {
@@ -367,38 +410,57 @@ export class ProcessAiResponseUseCase {
     // Strip any timestamp prefixes the LLM may have echoed
     const responseContent = responseLlmResult.content.replace(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\]\s?/g, '');
 
-    this.logger.log(`[CognitiveLoop] Step 2 - Response: ${responseContent.length} chars`);
+    // Parse into multiple bubbles if multi-message is enabled
+    const bubbles = config.multiMessage?.enabled
+      ? this.parseMultiMessageResponse(responseContent, config.multiMessage.maxBubbles)
+      : [responseContent];
+
+    this.logger.log(`[CognitiveLoop] Step 2 - Response: ${bubbles.length} bubble(s), ${responseContent.length} chars total`);
 
     // ── Send & Record ────────────────────────────────────────────────────
     const sendContact = contact ?? await this.contactRepo.findById(conversation.contactId);
     if (!sendContact) return;
 
-    const { waMessageId } = await this.messagingApi.sendMessage({
-      provider: phone.provider,
-      providerConfig: phone.providerConfig,
-      phoneNumberId: phone.phoneNumberId,
-      to: sendContact.waId,
-      type: MessageType.TEXT,
-      body: responseContent,
-    });
+    // Record usage (both calls combined) — count each bubble as a message
+    const totalTokens = intentLlmResult.tokensUsed.total + responseLlmResult.tokensUsed.total;
+    await this.usageRepo.incrementUsage(config.tenantId, agent.id, today, bubbles.length, totalTokens);
 
-    const message = await this.messageRepo.upsertByWaMessageId({
-      conversationId: conversation.id,
-      direction: MessageDirection.OUTBOUND,
-      messageType: MessageType.TEXT,
-      body: responseContent,
-      mediaUrl: null,
-      mimeType: null,
-      waMessageId,
-      waStatus: MessageWaStatus.SENT,
-      timestamp: new Date(),
-      senderAgentId: agent.id,
-      senderAgentName: agent.name,
-    });
+    for (let i = 0; i < bubbles.length; i++) {
+      if (i > 0) {
+        // Typing indicator + delay between bubbles for natural feel
+        this.messagingApi.sendTypingIndicator(typingParams).catch(() => {});
+        await new Promise((r) => setTimeout(r, config.multiMessage?.interBubbleDelayMs ?? 1200));
+      }
 
-    await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date() } as any);
+      const body = bubbles[i].substring(0, 4096);
 
-    this.gateway.emitToConversation(conversation.id, 'message.new', message);
+      const { waMessageId } = await this.messagingApi.sendMessage({
+        provider: phone.provider,
+        providerConfig: phone.providerConfig,
+        phoneNumberId: phone.phoneNumberId,
+        to: sendContact.waId,
+        type: MessageType.TEXT,
+        body,
+      });
+
+      const message = await this.messageRepo.upsertByWaMessageId({
+        conversationId: conversation.id,
+        direction: MessageDirection.OUTBOUND,
+        messageType: MessageType.TEXT,
+        body,
+        mediaUrl: null,
+        mimeType: null,
+        waMessageId,
+        waStatus: MessageWaStatus.SENT,
+        timestamp: new Date(),
+        senderAgentId: agent.id,
+        senderAgentName: agent.name,
+      });
+
+      this.gateway.emitToConversation(conversation.id, 'message.new', message);
+    }
+
+    await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date(), pendingAiSince: null } as any);
     this.gateway.emitToTenant(conversation.tenantId, 'conversation.updated', { conversationId: conversation.id });
 
     // Execute handoff AFTER message is sent (customer gets the farewell first)
@@ -459,7 +521,7 @@ export class ProcessAiResponseUseCase {
       const filePath = join(process.cwd(), 'public', 'menus', `${tenantId}.${ext}`);
       try {
         await access(filePath);
-        return `${this.apiBaseUrl}/public/menus/${tenantId}.${ext}`;
+        return `${this.apiBaseUrl}/api/public/menus/${tenantId}.${ext}`;
       } catch {
         // file not found, try next extension
       }
@@ -478,6 +540,50 @@ export class ProcessAiResponseUseCase {
       respond: 99,
     };
     return [...actions].sort((a, b) => (corePriority[a.type] ?? 50) - (corePriority[b.type] ?? 50));
+  }
+
+  private parseMultiMessageResponse(raw: string, maxBubbles: number): string[] {
+    const tryParse = (str: string): string[] | null => {
+      try {
+        const parsed = JSON.parse(str);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((s: unknown) => typeof s === 'string')) {
+          return parsed;
+        }
+      } catch { /* fall through */ }
+      return null;
+    };
+
+    // Try direct parse
+    let result = tryParse(raw);
+    if (result) return result.slice(0, maxBubbles);
+
+    // Try extracting JSON array from code fences
+    const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) {
+      result = tryParse(fenceMatch[1].trim());
+      if (result) return result.slice(0, maxBubbles);
+    }
+
+    // Try extracting bare JSON array
+    const arrayMatch = raw.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      result = tryParse(arrayMatch[0]);
+      if (result) return result.slice(0, maxBubbles);
+    }
+
+    // Fallback: treat as single message
+    this.logger.warn(`Failed to parse multi-message JSON, using single message. Raw: ${raw.substring(0, 200)}`);
+    return [raw];
+  }
+
+  private startTypingLoop(params: import('../../ports/messaging-api.port.js').TypingIndicatorParams): { stop: () => void; refresh: () => void } {
+    const send = () => { this.messagingApi.sendTypingIndicator(params).catch(() => {}); };
+    send();
+    let timer: ReturnType<typeof setInterval> = setInterval(send, 20_000);
+    return {
+      stop: () => { clearInterval(timer); },
+      refresh: () => { clearInterval(timer); send(); timer = setInterval(send, 20_000); },
+    };
   }
 
   private async executeCoreAction(

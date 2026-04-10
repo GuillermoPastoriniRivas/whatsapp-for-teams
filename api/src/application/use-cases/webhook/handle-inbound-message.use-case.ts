@@ -5,8 +5,10 @@ import { MessageRepository } from '../../../domain/repositories/message.reposito
 import { PhoneNumberRepository } from '../../../domain/repositories/phone-number.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
+import { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-config.repository.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { JobQueuePort } from '../../ports/job-queue.port.js';
+import { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import { InboundMessageInput } from '../../dtos/webhook/inbound-message-input.dto.js';
 import { AutoAssignConversationUseCase } from '../conversation/auto-assign-conversation.use-case.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
@@ -29,6 +31,8 @@ export class HandleInboundMessageUseCase {
     private readonly eventRepo: ConversationEventRepository,
     private readonly agentRepo: AgentRepository,
     private readonly jobQueue: JobQueuePort,
+    private readonly aiConfigRepo: AiAgentConfigRepository,
+    private readonly messagingApi: MessagingApiPort,
   ) {}
 
   async execute(input: InboundMessageInput): Promise<void> {
@@ -58,6 +62,7 @@ export class HandleInboundMessageUseCase {
       status: ConversationStatus.UNASSIGNED,
       lastMessageAt: now,
       lastInboundAt: now,
+      pendingAiSince: null,
     });
     let conversation = foundConversation;
 
@@ -126,22 +131,60 @@ export class HandleInboundMessageUseCase {
     this.gateway.emitToConversation(conversation.id, 'message.new', message);
     this.gateway.emitToTenant(tenantId, 'conversation.updated', { conversationId: conversation.id });
 
-    // 8. If assigned to AI agent → enqueue AI response job
-    const messageBody = input.body ?? '';
+    // 8. If assigned to AI agent → enqueue AI response job (with debounce if enabled)
+    let aiAgent: Agent | null = null;
     if (assignedAgent && assignedAgent.type === AgentType.AI) {
-      await this.jobQueue.enqueue(AI_RESPONSE_JOB, {
-        conversationId: conversation.id,
-        messageBody,
-      });
+      aiAgent = assignedAgent;
     } else if (!needsAssignment && conversation.agentId) {
-      // Existing active conversation — check if current agent is AI
       const currentAgent = await this.agentRepo.findById(conversation.agentId);
       if (currentAgent && currentAgent.type === AgentType.AI) {
-        await this.jobQueue.enqueue(AI_RESPONSE_JOB, {
-          conversationId: conversation.id,
-          messageBody,
-        });
+        aiAgent = currentAgent;
       }
     }
+
+    if (aiAgent) {
+      await this.enqueueAiResponse(aiAgent, conversation.id, phone, contact.waId);
+    }
+  }
+
+  private async enqueueAiResponse(
+    agent: Agent,
+    conversationId: string,
+    phone: { provider: any; providerConfig: any; phoneNumberId: string },
+    contactWaId: string,
+  ): Promise<void> {
+    const config = await this.aiConfigRepo.findByAgentId(agent.id);
+    const multiMessage = config?.multiMessage;
+
+    if (!multiMessage?.enabled) {
+      // No debounce — enqueue immediately (backward compatible)
+      await this.jobQueue.enqueue(AI_RESPONSE_JOB, { conversationId });
+      return;
+    }
+
+    // Send typing indicator immediately so user sees activity
+    this.messagingApi.sendTypingIndicator({
+      provider: phone.provider,
+      providerConfig: phone.providerConfig,
+      phoneNumberId: phone.phoneNumberId,
+      to: contactWaId,
+    }).catch(() => {});
+
+    // Set pendingAiSince if not already set (first unanswered message)
+    const conversation = await this.conversationRepo.findById(conversationId);
+    const pendingAiSince = conversation?.pendingAiSince ?? new Date();
+    if (!conversation?.pendingAiSince) {
+      await this.conversationRepo.update(conversationId, { pendingAiSince } as any);
+    }
+
+    // Calculate debounced run time with hard cap
+    const debounceTime = Date.now() + multiMessage.debounceWindowMs;
+    const hardCap = pendingAiSince.getTime() + multiMessage.debounceMaxWaitMs;
+    const runAt = new Date(Math.min(debounceTime, hardCap));
+
+    await this.jobQueue.schedule(AI_RESPONSE_JOB, {
+      conversationId,
+      scheduledFor: runAt.toISOString(),
+    }, runAt);
   }
 }
