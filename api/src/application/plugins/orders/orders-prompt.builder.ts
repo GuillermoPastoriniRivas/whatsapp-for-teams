@@ -223,7 +223,8 @@ export function buildOrderFlowResponseDirective(
     return `## Order Flow Instruction
 ${directive}
 
-NEVER say the order is "ready", "lista", or "prepared" — it was only registered. You do not know the preparation status.`;
+NEVER say the order is "ready", "lista", or "prepared" — it was only registered. You do not know the preparation status.
+After confirming the order, do NOT ask unnecessary follow-up questions (e.g. "¿quieres que te avise cuando esté en camino?"). Instead, close the conversation naturally: "Te aviso en cuanto esté listo" or similar. The customer does not need to respond further.`;
   }
 
   // While collecting: pass the directive (which asks about ONE specific thing)
