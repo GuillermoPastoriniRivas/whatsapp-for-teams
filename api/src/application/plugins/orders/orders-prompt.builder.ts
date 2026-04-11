@@ -108,7 +108,10 @@ IMPORTANT: Include ALL data the customer provides in a single message — even i
 
 IMPORTANT: Do NOT use "create_order". The backend decides when the order is ready to be created.
 IMPORTANT: Do NOT include a "send_menu_image" action while collecting order data — the customer is already ordering.`);
-  } else if (orderFlow.state === OrderFlowState.ORDER_CREATED && orderFlow.activeOrderId) {
+  } else if (orderFlow.state === OrderFlowState.ORDER_CREATED && orderFlow.activeOrderId && (() => {
+    const activeOrder = orders.find((o) => o.id === orderFlow.activeOrderId);
+    return activeOrder && !['delivered', 'cancelled'].includes(activeOrder.status);
+  })()) {
     const currentItems = orderFlow.items.map((i) => `${i.quantity}x ${i.name}${i.unitPrice ? ` ($${i.unitPrice})` : ''}${i.notes ? ` (${i.notes})` : ''}`).join(', ');
     sections.push(`## Active Order (Pending — Can Be Modified)
 The customer already has a pending order (#${orderFlow.activeOrderId.slice(-6)}). Current items: ${currentItems || 'none'}.
@@ -170,10 +173,15 @@ Suggest these to the customer when relevant (e.g. "¿Te lo envío a la misma dir
       const itemList = o.items.map((i) => `${i.quantity}x ${i.name}`).join(', ');
       return `- Order #${o.id.slice(-6)} (${o.status}): ${itemList} | ${o.deliveryType}${o.deliveryAddress ? ` → ${o.deliveryAddress}` : ''}${o.neighborhood ? ` (${o.neighborhood})` : ''} | Total: ${o.estimatedTotal ?? 'N/A'} ${o.currency ?? ''} | Payment: ${o.paymentMethod ?? 'N/A'} | Created: ${o.createdAt.toISOString()}`;
     }).join('\n');
-    sections.push(`## Existing Orders in This Conversation
-These orders already exist. Do NOT create a new order with the same items. Only create a new order if the customer is ordering DIFFERENT items or explicitly says they want ANOTHER order.
+    const finishedStatuses = ['delivered', 'cancelled'];
+    const hasActiveOrders = orders.some((o) => !finishedStatuses.includes(o.status));
 
-${orderLines}`);
+    sections.push(`## Existing Orders in This Conversation
+${orderLines}
+
+${hasActiveOrders
+  ? 'There are active (non-delivered) orders above. Do NOT create a new order with the same items unless the customer explicitly asks for ANOTHER order.'
+  : 'All orders above are finished (delivered or cancelled). If the customer wants to order again, treat it as a NEW order — do NOT try to modify a delivered/cancelled order.'}`);
   }
 
   return sections;
