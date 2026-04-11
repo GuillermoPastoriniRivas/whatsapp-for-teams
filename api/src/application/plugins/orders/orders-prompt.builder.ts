@@ -52,16 +52,23 @@ export function buildOrderIntentSections(ctx: OrderPromptContext): string[] {
       } else {
         missingData.push('Delivery address and neighborhood (barrio)');
       }
-    }
 
-    if (orderFlow.neighborhood) collectedData.push(`Neighborhood: ${orderFlow.neighborhood}`);
-    if (orderFlow.deliveryNotes) collectedData.push(`Notes: ${orderFlow.deliveryNotes}`);
+      if (orderFlow.neighborhood) collectedData.push(`Neighborhood: ${orderFlow.neighborhood}`);
 
-    if (orderFlow.paymentMethod) {
-      collectedData.push(`Payment method: ${orderFlow.paymentMethod}`);
+      if (orderFlow.paymentMethod) {
+        collectedData.push(`Payment method: ${orderFlow.paymentMethod}`);
+      } else {
+        missingData.push('Payment method');
+      }
+    } else if (orderFlow.deliveryType === 'pickup') {
+      // Pickup: no address, neighborhood, or payment method needed
+      if (orderFlow.paymentMethod) collectedData.push(`Payment method: ${orderFlow.paymentMethod}`);
     } else {
-      missingData.push('Payment method');
+      // Delivery type not set yet — do NOT show address/payment as missing
+      // They will be asked AFTER the customer chooses delivery or pickup
     }
+
+    if (orderFlow.deliveryNotes) collectedData.push(`Notes: ${orderFlow.deliveryNotes}`);
 
     if (orderFlow.deliveryCost !== null) collectedData.push(`Delivery cost: $${orderFlow.deliveryCost}`);
     if (orderFlow.estimatedTotal !== null) collectedData.push(`Total: $${orderFlow.estimatedTotal} ${orderFlow.currency ?? ''}`);
@@ -69,6 +76,14 @@ export function buildOrderIntentSections(ctx: OrderPromptContext): string[] {
     sections.push(`## Order Flow (Active)
 ${collectedData.length > 0 ? `Data collected so far:\n${collectedData.map((d) => `- ${d}`).join('\n')}` : 'No data collected yet.'}
 ${missingData.length > 0 ? `\nStill needed (for your reference — extract these IF the customer mentions them, but do NOT ask about all of them at once):\n${missingData.map((d) => `- ${d}`).join('\n')}` : '\nAll required data collected — waiting for customer confirmation.'}
+
+CONVERSATION FLOW (follow this exact sequence, ONE step per message):
+1. Help the customer choose what to order (show menu options, sizes, flavors)
+2. Once items are decided, ask: delivery or pickup?
+3. If DELIVERY → ask for address and neighborhood, then payment method
+4. If PICKUP → tell them estimated wait time (from knowledge base)
+5. Confirm the order summary and register it
+NEVER skip ahead. NEVER ask about delivery/pickup, address, or payment before the items are decided. NEVER ask about payment unless it's delivery.
 
 Your job: Extract order-related data from the customer's CURRENT message. Only extract what the customer actually said — do NOT decide when to create the order.
 
@@ -207,8 +222,9 @@ NEVER say the order is "ready", "lista", or "prepared" — it was only registere
   return `## Order Flow Instruction
 ${directive}
 
-Only ask about ONE thing per message. Do not ask about multiple missing fields at once — the system will guide you to the next field after the customer responds.
+CRITICAL: Only ask about the ONE thing mentioned above. Do NOT ask about anything else. Do NOT combine questions. The system will guide you to the next step automatically after the customer responds.
 NEVER say the order is "ready" or "lista" — you are still collecting information.
 NEVER assume delivery type, payment method, address, or any data the customer has not explicitly provided.
+NEVER ask about payment method unless the customer chose delivery.
 Do NOT send the menu image while collecting order data.`;
 }
