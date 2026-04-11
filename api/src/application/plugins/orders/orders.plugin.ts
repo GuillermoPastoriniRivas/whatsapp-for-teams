@@ -99,7 +99,7 @@ export class OrdersPlugin implements CognitivePlugin {
         ctx.phoneNumberId,
         ctx.tenantId,
       );
-      return { handled: true, result };
+      return { handled: true, result: result.message };
     }
 
     return { handled: false };
@@ -150,45 +150,87 @@ export class OrdersPlugin implements CognitivePlugin {
     if (transition.shouldCreateOrder && transition.orderData) {
       this.logger.log(`Creating order from state machine: ${JSON.stringify(transition.orderData)}`);
 
-      // LLM review pass: cross-check order against conversation (fail-open)
-      let finalOrderData: Record<string, unknown> = transition.orderData as Record<string, unknown>;
-      try {
-        const reviewResult = await this.reviewOrder.execute({
-          orderData: transition.orderData as unknown as OrderActionParams,
-          conversationId: ctx.conversationId,
-          agentId: ctx.agentId,
-        });
-        if (reviewResult.hadCorrections) {
-          this.logger.log(`Order review corrections: ${reviewResult.corrections.join('; ')}`);
-          finalOrderData = reviewResult.correctedOrder as unknown as Record<string, unknown>;
+      // Deduplication check (same as direct create_order path)
+      const newItems = transition.orderData.items ?? [];
+      const isDuplicate = orders.some((existing: any) => {
+        if (existing.status !== 'pending' && existing.status !== 'confirmed') return false;
+        const ageMs = Date.now() - new Date(existing.createdAt).getTime();
+        if (ageMs > 30 * 60 * 1000) return false;
+        return this.isSameItemSet(existing.items, newItems);
+      });
+
+      if (isDuplicate) {
+        this.logger.warn(`State machine order SKIPPED: duplicate detected`);
+        orderFlow = transition.newFlow;
+      } else {
+        // LLM review pass: cross-check order against conversation (fail-open)
+        let finalOrderData: Record<string, unknown> = transition.orderData as Record<string, unknown>;
+        try {
+          const reviewResult = await this.reviewOrder.execute({
+            orderData: transition.orderData as unknown as OrderActionParams,
+            conversationId: ctx.conversationId,
+            agentId: ctx.agentId,
+          });
+          if (reviewResult.hadCorrections) {
+            this.logger.log(`Order review corrections: ${reviewResult.corrections.join('; ')}`);
+            finalOrderData = reviewResult.correctedOrder as unknown as Record<string, unknown>;
+          }
+        } catch (reviewError: any) {
+          this.logger.warn(`Order review failed, proceeding with original: ${reviewError.message}`);
         }
-      } catch (reviewError: any) {
-        this.logger.warn(`Order review failed, proceeding with original: ${reviewError.message}`);
+
+        try {
+          const orderResult = await this.orderHandler.handleAction(
+            finalOrderData as any,
+            ctx.conversationId,
+            ctx.contactId,
+            ctx.phoneNumberId,
+            ctx.tenantId,
+          );
+          orderFlow = { ...transition.newFlow, activeOrderId: orderResult.orderId };
+          this.logger.log(`Order created (${orderResult.orderId}), flow set to ORDER_CREATED`);
+          actionResults.push({
+            action: { type: 'create_order', params: transition.orderData as any },
+            success: true,
+            result: orderResult.message,
+          });
+        } catch (error: any) {
+          this.logger.warn(`Order creation failed: ${error.message}`);
+          actionResults.push({
+            action: { type: 'create_order', params: transition.orderData as any },
+            success: false,
+            error: error.message,
+          });
+        }
       }
+    }
 
+    if (transition.shouldUpdateOrder && transition.orderData && orderFlow.activeOrderId) {
+      this.logger.log(`Updating order ${orderFlow.activeOrderId}: ${JSON.stringify(transition.orderData)}`);
       try {
-        const orderResult = await this.orderHandler.handleAction(
-          finalOrderData as any,
-          ctx.conversationId,
-          ctx.contactId,
-          ctx.phoneNumberId,
-          ctx.tenantId,
-        );
+        const items = transition.orderData.items.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice ?? 0,
+          ...(i.notes ? { notes: i.notes } : {}),
+        }));
+        await this.orderRepo.update(orderFlow.activeOrderId, {
+          items,
+          estimatedTotal: transition.orderData.total ?? null,
+          deliveryAddress: transition.orderData.address ?? null,
+          paymentMethod: transition.orderData.paymentMethod ?? null,
+          neighborhood: transition.orderData.neighborhood ?? null,
+          deliveryCost: transition.orderData.deliveryCost ?? null,
+        });
+        orderFlow = transition.newFlow;
+        this.logger.log(`Order ${orderFlow.activeOrderId} updated`);
         actionResults.push({
-          action: { type: 'create_order', params: transition.orderData as any },
+          action: { type: 'update_order', params: transition.orderData as any },
           success: true,
-          result: orderResult,
+          result: `Order updated successfully`,
         });
-
-        orderFlow = createDefaultOrderFlow();
-        this.logger.log(`Order created, flow reset to idle`);
       } catch (error: any) {
-        this.logger.warn(`Order creation failed: ${error.message}`);
-        actionResults.push({
-          action: { type: 'create_order', params: transition.orderData as any },
-          success: false,
-          error: error.message,
-        });
+        this.logger.warn(`Order update failed: ${error.message}`);
       }
     }
 

@@ -22,6 +22,7 @@ export interface OrderFlowData {
   deliveryCost: number | null;
   source: 'web' | 'conversation' | null;
   menuImageSent: boolean;
+  activeOrderId: string | null;
   updatedAt: Date;
 }
 
@@ -58,6 +59,7 @@ export interface TransitionResult {
   newFlow: OrderFlowData;
   directive: string;
   shouldCreateOrder: boolean;
+  shouldUpdateOrder: boolean;
   orderData?: {
     items: OrderFlowItem[];
     type: 'delivery' | 'pickup';
@@ -98,6 +100,7 @@ export function createDefaultOrderFlow(): OrderFlowData {
     deliveryCost: null,
     source: null,
     menuImageSent: false,
+    activeOrderId: null,
     updatedAt: new Date(),
   };
 }

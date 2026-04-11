@@ -124,6 +124,7 @@ export class OrderFlowDomainService implements SlotFillingAdapter {
         newFlow: createDefaultOrderFlow(),
         directive: 'The customer cancelled their order. Acknowledge the cancellation briefly.',
         shouldCreateOrder: false,
+        shouldUpdateOrder: false,
       };
     }
 
@@ -142,15 +143,36 @@ export class OrderFlowDomainService implements SlotFillingAdapter {
 
     // ── IDLE / ORDER_CREATED: start a new flow or respond naturally ──
 
-    if (current.state === OrderFlowState.IDLE || current.state === OrderFlowState.ORDER_CREATED) {
+    if (current.state === OrderFlowState.IDLE) {
       if (input.intent === 'add_items' && input.items?.length) {
-        // Start new collecting flow
         const base = createDefaultOrderFlow();
         base.state = OrderFlowState.COLLECTING;
         return this.runEngine(base, input, lastOrderDefaults);
       }
+      return this.noChange(current, 'Respond naturally to the customer.');
+    }
 
-      // Not starting a new order — respond naturally
+    if (current.state === OrderFlowState.ORDER_CREATED) {
+      // Customer wants to modify the existing pending order
+      if (input.intent === 'add_items' && input.items?.length) {
+        const updated: OrderFlowData = { ...current, state: OrderFlowState.COLLECTING, updatedAt: new Date() };
+        return this.runEngine(updated, input, lastOrderDefaults);
+      }
+      if (input.intent === 'modify_items') {
+        const updated: OrderFlowData = {
+          ...current,
+          state: OrderFlowState.COLLECTING,
+          items: input.items?.length ? input.items : current.items,
+          updatedAt: new Date(),
+        };
+        updated.estimatedTotal = this.calculateTotal(updated.items, updated.deliveryCost);
+        return this.runEngine(updated, {} as CustomerInput, lastOrderDefaults);
+      }
+      if (['set_delivery_type', 'set_address', 'set_payment_method'].includes(input.intent)) {
+        const updated: OrderFlowData = { ...current, state: OrderFlowState.COLLECTING, updatedAt: new Date() };
+        return this.runEngine(updated, input, lastOrderDefaults);
+      }
+      // No modification intent — respond naturally
       return this.noChange(current, 'Respond naturally to the customer.');
     }
 
@@ -224,10 +246,14 @@ export class OrderFlowDomainService implements SlotFillingAdapter {
         neighborhood: newFlow.neighborhood ?? undefined,
       };
 
+      const isUpdate = !!flow.activeOrderId;
       return {
         newFlow: { ...newFlow, state: OrderFlowState.ORDER_CREATED, updatedAt: new Date() },
-        directive: 'The order has been REGISTERED and sent to the team for preparation. Send a SHORT confirmation with the total (including delivery if applicable). Do NOT repeat the full list of items or details the customer already knows — they can scroll up. IMPORTANT: Do NOT say the order is "ready" or "lista" — it has only been registered and still needs to be prepared. Do NOT mention preparation times or ETAs unless they are in the knowledge base.',
-        shouldCreateOrder: true,
+        directive: isUpdate
+          ? 'The order has been UPDATED. Send a SHORT confirmation mentioning only what changed. Do NOT repeat the full order details.'
+          : 'The order has been REGISTERED and sent to the team for preparation. Send a SHORT confirmation with the total (including delivery if applicable). Do NOT repeat the full list of items or details the customer already knows — they can scroll up. IMPORTANT: Do NOT say the order is "ready" or "lista" — it has only been registered and still needs to be prepared. Do NOT mention preparation times or ETAs unless they are in the knowledge base.',
+        shouldCreateOrder: !isUpdate,
+        shouldUpdateOrder: isUpdate,
         orderData,
       };
     }
@@ -237,6 +263,7 @@ export class OrderFlowDomainService implements SlotFillingAdapter {
       newFlow: { ...newFlow, state: OrderFlowState.COLLECTING, updatedAt: new Date() },
       directive: result.directive,
       shouldCreateOrder: false,
+      shouldUpdateOrder: false,
     };
   }
 
@@ -301,6 +328,6 @@ export class OrderFlowDomainService implements SlotFillingAdapter {
   }
 
   private noChange(flow: OrderFlowData, directive: string): TransitionResult {
-    return { newFlow: flow, directive, shouldCreateOrder: false };
+    return { newFlow: flow, directive, shouldCreateOrder: false, shouldUpdateOrder: false };
   }
 }

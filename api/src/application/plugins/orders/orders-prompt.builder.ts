@@ -93,6 +93,23 @@ IMPORTANT: Include ALL data the customer provides in a single message — even i
 
 IMPORTANT: Do NOT use "create_order". The backend decides when the order is ready to be created.
 IMPORTANT: Do NOT include a "send_menu_image" action while collecting order data — the customer is already ordering.`);
+  } else if (orderFlow.state === OrderFlowState.ORDER_CREATED && orderFlow.activeOrderId) {
+    const currentItems = orderFlow.items.map((i) => `${i.quantity}x ${i.name}${i.unitPrice ? ` ($${i.unitPrice})` : ''}${i.notes ? ` (${i.notes})` : ''}`).join(', ');
+    sections.push(`## Active Order (Pending — Can Be Modified)
+The customer already has a pending order (#${orderFlow.activeOrderId.slice(-6)}). Current items: ${currentItems || 'none'}.
+Delivery: ${orderFlow.deliveryType ?? 'not set'} | Payment: ${orderFlow.paymentMethod ?? 'not set'}
+
+If the customer wants to ADD items, CHANGE items, REMOVE items, or change delivery/payment details, use "extract_order_data" with the appropriate intent. The backend will UPDATE the existing order — it will NOT create a new one.
+
+Examples:
+- Customer says "agrega una Coca-Cola" → { "type": "extract_order_data", "params": { "intent": "add_items", "items": [{"name": "Coca-Cola", "quantity": 1, "unitPrice": 5000}] } }
+- Customer says "cambia la pizza por hawaiana" → { "type": "extract_order_data", "params": { "intent": "modify_items", "items": [{"name": "Pizza hawaiana", "quantity": 1, "unitPrice": 75000}] } }
+- Customer says "quiero pagar con Nequi" → { "type": "extract_order_data", "params": { "intent": "set_payment_method", "paymentMethod": "Nequi" } }
+
+Use "track_order" if the customer asks about order status.
+Use "browse_menu" if they ask about the menu.
+
+IMPORTANT: Do NOT use "create_order". The backend handles creation and updates automatically.`);
   } else {
     sections.push(`## Order Management
 This business accepts orders. When the customer shows intent to order, use "extract_order_data" to capture their data. The backend manages the order flow.
