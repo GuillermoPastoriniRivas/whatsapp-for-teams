@@ -140,6 +140,17 @@ export class OrdersPlugin implements CognitivePlugin {
     const orders = await this.orderRepo.findByConversationId(ctx.conversationId);
     const lastOrderDefaults = this.buildLastOrderDefaults(orders);
 
+    // If the active order is already delivered/cancelled, reset flow to idle
+    // so the domain service starts a new order instead of modifying the finished one
+    if (orderFlow.state === OrderFlowState.ORDER_CREATED && orderFlow.activeOrderId) {
+      const activeOrder = orders.find((o: any) => o.id === orderFlow.activeOrderId);
+      if (!activeOrder || ['delivered', 'cancelled', 'ready'].includes(activeOrder.status)) {
+        this.logger.log(`Active order ${orderFlow.activeOrderId} is ${activeOrder?.status ?? 'not found'}, resetting flow to idle`);
+        orderFlow = createDefaultOrderFlow();
+        await this.stateRepo.setState(ctx.conversationId, this.pluginId, orderFlow);
+      }
+    }
+
     const customerInput = extractAction.action.params as unknown as CustomerInput;
     const transition = this.flowService.transition(orderFlow, customerInput, lastOrderDefaults ?? undefined);
 
@@ -206,31 +217,36 @@ export class OrdersPlugin implements CognitivePlugin {
     }
 
     if (transition.shouldUpdateOrder && transition.orderData && orderFlow.activeOrderId) {
-      this.logger.log(`Updating order ${orderFlow.activeOrderId}: ${JSON.stringify(transition.orderData)}`);
-      try {
-        const items = transition.orderData.items.map((i) => ({
-          name: i.name,
-          quantity: i.quantity,
-          unitPrice: i.unitPrice ?? 0,
-          ...(i.notes ? { notes: i.notes } : {}),
-        }));
-        await this.orderRepo.update(orderFlow.activeOrderId, {
-          items,
-          estimatedTotal: transition.orderData.total ?? null,
-          deliveryAddress: transition.orderData.address ?? null,
-          paymentMethod: transition.orderData.paymentMethod ?? null,
-          neighborhood: transition.orderData.neighborhood ?? null,
-          deliveryCost: transition.orderData.deliveryCost ?? null,
-        });
-        orderFlow = transition.newFlow;
-        this.logger.log(`Order ${orderFlow.activeOrderId} updated`);
-        actionResults.push({
-          action: { type: 'update_order', params: transition.orderData as any },
-          success: true,
-          result: `Order updated successfully`,
-        });
-      } catch (error: any) {
-        this.logger.warn(`Order update failed: ${error.message}`);
+      const orderToUpdate = orders.find((o: any) => o.id === orderFlow.activeOrderId);
+      if (orderToUpdate && ['delivered', 'cancelled'].includes(orderToUpdate.status)) {
+        this.logger.warn(`Cannot update order ${orderFlow.activeOrderId}: status is ${orderToUpdate.status}`);
+      } else {
+        this.logger.log(`Updating order ${orderFlow.activeOrderId}: ${JSON.stringify(transition.orderData)}`);
+        try {
+          const items = transition.orderData.items.map((i) => ({
+            name: i.name,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice ?? 0,
+            ...(i.notes ? { notes: i.notes } : {}),
+          }));
+          await this.orderRepo.update(orderFlow.activeOrderId, {
+            items,
+            estimatedTotal: transition.orderData.total ?? null,
+            deliveryAddress: transition.orderData.address ?? null,
+            paymentMethod: transition.orderData.paymentMethod ?? null,
+            neighborhood: transition.orderData.neighborhood ?? null,
+            deliveryCost: transition.orderData.deliveryCost ?? null,
+          });
+          orderFlow = transition.newFlow;
+          this.logger.log(`Order ${orderFlow.activeOrderId} updated`);
+          actionResults.push({
+            action: { type: 'update_order', params: transition.orderData as any },
+            success: true,
+            result: `Order updated successfully`,
+          });
+        } catch (error: any) {
+          this.logger.warn(`Order update failed: ${error.message}`);
+        }
       }
     }
 
