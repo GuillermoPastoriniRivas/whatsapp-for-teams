@@ -18,6 +18,7 @@ export class MongoAgentRepository implements AgentRepository {
   async create(data: Omit<Agent, 'id' | 'createdAt'>): Promise<Agent> {
     const doc = await this.model.create({
       ...data,
+      email: data.email.toLowerCase().trim(),
       tenantId: new Types.ObjectId(data.tenantId),
     });
     return AgentMapper.toDomain(doc);
@@ -29,7 +30,7 @@ export class MongoAgentRepository implements AgentRepository {
   }
 
   async findByEmail(email: string): Promise<Agent | null> {
-    const doc = await this.model.findOne({ email });
+    const doc = await this.model.findOne({ email: email.toLowerCase().trim() });
     return doc ? AgentMapper.toDomain(doc) : null;
   }
 
