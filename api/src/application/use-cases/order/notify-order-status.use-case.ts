@@ -69,7 +69,7 @@ export class NotifyOrderStatusUseCase {
         maxTokens: 150,
       });
 
-      const messageBody = llmResult.content.replace(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\]\s?/g, '').trim();
+      const messageBody = (llmResult.content ?? '').replace(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\]\s?/g, '').trim();
 
       // Send via WhatsApp
       const { waMessageId } = await this.messagingApi.sendMessage({

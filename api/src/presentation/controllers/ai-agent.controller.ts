@@ -173,7 +173,7 @@ export class AiAgentController {
     });
 
     return {
-      response: result.content,
+      response: result.content ?? '',
       tokensUsed: result.tokensUsed,
     };
   }

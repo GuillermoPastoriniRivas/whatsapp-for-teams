@@ -79,8 +79,6 @@ import { UpdateAiAgentConfigUseCase } from '../application/use-cases/ai/update-a
 import { DeleteAiAgentUseCase } from '../application/use-cases/ai/delete-ai-agent.use-case.js';
 import { ProcessAiResponseUseCase } from '../application/use-cases/ai/process-ai-response.use-case.js';
 import { HandoffToHumanUseCase } from '../application/use-cases/ai/handoff-to-human.use-case.js';
-import { PluginRegistry } from '../application/use-cases/ai/plugin-registry.js';
-import { OrdersPlugin } from '../application/plugins/orders/orders.plugin.js';
 import { OrderDirectiveHandler } from '../application/use-cases/ai/handlers/order-directive.handler.js';
 
 // Use Cases — Order
@@ -89,7 +87,6 @@ import { ListOrdersUseCase } from '../application/use-cases/order/list-orders.us
 import { GetOrderUseCase } from '../application/use-cases/order/get-order.use-case.js';
 import { UpdateOrderStatusUseCase } from '../application/use-cases/order/update-order-status.use-case.js';
 import { NotifyOrderStatusUseCase } from '../application/use-cases/order/notify-order-status.use-case.js';
-import { ReviewOrderUseCase } from '../application/use-cases/order/review-order.use-case.js';
 
 // Use Cases — Label
 import { CreateLabelUseCase } from '../application/use-cases/label/create-label.use-case.js';
@@ -324,9 +321,9 @@ const useCaseProviders = [
   },
   {
     provide: 'ResolveConversationUseCase',
-    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any, pluginRegistry: any) =>
-      new ResolveConversationUseCase(convRepo, agentRepo, gateway, eventRepo, pluginRegistry),
-    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository', PluginRegistry],
+    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any, pluginStateRepo: any) =>
+      new ResolveConversationUseCase(convRepo, agentRepo, gateway, eventRepo, pluginStateRepo),
+    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository', 'PluginStateRepository'],
   },
 
   // Tenant
@@ -400,9 +397,9 @@ const useCaseProviders = [
   },
   {
     provide: 'ProcessAiResponseUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, pluginRegistry: any) =>
-      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, pluginRegistry, process.env.NODE_ENV !== 'local' ? 'https://asis.chat/api' : 'http://localhost:3007/api'),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', PluginRegistry],
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, orderRepo: any, orderHandler: any) =>
+      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, orderRepo, orderHandler, process.env.NODE_ENV !== 'local' ? 'https://asis.chat/api' : 'http://localhost:3007/api'),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', 'OrderRepository', OrderDirectiveHandler],
   },
 
   // Label
@@ -532,28 +529,11 @@ const useCaseProviders = [
     inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase'],
   },
 
-  // Plugin Infrastructure
+  // Order Directive Handler
   {
     provide: OrderDirectiveHandler,
     useFactory: (createOrder: any) => new OrderDirectiveHandler(createOrder),
     inject: ['CreateOrderUseCase'],
-  },
-  {
-    provide: ReviewOrderUseCase,
-    useFactory: (msgRepo: any, aiPort: any, configRepo: any) =>
-      new ReviewOrderUseCase(msgRepo, aiPort, configRepo),
-    inject: ['MessageRepository', 'AiCompletionPort', 'AiAgentConfigRepository'],
-  },
-  {
-    provide: OrdersPlugin,
-    useFactory: (stateRepo: any, orderRepo: any, orderHandler: any, reviewOrder: any) =>
-      new OrdersPlugin(stateRepo, orderRepo, orderHandler, reviewOrder),
-    inject: ['PluginStateRepository', 'OrderRepository', OrderDirectiveHandler, ReviewOrderUseCase],
-  },
-  {
-    provide: PluginRegistry,
-    useFactory: (ordersPlugin: any) => new PluginRegistry([ordersPlugin]),
-    inject: [OrdersPlugin],
   },
 ];
 

@@ -2,8 +2,8 @@ import { Conversation } from '../../../domain/entities/conversation.entity.js';
 import { ConversationRepository } from '../../../domain/repositories/conversation.repository.js';
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
+import { PluginStateRepository } from '../../../domain/repositories/plugin-state.repository.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
-import { PluginRegistry } from '../ai/plugin-registry.js';
 import { Result, ok, err } from '../../common/result.js';
 import { ConversationNotFoundError } from '../../../domain/errors/domain-errors.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
@@ -20,7 +20,7 @@ export class ResolveConversationUseCase {
     private readonly agentRepo: AgentRepository,
     private readonly gateway: RealtimeGatewayPort,
     private readonly eventRepo: ConversationEventRepository,
-    private readonly pluginRegistry: PluginRegistry,
+    private readonly pluginStateRepo: PluginStateRepository,
   ) {}
 
   async execute(input: ResolveConversationInput): Promise<Result<Conversation, ConversationNotFoundError>> {
@@ -42,8 +42,8 @@ export class ResolveConversationUseCase {
       agentId: null,
     } as any);
 
-    // Notify all plugins to clean up their state for this conversation
-    await this.pluginRegistry.onConversationResolved(conversation.id);
+    // Clean up plugin state for this conversation
+    await this.pluginStateRepo.clearAllForConversation(conversation.id);
 
     const event = await this.eventRepo.create({
       conversationId: conversation.id,
