@@ -191,6 +191,12 @@ ${hasActiveOrders
 export function buildOrderResponseSections(ctx: OrderPromptContext): string[] {
   const sections: string[] = [];
 
+  // When idle (no active order flow), guide the bot to present itself as the business
+  if (ctx.orderFlow.state === OrderFlowState.IDLE) {
+    sections.push(`## Greeting Guidance
+When a customer greets you or starts a conversation, introduce yourself briefly as the business (use your identity from the persona section) and offer to help with their order or show the menu. Example: "¡Hola! Bienvenido a [business name], ¿te gustaría hacer un pedido? También puedo enviarte nuestro menú." Keep it short and warm — ONE message, ONE or two sentences.`);
+  }
+
   if (ctx.orders.length > 0) {
     const statusMap: Record<string, string> = {
       pending: 'Pendiente',

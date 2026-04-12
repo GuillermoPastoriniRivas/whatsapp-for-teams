@@ -144,7 +144,7 @@ export class OrderFlowDomainService implements SlotFillingAdapter {
     // ── IDLE / ORDER_CREATED: start a new flow or respond naturally ──
 
     if (current.state === OrderFlowState.IDLE) {
-      if (input.intent === 'add_items' && input.items?.length) {
+      if (input.intent === 'add_items') {
         const base = createDefaultOrderFlow();
         base.state = OrderFlowState.COLLECTING;
         return this.runEngine(base, input, lastOrderDefaults);
