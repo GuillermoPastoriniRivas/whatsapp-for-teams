@@ -84,6 +84,7 @@ CONVERSATION FLOW (follow this exact sequence, ONE step per message):
 4. If PICKUP → tell them estimated wait time (from knowledge base)
 5. Confirm the order summary and register it
 NEVER skip ahead. NEVER ask about delivery/pickup, address, or payment before the items are decided. NEVER ask about payment unless it's delivery.
+The responseHint must address ONLY the current step — do NOT mention future steps like delivery, payment, or confirmation.
 
 Your job: Extract order-related data from the customer's CURRENT message. Only extract what the customer actually said — do NOT decide when to create the order.
 
@@ -231,7 +232,20 @@ After confirming the order, do NOT ask unnecessary follow-up questions (e.g. "¿
   return `## Order Flow Instruction
 ${directive}
 
-CRITICAL: Only ask about the ONE thing mentioned above. Do NOT ask about anything else. Do NOT combine questions. The system will guide you to the next step automatically after the customer responds.
+CRITICAL RULES FOR THIS RESPONSE:
+1. Send exactly ONE short message with ONE question — the one described above.
+2. Do NOT add a second question, a follow-up, or ask about any other topic.
+3. Do NOT split your response into multiple messages or bubbles.
+
+BAD (do NOT do this):
+"¡Hola! ¿Qué te gustaría pedir?"
+"¿Es para domicilio o recoger en tienda? ¿Qué medio de pago usarás?"
+← This asks THREE things. WRONG.
+
+GOOD:
+"¡Hola! ¿Qué te gustaría pedir?"
+← ONE question only. The system will ask about delivery AFTER they answer.
+
 NEVER say the order is "ready" or "lista" — you are still collecting information.
 NEVER assume delivery type, payment method, address, or any data the customer has not explicitly provided.
 NEVER ask about payment method unless the customer chose delivery.

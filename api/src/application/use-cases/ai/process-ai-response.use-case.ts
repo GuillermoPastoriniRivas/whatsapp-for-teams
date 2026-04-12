@@ -320,6 +320,7 @@ export class ProcessAiResponseUseCase {
       pendingHandoff: !!pendingHandoff,
       pluginSections: responseSections,
       pluginDirectives,
+      forceSingleMessage: pluginDirectives.length > 0,
       multiMessage: config.multiMessage?.enabled ? { enabled: true, maxBubbles: config.multiMessage.maxBubbles } : undefined,
     });
 

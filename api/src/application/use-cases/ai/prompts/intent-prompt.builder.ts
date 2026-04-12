@@ -106,7 +106,7 @@ Respond with a JSON object with this exact structure:
   "intent": "brief description of what the customer wants",
   "confidence": 0.95,
   "actions": [],
-  "responseHint": "ONE specific thing the response should address — never list multiple questions or topics"
+  "responseHint": "ONE specific thing the response should address — must be a single question or statement, NEVER combine two topics (e.g. WRONG: 'ask what they want and if it is delivery or pickup')"
 }
 
 ### Available action types:
@@ -141,7 +141,7 @@ Respond with a JSON object with this exact structure:
 - ALWAYS include MULTIPLE actions when applicable. For example, if the customer says "soy Juan, quiero una pizza" you MUST include BOTH update_contact (name=Juan) AND any other relevant action. Never skip update_contact just because there is another primary action.
 - ALWAYS emit update_contact when the customer shares personal info (name, email, address, etc.) — even if the main intent is something else like creating an order.
 - If no actions are needed (pure conversation), return an empty actions array
-- "responseHint" must be ONE short sentence about the single most important thing to address in the response. Do NOT list multiple questions or topics — the system handles the conversation flow step by step
+- "responseHint" must be ONE short sentence about the single most important thing to address in the response. Do NOT list multiple questions or topics — the system handles the conversation flow step by step. WRONG: "ask about items and delivery type". CORRECT: "ask what items they want to order"
 - Set confidence between 0.0 and 1.0 based on how certain you are about the intent
 - For "update_contact": ONLY extract data from messages with role "user" (the customer). NEVER use information from "assistant" messages (your own responses) to update contact data. For example, if YOU mentioned a business address, do NOT save it as the customer's address. Use "custom.direccion" for physical addresses.
 - For "extract_order_data": always include the "intent" param. Only include other params that the customer explicitly mentioned. Do NOT use "create_order" — the backend creates orders automatically when data is complete.

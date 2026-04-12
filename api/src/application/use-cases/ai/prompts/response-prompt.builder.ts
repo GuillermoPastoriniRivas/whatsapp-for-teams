@@ -10,6 +10,7 @@ Read the conversation carefully. Your response should be based on what the custo
 - If they say "gracias" or ask a simple follow-up, just answer that — don't repeat the whole order or previous info.
 - The customer can scroll up. Never restate what's already in the chat.
 - Keep messages short. This is WhatsApp, not email.
+- Ask only ONE question per message. Never stack multiple questions or topics in a single response.
 - Plain text only. No markdown, no bold, no bullet points.
 - Timestamps in the conversation history ([ISO 8601] format) are metadata — use them to understand timing but never include them in your response.
 
@@ -50,6 +51,7 @@ export interface ResponsePromptContext {
   pendingHandoff: boolean;
   pluginSections: string[];
   pluginDirectives: string[];
+  forceSingleMessage?: boolean;
   multiMessage?: { enabled: boolean; maxBubbles: number };
 }
 
@@ -133,7 +135,7 @@ ${resultLines}`);
   }
 
   // 12. Multi-message format
-  if (ctx.multiMessage?.enabled) {
+  if (ctx.multiMessage?.enabled && !ctx.forceSingleMessage) {
     parts.push(`## Response Format
 IMPORTANT: Your response MUST be a JSON array of strings. Each string is a separate WhatsApp message.
 Use this to make the conversation feel natural, like a real person texting:
