@@ -110,7 +110,8 @@ export class NotifyOrderStatusUseCase {
   private shouldNotify(order: Order): boolean {
     return (
       (order.deliveryType === 'pickup' && order.status === OrderStatus.READY) ||
-      (order.deliveryType === 'delivery' && order.status === OrderStatus.ON_THE_WAY)
+      (order.deliveryType === 'delivery' && order.status === OrderStatus.ON_THE_WAY) ||
+      order.status === OrderStatus.DELIVERED
     );
   }
 
@@ -130,10 +131,14 @@ export class NotifyOrderStatusUseCase {
     const itemList = order.items.map((i) => `${i.quantity}x ${i.name}`).join(', ');
     const total = order.estimatedTotal != null ? `$${order.estimatedTotal}` : '';
 
-    const scenario =
-      order.deliveryType === 'pickup'
-        ? 'The order is READY FOR PICKUP. The customer needs to come pick it up.'
-        : 'The order is ON ITS WAY to the customer. It has left for delivery.';
+    let scenario: string;
+    if (order.status === OrderStatus.DELIVERED) {
+      scenario = 'The order has been DELIVERED. Thank the customer and let them know you are available if they need anything else.';
+    } else if (order.deliveryType === 'pickup' && order.status === OrderStatus.READY) {
+      scenario = 'The order is READY FOR PICKUP. The customer needs to come pick it up.';
+    } else {
+      scenario = 'The order is ON ITS WAY to the customer. It has left for delivery.';
+    }
 
     return `You are a WhatsApp notification assistant for a business.
 

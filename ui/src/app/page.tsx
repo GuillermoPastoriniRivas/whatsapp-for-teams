@@ -131,10 +131,11 @@ export default function LandingPage() {
 
       {/* Navbar */}
       <nav className="fixed top-0 z-50 w-full border-b border-slate-200/60 bg-white/80 backdrop-blur-xl transition-all">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <AsisLogo size={36} className="text-primary" />
-            <span className="text-xl font-bold tracking-tight text-slate-900 -ml-1">asis<span className="text-primary">.chat</span></span>
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <AsisLogo size={30} className="text-primary sm:hidden" />
+            <AsisLogo size={36} className="text-primary hidden sm:block" />
+            <span className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 -ml-1">asis<span className="text-primary">.chat</span></span>
           </div>
 
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
@@ -149,7 +150,7 @@ export default function LandingPage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 sm:gap-4 shrink-0">
             <LanguageToggle />
             {hydrated && agent ? (
               <Button onClick={() => router.push("/conversations")} className="rounded-full shadow-md shadow-primary/20">
@@ -160,13 +161,14 @@ export default function LandingPage() {
               <>
                 <Button
                   variant="ghost"
-                  className="hidden md:inline-flex text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  size="sm"
+                  className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-xs sm:text-sm"
                   onClick={() => router.push("/login")}
                 >
                   {t.landing.navLogin}
                 </Button>
                 <Button
-                  className="rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-md transition-transform hover:scale-105"
+                  className="hidden sm:inline-flex rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-md transition-transform hover:scale-105"
                   disabled={isLoading}
                   onClick={handleDemoLogin}
                 >
