@@ -94,7 +94,7 @@ export function createOrderTools(
             ctx.phoneNumberId,
             ctx.tenantId,
           );
-          return `Order created successfully. Order ID: ${result.orderId}. Total: ${total}`;
+          return `Order created successfully. Total: ${total}. Confirm the order to the customer without mentioning any internal ID.`;
         } catch (error: any) {
           logger.error(`create_order failed: ${error.message}`);
           return `Error creating order: ${error.message}`;
@@ -204,7 +204,7 @@ export function createOrderTools(
           ].filter(Boolean).join('\n');
         });
 
-        return lines.join('\n\n');
+        return lines.join('\n\n') + '\n\nNote: Order IDs are for internal use only. NEVER share them with the customer.';
       },
     },
 

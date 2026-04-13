@@ -152,18 +152,26 @@ ${ctx.knowledgeBase}`);
       delivered: 'Entregado',
       cancelled: 'Cancelado',
     };
-    const orderLines = ctx.orders.map((o) => {
-      const items = o.items.map((i) => `${i.quantity}x ${i.name}${i.unitPrice ? ` ($${i.unitPrice})` : ''}${i.notes ? ` — ${i.notes}` : ''}`).join(', ');
-      return `- Order ${o.id} (${statusMap[o.status] ?? o.status}): ${items} | ${o.deliveryType}${o.deliveryAddress ? ` → ${o.deliveryAddress}` : ''}${o.neighborhood ? ` (${o.neighborhood})` : ''} | Total: ${o.estimatedTotal ?? 'N/A'} ${o.currency ?? ''} | Payment: ${o.paymentMethod ?? 'N/A'}`;
-    }).join('\n');
 
-    const hasActive = ctx.orders.some((o) => !['delivered', 'cancelled'].includes(o.status));
-    parts.push(`## Customer Orders
+    const activeOrders = ctx.orders.filter((o) => !['delivered', 'cancelled'].includes(o.status));
+    const hasActive = activeOrders.length > 0;
+
+    if (hasActive) {
+      const orderLines = activeOrders.map((o) => {
+        const items = o.items.map((i) => `${i.quantity}x ${i.name}${i.unitPrice ? ` ($${i.unitPrice})` : ''}${i.notes ? ` — ${i.notes}` : ''}`).join(', ');
+        return `- Order ${o.id} (${statusMap[o.status] ?? o.status}): ${items} | ${o.deliveryType}${o.deliveryAddress ? ` → ${o.deliveryAddress}` : ''}${o.neighborhood ? ` (${o.neighborhood})` : ''} | Total: ${o.estimatedTotal ?? 'N/A'} ${o.currency ?? ''} | Payment: ${o.paymentMethod ?? 'N/A'}`;
+      }).join('\n');
+
+      parts.push(`## Customer Orders
 ${orderLines}
 
-${hasActive
-  ? 'There are active (non-delivered) orders. If the customer wants to add items or change details on an active order, use update_order. Do NOT create a new order with the same items.'
-  : 'All orders are finished. If the customer wants to order again, use create_order for a new order.'}`);
+There are active (non-delivered) orders. If the customer wants to add items or change details on an active order, use update_order. Do NOT create a new order with the same items.
+NEVER show internal order IDs to the customer. Refer to orders by their items or status instead.`);
+    } else {
+      parts.push(`## Customer Orders
+This customer has ordered before but all orders are finished (delivered or cancelled). Treat them as a returning customer ready for a new order. Use create_order for any new order.
+NEVER show internal order IDs to the customer.`);
+    }
   }
 
   // ── 10. Recurring customer defaults ───────────────────────────────────
