@@ -194,7 +194,7 @@ export default function OrdersPage() {
                   </span>
                 </h2>
                 {/* Desktop: table */}
-                <div className="hidden md:block">
+                <div className="hidden md:block [&_[data-slot=table-container]]:overflow-x-hidden">
                   <Table>
                     <TableHeader>{columnHeaders}</TableHeader>
                     <TableBody>
@@ -231,7 +231,7 @@ export default function OrdersPage() {
                   </span>
                 </h2>
                 {/* Desktop: table */}
-                <div className="hidden md:block">
+                <div className="hidden md:block [&_[data-slot=table-container]]:overflow-x-hidden">
                   <Table>
                     <TableHeader>{columnHeaders}</TableHeader>
                     <TableBody>

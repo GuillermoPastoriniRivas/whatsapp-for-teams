@@ -5,7 +5,7 @@ import { useMessageStore } from "@/stores/message.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Smile, Paperclip, Mic } from "lucide-react";
+import { SendHorizontal, Smile, Paperclip } from "lucide-react";
 
 interface Props {
   conversationId: string;
@@ -59,20 +59,14 @@ export function MessageInput({ conversationId }: Props) {
         />
       </div>
       
-      {text.trim() ? (
-        <Button
-          size="icon"
-          className="shrink-0 bg-primary hover:bg-primary/90 text-white rounded-full h-10 w-10 ml-1 shadow-sm transition-transform active:scale-95"
-          onClick={handleSend}
-          disabled={sending}
-        >
-          <Send className="h-[18px] w-[18px] -ml-0.5" />
-        </Button>
-      ) : (
-        <Button variant="ghost" size="icon" className="shrink-0 text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:bg-white/5 rounded-full h-10 w-10 ml-1">
-          <Mic className="h-[22px] w-[22px]" />
-        </Button>
-      )}
+      <Button
+        size="icon"
+        className="shrink-0 bg-primary hover:bg-primary/90 text-white rounded-full h-10 w-10 ml-1 shadow-sm transition-transform active:scale-95"
+        onClick={handleSend}
+        disabled={sending || !text.trim()}
+      >
+        <SendHorizontal className="h-[18px] w-[18px]" />
+      </Button>
     </div>
   );
 }

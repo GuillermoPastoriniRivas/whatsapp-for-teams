@@ -46,7 +46,7 @@ export function OrderTableRow({
       </TableCell>
 
       {/* Items */}
-      <TableCell className="max-w-[200px] truncate text-muted-foreground">
+      <TableCell className="whitespace-normal text-muted-foreground">
         {itemsSummary}
       </TableCell>
 

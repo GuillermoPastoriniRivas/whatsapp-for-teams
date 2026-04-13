@@ -35,7 +35,7 @@ export function RightPanel({ open, onClose, onOpen, children, className }: Right
         // Mobile: full-screen overlay
         "absolute inset-0 z-40 flex flex-col bg-background h-full",
         // Desktop: inline panel on the right
-        "md:relative md:inset-auto md:z-auto md:w-[340px] lg:md:w-[380px] md:shrink-0 md:border-l",
+        "md:relative md:inset-auto md:z-auto md:w-[340px] lg:w-[380px] md:shrink-0 md:border-l",
         className
       )}
     >

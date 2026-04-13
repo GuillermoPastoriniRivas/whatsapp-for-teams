@@ -35,7 +35,7 @@ export function MessageBubble({ message }: Props) {
     <div className={cn("flex w-full mt-2 mb-1", isOutbound ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[85%] sm:max-w-[70%] px-3 pt-2 pb-1.5 text-[15px] leading-relaxed shadow-sm",
+          "max-w-[85%] sm:max-w-[70%] px-3 pt-2 pb-1.5 text-[15px] leading-relaxed shadow-sm overflow-hidden",
           isOutbound
             ? "bg-[var(--asis-bubble-outbound)] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tr-[4px]"
             : "bg-[var(--asis-bubble-inbound)] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tl-[4px]"
@@ -47,7 +47,7 @@ export function MessageBubble({ message }: Props) {
           </p>
         )}
         {message.body && (
-          <p className="whitespace-pre-wrap inline">{message.body}</p>
+          <p className="whitespace-pre-wrap break-words inline">{message.body}</p>
         )}
         {/* Inline spacer + timestamp — sits at the end of the last text line */}
         <span className="inline-flex items-center gap-1 align-bottom float-right ml-2 mt-1 translate-y-[2px]">

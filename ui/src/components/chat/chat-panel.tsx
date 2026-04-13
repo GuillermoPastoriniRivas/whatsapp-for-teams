@@ -171,14 +171,14 @@ export function ChatPanel({ conversationId }: Props) {
   }, [chatItems.length]);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full overflow-hidden">
       {/* Chat column */}
       <div className="flex flex-1 min-w-0 flex-col relative">
         <ChatHeader
           conversationId={conversationId}
           onToggleContactInfo={() => setContactInfoOpen((prev) => !prev)}
         />
-        <ScrollArea ref={scrollAreaRef} className="flex-1 overflow-hidden w-full px-4 sm:px-[5%] md:px-[10%] lg:px-[15%]">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 overflow-hidden w-full px-4 sm:px-[5%] md:px-[5%] lg:px-[10%]">
           <div className="flex flex-col py-6 min-h-full">
             {chatItems.map((item) =>
               item.kind === "date" ? (
