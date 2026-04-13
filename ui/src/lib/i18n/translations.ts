@@ -159,11 +159,11 @@ const translations = {
     },
     landing: {
       badge: "WhatsApp + IA para tu negocio",
-      heroTitle: "Tu equipo de WhatsApp con ",
-      heroTitleHighlight: "agentes de IA",
-      heroTitleEnd: " integrados",
+      heroTitle: "Operá tu negocio desde ",
+      heroTitleHighlight: "WhatsApp",
+      heroTitleEnd: "",
       heroSubtitle:
-        "Responde clientes automaticamente, califica leads, agenda citas y escala a un humano cuando es necesario. Todo desde WhatsApp, con tu propia IA.",
+        "Centralizá conversaciones, agendá, facturá y coordiná a tu equipo. Todo en el canal donde ya están tus clientes.",
       ctaDemo: "Probar demo",
       ctaHowItWorks: "Como funciona",
       navHowItWorks: "Como funciona",
@@ -646,11 +646,11 @@ const translations = {
     },
     landing: {
       badge: "WhatsApp + AI for your business",
-      heroTitle: "Your WhatsApp team with ",
-      heroTitleHighlight: "AI agents",
-      heroTitleEnd: " built in",
+      heroTitle: "Run your business from ",
+      heroTitleHighlight: "WhatsApp",
+      heroTitleEnd: "",
       heroSubtitle:
-        "Automatically reply to customers, qualify leads, book appointments, and escalate to a human when needed. All from WhatsApp, with your own AI.",
+        "Centralize conversations, schedule, invoice, and coordinate your team. All on the channel where your customers already are.",
       ctaDemo: "Try demo",
       ctaHowItWorks: "How it works",
       navHowItWorks: "How it works",
