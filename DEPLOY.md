@@ -1,254 +1,394 @@
-# asis.chat — Guía de Deploy en AWS
+# Deploy — asis.chat
 
-## Arquitectura
+Guía operativa para levantar, deployar y mantener asis.chat en producción.
+
+## Arquitectura actual
 
 ```
-Internet → Nginx (puerto 80/443)
-              ├── /api/*      → API container (NestJS, puerto 3000)
-              ├── /socket.io/ → API container (WebSocket)
-              ├── /webhook    → API container (Meta webhook)
-              └── /*          → UI container  (Next.js, puerto 3001)
-
-MongoDB Atlas (externo) ← API container
+GitHub (push a main) ──▶ GitHub Actions
+                            │
+                            ├─ build hivvo-api (Docker) ─▶ tarball
+                            ├─ build hivvo-ui  (Docker) ─▶ tarball
+                            │
+                            └─ scp + ssh ─▶ EC2 (Ubuntu 24.04)
+                                              │
+                                              ├─ hydrate-env.sh ──▶ SSM → api/.env
+                                              │
+                                              └─ docker compose up -d
+                                                    ├─ hivvo-api     :3000
+                                                    ├─ hivvo-ui      :3001
+                                                    └─ nginx          :80, :443 (letsencrypt)
 ```
 
-Todo corre en **un solo EC2** con Docker Compose. La base de datos está en MongoDB Atlas (free tier).
+- **Infra**: [infra/terraform/](infra/terraform/) — EC2 + EIP + Route53 + SES + CloudWatch log groups
+- **Secretos**: SSM Parameter Store bajo `/asis/api/*`. El EC2 los lee vía su IAM role
+- **Certs SSL**: Let's Encrypt en `/etc/letsencrypt/` (persisten en el disco del EC2)
+- **DB**: MongoDB Atlas (externo, con IP del EC2 en whitelist)
+- **Deploy**: GitHub Actions en cada push a `main` ([.github/workflows/deploy.yml](.github/workflows/deploy.yml))
 
 ---
 
-## Prerequisitos
+## Setup inicial (una sola vez)
 
-- [Terraform CLI](https://developer.hashicorp.com/terraform/install) instalado
-- [AWS CLI](https://aws.amazon.com/cli/) configurado (`aws configure`)
-- Cuenta de GitHub con el repo pusheado
-- MongoDB Atlas cluster creado (free tier sirve)
-
----
-
-## Paso 1: Crear Key Pair en AWS
+### Pre-requisitos locales
 
 ```bash
-# Crear key pair y guardar el .pem
-aws ec2 create-key-pair \
-  --key-name hivvo-key \
-  --query 'KeyMaterial' \
-  --output text > ~/.ssh/hivvo-key.pem
-
-chmod 400 ~/.ssh/hivvo-key.pem
+aws configure
+aws sts get-caller-identity        # verificar cuenta correcta
+terraform version                   # >= 1.5
 ```
 
----
+### 1. Red de seguridad en Terraform
 
-## Paso 2: Levantar infraestructura con Terraform
+Agregar a [infra/terraform/main.tf](infra/terraform/main.tf), dentro del `resource "aws_instance" "hivvo"`:
 
+```hcl
+lifecycle {
+  ignore_changes  = [ami]
+  prevent_destroy = true
+}
+```
+
+Esto previene que un AMI nuevo de Ubuntu dispare un replace del EC2 (causa raíz del outage pasado).
+
+### 2. Subir los secretos a SSM
+
+Con `api/.env` local (fuente de verdad de los valores), correr desde la raíz del repo:
+
+```bash
+while IFS='=' read -r key value; do
+  [[ -z "$key" || "$key" =~ ^# ]] && continue
+  value="${value%\"}"; value="${value#\"}"
+  MSYS_NO_PATHCONV=1 aws ssm put-parameter \
+    --region us-east-1 \
+    --name "/asis/api/$key" \
+    --value "$value" \
+    --type SecureString \
+    --overwrite
+done < api/.env
+```
+
+> **Git Bash en Windows**: el `MSYS_NO_PATHCONV=1` impide que Git Bash convierta `/asis/api/...` a una ruta de Windows. Sin eso, el comando falla con `"Parameter name must be a fully qualified name"`. En Linux/macOS no hace falta.
+
+Verificar:
+```bash
+MSYS_NO_PATHCONV=1 aws ssm get-parameters-by-path --path /asis/api --region us-east-1 --query 'Parameters[*].Name'
+```
+
+### 3. IAM policy para que el EC2 lea SSM
+
+Nuevo archivo [infra/terraform/ssm.tf](infra/terraform/ssm.tf):
+
+```hcl
+resource "aws_iam_role_policy" "ssm_read" {
+  name = "${var.app_name}-ssm-read"
+  role = aws_iam_role.ec2_ses.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParametersByPath",
+          "ssm:GetParameters",
+          "ssm:GetParameter",
+        ]
+        Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/asis/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "ssm.${var.aws_region}.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+```
+
+Aplicar:
 ```bash
 cd infra/terraform
-
-# Crear tu archivo de variables
-cp terraform.tfvars.example terraform.tfvars
+terraform plan      # verificar que SOLO agrega la policy, no recrea EC2
+terraform apply
 ```
 
-Editar `terraform.tfvars`:
-```hcl
-aws_region       = "us-east-1"
-instance_type    = "t3.small"        # ~$15/mes
-key_name         = "hivvo-key"
-allowed_ssh_cidr = "TU_IP_PUBLICA/32" # curl ifconfig.me
-app_name         = "hivvo"
-```
+### 4. Script de hidratación
+
+Nuevo archivo `infra/scripts/hydrate-env.sh`:
 
 ```bash
-terraform init
-terraform plan      # revisar qué se va a crear
-terraform apply     # escribir "yes" para confirmar
+#!/bin/bash
+set -euo pipefail
+
+REGION="${AWS_REGION:-us-east-1}"
+SSM_PATH="${1:-/asis/api}"
+OUT="${2:-./api/.env}"
+
+mkdir -p "$(dirname "$OUT")"
+
+aws ssm get-parameters-by-path \
+  --region "$REGION" \
+  --path "$SSM_PATH" \
+  --recursive \
+  --with-decryption \
+  --query 'Parameters[*].[Name,Value]' \
+  --output text \
+| while IFS=$'\t' read -r name value; do
+    key="${name##*/}"
+    printf '%s=%s\n' "$key" "$value"
+  done > "$OUT"
+
+chmod 600 "$OUT"
+echo "Escrito $OUT con $(wc -l < "$OUT") variables"
 ```
 
-Terraform va a mostrar:
-- `public_ip` — la IP elástica (usala para el DNS)
-- `ssh_command` — el comando para conectarte
+Hacerlo ejecutable:
+```bash
+chmod +x infra/scripts/hydrate-env.sh
+```
 
----
+### 5. Actualizar el workflow de GitHub Actions
 
-## Paso 3: Configurar el .env en el servidor
+En [.github/workflows/deploy.yml](.github/workflows/deploy.yml):
+
+**En el step "Copy images to EC2"**, incluir los scripts:
+```yaml
+source: "hivvo-api.tar.gz,hivvo-ui.tar.gz,docker-compose.yml,docker-compose.cloudwatch.yml,infra/nginx/,infra/scripts/"
+```
+
+**En el step "Deploy containers"**, reemplazar el `script:` por:
+```yaml
+script: |
+  cd ${{ env.APP_DIR }}
+
+  docker load < hivvo-api.tar.gz
+  docker load < hivvo-ui.tar.gz
+
+  # Hidratar secretos desde SSM
+  chmod +x infra/scripts/hydrate-env.sh
+  bash infra/scripts/hydrate-env.sh /asis/api ./api/.env
+
+  # Restart services con CloudWatch
+  docker compose down
+  docker compose -f docker-compose.yml -f docker-compose.cloudwatch.yml up -d
+
+  sleep 20
+  docker compose ps
+
+  rm -f hivvo-api.tar.gz hivvo-ui.tar.gz
+  docker image prune -f
+
+  echo "Deploy complete!"
+```
+
+### 6. Preparar el EC2 actual
+
+El EC2 actual no tiene AWS CLI (no se re-ejecutó `user-data.sh`). SSH al servidor:
 
 ```bash
-# Conectarte al EC2
-ssh -i ~/.ssh/hivvo-key.pem ubuntu@<PUBLIC_IP>
+ssh -i ~/.ssh/<key>.pem ubuntu@asis.chat
 
-# Esperar a que termine el user-data (primera vez tarda ~2 min)
-tail -f /var/log/user-data.log
+sudo apt-get update
+sudo apt-get install -y awscli
 
-# Crear el directorio y el .env del API
-mkdir -p ~/hivvo/api
-nano ~/hivvo/api/.env
+# Verificar que el role IAM funciona
+aws ssm get-parameter --name /asis/api/MONGODB_URI --region us-east-1 --with-decryption
 ```
 
-Contenido del `.env`:
-```env
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/hivvo?retryWrites=true&w=majority
-JWT_SECRET=tu-secreto-jwt-seguro
-JWT_EXPIRES_IN=1h
-JWT_REFRESH_SECRET=otro-secreto-seguro
-JWT_REFRESH_EXPIRES_IN=7d
-META_API_VERSION=v21.0
-META_WEBHOOK_VERIFY_TOKEN=tu-verify-token
-PORT=3000
+Si el comando falla, revisar en AWS Console que el role `hivvo-ec2-ses-role` tenga la policy `hivvo-ssm-read` adjunta.
+
+Agregar también a [infra/terraform/user-data.sh](infra/terraform/user-data.sh) para que el próximo EC2 tenga AWS CLI de arranque:
+```bash
+apt-get install -y awscli
 ```
 
-> Tip: Generá secrets seguros con `openssl rand -hex 32`
+### 7. Secrets de GitHub Actions
 
----
+En el repo → Settings → Secrets and variables → Actions:
 
-## Paso 4: Configurar GitHub Secrets
+| Secret | Descripción |
+|---|---|
+| `EC2_HOST` | Dominio o IP del EC2 (`asis.chat`) |
+| `EC2_SSH_KEY` | Clave privada SSH completa (con BEGIN/END lines) |
+| `NEXT_PUBLIC_API_URL` | `https://asis.chat` |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Client ID de Google OAuth |
 
-En tu repo de GitHub → Settings → Secrets and variables → Actions, agregar:
+**Los secretos de la API (MONGODB_URI, JWT_SECRET, etc) NO van acá** — viven en SSM.
 
-| Secret | Valor |
-|--------|-------|
-| `EC2_HOST` | La IP elástica del Paso 2 |
-| `EC2_SSH_KEY` | Contenido completo del archivo `hivvo-key.pem` |
-| `NEXT_PUBLIC_API_URL` | `https://asis.chat` (o `http://<IP>` si todavía no tenés dominio) |
-
----
-
-## Paso 5: Deploy automático
-
-Simplemente hacé push a `main`:
+### 8. Primer deploy
 
 ```bash
-git add .
-git commit -m "setup deployment infrastructure"
+git add -A
+git commit -m "Migrate to SSM-based secrets + harden EC2 lifecycle"
 git push origin main
 ```
 
-GitHub Actions va a:
-1. Buildear las imágenes Docker del API y UI
-2. Copiarlas al EC2 como tarballs
-3. Cargarlas en Docker y levantar los containers
+Seguir el progreso en GitHub → Actions → "Build & Deploy to EC2".
 
-Podés ver el progreso en la tab **Actions** de GitHub.
+### 9. Regenerar certs SSL (solo si se perdieron)
 
----
+Si el EC2 es nuevo, no tiene certs y nginx no arranca. Después de que api/ui estén arriba:
 
-## Paso 6: Dominio y SSL
-
-### Apuntar DNS
-En tu registrador de dominio, crear un **A record**:
-```
-asis.chat    → <PUBLIC_IP>
-www.asis.chat → <PUBLIC_IP>
-```
-
-### Configurar Nginx con tu dominio
 ```bash
-ssh -i ~/.ssh/hivvo-key.pem ubuntu@<PUBLIC_IP>
+ssh -i ~/.ssh/<key>.pem ubuntu@asis.chat
+cd ~/hivvo
 
-# Editar la config de Nginx para poner tu dominio
-nano ~/hivvo/infra/nginx/default.conf
-# Cambiar "server_name _;" por "server_name asis.chat www.asis.chat;"
-
-# Reiniciar Nginx
-cd ~/hivvo && docker compose restart nginx
-```
-
-### Obtener SSL con Certbot
-```bash
-# Instalar certbot nginx plugin dentro del host (no en container)
-# Opción: parar nginx container, correr certbot en el host, montar certs
-
-# Parar el container de nginx temporalmente
-cd ~/hivvo && docker compose stop nginx
-
-# Obtener certificado
-sudo certbot certonly --standalone -d asis.chat -d www.asis.chat
-
-# Los certs quedan en /etc/letsencrypt/ que ya está montado en el container
-# Reiniciar
+docker compose stop nginx
+sudo certbot certonly --standalone -d asis.chat -d www.asis.chat \
+  --email contact@asis.chat --agree-tos --no-eff-email
 docker compose up -d nginx
 ```
 
-Después de obtener el SSL, actualizar `infra/nginx/default.conf` para HTTPS:
+Verificar: abrir https://asis.chat en el navegador.
 
-```nginx
-server {
-    listen 80;
-    server_name asis.chat www.asis.chat;
-    return 301 https://$host$request_uri;
-}
+### 10. MongoDB Atlas — whitelist IP
 
-server {
-    listen 443 ssl;
-    server_name asis.chat www.asis.chat;
-
-    ssl_certificate     /etc/letsencrypt/live/asis.chat/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/asis.chat/privkey.pem;
-
-    # ... (mismas locations de arriba)
-}
-```
+En MongoDB Atlas → Network Access, asegurarse de que la IP elástica del EC2 (`terraform output public_ip`) esté en la whitelist. Si el EC2 fue recreado, la IP puede ser distinta.
 
 ---
 
-## Paso 7: MongoDB Atlas — Whitelist IP
+## Operaciones del día a día
 
-En MongoDB Atlas → Network Access, agregar la IP elástica del EC2 para que el API pueda conectarse.
-
----
-
-## Comandos útiles en el servidor
+### Deployar cambios
 
 ```bash
-# Ver logs de todos los containers
-cd ~/hivvo && docker compose logs -f
+git push origin main
+```
 
-# Ver logs de un container específico
-docker compose logs -f api
-docker compose logs -f ui
+Eso dispara el workflow. Mirar progreso en Actions.
 
-# Reiniciar un servicio
-docker compose restart api
+**Deploy manual (sin push):** GitHub → Actions → "Build & Deploy to EC2" → Run workflow → branch `main`.
 
-# Rebuild manual (sin CI/CD)
-docker compose build --no-cache
-docker compose up -d
+### Agregar o rotar un secreto
 
-# Ver estado
+```bash
+# Agregar
+aws ssm put-parameter \
+  --region us-east-1 \
+  --name "/asis/api/NUEVA_VAR" \
+  --value "valor-secreto" \
+  --type SecureString
+
+# Rotar
+aws ssm put-parameter \
+  --region us-east-1 \
+  --name "/asis/api/JWT_SECRET" \
+  --value "nuevo-valor" \
+  --type SecureString \
+  --overwrite
+```
+
+Luego re-deployar:
+```bash
+git commit --allow-empty -m "chore: rotate JWT_SECRET"
+git push
+```
+
+### Ver logs
+
+**CloudWatch (persistido 7 días):**
+- Console → CloudWatch → Log groups → `/asis/api`, `/asis/ui`, `/asis/nginx`
+
+**CLI:**
+```bash
+aws logs tail /asis/api --follow --region us-east-1
+```
+
+**En tiempo real desde el servidor:**
+```bash
+ssh -i ~/.ssh/<key>.pem ubuntu@asis.chat
+cd ~/hivvo && docker compose logs -f api
+```
+
+### SSH al servidor
+
+```bash
+ssh -i ~/.ssh/<key>.pem ubuntu@asis.chat
+```
+
+### Estado de los contenedores
+
+```bash
+cd ~/hivvo
 docker compose ps
+docker compose logs --tail=100
+```
+
+### Reiniciar un servicio
+
+```bash
+docker compose restart api
+docker compose restart nginx
 ```
 
 ---
 
-## Estructura de archivos creados
+## Troubleshooting
 
+### El deploy falla con "no such file: api/.env"
+
+El script de hidratación no corrió o el EC2 no tiene permisos.
+```bash
+ssh -i ~/.ssh/<key>.pem ubuntu@asis.chat
+aws ssm get-parameters-by-path --path /asis/api --region us-east-1 --query 'Parameters[*].Name'
 ```
-├── .github/workflows/deploy.yml    # CI/CD pipeline
-├── api/
-│   ├── Dockerfile                  # Build del NestJS API
-│   ├── .dockerignore
-│   └── .env.production.example     # Template de variables
-├── ui/
-│   ├── Dockerfile                  # Build del Next.js UI
-│   └── .dockerignore
-├── docker-compose.yml              # Orquestación de containers
-└── infra/
-    ├── nginx/default.conf          # Reverse proxy config
-    └── terraform/
-        ├── main.tf                 # EC2 + SG + EIP
-        ├── variables.tf            # Variables de input
-        ├── outputs.tf              # IP, instance ID, SSH command
-        ├── user-data.sh            # Bootstrap script (Docker, certbot)
-        └── terraform.tfvars.example
+Si falla por permisos: verificar que la policy `hivvo-ssm-read` esté adjunta al role `hivvo-ec2-ses-role`.
+
+### Nginx no arranca: certs ausentes o expirados
+
+```bash
+sudo ls /etc/letsencrypt/live/asis.chat/
+# si está vacío: ver paso 9
+
+# renovación manual:
+sudo certbot renew
+docker compose restart nginx
 ```
+
+### Terraform quiere recrear el EC2
+
+Si `terraform plan` muestra `# aws_instance.hivvo must be replaced`:
+1. **No aplicar**.
+2. Revisar qué atributo cambió (probablemente `ami`).
+3. Si es el AMI y el `lifecycle { ignore_changes = [ami] }` está puesto, corré `terraform refresh` primero.
+4. Si el replace es verdaderamente intencional, hay que eliminar `prevent_destroy` temporalmente y hacer un backup manual del `.env`, certs y cualquier otra cosa persistente antes.
+
+### El servidor no responde
+
+1. Ver en AWS Console que la instancia está `running`.
+2. Probar SSH. Si falla: security group, disco lleno, kernel roto.
+3. **Nunca `terraform destroy`** como respuesta a un problema.
 
 ---
 
-## Costos estimados (USD/mes)
+## Costos estimados
 
-| Recurso | Costo |
-|---------|-------|
+| Recurso | Costo/mes |
+|---|---|
 | EC2 t3.small | ~$15 |
 | Elastic IP (en uso) | $0 |
-| MongoDB Atlas Free | $0 |
-| **Total** | **~$15/mes** |
+| Route53 hosted zone | $0.50 |
+| SES (primeros 62K emails/mes) | $0 |
+| CloudWatch Logs (1 GB/mes) | ~$0.50 |
+| SSM Parameter Store (Standard) | $0 |
+| MongoDB Atlas Free tier | $0 |
+| **Total** | **~$16/mes** |
 
-> Nota: t3.micro ($8/mes) puede funcionar si el tráfico es bajo, pero con NestJS + Next.js + Nginx en Docker, t3.small es más cómodo.
+---
+
+## Recuperación desde cero
+
+Si hay que reconstruir todo:
+
+1. `terraform apply` en [infra/terraform/](infra/terraform/) — levanta EC2 nuevo con AWS CLI preinstalado
+2. Los secretos ya están en SSM (no hay que re-subirlos)
+3. Disparar el workflow manual en GitHub Actions
+4. Regenerar certs SSL (paso 9)
+5. Verificar IP del EC2 en MongoDB Atlas whitelist
+6. Abrir https://asis.chat

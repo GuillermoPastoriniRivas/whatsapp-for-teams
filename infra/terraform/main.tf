@@ -88,6 +88,15 @@ resource "aws_instance" "hivvo" {
   tags = {
     Name = "${var.app_name}-server"
   }
+
+  lifecycle {
+    # Evita replace del EC2 cuando Canonical publica un AMI nuevo.
+    # Si querés upgradear el AMI a propósito, remové esta línea temporalmente.
+    ignore_changes = [ami]
+    # Red de seguridad: terraform destroy falla en este recurso. Para forzarlo,
+    # hay que remover esta línea a propósito.
+    prevent_destroy = true
+  }
 }
 
 # --- Elastic IP (so the IP doesn't change on reboot) ---

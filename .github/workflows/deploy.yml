@@ -37,7 +37,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "hivvo-api.tar.gz,hivvo-ui.tar.gz,docker-compose.yml,docker-compose.cloudwatch.yml,infra/nginx/"
+          source: "hivvo-api.tar.gz,hivvo-ui.tar.gz,docker-compose.yml,docker-compose.cloudwatch.yml,infra/nginx/,infra/scripts/"
           target: ${{ env.APP_DIR }}
 
       # --- Deploy on EC2 ---
@@ -54,11 +54,13 @@ jobs:
             docker load < hivvo-api.tar.gz
             docker load < hivvo-ui.tar.gz
 
-            # Restart services (without CloudWatch for now)
-            # When IAM role is configured, change to:
-            #   docker compose -f docker-compose.yml -f docker-compose.cloudwatch.yml up -d
+            # Hydrate api/.env from SSM Parameter Store
+            chmod +x infra/scripts/hydrate-env.sh
+            bash infra/scripts/hydrate-env.sh /asis/api ./api/.env
+
+            # Restart services with CloudWatch logging
             docker compose down
-            docker compose up -d
+            docker compose -f docker-compose.yml -f docker-compose.cloudwatch.yml up -d
 
             # Verify health
             echo "Waiting for health checks..."
