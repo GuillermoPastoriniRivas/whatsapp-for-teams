@@ -27,6 +27,13 @@ usermod -aG docker ubuntu
 # --- Certbot ---
 apt-get install -y certbot
 
+# --- AWS CLI v2 (official installer, Ubuntu 24.04 dropped awscli from apt) ---
+apt-get install -y unzip curl
+curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+unzip -q /tmp/awscliv2.zip -d /tmp
+/tmp/aws/install
+rm -rf /tmp/awscliv2.zip /tmp/aws
+
 # --- Create app directory ---
 mkdir -p /home/ubuntu/hivvo
 chown ubuntu:ubuntu /home/ubuntu/hivvo

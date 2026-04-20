@@ -189,24 +189,27 @@ script: |
 
 ### 6. Preparar el EC2 actual
 
-El EC2 actual no tiene AWS CLI (no se re-ejecutó `user-data.sh`). SSH al servidor:
+El EC2 actual no tiene AWS CLI. En Ubuntu 24.04 el paquete `awscli` fue removido de los repos de apt, hay que instalar AWS CLI v2 oficial:
 
 ```bash
 ssh -i ~/.ssh/<key>.pem ubuntu@asis.chat
 
 sudo apt-get update
-sudo apt-get install -y awscli
+sudo apt-get install -y unzip curl
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+unzip awscliv2.zip
+sudo ./aws/install
+rm -rf awscliv2.zip aws/
+
+aws --version   # aws-cli/2.x.x ...
 
 # Verificar que el role IAM funciona
 aws ssm get-parameter --name /asis/api/MONGODB_URI --region us-east-1 --with-decryption
 ```
 
-Si el comando falla, revisar en AWS Console que el role `hivvo-ec2-ses-role` tenga la policy `hivvo-ssm-read` adjunta.
+Si el `get-parameter` falla con AccessDenied, revisar en AWS Console que el role `hivvo-ec2-ses-role` tenga la policy `hivvo-ssm-read` adjunta.
 
-Agregar también a [infra/terraform/user-data.sh](infra/terraform/user-data.sh) para que el próximo EC2 tenga AWS CLI de arranque:
-```bash
-apt-get install -y awscli
-```
+> `user-data.sh` ya instala AWS CLI v2 en EC2 nuevos. Este bloque es solo para el EC2 actual que no re-ejecuta user-data.
 
 ### 7. Secrets de GitHub Actions
 
