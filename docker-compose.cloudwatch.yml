@@ -5,7 +5,7 @@ services:
       options:
         awslogs-region: us-east-1
         awslogs-group: /asis/api
-        awslogs-stream-prefix: api
+        awslogs-stream: api
         awslogs-create-group: "true"
 
   ui:
@@ -14,7 +14,7 @@ services:
       options:
         awslogs-region: us-east-1
         awslogs-group: /asis/ui
-        awslogs-stream-prefix: ui
+        awslogs-stream: ui
         awslogs-create-group: "true"
 
   nginx:
@@ -23,5 +23,5 @@ services:
       options:
         awslogs-region: us-east-1
         awslogs-group: /asis/nginx
-        awslogs-stream-prefix: nginx
+        awslogs-stream: nginx
         awslogs-create-group: "true"

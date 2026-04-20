@@ -48,6 +48,8 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -euo pipefail
+
             cd ${{ env.APP_DIR }}
 
             # Load new images
@@ -57,6 +59,7 @@ jobs:
             # Hydrate api/.env from SSM Parameter Store
             chmod +x infra/scripts/hydrate-env.sh
             bash infra/scripts/hydrate-env.sh /asis/api ./api/.env
+            test -s ./api/.env   # falla el deploy si el .env quedó vacío
 
             # Restart services with CloudWatch logging
             docker compose down
