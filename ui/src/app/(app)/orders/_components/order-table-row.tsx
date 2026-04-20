@@ -7,6 +7,7 @@ import {
   Clock,
   MessageSquare,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,49 +31,98 @@ export function OrderTableRow({
   const config = STATUS_CONFIG[order.status];
   const statusLabel =
     t.orders[order.status as keyof typeof t.orders] ?? order.status;
-
-  const itemsSummary = order.items
-    .map((item) => {
-      const base = `${item.quantity}x ${item.name}`;
-      return item.notes ? `${base} (${item.notes})` : base;
-    })
-    .join(", ");
+  const currency = order.currency ?? "$";
+  const isDelivery = order.deliveryType === "delivery";
+  const deliveryCost = order.deliveryCost ?? null;
+  const missingDeliveryCost = isDelivery && deliveryCost == null;
+  const itemsSubtotal =
+    order.estimatedTotal != null && deliveryCost != null
+      ? order.estimatedTotal - deliveryCost
+      : null;
 
   return (
     <TableRow>
       {/* Contact */}
-      <TableCell className="font-medium">
-        {order.contactName ?? `#${order.id.slice(-6)}`}
+      <TableCell className="font-medium align-top">
+        <div>{order.contactName ?? order.customerName ?? `#${order.id.slice(-6)}`}</div>
+        {order.customerPhone && (
+          <div className="text-xs font-normal text-muted-foreground mt-0.5">
+            {order.customerPhone}
+          </div>
+        )}
       </TableCell>
 
-      {/* Items */}
-      <TableCell className="whitespace-normal text-muted-foreground">
-        {itemsSummary}
+      {/* Items (detailed with per-line pricing) */}
+      <TableCell className="whitespace-normal text-muted-foreground align-top min-w-[220px]">
+        <div className="space-y-0.5">
+          {order.items.map((item, i) => (
+            <div key={i}>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-sm text-foreground">
+                  {item.quantity}x {item.name}
+                </span>
+                {item.unitPrice != null && (
+                  <span className="text-xs tabular-nums shrink-0">
+                    {currency} {(item.quantity * item.unitPrice).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              {item.notes && (
+                <p className="text-xs italic opacity-70 ml-3">{item.notes}</p>
+              )}
+            </div>
+          ))}
+        </div>
       </TableCell>
 
-      {/* Delivery type */}
-      <TableCell>
+      {/* Delivery type + address / pickup */}
+      <TableCell className="align-top max-w-[240px]">
         <Badge
           variant="secondary"
           className={`text-xs ${
-            order.deliveryType === "delivery"
+            isDelivery
               ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
               : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
           }`}
         >
-          {order.deliveryType === "delivery" ? (
+          {isDelivery ? (
             <MapPin className="h-3 w-3 mr-1" />
           ) : (
             <Store className="h-3 w-3 mr-1" />
           )}
-          {order.deliveryType === "delivery"
-            ? t.orders.delivery
-            : t.orders.pickup}
+          {isDelivery ? t.orders.delivery : t.orders.pickup}
         </Badge>
+
+        {isDelivery ? (
+          <div className="mt-1.5 text-xs text-muted-foreground whitespace-normal break-words">
+            {order.deliveryAddress || (
+              <span className="italic opacity-70">—</span>
+            )}
+            {order.neighborhood && (
+              <div className="opacity-80">{order.neighborhood}</div>
+            )}
+            {order.deliveryNotes && (
+              <div className="italic opacity-70 mt-0.5">
+                {order.deliveryNotes}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="mt-1.5 text-xs text-muted-foreground">
+            {t.orders.pickupAtStore}
+          </div>
+        )}
+
+        {missingDeliveryCost && (
+          <div className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800/50">
+            <AlertTriangle className="h-3 w-3" />
+            {t.orders.missingDeliveryCost}
+          </div>
+        )}
       </TableCell>
 
       {/* Status */}
-      <TableCell>
+      <TableCell className="align-top">
         <Badge
           variant="secondary"
           className={`text-xs font-medium ${config.color}`}
@@ -81,15 +131,40 @@ export function OrderTableRow({
         </Badge>
       </TableCell>
 
-      {/* Total */}
-      <TableCell className="font-semibold">
-        {order.estimatedTotal != null
-          ? `${order.currency ?? "$"} ${order.estimatedTotal.toLocaleString()}`
-          : "—"}
+      {/* Total (with breakdown) */}
+      <TableCell className="align-top min-w-[160px]">
+        {order.estimatedTotal != null ? (
+          <div className="space-y-0.5 text-xs tabular-nums">
+            {isDelivery && deliveryCost != null && itemsSubtotal != null && (
+              <>
+                <div className="flex justify-between gap-2 text-muted-foreground font-normal">
+                  <span>{t.orders.subtotal}</span>
+                  <span>
+                    {currency} {itemsSubtotal.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2 text-muted-foreground font-normal">
+                  <span>{t.orders.deliveryCost}</span>
+                  <span>
+                    {currency} {deliveryCost.toLocaleString()}
+                  </span>
+                </div>
+              </>
+            )}
+            <div className="flex justify-between gap-2 font-semibold text-sm border-t pt-0.5">
+              <span>{t.orders.total}</span>
+              <span>
+                {currency} {order.estimatedTotal.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <span className="font-semibold">—</span>
+        )}
       </TableCell>
 
       {/* Time */}
-      <TableCell className="text-muted-foreground">
+      <TableCell className="text-muted-foreground align-top">
         <span className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
           {timeAgo(order.createdAt)}
@@ -97,7 +172,7 @@ export function OrderTableRow({
       </TableCell>
 
       {/* Actions */}
-      <TableCell>
+      <TableCell className="align-top">
         <div className="flex items-center gap-1.5">
           {!isCompleted &&
             config.next.map((nextStatus) => {

@@ -285,6 +285,11 @@ export interface Order {
   currency: string | null;
   createdAt: string;
   updatedAt: string;
+  paymentMethod?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  deliveryCost?: number | null;
+  neighborhood?: string | null;
   contactName?: string;
 }
 

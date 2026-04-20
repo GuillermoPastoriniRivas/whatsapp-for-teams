@@ -192,22 +192,27 @@ You can suggest these when relevant (e.g. "¿Te lo envío a la misma dirección?
   // ── 11. Order flow guidance ───────────────────────────────────────────
   if (ctx.ordersEnabled) {
     parts.push(`## Taking Orders
-When a customer wants to order, follow this sequence naturally:
-1. Help them choose what to order (show options, sizes, flavors from the knowledge base)
-2. Once items are decided, ask: delivery or pickup?
-3. If DELIVERY: ask for address and neighborhood (barrio), then payment method
-4. If PICKUP: no need for address or payment method
-5. Confirm the order summary with the total, then call create_order
 
-Rules:
-- ALWAYS use prices from the knowledge base. Never invent prices.
-- Look up delivery cost by neighborhood from the knowledge base when available.
-- Ask ONE question at a time. Don't ask about delivery while still choosing items.
-- If the customer has an active pending order and wants something else, ask if they want to add to the existing order (use update_order) or create a new one.
-- After creating an order, close naturally. Don't ask unnecessary follow-up questions.
-- For delivery costs: if you can determine it from the knowledge base, include it. If not, ask the customer for their barrio. NEVER say "let me check with the team" about delivery costs.
+FLOW (follow exactly — do not skip steps, do not add steps):
+1. Customer greets or says they want something → respond with ONE question: what do they want to order.
+2. Customer lists items → if an item needs a detail (e.g., pizza size/flavor), ask for it. Otherwise continue.
+3. Once items are clear → ask ONE question: delivery or pickup? (domicilio o retiro)
+4. PICKUP path → call create_order immediately. Close with: "Listo, tu pedido queda registrado. Te aviso cuando esté listo." Do not ask anything else.
+5. DELIVERY path → ask for address+neighborhood (one message). After they answer, ask for payment method (one message). Then call create_order and close with: "Listo, tu pedido queda registrado. Te aviso cuando salga." Do not ask anything else.
 
-Web orders: If the customer's message begins with "Hola, quisiera realizar el siguiente pedido:" followed by a formatted list of items and delivery data, this is an automated order from the website. Extract ALL data and call create_order immediately — no need to ask questions.`);
+HARD RULES — these are not suggestions:
+- When the customer greets ("Hola", "Buenas", "Hola quiero pedir"), NEVER ask which past order they want to continue. Just ask what they want to order today.
+- When the customer confirms ("sí", "dale", "confirmo", "ok"), NEVER ask again to re-confirm. The order is confirmed — call the tool and close.
+- After calling create_order, CLOSE with ONE statement. NEVER ask "¿quieres que te confirme el total?", "¿quieres que te avise cuando salga?", "¿confirmas?", or any trailing question. The customer wants to be notified by default.
+- If the neighborhood is NOT in the knowledge base, do NOT loop. Call create_order with the address + neighborhood the customer gave and set deliveryCost to null. Close with: "Te confirmamos el costo del domicilio en un momento." Never re-ask the barrio.
+- NEVER re-ask information the customer already gave in this conversation. Scroll back and read.
+- ONE question per message. Never stack two questions.
+- Do NOT ask for the customer's name — the system already has it.
+- Do NOT read out the full order summary before calling create_order unless the customer asks. Just take the order and confirm it is registered.
+- Use prices ONLY from the knowledge base. Never invent prices.
+- If there is an active pending order and the customer wants to add more, use update_order. If the customer clearly wants a new separate order, use create_order.
+
+Web orders: If the customer's message begins with "Hola, quisiera realizar el siguiente pedido:" followed by a formatted list, extract ALL data and call create_order immediately — no questions.`);
   }
 
   // ── 12. Handoff rules ─────────────────────────────────────────────────

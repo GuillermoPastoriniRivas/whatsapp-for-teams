@@ -7,6 +7,7 @@ import {
   Clock,
   MessageSquare,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,14 @@ export function OrderMobileCard({
   const config = STATUS_CONFIG[order.status];
   const statusLabel =
     t.orders[order.status as keyof typeof t.orders] ?? order.status;
+  const currency = order.currency ?? "$";
+  const isDelivery = order.deliveryType === "delivery";
+  const deliveryCost = order.deliveryCost ?? null;
+  const missingDeliveryCost = isDelivery && deliveryCost == null;
+  const itemsSubtotal =
+    order.estimatedTotal != null && deliveryCost != null
+      ? order.estimatedTotal - deliveryCost
+      : null;
 
   return (
     <div className="border rounded-lg p-3 bg-card space-y-2.5">
@@ -78,16 +87,15 @@ export function OrderMobileCard({
 
         {/* Delivery type + address */}
         <div className="flex items-start gap-1 text-muted-foreground">
-          {order.deliveryType === "delivery" ? (
+          {isDelivery ? (
             <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           ) : (
             <Store className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           )}
           <span>
-            {order.deliveryType === "delivery"
-              ? t.orders.delivery
-              : t.orders.pickup}
-            {order.deliveryAddress && ` — ${order.deliveryAddress}`}
+            {isDelivery ? t.orders.delivery : t.orders.pickup}
+            {isDelivery && order.deliveryAddress && ` — ${order.deliveryAddress}`}
+            {isDelivery && order.neighborhood && ` (${order.neighborhood})`}
           </span>
         </div>
 
@@ -98,13 +106,39 @@ export function OrderMobileCard({
           </p>
         )}
 
-        {/* Total */}
+        {/* Missing delivery cost alert */}
+        {missingDeliveryCost && (
+          <div className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded border border-amber-200 dark:border-amber-800/50">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <span>{t.orders.missingDeliveryCost}</span>
+          </div>
+        )}
+
+        {/* Total (with breakdown) */}
         {order.estimatedTotal != null && (
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-muted-foreground">{t.orders.total}</span>
-            <span className="font-semibold">
-              {order.currency ?? "$"} {order.estimatedTotal.toLocaleString()}
-            </span>
+          <div className="space-y-0.5 pt-1 text-xs tabular-nums">
+            {isDelivery && deliveryCost != null && itemsSubtotal != null && (
+              <>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>{t.orders.subtotal}</span>
+                  <span>
+                    {currency} {itemsSubtotal.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>{t.orders.deliveryCost}</span>
+                  <span>
+                    {currency} {deliveryCost.toLocaleString()}
+                  </span>
+                </div>
+              </>
+            )}
+            <div className="flex items-center justify-between text-sm border-t pt-1">
+              <span className="text-muted-foreground">{t.orders.total}</span>
+              <span className="font-semibold">
+                {currency} {order.estimatedTotal.toLocaleString()}
+              </span>
+            </div>
           </div>
         )}
       </div>
