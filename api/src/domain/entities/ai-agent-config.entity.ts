@@ -32,6 +32,15 @@ export interface AiMultiMessageConfig {
   debounceMaxWaitMs: number;
 }
 
+export type WeekDay = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+export interface BusinessHoursRange {
+  open: string;  // 'HH:mm' 24h
+  close: string; // 'HH:mm' 24h, may be earlier than open to indicate wrap past midnight
+}
+
+export type BusinessHours = Partial<Record<WeekDay, BusinessHoursRange | null>>;
+
 export class AiAgentConfig {
   constructor(
     public readonly id: string,
@@ -51,5 +60,7 @@ export class AiAgentConfig {
     public readonly multiMessage: AiMultiMessageConfig,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
+    public readonly timezone: string | null = null,
+    public readonly businessHours: BusinessHours | null = null,
   ) {}
 }

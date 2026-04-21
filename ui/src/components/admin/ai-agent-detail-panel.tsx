@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { Bot, Save, Trash2, Send, Eye, EyeOff } from "lucide-react";
-import type { AiAgentWithConfig } from "@/types";
+import type { AiAgentWithConfig, BusinessHours, BusinessHoursRange, WeekDay } from "@/types";
 
 type ProviderValue = "openai" | "anthropic" | "gemini" | "openrouter";
 
@@ -31,6 +31,53 @@ const providerLabels: Record<string, string> = {
   gemini: "Gemini",
   openrouter: "OpenRouter",
 };
+
+const WEEK_DAYS: { key: WeekDay; label: string }[] = [
+  { key: "monday", label: "Lunes" },
+  { key: "tuesday", label: "Martes" },
+  { key: "wednesday", label: "Miércoles" },
+  { key: "thursday", label: "Jueves" },
+  { key: "friday", label: "Viernes" },
+  { key: "saturday", label: "Sábado" },
+  { key: "sunday", label: "Domingo" },
+];
+
+const COMMON_TIMEZONES = [
+  "America/Bogota",
+  "America/Buenos_Aires",
+  "America/Montevideo",
+  "America/Santiago",
+  "America/Mexico_City",
+  "America/Lima",
+  "America/Caracas",
+  "America/Asuncion",
+  "America/Sao_Paulo",
+  "Europe/Madrid",
+  "America/New_York",
+];
+
+function emptyBusinessHours(): Record<WeekDay, BusinessHoursRange | null> {
+  return {
+    monday: null, tuesday: null, wednesday: null, thursday: null,
+    friday: null, saturday: null, sunday: null,
+  };
+}
+
+function hydrateBusinessHours(bh: BusinessHours | null | undefined): Record<WeekDay, BusinessHoursRange | null> {
+  const base = emptyBusinessHours();
+  if (!bh) return base;
+  for (const d of WEEK_DAYS) {
+    const v = bh[d.key];
+    if (v && typeof v.open === "string" && typeof v.close === "string") {
+      base[d.key] = { open: v.open, close: v.close };
+    }
+  }
+  return base;
+}
+
+function hasAnyHours(bh: Record<WeekDay, BusinessHoursRange | null>): boolean {
+  return WEEK_DAYS.some((d) => bh[d.key] !== null);
+}
 
 export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
   const [saving, setSaving] = useState(false);
@@ -60,6 +107,10 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
   const [debounceWindow, setDebounceWindow] = useState(agent.config.multiMessage?.debounceWindowMs ?? 2000);
   const [debounceMaxWait, setDebounceMaxWait] = useState(agent.config.multiMessage?.debounceMaxWaitMs ?? 20000);
 
+  const [timezone, setTimezone] = useState(agent.config.timezone ?? "");
+  const [hoursEnabled, setHoursEnabled] = useState(!!agent.config.businessHours && Object.values(agent.config.businessHours).some((v) => v != null));
+  const [hours, setHours] = useState<Record<WeekDay, BusinessHoursRange | null>>(hydrateBusinessHours(agent.config.businessHours));
+
   const [testMessage, setTestMessage] = useState("");
   const [testResponse, setTestResponse] = useState("");
   const [testing, setTesting] = useState(false);
@@ -83,6 +134,9 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
     setInterBubbleDelay(agent.config.multiMessage?.interBubbleDelayMs ?? 1200);
     setDebounceWindow(agent.config.multiMessage?.debounceWindowMs ?? 2000);
     setDebounceMaxWait(agent.config.multiMessage?.debounceMaxWaitMs ?? 20000);
+    setTimezone(agent.config.timezone ?? "");
+    setHoursEnabled(!!agent.config.businessHours && Object.values(agent.config.businessHours).some((v) => v != null));
+    setHours(hydrateBusinessHours(agent.config.businessHours));
     setError(null);
     setSuccess(null);
     setTestResponse("");
@@ -115,6 +169,18 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
         debounceWindowMs: debounceWindow,
         debounceMaxWaitMs: debounceMaxWait,
       };
+
+      payload.timezone = timezone.trim() ? timezone.trim() : null;
+      if (hoursEnabled && hasAnyHours(hours)) {
+        const bh: BusinessHours = {};
+        for (const d of WEEK_DAYS) {
+          bh[d.key] = hours[d.key];
+        }
+        payload.businessHours = bh;
+      } else {
+        payload.businessHours = null;
+      }
+
       if (apiKey.trim()) {
         payload.apiKey = apiKey;
       }
@@ -385,6 +451,115 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
                       />
                     </div>
                   </div>
+                </div>
+              )}
+            </div>
+
+            <hr className="my-1" />
+
+            {/* Business hours */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium">Horario de atención</label>
+                  <p className="text-xs text-muted-foreground">
+                    Cuando está cerrado, el agente no crea pedidos y avisa al cliente.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setHoursEnabled(!hoursEnabled)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    hoursEnabled ? "bg-violet-600" : "bg-muted"
+                  }`}
+                >
+                  <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                    hoursEnabled ? "translate-x-4" : "translate-x-0"
+                  }`} />
+                </button>
+              </div>
+
+              {hoursEnabled && (
+                <div className="space-y-3 rounded-lg border p-3 bg-muted/30">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Zona horaria (IANA)</label>
+                    <Input
+                      value={timezone}
+                      onChange={(e) => setTimezone(e.target.value)}
+                      placeholder="America/Bogota"
+                      list="tz-suggestions"
+                      className="text-sm"
+                    />
+                    <datalist id="tz-suggestions">
+                      {COMMON_TIMEZONES.map((z) => (
+                        <option key={z} value={z} />
+                      ))}
+                    </datalist>
+                    <p className="text-xs text-muted-foreground">
+                      Dejar vacío usa la zona del servidor. Recomendado: configurar la zona del negocio.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {WEEK_DAYS.map((d) => {
+                      const range = hours[d.key];
+                      const isOpen = range !== null;
+                      return (
+                        <div key={d.key} className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHours((prev) => ({
+                                ...prev,
+                                [d.key]: isOpen ? null : { open: "09:00", close: "18:00" },
+                              }));
+                            }}
+                            className={`w-20 shrink-0 rounded-md border px-2 py-1 text-xs text-left transition-colors ${
+                              isOpen
+                                ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
+                                : "text-muted-foreground hover:bg-muted/50"
+                            }`}
+                          >
+                            {d.label}
+                          </button>
+                          {isOpen ? (
+                            <>
+                              <Input
+                                type="time"
+                                value={range!.open}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setHours((prev) => ({
+                                    ...prev,
+                                    [d.key]: { open: v, close: prev[d.key]?.close ?? "18:00" },
+                                  }));
+                                }}
+                                className="text-sm"
+                              />
+                              <span className="text-xs text-muted-foreground">a</span>
+                              <Input
+                                type="time"
+                                value={range!.close}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setHours((prev) => ({
+                                    ...prev,
+                                    [d.key]: { open: prev[d.key]?.open ?? "09:00", close: v },
+                                  }));
+                                }}
+                                className="text-sm"
+                              />
+                            </>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Cerrado</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Si el cierre es anterior a la apertura (p. ej. 22:00 a 02:00), se interpreta como cruce de medianoche.
+                  </p>
                 </div>
               )}
             </div>

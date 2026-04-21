@@ -1,6 +1,18 @@
 import { z } from 'zod';
 import { AiProvider } from '../../domain/enums/ai-provider.enum.js';
 
+const HHmm = z.string().regex(/^([01]?\d|2[0-3]):[0-5]\d$/, 'Expected HH:mm (24h)');
+const DayRange = z.object({ open: HHmm, close: HHmm }).nullable();
+export const BusinessHoursSchema = z.object({
+  monday: DayRange.optional(),
+  tuesday: DayRange.optional(),
+  wednesday: DayRange.optional(),
+  thursday: DayRange.optional(),
+  friday: DayRange.optional(),
+  saturday: DayRange.optional(),
+  sunday: DayRange.optional(),
+});
+
 export const UpdateAiAgentConfigRequestSchema = z.object({
   name: z.string().min(1).optional(),
   provider: z.nativeEnum(AiProvider).optional(),
@@ -37,6 +49,8 @@ export const UpdateAiAgentConfigRequestSchema = z.object({
     debounceMaxWaitMs: z.number().min(0).max(60000).optional(),
   }).optional(),
   isActive: z.boolean().optional(),
+  timezone: z.string().min(1).nullable().optional(),
+  businessHours: BusinessHoursSchema.nullable().optional(),
 });
 
 export type UpdateAiAgentConfigRequestDto = z.infer<typeof UpdateAiAgentConfigRequestSchema>;

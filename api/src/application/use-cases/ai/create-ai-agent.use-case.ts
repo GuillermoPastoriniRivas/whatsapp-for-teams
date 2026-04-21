@@ -57,6 +57,8 @@ export class CreateAiAgentUseCase {
       },
       isActive: true,
       multiMessage: { enabled: false, maxBubbles: 4, interBubbleDelayMs: 1200, debounceWindowMs: 2000, debounceMaxWaitMs: 20000 },
+      timezone: input.timezone ?? null,
+      businessHours: input.businessHours ?? null,
     });
 
     return ok({ agent, config });

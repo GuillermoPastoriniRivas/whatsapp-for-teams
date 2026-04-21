@@ -24,6 +24,7 @@ import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
 import { PhoneNumberPlugin } from '../../../domain/enums/phone-number-plugin.enum.js';
 import { buildSystemPrompt } from './prompts/system-prompt.builder.js';
+import { computeBusinessStatus } from './prompts/business-hours.util.js';
 import { ToolRegistry } from './tools/tool-registry.js';
 import type { ToolContext } from './tools/tool-registry.js';
 import { createOrderTools } from './tools/order.tools.js';
@@ -159,12 +160,21 @@ export class ProcessAiResponseUseCase {
 
     // ── Build system prompt ─────────────────────────────────────────────
     const now = new Date();
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const tz = config.timezone ?? undefined;
+    const dateOpts: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: tz };
+    const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: tz };
+    const weekdayFmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz });
+    const businessStatus = computeBusinessStatus(config.businessHours, config.timezone, now);
 
     const systemPrompt = buildSystemPrompt({
-      currentDay: days[now.getDay()],
-      currentDate: now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-      currentTime: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      currentDay: weekdayFmt.format(now),
+      currentDate: now.toLocaleDateString('en-US', dateOpts),
+      currentTime: now.toLocaleTimeString('en-US', timeOpts),
+      businessStatus: businessStatus ? {
+        isOpen: businessStatus.isOpen,
+        todayRange: businessStatus.todayRange,
+        nextOpen: businessStatus.nextOpen,
+      } : null,
       persona: config.persona,
       adminSystemPrompt: config.systemPrompt || undefined,
       knowledgeBase: config.knowledgeBase || undefined,

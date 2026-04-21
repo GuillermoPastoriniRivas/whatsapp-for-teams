@@ -28,6 +28,7 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
       config.systemPrompt, config.knowledgeBase, config.persona,
       config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
       config.isActive, config.multiMessage, config.createdAt, config.updatedAt,
+      config.timezone, config.businessHours,
     );
   }
 
@@ -41,6 +42,7 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
       config.systemPrompt, config.knowledgeBase, config.persona,
       config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
       config.isActive, config.multiMessage, config.createdAt, config.updatedAt,
+      config.timezone, config.businessHours,
     );
   }
 
@@ -54,6 +56,7 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
         config.systemPrompt, config.knowledgeBase, config.persona,
         config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
         config.isActive, config.multiMessage, config.createdAt, config.updatedAt,
+        config.timezone, config.businessHours,
       );
     });
   }
@@ -84,6 +87,7 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
       config.systemPrompt, config.knowledgeBase, config.persona,
       config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
       config.isActive, config.multiMessage, config.createdAt, config.updatedAt,
+      config.timezone, config.businessHours,
     );
   }
 

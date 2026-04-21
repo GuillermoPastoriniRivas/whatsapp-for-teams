@@ -62,6 +62,13 @@ export interface SystemPromptContext {
   // Orders plugin enabled
   ordersEnabled: boolean;
 
+  // Deterministic business status (null when not configured)
+  businessStatus?: {
+    isOpen: boolean;
+    todayRange: { open: string; close: string } | null;
+    nextOpen: { day: string; at: string } | null;
+  } | null;
+
   // Multi-message
   multiMessage?: { enabled: boolean; maxBubbles: number };
 }
@@ -92,6 +99,37 @@ Read the conversation carefully. Respond like a real person texting — brief, w
   // ── 2. Date & time ────────────────────────────────────────────────────
   parts.push(`## Current Date & Time
 Today is ${ctx.currentDay}, ${ctx.currentDate}. Current time: ${ctx.currentTime}.`);
+
+  // ── 2b. Business status (deterministic) ───────────────────────────────
+  if (ctx.businessStatus) {
+    const s = ctx.businessStatus;
+    const lines: string[] = [];
+    if (s.isOpen) {
+      lines.push('The business is currently OPEN.');
+      if (s.todayRange) lines.push(`Today's hours: ${s.todayRange.open} - ${s.todayRange.close}.`);
+      lines.push('Proceed normally.');
+    } else {
+      lines.push('The business is currently CLOSED.');
+      if (s.todayRange) {
+        lines.push(`Today's hours: ${s.todayRange.open} - ${s.todayRange.close}.`);
+      } else {
+        lines.push('We are closed today.');
+      }
+      if (s.nextOpen) lines.push(`Next opening: ${s.nextOpen.day} at ${s.nextOpen.at}.`);
+      lines.push('');
+      lines.push('RULES when closed:');
+      lines.push('- Do NOT call create_order or update_order under any circumstance.');
+      lines.push('- Tell the customer we are closed and when we will open again. Keep it brief and natural, in the persona language.');
+      lines.push('- If they insist, still do not create the order. Ask them to come back during opening hours.');
+    }
+    parts.push(`## Business Status\n${lines.join('\n')}`);
+  } else {
+    parts.push(`## Business Status
+No operating hours are configured for this business. Always treat the business as OPEN.
+- Never tell the customer the business is closed, out of hours, or "fuera de horario".
+- Any mention of hours in the knowledge base is informational only — do not use it to refuse, delay, or gate orders.
+- Proceed normally at any time of day.`);
+  }
 
   // ── 3. Persona ────────────────────────────────────────────────────────
   const personaParts: string[] = [];

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AiProvider } from '../../domain/enums/ai-provider.enum.js';
+import { BusinessHoursSchema } from './update-ai-agent-config-request.dto.js';
 
 export const CreateAiAgentRequestSchema = z.object({
   name: z.string().min(1),
@@ -29,6 +30,8 @@ export const CreateAiAgentRequestSchema = z.object({
     maxMessagesPerDay: z.number().min(0).optional(),
     maxTokensPerDay: z.number().min(0).optional(),
   }).optional(),
+  timezone: z.string().min(1).nullable().optional(),
+  businessHours: BusinessHoursSchema.nullable().optional(),
 });
 
 export type CreateAiAgentRequestDto = z.infer<typeof CreateAiAgentRequestSchema>;

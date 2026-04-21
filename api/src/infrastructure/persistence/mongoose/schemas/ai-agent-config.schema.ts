@@ -51,6 +51,12 @@ export class AiAgentConfigModel {
   })
   multiMessage: { enabled: boolean; maxBubbles: number; interBubbleDelayMs: number; debounceWindowMs: number; debounceMaxWaitMs: number };
 
+  @Prop({ type: String, required: false, default: null })
+  timezone: string | null;
+
+  @Prop({ type: Object, required: false, default: null })
+  businessHours: Record<string, { open: string; close: string } | null> | null;
+
   createdAt: Date;
   updatedAt: Date;
 }

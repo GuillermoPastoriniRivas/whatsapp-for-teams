@@ -183,8 +183,20 @@ export interface AiAgentConfig {
     debounceWindowMs: number;
     debounceMaxWaitMs: number;
   };
+  timezone?: string | null;
+  businessHours?: BusinessHours | null;
   isActive: boolean;
 }
+
+export type WeekDay =
+  | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+
+export interface BusinessHoursRange {
+  open: string;  // "HH:mm"
+  close: string; // "HH:mm"
+}
+
+export type BusinessHours = Partial<Record<WeekDay, BusinessHoursRange | null>>;
 
 export type PlanTier = "free" | "pro" | "business" | "agencies";
 export type SubscriptionStatus = "active" | "canceled" | "past_due" | "expired";

@@ -1,5 +1,5 @@
 import { AiProvider } from '../../../domain/enums/ai-provider.enum.js';
-import type { AiPersona, HandoffRules, AiContextConfig, AiRateLimits } from '../../../domain/entities/ai-agent-config.entity.js';
+import type { AiPersona, HandoffRules, AiContextConfig, AiRateLimits, BusinessHours } from '../../../domain/entities/ai-agent-config.entity.js';
 
 export interface CreateAiAgentInput {
   tenantId: string;
@@ -14,4 +14,6 @@ export interface CreateAiAgentInput {
   handoffRules?: Partial<HandoffRules>;
   contextConfig?: Partial<AiContextConfig>;
   rateLimits?: Partial<AiRateLimits>;
+  timezone?: string | null;
+  businessHours?: BusinessHours | null;
 }
