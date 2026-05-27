@@ -442,16 +442,6 @@ export default function LandingPage() {
                         {planNames[plan.key]}
                       </h3>
                     </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-slate-900">
-                        ${plan.price}
-                      </span>
-                      {plan.price > 0 && (
-                        <span className="text-slate-500 text-sm">
-                          {t.billing.perMonth}
-                        </span>
-                      )}
-                    </div>
                   </div>
 
                   <div className="flex-1 space-y-3 mb-6">

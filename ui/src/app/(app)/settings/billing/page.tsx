@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
 import { useBillingStore } from "@/stores/billing.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
@@ -10,14 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CreditCard,
-  Check,
-  X,
   Zap,
   Crown,
   Building2,
   MessageSquare,
   ArrowLeft,
-  ExternalLink,
+  Loader2,
 } from "lucide-react";
 import type { PlanTier } from "@/types";
 
@@ -28,19 +26,12 @@ const PLAN_ICONS: Record<PlanTier, typeof MessageSquare> = {
   business: Crown,
   agencies: Building2,
 };
-const PLAN_PRICES: Record<PlanTier, number | null> = {
-  free: 0,
-  pro: 49,
-  business: 99,
-  agencies: null,
-};
 
 export default function BillingPage() {
   const router = useRouter();
   const agent = useAuthStore((s) => s.agent);
   const { t } = useTranslations();
-  const searchParams = useSearchParams();
-  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<PlanTier | null>(null);
   const {
     subscription,
     plan,
@@ -51,11 +42,8 @@ export default function BillingPage() {
     fetchUsage,
     fetchHistory,
     subscribe,
-    checkout,
-    getPortalUrl,
     changePlan,
     cancelSubscription,
-    pollSubscription,
   } = useBillingStore();
 
   useEffect(() => {
@@ -67,17 +55,6 @@ export default function BillingPage() {
     fetchUsage();
     fetchHistory();
   }, [agent]);
-
-  // Handle post-checkout success redirect
-  useEffect(() => {
-    if (searchParams.get("success") === "true" && !checkoutSuccess) {
-      setCheckoutSuccess(true);
-      pollSubscription().then(() => {
-        fetchUsage();
-        fetchHistory();
-      });
-    }
-  }, [searchParams]);
 
   const planNames: Record<PlanTier, string> = {
     free: t.billing.freePlan,
@@ -96,30 +73,20 @@ export default function BillingPage() {
   };
 
   const handlePlanAction = async (targetPlan: PlanTier) => {
-    if (targetPlan === plan) return;
-
-    // Downgrade to free: cancel subscription
-    if (targetPlan === "free") {
-      await cancelSubscription();
-      fetchSubscription();
-      fetchUsage();
-      fetchHistory();
-      return;
+    if (targetPlan === plan || pendingPlan) return;
+    setPendingPlan(targetPlan);
+    try {
+      if (targetPlan === "free") {
+        await cancelSubscription();
+      } else if (!subscription || subscription.status === "canceled" || subscription.status === "expired") {
+        await subscribe(targetPlan);
+      } else {
+        await changePlan(targetPlan);
+      }
+      await Promise.all([fetchSubscription(), fetchUsage(), fetchHistory()]);
+    } finally {
+      setPendingPlan(null);
     }
-
-    // Paid plans: redirect to external checkout
-    if (!subscription || subscription.status === "canceled" || subscription.paymentProvider === "none") {
-      await checkout(targetPlan);
-      return;
-    }
-
-    // Already has external subscription: create new checkout for plan change
-    await checkout(targetPlan);
-  };
-
-  const handleManagePayment = async () => {
-    const url = await getPortalUrl();
-    if (url) window.open(url, "_blank");
   };
 
   const formatLimit = (current: number, limit: number) => {
@@ -151,13 +118,6 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* Checkout Success Banner */}
-      {checkoutSuccess && (
-        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          {isLoading ? t.billing.processingPayment : t.billing.checkoutSuccess}
-        </div>
-      )}
-
       {/* Trial Expired Banner */}
       {subscription?.status === "expired" && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -186,10 +146,6 @@ export default function BillingPage() {
                 })()}
                 <div>
                   <p className="font-bold text-lg">{planNames[plan]}</p>
-                  <p className="text-sm text-muted-foreground">
-                    ${PLAN_PRICES[plan]}
-                    {(PLAN_PRICES[plan] ?? 0) > 0 && t.billing.perMonth}
-                  </p>
                 </div>
               </div>
               {subscription && (
@@ -242,17 +198,6 @@ export default function BillingPage() {
             )}
             {subscription && subscription.status === "active" && plan !== "free" && !subscription.scheduledPlan && (
               <div className="flex items-center gap-2">
-                {subscription.paymentProvider !== "none" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleManagePayment}
-                    disabled={isLoading}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                    {t.billing.managePayment}
-                  </Button>
-                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -353,30 +298,18 @@ export default function BillingPage() {
                       : "border-slate-200"
                   }`}
                 >
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-3">
                     <Icon className="h-4 w-4 text-primary" />
                     <span className="font-semibold text-sm">
                       {planNames[tierKey]}
                     </span>
                   </div>
-                  <p className="text-2xl font-bold mb-3">
-                    {PLAN_PRICES[tierKey] !== null ? (
-                      <>
-                        ${PLAN_PRICES[tierKey]}
-                        <span className="text-sm font-normal text-muted-foreground">
-                          {PLAN_PRICES[tierKey]! > 0 && t.billing.perMonth}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-lg">{t.billing.contactUs}</span>
-                    )}
-                  </p>
                   {isCurrent ? (
-                    <Badge variant="secondary" className="self-start">
+                    <Badge variant="secondary" className="self-start mt-auto">
                       {t.billing.currentBadge}
                     </Badge>
                   ) : isScheduled ? (
-                    <Badge variant="outline" className="self-start bg-amber-50 text-amber-700 border-amber-200">
+                    <Badge variant="outline" className="self-start mt-auto bg-amber-50 text-amber-700 border-amber-200">
                       {t.billing.scheduled}
                     </Badge>
                   ) : tierKey === "agencies" ? (
@@ -393,10 +326,16 @@ export default function BillingPage() {
                       size="sm"
                       variant={isUpgrade ? "default" : "outline"}
                       className="mt-auto"
-                      disabled={isLoading}
+                      disabled={pendingPlan !== null}
                       onClick={() => handlePlanAction(tierKey)}
                     >
-                      {isUpgrade ? t.billing.upgrade : t.billing.downgrade}
+                      {pendingPlan === tierKey ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : isUpgrade ? (
+                        t.billing.upgrade
+                      ) : (
+                        t.billing.downgrade
+                      )}
                     </Button>
                   )}
                 </div>
@@ -428,9 +367,6 @@ export default function BillingPage() {
                       {t.billing.event}
                     </th>
                     <th className="pb-2 pr-4 font-medium">{t.billing.plan}</th>
-                    <th className="pb-2 pr-4 font-medium text-right">
-                      {t.billing.amount}
-                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -446,11 +382,6 @@ export default function BillingPage() {
                         <Badge variant="outline" className="capitalize">
                           {record.plan}
                         </Badge>
-                      </td>
-                      <td className="py-2 pr-4 text-right font-medium">
-                        {record.amountCents > 0
-                          ? `$${(record.amountCents / 100).toFixed(2)}`
-                          : "—"}
                       </td>
                     </tr>
                   ))}
