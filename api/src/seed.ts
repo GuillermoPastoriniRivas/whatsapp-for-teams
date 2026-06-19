@@ -32,8 +32,8 @@ const SEED = {
   phoneNumber: {
     provider: 'twilio',
     providerConfig: {
-      accountSid: '***REMOVED***',
-      authToken: '***REMOVED***',
+      accountSid: process.env.TWILIO_ACCOUNT_SID ?? '',
+      authToken: process.env.TWILIO_AUTH_TOKEN ?? '',
       fromNumber: '+14155238886', // Twilio sandbox number
     },
     wabaId: 'twilio',
@@ -82,7 +82,7 @@ const AgentPhoneAccessSeedSchema = new Schema({
 });
 
 async function seed() {
-  const mongoUri = process.env.MONGODB_URI ?? '***REMOVED***/whatsapp-teams';
+  const mongoUri = process.env.MONGODB_URI ?? 'mongodb://localhost:27017/whatsapp-teams';
 
   console.log(`Connecting to ${mongoUri}...`);
   await connect(mongoUri);

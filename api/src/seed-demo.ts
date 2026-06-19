@@ -155,7 +155,7 @@ const AiAgentConfigSchema = new Schema({
 // ── Main ────────────────────────────────────────────────
 
 async function seedDemo() {
-  const mongoUri = process.env.MONGODB_URI ?? '***REMOVED***/whatsapp-teams';
+  const mongoUri = process.env.MONGODB_URI ?? 'mongodb://localhost:27017/whatsapp-teams';
 
   console.log(`Connecting to ${mongoUri}...`);
   await connect(mongoUri);
