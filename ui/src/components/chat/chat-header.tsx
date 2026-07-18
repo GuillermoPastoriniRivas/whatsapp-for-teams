@@ -53,7 +53,7 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
 
   return (
     <>
-      <div className="flex h-[60px] items-center justify-between bg-[var(--asis-surface-header)] px-4 py-2 border-b border-border shadow-sm z-10 w-full">
+      <div className="flex h-[60px] shrink-0 items-center justify-between bg-[var(--asis-surface-header)] px-4 py-2 border-b border-border shadow-sm z-10 w-full">
         <div className="flex items-center gap-3 overflow-hidden">
           <Button
             variant="ghost"

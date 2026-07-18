@@ -67,7 +67,7 @@ function WindowExpiredNotice({ conversation }: { conversation?: Conversation }) 
   const { t } = useTranslations();
   const [dialogOpen, setDialogOpen] = useState(false);
   return (
-    <div className="flex flex-wrap items-start gap-3 bg-[var(--asis-surface-header)] px-4 py-3 sm:px-6 w-full border-t border-border z-10">
+    <div className="flex shrink-0 flex-wrap items-start gap-3 bg-[var(--asis-surface-header)] px-4 py-3 sm:px-6 w-full border-t border-border z-10">
       <Clock className="h-5 w-5 shrink-0 text-muted-foreground mt-0.5" />
       <div className="min-w-0 flex-1 text-sm">
         <p className="font-medium">{t.chat.windowExpiredTitle}</p>
@@ -211,12 +211,12 @@ export function ChatPanel({ conversationId }: Props) {
   return (
     <div className="flex h-full overflow-hidden">
       {/* Chat column */}
-      <div className="flex flex-1 min-w-0 flex-col relative">
+      <div className="flex flex-1 min-w-0 min-h-0 flex-col relative overflow-hidden">
         <ChatHeader
           conversationId={conversationId}
           onToggleContactInfo={() => setContactInfoOpen((prev) => !prev)}
         />
-        <ScrollArea ref={scrollAreaRef} className="flex-1 overflow-hidden w-full px-4 sm:px-[5%] md:px-[5%] lg:px-[10%]">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 overflow-hidden w-full px-4 sm:px-[5%] md:px-[5%] lg:px-[10%]">
           <div className="flex flex-col py-6 min-h-full">
             {chatItems.map((item) =>
               item.kind === "date" ? (

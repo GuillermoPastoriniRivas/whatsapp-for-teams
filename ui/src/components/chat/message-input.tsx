@@ -40,7 +40,7 @@ export function MessageInput({ conversationId }: Props) {
   };
 
   return (
-    <div className="flex items-center gap-2 bg-[var(--asis-surface-header)] px-4 py-3 sm:px-6 w-full shadow-sm z-10 transition-colors duration-200 border-t border-border">
+    <div className="flex shrink-0 items-center gap-2 bg-[var(--asis-surface-header)] px-4 py-3 sm:px-6 w-full shadow-sm z-10 transition-colors duration-200 border-t border-border">
       <Button variant="ghost" size="icon" className="shrink-0 text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:bg-white/5 rounded-full h-10 w-10">
         <Smile className="h-[22px] w-[22px]" />
       </Button>
