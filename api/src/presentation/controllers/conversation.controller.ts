@@ -8,7 +8,6 @@ import { GetConversationDetailUseCase } from '../../application/use-cases/conver
 import { GetConversationMessagesUseCase } from '../../application/use-cases/conversation/get-conversation-messages.use-case.js';
 import { SendMessageUseCase } from '../../application/use-cases/conversation/send-message.use-case.js';
 import { AssignConversationUseCase } from '../../application/use-cases/conversation/assign-conversation.use-case.js';
-import { ResolveConversationUseCase } from '../../application/use-cases/conversation/resolve-conversation.use-case.js';
 import { GetConversationEventsUseCase } from '../../application/use-cases/conversation/get-conversation-events.use-case.js';
 import { AddConversationNoteUseCase } from '../../application/use-cases/conversation/add-conversation-note.use-case.js';
 import { GetConversationNotesUseCase } from '../../application/use-cases/conversation/get-conversation-notes.use-case.js';
@@ -52,7 +51,6 @@ export class ConversationController {
     @Inject('SendMessageUseCase') private readonly sendMessage: SendMessageUseCase,
     @Inject('SendTemplateMessageUseCase') private readonly sendTemplateMessage: SendTemplateMessageUseCase,
     @Inject('AssignConversationUseCase') private readonly assignConversation: AssignConversationUseCase,
-    @Inject('ResolveConversationUseCase') private readonly resolveConversation: ResolveConversationUseCase,
     @Inject('GetConversationEventsUseCase') private readonly getConversationEvents: GetConversationEventsUseCase,
     @Inject('AddConversationNoteUseCase') private readonly addNote: AddConversationNoteUseCase,
     @Inject('GetConversationNotesUseCase') private readonly getNotes: GetConversationNotesUseCase,
@@ -77,7 +75,7 @@ export class ConversationController {
 
   @Get()
   @ApiOperation({ summary: 'List conversations', description: 'List conversations with filtering and pagination. Agents see their own + unassigned; admins see all.' })
-  @ApiQuery({ name: 'status', required: false, enum: ['unassigned', 'active', 'resolved'], description: 'Filter by conversation status' })
+  @ApiQuery({ name: 'status', required: false, enum: ['unassigned', 'active'], description: 'Filter by conversation status' })
   @ApiQuery({ name: 'agentId', required: false, description: 'Filter by assigned agent ID' })
   @ApiQuery({ name: 'phoneNumberId', required: false, description: 'Filter by phone number ID' })
   @ApiQuery({ name: 'view', required: false, enum: ['inbox', 'campaign', 'all'], description: 'inbox (default) hides unanswered campaign conversations; campaign shows only those; all shows everything' })
@@ -415,18 +413,4 @@ export class ConversationController {
     return result.value;
   }
 
-  @Patch(':id/resolve')
-  @ApiOperation({ summary: 'Resolve conversation', description: 'Mark a conversation as resolved' })
-  @ApiParam({ name: 'id', description: 'Conversation ID' })
-  @ApiResponse({ status: 200, description: 'Conversation resolved' })
-  @ApiResponse({ status: 404, description: 'Conversation not found' })
-  async resolve(@Param('id') id: string, @CurrentAgent() agent: RequestAgent) {
-    await this.verifyTenantAccess(id, agent.tenantId);
-    const result = await this.resolveConversation.execute({
-      conversationId: id,
-      agentId: agent._id,
-    });
-    if (!result.ok) throw new NotFoundException(result.error.message);
-    return result.value;
-  }
 }

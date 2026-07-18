@@ -56,7 +56,6 @@ import { SendMessageUseCase } from '../application/use-cases/conversation/send-m
 import { SendTemplateMessageUseCase } from '../application/use-cases/conversation/send-template-message.use-case.js';
 import { AssignConversationUseCase } from '../application/use-cases/conversation/assign-conversation.use-case.js';
 import { AutoAssignConversationUseCase } from '../application/use-cases/conversation/auto-assign-conversation.use-case.js';
-import { ResolveConversationUseCase } from '../application/use-cases/conversation/resolve-conversation.use-case.js';
 import { GetConversationEventsUseCase } from '../application/use-cases/conversation/get-conversation-events.use-case.js';
 import { AddConversationNoteUseCase } from '../application/use-cases/conversation/add-conversation-note.use-case.js';
 import { GetConversationNotesUseCase } from '../application/use-cases/conversation/get-conversation-notes.use-case.js';
@@ -354,12 +353,6 @@ const useCaseProviders = [
     useFactory: (convRepo: any, msgRepo: any, agentRepo: any, tenantRepo: any, gateway: any) =>
       new DemoAiReplyUseCase(convRepo, msgRepo, agentRepo, tenantRepo, gateway),
     inject: ['ConversationRepository', 'MessageRepository', 'AgentRepository', 'TenantRepository', 'RealtimeGatewayPort'],
-  },
-  {
-    provide: 'ResolveConversationUseCase',
-    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any) =>
-      new ResolveConversationUseCase(convRepo, agentRepo, gateway, eventRepo),
-    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository'],
   },
 
   // Tenant

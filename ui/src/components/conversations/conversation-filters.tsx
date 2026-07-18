@@ -13,7 +13,6 @@ export function ConversationFilters() {
     { value: "", label: t.conversations.filterAll },
     { value: "active", label: t.conversations.filterActive },
     { value: "unassigned", label: t.conversations.filterUnassigned },
-    { value: "resolved", label: t.conversations.filterResolved },
   ];
 
   return (

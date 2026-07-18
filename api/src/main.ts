@@ -2,12 +2,39 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { getConnectionToken } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
 import { GlobalExceptionFilter } from './presentation/filters/global-exception.filter.js';
 
+/** Migración one-shot (idempotente): el concepto "resuelta" se eliminó del producto. */
+async function migrateResolvedConversations(app: NestExpressApplication) {
+  try {
+    const connection = app.get<Connection>(getConnectionToken());
+    const result = await connection.collection('conversations').updateMany(
+      { status: 'resolved' },
+      [
+        {
+          $set: {
+            status: {
+              $cond: [{ $ne: ['$agentId', null] }, 'active', 'unassigned'],
+            },
+          },
+        },
+      ],
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`[migration] ${result.modifiedCount} conversaciones 'resolved' migradas`);
+    }
+  } catch (err) {
+    console.error('[migration] resolved->active/unassigned falló:', err);
+  }
+}
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
+  await migrateResolvedConversations(app);
   app.use(helmet({ crossOriginResourcePolicy: false }));
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new GlobalExceptionFilter());

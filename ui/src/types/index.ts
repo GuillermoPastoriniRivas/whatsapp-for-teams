@@ -19,12 +19,10 @@ export interface Conversation {
   phoneNumberId: string;
   contactId: string;
   agentId: string | null;
-  status: "unassigned" | "active" | "resolved";
+  status: "unassigned" | "active";
   lastMessageAt: string;
   lastInboundAt: string;
   createdAt: string;
-  resolvedAt: string | null;
-  closedBy: string | null;
   phoneLabel: string | null;
   phoneDisplay: string | null;
   agentName: string | null;

@@ -66,7 +66,6 @@ export function ConversationItem({ conversation, onSelect }: Props) {
   const statusColors: Record<string, string> = {
     active: "bg-primary",
     unassigned: "bg-accent",
-    resolved: "bg-slate-300 dark:bg-slate-700",
   };
 
   return (
@@ -128,11 +127,9 @@ export function ConversationItem({ conversation, onSelect }: Props) {
 
         <div className="flex items-center justify-between">
           <span className="truncate text-sm text-slate-500 dark:text-slate-400">
-            {conversation.status === "resolved"
-              ? t.conversations.resolvedLine
-              : conversation.agentName
-                ? `${t.conversations.agentPrefix}: ${conversation.agentName}`
-                : t.chat.unassigned}
+            {conversation.agentName
+              ? `${t.conversations.agentPrefix}: ${conversation.agentName}`
+              : t.chat.unassigned}
           </span>
           {conversation.status === "unassigned" && (
             <div className="ml-2 flex h-5 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-bold text-white">

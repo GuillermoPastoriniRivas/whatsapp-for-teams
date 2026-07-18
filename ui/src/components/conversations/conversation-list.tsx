@@ -42,7 +42,6 @@ export function ConversationList() {
 
     socket.on("conversation.new", refetch);
     socket.on("conversation.assigned", refetch);
-    socket.on("conversation.resolved", refetch);
     socket.on("conversation.updated", refetch);
     socket.on("conversation.unassigned", refetch);
     socket.on("message.new", handleNewMessage);
@@ -50,7 +49,6 @@ export function ConversationList() {
     return () => {
       socket.off("conversation.new", refetch);
       socket.off("conversation.assigned", refetch);
-      socket.off("conversation.resolved", refetch);
       socket.off("conversation.updated", refetch);
       socket.off("conversation.unassigned", refetch);
       socket.off("message.new", handleNewMessage);

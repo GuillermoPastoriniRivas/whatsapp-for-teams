@@ -87,27 +87,6 @@ export class HandleInboundMessageUseCase {
       this.gateway.emitToConversation(conversation.id, 'conversation.event', createdEvent);
 
       needsAssignment = true;
-    } else if (conversation.status === ConversationStatus.RESOLVED) {
-      const previouslyResolvedAt = conversation.resolvedAt;
-
-      await this.conversationRepo.update(conversation.id, {
-        status: ConversationStatus.UNASSIGNED,
-        agentId: null,
-        resolvedAt: null,
-        closedBy: null,
-      } as any);
-      conversation = (await this.conversationRepo.findById(conversation.id))!;
-
-      const reopenedEvent = await this.eventRepo.create({
-        conversationId: conversation.id,
-        tenantId,
-        type: ConversationEventType.REOPENED,
-        performedBy: null,
-        data: { previouslyResolvedAt },
-      });
-      this.gateway.emitToConversation(conversation.id, 'conversation.event', reopenedEvent);
-
-      needsAssignment = true;
     }
 
     // 4. Upsert Message (idempotent by waMessageId)

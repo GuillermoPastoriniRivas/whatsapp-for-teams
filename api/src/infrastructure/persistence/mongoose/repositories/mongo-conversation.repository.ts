@@ -73,7 +73,6 @@ export class MongoConversationRepository implements ConversationRepository {
     const doc = await this.model.findOne({
       contactId: new Types.ObjectId(contactId),
       phoneNumberId: new Types.ObjectId(phoneNumberId),
-      status: { $ne: ConversationStatus.RESOLVED },
     });
     return doc ? ConversationMapper.toDomain(doc) : null;
   }

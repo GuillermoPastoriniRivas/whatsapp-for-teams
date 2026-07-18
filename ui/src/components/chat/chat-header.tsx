@@ -38,18 +38,11 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
     useConversationStore.getState().fetch();
   };
 
-  const handleResolve = async () => {
-    await api.patch(`/conversations/${conversationId}/resolve`);
-    updateConversation({ id: conversationId, status: "resolved" });
-    router.push("/conversations");
-  };
-
   const handleAssigned = () => {
     useConversationStore.getState().fetch();
   };
 
   const contact = conversation?.contact;
-  const isResolved = conversation?.status === "resolved";
 
   return (
     <>
@@ -94,7 +87,7 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
-          {!isResolved && !isMine && (
+          {!isMine && (
             <Button
               variant="outline"
               size="sm"
@@ -104,22 +97,10 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
               {t.chat.claim}
             </Button>
           )}
-          {!isResolved && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden sm:flex shrink-0 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 dark:bg-primary/10 dark:border-primary/20 dark:text-primary dark:hover:bg-primary/20 rounded-full px-4 h-9 shadow-sm"
-              onClick={handleResolve}
-            >
-              {t.chat.markResolved}
-            </Button>
-          )}
           <ChatMenu
             onViewContact={onToggleContactInfo}
             onAssign={() => setAssignOpen(true)}
-            onResolve={handleResolve}
             onClaim={handleClaim}
-            isResolved={isResolved}
             isMine={isMine}
           />
         </div>

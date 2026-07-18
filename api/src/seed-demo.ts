@@ -417,12 +417,11 @@ async function seedDemo() {
     { dir: 'outbound', body: 'Tambien se puede! La devolucion se procesa en 5-7 dias habiles al mismo medio de pago que usaste. Solo necesitas el ticket y el producto en buen estado con las etiquetas', minutesAgo: 18, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
   ]);
 
-  // --- Conv 6: Sebastian → resolved (shipping issue, Sofia IA + Ana) ---
+  // --- Conv 6: Sebastian → shipping issue atendido por Sofia IA + Ana ---
   const conv6 = await Conversation.create({
     tenantId: T, phoneNumberId: phone._id, contactId: sebastian._id,
-    agentId: ana._id, status: 'resolved',
+    agentId: ana._id, status: 'active',
     lastMessageAt: ago(1440), lastInboundAt: ago(1445),
-    resolvedAt: ago(1430), closedBy: ana._id.toString(),
   });
   await createMessages(conv6._id, [
     { dir: 'inbound', body: 'Hola, me llego el pedido equivocado. Pedi zapatillas talle 42 y me mandaron talle 38', minutesAgo: 1500 },
@@ -503,7 +502,6 @@ async function seedDemo() {
     { conversationId: conv6._id, tenantId: T, type: 'created', createdAt: ago(1500) },
     { conversationId: conv6._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(1499) },
     { conversationId: conv6._id, tenantId: T, type: 'reassigned', performedBy: sofia._id.toString(), data: { fromAgentName: 'Sofia IA', toAgentName: 'Demo User' }, createdAt: ago(1491) },
-    { conversationId: conv6._id, tenantId: T, type: 'resolved', performedBy: ana._id.toString(), data: { agentName: 'Demo User' }, createdAt: ago(1430) },
     // Conv 7
     { conversationId: conv7._id, tenantId: T, type: 'created', createdAt: ago(12) },
     { conversationId: conv7._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(11) },
