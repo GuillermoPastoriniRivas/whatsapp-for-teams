@@ -60,7 +60,7 @@ export interface Message {
   id: string;
   conversationId: string;
   direction: "inbound" | "outbound";
-  messageType: "text" | "image" | "audio" | "video" | "document" | "location";
+  messageType: "text" | "image" | "audio" | "video" | "document" | "location" | "template";
   body: string | null;
   mediaUrl: string | null;
   mimeType: string | null;

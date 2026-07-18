@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query,
-  Inject, UsePipes, NotFoundException, ForbiddenException, ConflictException,
+  Inject, UsePipes, NotFoundException, ForbiddenException, ConflictException, BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { ListConversationsUseCase } from '../../application/use-cases/conversation/list-conversations.use-case.js';
@@ -21,6 +21,9 @@ import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import { SendMessageRequestSchema } from '../request-dtos/send-message-request.dto.js';
 import type { SendMessageRequestDto } from '../request-dtos/send-message-request.dto.js';
+import { SendTemplateMessageUseCase } from '../../application/use-cases/conversation/send-template-message.use-case.js';
+import { SendTemplateRequestSchema } from '../request-dtos/send-template-request.dto.js';
+import type { SendTemplateRequestDto } from '../request-dtos/send-template-request.dto.js';
 import { AssignConversationRequestSchema } from '../request-dtos/assign-conversation-request.dto.js';
 import type { AssignConversationRequestDto } from '../request-dtos/assign-conversation-request.dto.js';
 import { ConversationQueryParamsSchema } from '../request-dtos/conversation-query-params.dto.js';
@@ -47,6 +50,7 @@ export class ConversationController {
     @Inject('GetConversationDetailUseCase') private readonly getDetail: GetConversationDetailUseCase,
     @Inject('GetConversationMessagesUseCase') private readonly getMessages: GetConversationMessagesUseCase,
     @Inject('SendMessageUseCase') private readonly sendMessage: SendMessageUseCase,
+    @Inject('SendTemplateMessageUseCase') private readonly sendTemplateMessage: SendTemplateMessageUseCase,
     @Inject('AssignConversationUseCase') private readonly assignConversation: AssignConversationUseCase,
     @Inject('ResolveConversationUseCase') private readonly resolveConversation: ResolveConversationUseCase,
     @Inject('GetConversationEventsUseCase') private readonly getConversationEvents: GetConversationEventsUseCase,
@@ -245,6 +249,45 @@ export class ConversationController {
       if (error.code === 'CONVERSATION_WINDOW_EXPIRED') throw new ForbiddenException(error.message);
       if (error.code === 'AGENT_NOT_ASSIGNED') throw new ForbiddenException(error.message);
       throw new NotFoundException(error.message);
+    }
+    return result.value;
+  }
+
+  @Post(':id/send-template')
+  @ApiOperation({ summary: 'Send template message', description: 'Send an approved template in a conversation (works outside the 24h window)' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['templateId'],
+      properties: {
+        templateId: { type: 'string' },
+        variables: { type: 'object', additionalProperties: { type: 'string' }, description: 'Canonical keys: body.1, header.link, button.0.1' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Template sent' })
+  @ApiResponse({ status: 400, description: 'Missing variables or template not approved' })
+  @ApiResponse({ status: 403, description: 'Agent not assigned and not admin' })
+  @ApiResponse({ status: 404, description: 'Conversation or template not found' })
+  async sendTemplate(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(SendTemplateRequestSchema)) body: SendTemplateRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    await this.verifyTenantAccess(id, agent.tenantId);
+    const result = await this.sendTemplateMessage.execute({
+      conversationId: id,
+      agentId: agent._id,
+      agentRole: agent.role,
+      templateId: body.templateId,
+      variables: body.variables,
+    });
+    if (!result.ok) {
+      const error = result.error as DomainError;
+      if (error.code === 'AGENT_NOT_ASSIGNED') throw new ForbiddenException(error.message);
+      if (error.code === 'CONVERSATION_NOT_FOUND' || error.code === 'TEMPLATE_NOT_FOUND') throw new NotFoundException(error.message);
+      throw new BadRequestException(error.message);
     }
     return result.value;
   }

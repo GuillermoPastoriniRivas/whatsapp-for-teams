@@ -15,8 +15,10 @@ import { getSocket } from "@/lib/socket";
 import { useIsDesktop } from "@/lib/use-is-desktop";
 import { useConversationWindow } from "@/lib/use-conversation-window";
 import { useTranslations } from "@/lib/i18n/use-translations";
-import { Clock } from "lucide-react";
-import type { ChatItem, ConversationEvent } from "@/types";
+import { SendTemplateDialog } from "./send-template-dialog";
+import { Button } from "@/components/ui/button";
+import { Clock, LayoutTemplate } from "lucide-react";
+import type { ChatItem, Conversation, ConversationEvent } from "@/types";
 
 function formatDateLabel(
   dateStr: string,
@@ -61,17 +63,35 @@ function DateSeparator({
   );
 }
 
-function WindowExpiredNotice() {
+function WindowExpiredNotice({ conversation }: { conversation?: Conversation }) {
   const { t } = useTranslations();
+  const [dialogOpen, setDialogOpen] = useState(false);
   return (
-    <div className="flex items-start gap-3 bg-[var(--asis-surface-header)] px-4 py-3 sm:px-6 w-full border-t border-border z-10">
+    <div className="flex flex-wrap items-start gap-3 bg-[var(--asis-surface-header)] px-4 py-3 sm:px-6 w-full border-t border-border z-10">
       <Clock className="h-5 w-5 shrink-0 text-muted-foreground mt-0.5" />
-      <div className="min-w-0 text-sm">
+      <div className="min-w-0 flex-1 text-sm">
         <p className="font-medium">{t.chat.windowExpiredTitle}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {t.chat.windowExpiredBody}
         </p>
       </div>
+      {conversation && (
+        <>
+          <Button
+            size="sm"
+            className="shrink-0 self-center"
+            onClick={() => setDialogOpen(true)}
+          >
+            <LayoutTemplate className="mr-1.5 h-4 w-4" />
+            {t.chat.sendTemplate}
+          </Button>
+          <SendTemplateDialog
+            conversation={conversation}
+            open={dialogOpen}
+            onClose={() => setDialogOpen(false)}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -212,7 +232,7 @@ export function ChatPanel({ conversationId }: Props) {
         {windowOpen ? (
           <MessageInput conversationId={conversationId} />
         ) : (
-          <WindowExpiredNotice />
+          <WindowExpiredNotice conversation={conversation} />
         )}
       </div>
 
