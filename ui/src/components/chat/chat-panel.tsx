@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMessageStore } from "@/stores/message.store";
 import { useEventStore } from "@/stores/event.store";
 import { useConversationStore } from "@/stores/conversation.store";
@@ -199,14 +199,29 @@ export function ChatPanel({ conversationId }: Props) {
     };
   }, [conversationId]);
 
+  // Al entrar a la conversación: salto instantáneo al final ANTES del paint
+  // (sin animación visible). El scroll suave queda solo para mensajes nuevos
+  // con el chat ya abierto.
+  const initialScrollDone = useRef(false);
+
   useEffect(() => {
+    initialScrollDone.current = false;
+  }, [conversationId]);
+
+  useLayoutEffect(() => {
+    if (chatItems.length === 0) return;
     const viewport = scrollAreaRef.current?.querySelector(
       "[data-slot=scroll-area-viewport]"
     ) as HTMLElement | null;
-    if (viewport) {
+    if (!viewport) return;
+
+    if (!initialScrollDone.current) {
+      viewport.scrollTop = viewport.scrollHeight;
+      initialScrollDone.current = true;
+    } else {
       viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
     }
-  }, [chatItems.length]);
+  }, [chatItems.length, conversationId]);
 
   // Con interactive-widget=resizes-content, abrir el teclado encoge el área de
   // mensajes: re-scrollear al final para no perder los últimos mensajes.
