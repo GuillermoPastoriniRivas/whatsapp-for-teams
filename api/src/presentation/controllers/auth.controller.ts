@@ -252,7 +252,6 @@ export class AuthController {
   @HttpCode(200)
   @ApiBearerAuth('JWT')
   @Throttle({ short: { ttl: 60000, limit: 5 } })
-  @UsePipes(new ZodValidationPipe(SetPasswordRequestSchema))
   @ApiOperation({
     summary: 'Set or change password',
     description:
@@ -270,7 +269,11 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Password set. Returns new JWT tokens.' })
   @ApiResponse({ status: 401, description: 'Current password is missing or incorrect' })
-  async setPassword(@CurrentAgent() agent: RequestAgent, @Body() body: SetPasswordRequestDto) {
+  async setPassword(
+    @CurrentAgent() agent: RequestAgent,
+    // Pipe solo en el body: @UsePipes a nivel método validaría también @CurrentAgent
+    @Body(new ZodValidationPipe(SetPasswordRequestSchema)) body: SetPasswordRequestDto,
+  ) {
     const result = await this.setPasswordUseCase.execute({ agentId: agent._id, ...body });
     if (!result.ok) throw new UnauthorizedException(result.error.message);
     return result.value;
