@@ -11,16 +11,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-const statuses = [
-  { value: "available", label: "Available", color: "bg-green-500" },
-  { value: "busy", label: "Busy", color: "bg-yellow-500" },
-  { value: "offline", label: "Offline", color: "bg-gray-400" },
-] as const;
+import { useTranslations } from "@/lib/i18n/use-translations";
 
 export function AgentStatusToggle() {
   const agent = useAuthStore((s) => s.agent);
   const [currentStatus, setCurrentStatus] = useState<string>("available");
+  const { t } = useTranslations();
+
+  const statuses = [
+    { value: "available", label: t.common.statusAvailable, color: "bg-green-500" },
+    { value: "busy", label: t.common.statusBusy, color: "bg-yellow-500" },
+    { value: "offline", label: t.common.statusOffline, color: "bg-gray-400" },
+  ] as const;
 
   if (!agent) return null;
 

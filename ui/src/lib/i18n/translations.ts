@@ -10,6 +10,9 @@ const translations = {
       billing: "Facturacion",
       templates: "Plantillas",
       campaigns: "Campanas",
+      more: "Más",
+      team: "Equipo y agentes IA",
+      phoneAdmin: "Números de WhatsApp",
     },
     login: {
       title: "Bienvenido de vuelta",
@@ -96,6 +99,9 @@ const translations = {
       noResults: "No se encontraron resultados",
       viewInbox: "Bandeja",
       viewCampaigns: "Campanas sin respuesta",
+      agentPrefix: "Agente",
+      resolvedLine: "Conversación resuelta",
+      newBadge: "NUEVA",
     },
     chat: {
       claim: "Tomar",
@@ -666,6 +672,9 @@ const translations = {
       demoCta: "Crea tu cuenta gratis",
       cancel: "Cancelar",
       back: "Volver",
+      statusAvailable: "Disponible",
+      statusBusy: "Ocupado",
+      statusOffline: "Desconectado",
     },
     pwa: {
       installTitle: "Instala asis.chat",
@@ -693,6 +702,9 @@ const translations = {
       billing: "Billing",
       templates: "Templates",
       campaigns: "Campaigns",
+      more: "More",
+      team: "Team & AI agents",
+      phoneAdmin: "WhatsApp numbers",
     },
     login: {
       title: "Welcome back",
@@ -812,6 +824,9 @@ const translations = {
       noResults: "No results found",
       viewInbox: "Inbox",
       viewCampaigns: "Unanswered campaigns",
+      agentPrefix: "Agent",
+      resolvedLine: "Conversation resolved",
+      newBadge: "NEW",
     },
     chat: {
       claim: "Claim",
@@ -1343,6 +1358,9 @@ const translations = {
       demoCta: "Create your free account",
       cancel: "Cancel",
       back: "Back",
+      statusAvailable: "Available",
+      statusBusy: "Busy",
+      statusOffline: "Offline",
     },
     pwa: {
       installTitle: "Install asis.chat",

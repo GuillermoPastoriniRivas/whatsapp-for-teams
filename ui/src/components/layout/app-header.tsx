@@ -11,10 +11,11 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-background px-4 h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)]">
-      <div className="flex items-center gap-2">
-        <AsisLogo size={32} className="text-primary" />
-        <span className="font-semibold hidden sm:inline">
-          asis<span className="text-primary">.chat</span> - {agent.name}
+      <div className="flex items-center gap-2 min-w-0">
+        <AsisLogo size={32} className="text-primary shrink-0" />
+        <span className="font-semibold truncate">
+          asis<span className="text-primary">.chat</span>
+          <span className="hidden sm:inline text-muted-foreground font-normal"> · {agent.name}</span>
         </span>
       </div>
       <AgentStatusToggle />
