@@ -11,11 +11,13 @@ interface ConversationState {
   page: number;
   pages: number;
   statusFilter: string;
+  view: "inbox" | "campaign";
   isLoading: boolean;
   unreadCounts: Record<string, number>;
   fetch: (status?: string, page?: number) => Promise<void>;
   setActive: (id: string | null) => void;
   setFilter: (status: string) => void;
+  setView: (view: "inbox" | "campaign") => void;
   updateConversation: (conv: Partial<Conversation> & { id: string }) => void;
   addConversation: (conv: Conversation) => void;
   incrementUnread: (convId: string) => void;
@@ -29,6 +31,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   page: 1,
   pages: 1,
   statusFilter: "",
+  view: "inbox",
   isLoading: false,
   unreadCounts: {},
 
@@ -38,6 +41,8 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       const filter = status ?? get().statusFilter;
       const params = new URLSearchParams({ page: String(page), limit: "30" });
       if (filter) params.set("status", filter);
+      // Default 'inbox' sends no param — server behavior stays untouched
+      if (get().view === "campaign") params.set("view", "campaign");
 
       const data = await api.get<PaginatedResponse<Conversation>>(
         `/conversations?${params}`
@@ -59,6 +64,11 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   setFilter: (status) => {
     set({ statusFilter: status });
     get().fetch(status);
+  },
+
+  setView: (view) => {
+    set({ view });
+    get().fetch();
   },
 
   updateConversation: (conv) => {

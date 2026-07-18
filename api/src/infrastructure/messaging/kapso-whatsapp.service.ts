@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SendMessageParams, SendMessageResult, TypingIndicatorParams } from '../../application/ports/messaging-api.port.js';
+import { classifyMetaError, MetaErrorBody } from './meta-api-error.js';
 
 @Injectable()
 export class KapsoWhatsAppService {
@@ -52,6 +53,12 @@ export class KapsoWhatsAppService {
       const image: Record<string, string> = { link: params.mediaUrl };
       if (params.body) image.caption = params.body;
       body.image = image;
+    } else if (params.type === 'template' && params.template) {
+      body.template = {
+        name: params.template.name,
+        language: { code: params.template.language },
+        ...(params.template.components?.length ? { components: params.template.components } : {}),
+      };
     }
 
     const response = await fetch(url, {
@@ -64,9 +71,16 @@ export class KapsoWhatsAppService {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      this.logger.error(`Kapso API error: ${response.status} ${error}`);
-      throw new Error(`Kapso API error: ${response.status}`);
+      const errorText = await response.text();
+      this.logger.error(`Kapso API error: ${response.status} ${errorText}`);
+      // Kapso proxies Meta responses verbatim, so Meta error codes apply
+      let errorBody: MetaErrorBody | null = null;
+      try {
+        errorBody = JSON.parse(errorText) as MetaErrorBody;
+      } catch {
+        // non-JSON error body — classify by HTTP status alone
+      }
+      throw classifyMetaError(response.status, errorBody);
     }
 
     const data = (await response.json()) as { messages: Array<{ id: string }> };

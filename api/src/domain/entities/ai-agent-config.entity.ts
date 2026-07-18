@@ -1,10 +1,33 @@
-import { AiProvider } from '../enums/ai-provider.enum.js';
+export type BusinessVertical = 'beauty' | 'food' | 'retail' | 'generic';
 
-export interface AiPersona {
-  role: string;
-  tone: string;
-  language: string;
-  instructions: string;
+export interface CatalogItem {
+  name: string;
+  price: string; // free text: "$8.000", "desde $5.000"
+  description: string;
+}
+
+export interface FaqEntry {
+  question: string;
+  answer: string;
+}
+
+export interface BusinessProfile {
+  vertical: BusinessVertical;
+  businessName: string;
+  description: string;
+  address: string;
+  paymentMethods: string;
+  catalog: CatalogItem[];
+  faqs: FaqEntry[];
+  extraNotes: string;
+}
+
+export interface BotBehavior {
+  language: string; // 'es', 'en', 'pt', ...
+  formality: 'informal' | 'formal';
+  useEmojis: boolean;
+  goal: string; // one-line conversation objective, optional
+  customInstructions: string; // advanced escape hatch, optional
 }
 
 export interface HandoffRules {
@@ -46,16 +69,11 @@ export class AiAgentConfig {
     public readonly id: string,
     public readonly agentId: string,
     public readonly tenantId: string,
-    public readonly provider: AiProvider,
-    public readonly model: string,
-    public readonly apiKey: string,
-    public readonly systemPrompt: string,
-    public readonly knowledgeBase: string,
-    public readonly persona: AiPersona,
+    public readonly businessProfile: BusinessProfile,
+    public readonly behavior: BotBehavior,
     public readonly handoffRules: HandoffRules,
     public readonly contextConfig: AiContextConfig,
     public readonly rateLimits: AiRateLimits,
-    public readonly goals: string,
     public readonly isActive: boolean,
     public readonly multiMessage: AiMultiMessageConfig,
     public readonly createdAt: Date,

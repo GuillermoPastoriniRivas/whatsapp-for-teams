@@ -33,12 +33,13 @@ import { BillingRecordModel, BillingRecordSchema } from './mongoose/schemas/bill
 import { MongoSubscriptionRepository } from './mongoose/repositories/mongo-subscription.repository.js';
 import { MongoBillingRecordRepository } from './mongoose/repositories/mongo-billing-record.repository.js';
 import { PasswordResetTokenModel, PasswordResetTokenSchema } from './mongoose/schemas/password-reset-token.schema.js';
-import { OrderModel, OrderSchema } from './mongoose/schemas/order.schema.js';
 import { MongoPasswordResetTokenRepository } from './mongoose/repositories/mongo-password-reset-token.repository.js';
-import { MongoOrderRepository } from './mongoose/repositories/mongo-order.repository.js';
-import { PluginStateModel, PluginStateSchema } from './mongoose/schemas/plugin-state.schema.js';
-import { MongoPluginStateRepository } from './mongoose/repositories/mongo-plugin-state.repository.js';
-import { EncryptionService } from '../ai/encryption.service.js';
+import { MessageTemplateModel, MessageTemplateSchema } from './mongoose/schemas/message-template.schema.js';
+import { CampaignModel, CampaignSchema } from './mongoose/schemas/campaign.schema.js';
+import { CampaignRecipientModel, CampaignRecipientSchema } from './mongoose/schemas/campaign-recipient.schema.js';
+import { MongoMessageTemplateRepository } from './mongoose/repositories/mongo-message-template.repository.js';
+import { MongoCampaignRepository } from './mongoose/repositories/mongo-campaign.repository.js';
+import { MongoCampaignRecipientRepository } from './mongoose/repositories/mongo-campaign-recipient.repository.js';
 
 const schemas = MongooseModule.forFeature([
   { name: TenantModel.name, schema: TenantSchema },
@@ -58,8 +59,9 @@ const schemas = MongooseModule.forFeature([
   { name: SubscriptionModel.name, schema: SubscriptionSchema },
   { name: BillingRecordModel.name, schema: BillingRecordSchema },
   { name: PasswordResetTokenModel.name, schema: PasswordResetTokenSchema },
-  { name: OrderModel.name, schema: OrderSchema },
-  { name: PluginStateModel.name, schema: PluginStateSchema },
+  { name: MessageTemplateModel.name, schema: MessageTemplateSchema },
+  { name: CampaignModel.name, schema: CampaignSchema },
+  { name: CampaignRecipientModel.name, schema: CampaignRecipientSchema },
 ]);
 
 const repositories = [
@@ -80,13 +82,14 @@ const repositories = [
   { provide: 'SubscriptionRepository', useClass: MongoSubscriptionRepository },
   { provide: 'BillingRecordRepository', useClass: MongoBillingRecordRepository },
   { provide: 'PasswordResetTokenRepository', useClass: MongoPasswordResetTokenRepository },
-  { provide: 'OrderRepository', useClass: MongoOrderRepository },
-  { provide: 'PluginStateRepository', useClass: MongoPluginStateRepository },
+  { provide: 'MessageTemplateRepository', useClass: MongoMessageTemplateRepository },
+  { provide: 'CampaignRepository', useClass: MongoCampaignRepository },
+  { provide: 'CampaignRecipientRepository', useClass: MongoCampaignRecipientRepository },
 ];
 
 @Module({
   imports: [schemas],
-  providers: [...repositories, EncryptionService],
-  exports: [...repositories, EncryptionService],
+  providers: [...repositories],
+  exports: [...repositories],
 })
 export class PersistenceModule {}

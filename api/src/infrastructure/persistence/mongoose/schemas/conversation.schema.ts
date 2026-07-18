@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { ConversationStatus } from '../../../../domain/enums/conversation-status.enum.js';
+import { ConversationOrigin } from '../../../../domain/enums/conversation-origin.enum.js';
 
 export type ConversationDocument = HydratedDocument<ConversationModel>;
 
@@ -39,6 +40,15 @@ export class ConversationModel {
   @Prop({ type: Date, default: null })
   pendingAiSince!: Date | null;
 
+  @Prop({ required: true, enum: ConversationOrigin, default: ConversationOrigin.INBOUND })
+  origin: string;
+
+  @Prop({ required: true, default: true })
+  hasReplied: boolean;
+
+  @Prop({ type: Date, default: null })
+  repliedAt: Date | null;
+
   createdAt: Date;
 }
 
@@ -47,3 +57,4 @@ export const ConversationSchema = SchemaFactory.createForClass(ConversationModel
 ConversationSchema.index({ tenantId: 1, status: 1 });
 ConversationSchema.index({ contactId: 1, phoneNumberId: 1 }, { unique: true });
 ConversationSchema.index({ contactId: 1, phoneNumberId: 1, status: 1 });
+ConversationSchema.index({ tenantId: 1, origin: 1, hasReplied: 1, status: 1 });

@@ -12,11 +12,11 @@ import { CreateAiAgentPanel } from "./create-ai-agent-panel";
 import { AiAgentDetailPanel } from "./ai-agent-detail-panel";
 import type { AiAgentWithConfig } from "@/types";
 
-const providerLabels: Record<string, string> = {
-  openai: "OpenAI",
-  anthropic: "Anthropic",
-  gemini: "Gemini",
-  openrouter: "OpenRouter",
+const verticalLabels: Record<string, string> = {
+  beauty: "Estética y belleza",
+  food: "Gastronomía",
+  retail: "Tienda",
+  generic: "Negocio",
 };
 
 const statusColors: Record<string, string> = {
@@ -151,7 +151,7 @@ export function AiAgentList({ onPanelChange, onPanelClose }: Props) {
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">
-                    {providerLabels[agent.config.provider] || agent.config.provider} · {agent.config.model}
+                    {verticalLabels[agent.config.businessProfile?.vertical] || "Negocio"}{agent.config.businessProfile?.businessName ? ` · ${agent.config.businessProfile.businessName}` : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

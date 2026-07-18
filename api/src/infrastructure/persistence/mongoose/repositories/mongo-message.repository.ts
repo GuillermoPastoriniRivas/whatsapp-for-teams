@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { MessageRepository } from '../../../../domain/repositories/message.repository.js';
+import { MessageRepository, UpsertMessageInput } from '../../../../domain/repositories/message.repository.js';
 import { Message } from '../../../../domain/entities/message.entity.js';
 import { MessageWaStatus } from '../../../../domain/enums/message-wa-status.enum.js';
 import { PaginatedResult } from '../../../../domain/repositories/conversation.repository.js';
@@ -14,7 +14,7 @@ export class MongoMessageRepository implements MessageRepository {
     @InjectModel(MessageModel.name) private readonly model: Model<MessageDocument>,
   ) {}
 
-  async upsertByWaMessageId(message: Omit<Message, 'id'>): Promise<Message> {
+  async upsertByWaMessageId(message: UpsertMessageInput): Promise<Message> {
     const doc = await this.model.findOneAndUpdate(
       { waMessageId: message.waMessageId },
       {
@@ -29,6 +29,7 @@ export class MongoMessageRepository implements MessageRepository {
           timestamp: message.timestamp,
           senderAgentId: message.senderAgentId,
           senderAgentName: message.senderAgentName,
+          campaignId: message.campaignId ? new Types.ObjectId(message.campaignId) : null,
         },
       },
       { upsert: true, returnDocument: 'after' },
@@ -58,10 +59,19 @@ export class MongoMessageRepository implements MessageRepository {
     };
   }
 
-  async updateStatusByWaMessageId(waMessageId: string, waStatus: MessageWaStatus): Promise<Message | null> {
+  async updateStatusByWaMessageId(
+    waMessageId: string,
+    waStatus: MessageWaStatus,
+    errorInfo?: { code: string; message: string },
+  ): Promise<Message | null> {
     const doc = await this.model.findOneAndUpdate(
       { waMessageId },
-      { $set: { waStatus } },
+      {
+        $set: {
+          waStatus,
+          ...(errorInfo ? { waErrorCode: errorInfo.code, waErrorMessage: errorInfo.message } : {}),
+        },
+      },
       { returnDocument: 'after' },
     );
     return doc ? MessageMapper.toDomain(doc) : null;

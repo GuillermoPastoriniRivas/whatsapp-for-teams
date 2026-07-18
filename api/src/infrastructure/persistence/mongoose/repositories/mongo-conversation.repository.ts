@@ -9,6 +9,7 @@ import {
 } from '../../../../domain/repositories/conversation.repository.js';
 import { Conversation } from '../../../../domain/entities/conversation.entity.js';
 import { ConversationStatus } from '../../../../domain/enums/conversation-status.enum.js';
+import { ConversationOrigin } from '../../../../domain/enums/conversation-origin.enum.js';
 import { ConversationModel, ConversationDocument } from '../schemas/conversation.schema.js';
 import { ConversationMapper } from '../mappers/conversation.mapper.js';
 
@@ -27,6 +28,9 @@ export class MongoConversationRepository implements ConversationRepository {
       status: data.status,
       lastMessageAt: data.lastMessageAt,
       lastInboundAt: data.lastInboundAt,
+      origin: data.origin,
+      hasReplied: data.hasReplied,
+      repliedAt: data.repliedAt,
     });
     return ConversationMapper.toDomain(doc);
   }
@@ -48,6 +52,9 @@ export class MongoConversationRepository implements ConversationRepository {
           status: data.status,
           lastMessageAt: data.lastMessageAt,
           lastInboundAt: data.lastInboundAt,
+          origin: data.origin,
+          hasReplied: data.hasReplied,
+          repliedAt: data.repliedAt,
         },
       },
       { upsert: true, returnDocument: 'after', includeResultMetadata: true },
@@ -88,6 +95,18 @@ export class MongoConversationRepository implements ConversationRepository {
     if (filters.status) query.status = filters.status;
     if (filters.agentId) query.agentId = new Types.ObjectId(filters.agentId);
     if (filters.phoneNumberId) query.phoneNumberId = new Types.ObjectId(filters.phoneNumberId);
+
+    // 'inbox' (default) hides campaign conversations the contact never replied to;
+    // 'campaign' shows only those; 'all' applies no origin filter.
+    // Docs created before this field existed have no `origin`, so they never match
+    // { origin: 'campaign' } and stay visible in the inbox without a backfill.
+    const view = filters.view ?? 'inbox';
+    if (view === 'inbox') {
+      query.$nor = [{ origin: ConversationOrigin.CAMPAIGN, hasReplied: false }];
+    } else if (view === 'campaign') {
+      query.origin = ConversationOrigin.CAMPAIGN;
+      query.hasReplied = false;
+    }
 
     const [docs, total] = await Promise.all([
       this.model

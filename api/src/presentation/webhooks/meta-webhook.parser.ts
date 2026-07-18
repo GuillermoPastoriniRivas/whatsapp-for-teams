@@ -3,11 +3,16 @@
 
 import type { InboundMessageInput } from '../../application/dtos/webhook/inbound-message-input.dto.js';
 import type { StatusUpdateInput } from '../../application/dtos/webhook/status-update-input.dto.js';
+import type { TemplateEventInput } from '../../application/dtos/webhook/template-event-input.dto.js';
 import type {
   MetaWebhookPayload,
   MetaWebhookMessage,
   MetaWebhookContact,
   MetaWebhookStatus,
+  MetaTemplateQualityValue,
+  MetaTemplateStatusValue,
+  MetaTemplateCategoryValue,
+  ParsedTemplateEvent,
 } from './meta-webhook.types.js';
 
 // ── Intermediate type after flattening ───────────────────────────
@@ -42,15 +47,33 @@ const STATUS_MAP: Record<string, string> = {
 
 // ── 1. Flatten the nested payload ────────────────────────────────
 
+// WABA-level webhook fields carrying template lifecycle events.
+const TEMPLATE_EVENT_FIELDS = new Set([
+  'message_template_status_update',
+  'message_template_quality_update',
+  'template_category_update',
+]);
+
 export function parseMetaWebhook(payload: MetaWebhookPayload): {
   messages: ParsedMetaMessage[];
   statuses: MetaWebhookStatus[];
+  templateEvents: ParsedTemplateEvent[];
 } {
   const messages: ParsedMetaMessage[] = [];
   const statuses: MetaWebhookStatus[] = [];
+  const templateEvents: ParsedTemplateEvent[] = [];
 
   for (const entry of payload.entry ?? []) {
     for (const change of entry.changes ?? []) {
+      if (TEMPLATE_EVENT_FIELDS.has(change.field)) {
+        templateEvents.push({
+          wabaId: entry.id,
+          field: change.field,
+          value: change.value as unknown as ParsedTemplateEvent['value'],
+        });
+        continue;
+      }
+
       if (change.field !== 'messages') continue;
 
       const { value } = change;
@@ -68,7 +91,7 @@ export function parseMetaWebhook(payload: MetaWebhookPayload): {
     }
   }
 
-  return { messages, statuses };
+  return { messages, statuses, templateEvents };
 }
 
 // ── 2. Map a single Meta message → InboundMessageInput ───────────
@@ -103,7 +126,40 @@ export function mapMetaStatusToUpdate(status: MetaWebhookStatus): StatusUpdateIn
     waMessageId: status.id,
     status: STATUS_MAP[status.status] ?? 'sent',
     timestamp: new Date(parseInt(status.timestamp, 10) * 1000),
+    errors: status.errors?.map((e) => ({ code: e.code, title: e.title })),
   };
+}
+
+// ── 4. Map a WABA-level template event → TemplateEventInput ──────
+
+export function mapTemplateEventToInput(event: ParsedTemplateEvent): TemplateEventInput {
+  const base = event.value as {
+    message_template_id?: number | string;
+    message_template_name?: string;
+    message_template_language?: string;
+  };
+
+  const input: TemplateEventInput = {
+    wabaId: event.wabaId,
+    field: event.field,
+    metaTemplateId: base.message_template_id != null ? String(base.message_template_id) : null,
+    name: base.message_template_name ?? '',
+    language: base.message_template_language ?? '',
+  };
+
+  if (event.field === 'message_template_status_update') {
+    const value = event.value as MetaTemplateStatusValue;
+    input.event = value.event;
+    input.reason = value.reason ?? null;
+  } else if (event.field === 'message_template_quality_update') {
+    const value = event.value as MetaTemplateQualityValue;
+    input.newQualityScore = value.new_quality_score;
+  } else if (event.field === 'template_category_update') {
+    const value = event.value as MetaTemplateCategoryValue;
+    input.newCategory = value.new_category;
+  }
+
+  return input;
 }
 
 // ── Internal helpers ─────────────────────────────────────────────

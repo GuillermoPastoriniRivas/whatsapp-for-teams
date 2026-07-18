@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { MessagingProvider } from '../../../../domain/enums/messaging-provider.enum.js';
-import { PhoneNumberPlugin } from '../../../../domain/enums/phone-number-plugin.enum.js';
 import { PhoneNumberStatus } from '../../../../domain/enums/phone-number-status.enum.js';
 
 export type PhoneNumberDocument = HydratedDocument<PhoneNumberModel>;
@@ -34,9 +33,6 @@ export class PhoneNumberModel {
 
   @Prop({ required: true, enum: PhoneNumberStatus, default: PhoneNumberStatus.ACTIVE })
   status: string;
-
-  @Prop({ type: [String], enum: Object.values(PhoneNumberPlugin), default: [] })
-  plugins: string[];
 
   createdAt: Date;
 }

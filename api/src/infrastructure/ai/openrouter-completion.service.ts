@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import type {
-  AiCompletionParams,
+  ResolvedAiCompletionParams,
   AiCompletionResult,
   ChatMessage,
   ToolDefinition,
@@ -14,7 +14,7 @@ import type {
 export class OpenRouterCompletionService {
   private readonly logger = new Logger(OpenRouterCompletionService.name);
 
-  async complete(params: AiCompletionParams): Promise<AiCompletionResult> {
+  async complete(params: ResolvedAiCompletionParams): Promise<AiCompletionResult> {
     const url = 'https://openrouter.ai/api/v1/chat/completions';
 
     const messages: any[] = [

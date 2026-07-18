@@ -6,14 +6,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { DemoBanner } from "@/components/demo-banner";
-import { usePluginStore } from "@/stores/plugin.store";
 import { useBillingStore } from "@/stores/billing.store";
-
-function PluginLoader() {
-  const load = usePluginStore((s) => s.load);
-  useEffect(() => { load(); }, [load]);
-  return null;
-}
 
 function BillingLoader() {
   const fetchSubscription = useBillingStore((s) => s.fetchSubscription);
@@ -24,7 +17,6 @@ function BillingLoader() {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <PluginLoader />
       <BillingLoader />
       <div className="flex flex-col h-screen w-full overflow-hidden bg-background font-sans">
         <DemoBanner />

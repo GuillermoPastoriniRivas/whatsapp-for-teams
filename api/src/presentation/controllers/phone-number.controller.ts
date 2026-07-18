@@ -3,7 +3,6 @@ import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiBearerAuth } 
 import { RegisterPhoneNumberUseCase } from '../../application/use-cases/phone-number/register-phone-number.use-case.js';
 import { ListPhoneNumbersUseCase } from '../../application/use-cases/phone-number/list-phone-numbers.use-case.js';
 import { UpdatePhoneNumberUseCase } from '../../application/use-cases/phone-number/update-phone-number.use-case.js';
-import { GetActivePluginsUseCase } from '../../application/use-cases/phone-number/get-active-plugins.use-case.js';
 import { Roles } from '../decorators/roles.decorator.js';
 import { DemoRestricted } from '../guards/demo.guard.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
@@ -24,7 +23,6 @@ export class PhoneNumberController {
     @Inject('RegisterPhoneNumberUseCase') private readonly registerPhone: RegisterPhoneNumberUseCase,
     @Inject('ListPhoneNumbersUseCase') private readonly listPhones: ListPhoneNumbersUseCase,
     @Inject('UpdatePhoneNumberUseCase') private readonly updatePhone: UpdatePhoneNumberUseCase,
-    @Inject('GetActivePluginsUseCase') private readonly getActivePlugins: GetActivePluginsUseCase,
   ) {}
 
   @Post()
@@ -54,13 +52,6 @@ export class PhoneNumberController {
     const result = await this.registerPhone.execute({ ...body, tenantId: agent.tenantId });
     if (!result.ok) throw new NotFoundException('Registration failed');
     return result.value;
-  }
-
-  @Get('active-plugins')
-  @ApiOperation({ summary: 'Get active plugins', description: 'Get all active plugins across tenant phone numbers' })
-  @ApiResponse({ status: 200, description: 'List of active plugin names' })
-  async activePlugins(@CurrentAgent() agent: RequestAgent) {
-    return { plugins: await this.getActivePlugins.execute(agent.tenantId) };
   }
 
   @Get()

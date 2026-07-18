@@ -1,6 +1,5 @@
 import { PhoneNumber } from '../../../../domain/entities/phone-number.entity.js';
 import { MessagingProvider } from '../../../../domain/enums/messaging-provider.enum.js';
-import { PhoneNumberPlugin } from '../../../../domain/enums/phone-number-plugin.enum.js';
 import { PhoneNumberStatus } from '../../../../domain/enums/phone-number-status.enum.js';
 import { PhoneNumberDocument } from '../schemas/phone-number.schema.js';
 
@@ -17,7 +16,6 @@ export class PhoneNumberMapper {
       doc.label,
       doc.webhookSecret,
       doc.status as PhoneNumberStatus,
-      (doc.plugins ?? []) as PhoneNumberPlugin[],
       doc.createdAt,
     );
   }

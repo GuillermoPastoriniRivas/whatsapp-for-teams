@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import type {
-  AiCompletionParams,
+  ResolvedAiCompletionParams,
   AiCompletionResult,
   ChatMessage,
   ToolDefinition,
@@ -11,7 +11,7 @@ import type {
 export class GeminiCompletionService {
   private readonly logger = new Logger(GeminiCompletionService.name);
 
-  async complete(params: AiCompletionParams): Promise<AiCompletionResult> {
+  async complete(params: ResolvedAiCompletionParams): Promise<AiCompletionResult> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${params.model}:generateContent?key=${params.apiKey}`;
 
     const contents = params.messages.map((m) => this.mapMessage(m));

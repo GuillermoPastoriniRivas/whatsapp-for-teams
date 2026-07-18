@@ -14,11 +14,11 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  ShoppingBag,
+  LayoutTemplate,
+  Megaphone,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
-import { usePluginStore } from "@/stores/plugin.store";
 import { useBillingStore } from "@/stores/billing.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
@@ -39,7 +39,6 @@ export function AppSidebar({ className }: { className?: string }) {
   const totalUnread = useConversationStore((s) =>
     Object.values(s.unreadCounts).reduce((sum, n) => sum + n, 0)
   );
-  const hasOrders = usePluginStore((s) => s.has("orders"));
   const billingPlan = useBillingStore((s) => s.plan);
   const { t } = useTranslations();
   const showWhatsAppSupport = ["pro", "business", "agencies"].includes(billingPlan);
@@ -62,9 +61,8 @@ export function AppSidebar({ className }: { className?: string }) {
   const topTabs = [
     { href: "/conversations", icon: MessageSquare, label: t.nav.chats },
     { href: "/contacts", icon: Contact, label: t.nav.contacts },
-    ...(hasOrders
-      ? [{ href: "/orders", icon: ShoppingBag, label: t.nav.orders }]
-      : []),
+    { href: "/templates", icon: LayoutTemplate, label: t.nav.templates },
+    { href: "/campaigns", icon: Megaphone, label: t.nav.campaigns },
     ...(agent?.role === "admin"
       ? [
           { href: "/agents", icon: Users, label: t.nav.agents },

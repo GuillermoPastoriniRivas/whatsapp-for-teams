@@ -30,12 +30,19 @@ export class MongoPhoneNumberRepository implements PhoneNumberRepository {
     return doc ? PhoneNumberMapper.toDomain(doc) : null;
   }
 
+  async findByWabaId(wabaId: string): Promise<PhoneNumber | null> {
+    // Phones in the same WABA share the Meta App Secret (webhookSecret),
+    // so any active one works for WABA-level webhook signature validation.
+    const doc = await this.model.findOne({ wabaId, status: 'active' });
+    return doc ? PhoneNumberMapper.toDomain(doc) : null;
+  }
+
   async findByTenantId(tenantId: string): Promise<PhoneNumber[]> {
     const docs = await this.model.find({ tenantId: new Types.ObjectId(tenantId) });
     return docs.map(PhoneNumberMapper.toDomain);
   }
 
-  async update(id: string, data: Partial<Pick<PhoneNumber, 'label' | 'status' | 'webhookSecret' | 'providerConfig' | 'wabaId' | 'phoneNumberId' | 'displayPhone' | 'plugins'>>): Promise<PhoneNumber | null> {
+  async update(id: string, data: Partial<Pick<PhoneNumber, 'label' | 'status' | 'webhookSecret' | 'providerConfig' | 'wabaId' | 'phoneNumberId' | 'displayPhone'>>): Promise<PhoneNumber | null> {
     const doc = await this.model.findByIdAndUpdate(id, { $set: data }, { returnDocument: 'after' });
     return doc ? PhoneNumberMapper.toDomain(doc) : null;
   }

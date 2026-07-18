@@ -124,3 +124,69 @@ export class PaymentProviderError extends DomainError {
     super('PAYMENT_PROVIDER_ERROR', detail ?? 'Payment provider returned an error.');
   }
 }
+
+export class TemplateNotFoundError extends DomainError {
+  constructor() {
+    super('TEMPLATE_NOT_FOUND', 'Message template not found.');
+  }
+}
+
+export class TemplateNotApprovedError extends DomainError {
+  constructor() {
+    super('TEMPLATE_NOT_APPROVED', 'The message template is not approved by Meta.');
+  }
+}
+
+export class TemplateNotEditableError extends DomainError {
+  constructor(status: string) {
+    super('TEMPLATE_NOT_EDITABLE', `Templates in status '${status}' cannot be edited.`);
+  }
+}
+
+export class TemplateInUseError extends DomainError {
+  constructor() {
+    super('TEMPLATE_IN_USE', 'The template is used by an active campaign. Pause or cancel it first.');
+  }
+}
+
+export class TemplateProviderError extends DomainError {
+  constructor(detail?: string) {
+    super('TEMPLATE_PROVIDER_ERROR', detail ?? 'The messaging provider rejected the template operation.');
+  }
+}
+
+export class WabaNotConfiguredError extends DomainError {
+  constructor() {
+    super('WABA_NOT_CONFIGURED', 'The phone number has no WhatsApp Business Account (wabaId) configured.');
+  }
+}
+
+export class CampaignNotFoundError extends DomainError {
+  constructor() {
+    super('CAMPAIGN_NOT_FOUND', 'Campaign not found.');
+  }
+}
+
+export class InvalidCampaignStateError extends DomainError {
+  constructor(detail?: string) {
+    super('INVALID_CAMPAIGN_STATE', detail ?? 'The campaign is not in a valid state for this operation.');
+  }
+}
+
+export class CampaignAlreadyActiveOnPhoneError extends DomainError {
+  constructor() {
+    super('CAMPAIGN_ALREADY_ACTIVE_ON_PHONE', 'Another campaign is already active on this phone number.');
+  }
+}
+
+export class InvalidVariableMappingError extends DomainError {
+  constructor(detail: string) {
+    super('INVALID_VARIABLE_MAPPING', detail);
+  }
+}
+
+export class EmptyAudienceError extends DomainError {
+  constructor() {
+    super('EMPTY_AUDIENCE', 'The campaign audience resolved to zero valid recipients.');
+  }
+}

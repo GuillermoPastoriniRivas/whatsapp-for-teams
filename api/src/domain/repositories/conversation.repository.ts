@@ -1,11 +1,14 @@
 import { Conversation } from '../entities/conversation.entity.js';
 import { ConversationStatus } from '../enums/conversation-status.enum.js';
 
+export type ConversationView = 'inbox' | 'campaign' | 'all';
+
 export interface ConversationFilters {
   tenantId: string;
   status?: ConversationStatus;
   agentId?: string;
   phoneNumberId?: string;
+  view?: ConversationView;
   page: number;
   limit: number;
 }

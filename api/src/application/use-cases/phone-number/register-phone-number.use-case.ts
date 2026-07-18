@@ -18,7 +18,6 @@ export class RegisterPhoneNumberUseCase {
       label: input.label,
       webhookSecret: input.webhookSecret,
       status: PhoneNumberStatus.ACTIVE,
-      plugins: [],
     });
 
     return ok(phone);

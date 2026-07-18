@@ -5,13 +5,11 @@ import { AiAgentConfigRepository } from '../../../../domain/repositories/ai-agen
 import { AiAgentConfig } from '../../../../domain/entities/ai-agent-config.entity.js';
 import { AiAgentConfigModel, AiAgentConfigDocument } from '../schemas/ai-agent-config.schema.js';
 import { AiAgentConfigMapper } from '../mappers/ai-agent-config.mapper.js';
-import { EncryptionService } from '../../../ai/encryption.service.js';
 
 @Injectable()
 export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
   constructor(
     @InjectModel(AiAgentConfigModel.name) private readonly model: Model<AiAgentConfigDocument>,
-    private readonly encryption: EncryptionService,
   ) {}
 
   async create(data: Omit<AiAgentConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<AiAgentConfig> {
@@ -19,46 +17,18 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
       ...data,
       agentId: new Types.ObjectId(data.agentId),
       tenantId: new Types.ObjectId(data.tenantId),
-      apiKey: this.encryption.encrypt(data.apiKey),
     });
-    const config = AiAgentConfigMapper.toDomain(doc);
-    return new AiAgentConfig(
-      config.id, config.agentId, config.tenantId, config.provider, config.model,
-      data.apiKey, // Return unencrypted
-      config.systemPrompt, config.knowledgeBase, config.persona,
-      config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
-      config.isActive, config.multiMessage, config.createdAt, config.updatedAt,
-      config.timezone, config.businessHours,
-    );
+    return AiAgentConfigMapper.toDomain(doc);
   }
 
   async findByAgentId(agentId: string): Promise<AiAgentConfig | null> {
     const doc = await this.model.findOne({ agentId: new Types.ObjectId(agentId) });
-    if (!doc) return null;
-    const config = AiAgentConfigMapper.toDomain(doc);
-    return new AiAgentConfig(
-      config.id, config.agentId, config.tenantId, config.provider, config.model,
-      this.encryption.decrypt(config.apiKey),
-      config.systemPrompt, config.knowledgeBase, config.persona,
-      config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
-      config.isActive, config.multiMessage, config.createdAt, config.updatedAt,
-      config.timezone, config.businessHours,
-    );
+    return doc ? AiAgentConfigMapper.toDomain(doc) : null;
   }
 
   async findByTenantId(tenantId: string): Promise<AiAgentConfig[]> {
     const docs = await this.model.find({ tenantId: new Types.ObjectId(tenantId) });
-    return docs.map((doc) => {
-      const config = AiAgentConfigMapper.toDomain(doc);
-      return new AiAgentConfig(
-        config.id, config.agentId, config.tenantId, config.provider, config.model,
-        this.encryption.decrypt(config.apiKey),
-        config.systemPrompt, config.knowledgeBase, config.persona,
-        config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
-        config.isActive, config.multiMessage, config.createdAt, config.updatedAt,
-        config.timezone, config.businessHours,
-      );
-    });
+    return docs.map((doc) => AiAgentConfigMapper.toDomain(doc));
   }
 
   async update(agentId: string, data: Partial<AiAgentConfig>): Promise<AiAgentConfig | null> {
@@ -69,26 +39,12 @@ export class MongoAiAgentConfigRepository implements AiAgentConfigRepository {
     delete updateData.createdAt;
     delete updateData.updatedAt;
 
-    if (updateData.apiKey) {
-      updateData.apiKey = this.encryption.encrypt(updateData.apiKey);
-    }
-
     const doc = await this.model.findOneAndUpdate(
       { agentId: new Types.ObjectId(agentId) },
       { $set: updateData },
       { returnDocument: 'after' },
     );
-    if (!doc) return null;
-
-    const config = AiAgentConfigMapper.toDomain(doc);
-    return new AiAgentConfig(
-      config.id, config.agentId, config.tenantId, config.provider, config.model,
-      this.encryption.decrypt(config.apiKey),
-      config.systemPrompt, config.knowledgeBase, config.persona,
-      config.handoffRules, config.contextConfig, config.rateLimits, config.goals,
-      config.isActive, config.multiMessage, config.createdAt, config.updatedAt,
-      config.timezone, config.businessHours,
-    );
+    return doc ? AiAgentConfigMapper.toDomain(doc) : null;
   }
 
   async delete(agentId: string): Promise<void> {

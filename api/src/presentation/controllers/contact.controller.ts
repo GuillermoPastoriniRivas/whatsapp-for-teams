@@ -1,15 +1,25 @@
 import {
-  Controller, Get, Patch, Body, Param, Query, Inject, NotFoundException,
+  Controller, Get, Post, Patch, Body, Param, Query, Inject, NotFoundException,
+  BadRequestException, UseInterceptors, UploadedFile, HttpCode,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { parse } from 'csv-parse/sync';
 import { UpdateContactUseCase } from '../../application/use-cases/contact/update-contact.use-case.js';
 import { ListContactsUseCase } from '../../application/use-cases/contact/list-contacts.use-case.js';
+import { ImportContactsUseCase } from '../../application/use-cases/contact/import-contacts.use-case.js';
+import type { ImportContactRow } from '../../application/use-cases/contact/import-contacts.use-case.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
+import { Roles } from '../decorators/roles.decorator.js';
+import { DemoRestricted } from '../guards/demo.guard.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import { UpdateContactRequestSchema } from '../request-dtos/update-contact-request.dto.js';
 import type { UpdateContactRequestDto } from '../request-dtos/update-contact-request.dto.js';
 import type { ContactRepository } from '../../domain/repositories/contact.repository.js';
+
+const KNOWN_COLUMNS = new Set(['phone', 'name', 'email', 'company']);
+const MAX_CSV_BYTES = 2 * 1024 * 1024;
 
 @ApiTags('Contacts')
 @ApiBearerAuth('JWT')
@@ -18,8 +28,59 @@ export class ContactController {
   constructor(
     @Inject('UpdateContactUseCase') private readonly updateContact: UpdateContactUseCase,
     @Inject('ListContactsUseCase') private readonly listContacts: ListContactsUseCase,
+    @Inject('ImportContactsUseCase') private readonly importContacts: ImportContactsUseCase,
     @Inject('ContactRepository') private readonly contactRepo: ContactRepository,
   ) {}
+
+  @Post('import')
+  @Roles('admin')
+  @DemoRestricted()
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_CSV_BYTES } }))
+  @ApiOperation({
+    summary: 'Import contacts from CSV',
+    description:
+      'Bulk-import contacts (admin only). Required column: phone. Optional: name, email, company. Any other column is stored as a custom field. Max 10k rows / 2MB.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: 'Import summary: { imported, updated, skipped[] }' })
+  @ApiResponse({ status: 400, description: 'Missing file, invalid CSV, or missing phone column' })
+  async import(@UploadedFile() file: { buffer: Buffer } | undefined, @CurrentAgent() agent: RequestAgent) {
+    if (!file?.buffer) throw new BadRequestException("CSV file is required (multipart field 'file')");
+
+    let records: Record<string, string>[];
+    try {
+      records = parse(file.buffer, {
+        columns: (header: string[]) => header.map((h) => h.trim().toLowerCase()),
+        skip_empty_lines: true,
+        trim: true,
+        bom: true,
+      });
+    } catch (error: any) {
+      throw new BadRequestException(`Invalid CSV: ${error.message}`);
+    }
+
+    if (records.length === 0) throw new BadRequestException('The CSV file has no data rows');
+    if (!('phone' in records[0])) throw new BadRequestException("The CSV must include a 'phone' column");
+
+    const rows: ImportContactRow[] = records.map((record) => {
+      const customFields: Record<string, string> = {};
+      for (const [key, value] of Object.entries(record)) {
+        if (!KNOWN_COLUMNS.has(key) && value) customFields[key] = value;
+      }
+      return {
+        phone: record.phone,
+        name: record.name,
+        email: record.email,
+        company: record.company,
+        customFields,
+      };
+    });
+
+    const result = await this.importContacts.execute({ tenantId: agent.tenantId, rows });
+    if (!result.ok) throw new BadRequestException(result.error.message);
+    return result.value;
+  }
 
   @Get()
   @ApiOperation({ summary: 'List contacts', description: 'List all contacts for the tenant with optional search' })

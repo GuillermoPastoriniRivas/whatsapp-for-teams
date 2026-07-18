@@ -1,6 +1,15 @@
 import { Contact } from '../entities/contact.entity.js';
 import { PaginatedResult } from './conversation.repository.js';
 
+export interface BulkUpsertContactRow {
+  waId: string;
+  name: string;
+  phone: string;
+  email?: string | null;
+  company?: string | null;
+  customFields?: Record<string, string>;
+}
+
 export interface ContactRepository {
   upsertByWaId(
     tenantId: string,
@@ -13,4 +22,6 @@ export interface ContactRepository {
     id: string,
     data: { name?: string; email?: string | null; company?: string | null; notes?: string | null; customFields?: Record<string, string> },
   ): Promise<Contact | null>;
+  bulkUpsertByWaId(tenantId: string, rows: BulkUpsertContactRow[]): Promise<{ inserted: number; updated: number }>;
+  findByIds(ids: string[]): Promise<Contact[]>;
 }

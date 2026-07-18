@@ -6,7 +6,6 @@ import { PhoneNumberRepository } from '../../../domain/repositories/phone-number
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-config.repository.js';
 import { AiUsageRepository } from '../../../domain/repositories/ai-usage.repository.js';
-import { OrderRepository } from '../../../domain/repositories/order.repository.js';
 import { LabelRepository } from '../../../domain/repositories/label.repository.js';
 import { ConversationLabelRepository } from '../../../domain/repositories/conversation-label.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
@@ -17,17 +16,14 @@ import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { HandoffToHumanUseCase } from './handoff-to-human.use-case.js';
 import { HandoffDetectionDomainService } from '../../../domain/services/handoff-detection.domain-service.js';
 import { ContactDirectiveHandler } from './handlers/contact-directive.handler.js';
-import { OrderDirectiveHandler } from './handlers/order-directive.handler.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
-import { PhoneNumberPlugin } from '../../../domain/enums/phone-number-plugin.enum.js';
 import { buildSystemPrompt } from './prompts/system-prompt.builder.js';
 import { computeBusinessStatus } from './prompts/business-hours.util.js';
 import { ToolRegistry } from './tools/tool-registry.js';
 import type { ToolContext } from './tools/tool-registry.js';
-import { createOrderTools } from './tools/order.tools.js';
 import { createContactTools } from './tools/contact.tools.js';
 import { createConversationTools } from './tools/conversation.tools.js';
 
@@ -59,9 +55,6 @@ export class ProcessAiResponseUseCase {
     private readonly labelRepo: LabelRepository,
     private readonly convLabelRepo: ConversationLabelRepository,
     private readonly eventRepo: ConversationEventRepository,
-    private readonly orderRepo: OrderRepository,
-    private readonly orderHandler: OrderDirectiveHandler,
-    private readonly apiBaseUrl: string,
   ) {
     this.contactHandler = new ContactDirectiveHandler(this.contactRepo, this.eventRepo, this.gateway);
   }
@@ -151,12 +144,6 @@ export class ProcessAiResponseUseCase {
       : null;
 
     const tenantLabels = await this.labelRepo.findByTenantId(conversation.tenantId);
-    const enabledPlugins = phone.plugins ?? [];
-    const ordersEnabled = enabledPlugins.includes(PhoneNumberPlugin.ORDERS);
-
-    // Load orders context
-    const orders = ordersEnabled ? await this.orderRepo.findByConversationId(conversation.id) : [];
-    const lastOrderDefaults = this.buildLastOrderDefaults(orders);
 
     // ── Build system prompt ─────────────────────────────────────────────
     const now = new Date();
@@ -175,10 +162,8 @@ export class ProcessAiResponseUseCase {
         todayRange: businessStatus.todayRange,
         nextOpen: businessStatus.nextOpen,
       } : null,
-      persona: config.persona,
-      adminSystemPrompt: config.systemPrompt || undefined,
-      knowledgeBase: config.knowledgeBase || undefined,
-      goals: config.goals || undefined,
+      businessProfile: config.businessProfile,
+      behavior: config.behavior,
       contact: contact ? {
         name: contact.name,
         phone: contact.phone ?? undefined,
@@ -188,15 +173,12 @@ export class ProcessAiResponseUseCase {
         customFields: contact.customFields ?? undefined,
       } : undefined,
       conversationSummary: conversation.summary ?? undefined,
-      orders: orders.length > 0 ? orders : undefined,
-      lastOrderDefaults,
       handoffRules: {
         keywords: config.handoffRules.keywords,
         urgencyKeywords: config.handoffRules.urgencyKeywords,
         onCustomerRequest: config.handoffRules.onCustomerRequest,
       },
       labels: tenantLabels.map((l: any) => l.name),
-      ordersEnabled,
       multiMessage: config.multiMessage?.enabled ? { enabled: true, maxBubbles: config.multiMessage.maxBubbles } : undefined,
     });
 
@@ -212,11 +194,6 @@ export class ProcessAiResponseUseCase {
       eventRepo: this.eventRepo,
       gateway: this.gateway,
     }));
-
-    // Register order tools if plugin enabled
-    if (ordersEnabled) {
-      toolRegistry.registerAll(createOrderTools(this.orderHandler, this.orderRepo, this.apiBaseUrl));
-    }
 
     // ── Build chat history ──────────────────────────────────────────────
     const chatHistory: ChatMessage[] = messages.map((m) => ({
@@ -239,16 +216,12 @@ export class ProcessAiResponseUseCase {
     // ── Tool call loop ──────────────────────────────────────────────────
     let finalContent: string | null = null;
     let pendingHandoffReason: string | null = null;
-    let pendingMenuImageUrl: string | null = null;
     let totalTokens = { prompt: 0, completion: 0, total: 0 };
     const loopMessages: ChatMessage[] = [...chatHistory];
 
     try {
       for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
         const result = await this.aiCompletion.complete({
-          provider: config.provider,
-          apiKey: config.apiKey,
-          model: config.model,
           systemPrompt,
           messages: loopMessages,
           tools: toolRegistry.getDefinitions(),
@@ -285,9 +258,6 @@ export class ProcessAiResponseUseCase {
             // Check for special signals
             if (toolResult.startsWith('__handoff__:')) {
               pendingHandoffReason = toolResult.replace('__handoff__:', '');
-            }
-            if (toolResult.startsWith('menu_image_url:')) {
-              pendingMenuImageUrl = toolResult.replace('menu_image_url:', '');
             }
 
             this.logger.log(`[ToolLoop] Result: ${tc.name} → ${toolResult.substring(0, 200)}`);
@@ -393,38 +363,6 @@ export class ProcessAiResponseUseCase {
       this.gateway.emitToConversation(conversation.id, 'message.new', message);
     }
 
-    // ── Send menu image if queued ───────────────────────────────────────
-    if (pendingMenuImageUrl) {
-      this.messagingApi.sendTypingIndicator(typingParams).catch(() => {});
-      await new Promise((r) => setTimeout(r, config.multiMessage?.interBubbleDelayMs ?? 1200));
-
-      const { waMessageId: imgWaId } = await this.messagingApi.sendMessage({
-        provider: phone.provider,
-        providerConfig: phone.providerConfig,
-        phoneNumberId: phone.phoneNumberId,
-        to: sendContact.waId,
-        type: MessageType.IMAGE,
-        body: '',
-        mediaUrl: pendingMenuImageUrl,
-      });
-
-      const imgMessage = await this.messageRepo.upsertByWaMessageId({
-        conversationId: conversation.id,
-        direction: MessageDirection.OUTBOUND,
-        messageType: MessageType.IMAGE,
-        body: null,
-        mediaUrl: pendingMenuImageUrl,
-        mimeType: pendingMenuImageUrl.endsWith('.png') ? 'image/png' : 'image/jpeg',
-        waMessageId: imgWaId,
-        waStatus: MessageWaStatus.SENT,
-        timestamp: new Date(),
-        senderAgentId: agent.id,
-        senderAgentName: agent.name,
-      });
-
-      this.gateway.emitToConversation(conversation.id, 'message.new', imgMessage);
-    }
-
     await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date(), pendingAiSince: null } as any);
     this.gateway.emitToTenant(conversation.tenantId, 'conversation.updated', { conversationId: conversation.id });
 
@@ -479,26 +417,6 @@ export class ProcessAiResponseUseCase {
     return {
       stop: () => { clearInterval(timer); },
       refresh: () => { clearInterval(timer); send(); timer = setInterval(send, 20_000); },
-    };
-  }
-
-  private buildLastOrderDefaults(orders: any[]): {
-    deliveryAddress?: string;
-    neighborhood?: string;
-    paymentMethod?: string;
-    customerName?: string;
-    deliveryCost?: number;
-  } | null {
-    const last = orders.find(
-      (o) => o.status === 'delivered' || o.status === 'confirmed' || o.status === 'pending',
-    );
-    if (!last) return null;
-    return {
-      deliveryAddress: last.deliveryAddress ?? undefined,
-      neighborhood: last.neighborhood ?? undefined,
-      paymentMethod: last.paymentMethod ?? undefined,
-      customerName: last.customerName ?? undefined,
-      deliveryCost: last.deliveryCost ?? undefined,
     };
   }
 }

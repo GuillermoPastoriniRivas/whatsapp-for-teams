@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, User, Phone, Mail, Building2, Loader2 } from "lucide-react";
+import { Search, User, Phone, Mail, Building2, Loader2, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ContactFields } from "@/components/chat/contact-fields";
 import { RightPanel } from "@/components/layout/right-panel";
+import { CsvImportPanel } from "@/components/contacts/csv-import-panel";
 import { useTranslations } from "@/lib/i18n/use-translations";
+import { useAuthStore } from "@/stores/auth.store";
 import { api } from "@/lib/api";
 import type { Contact, PaginatedResponse } from "@/types";
 
@@ -17,6 +20,8 @@ export default function ContactsPage() {
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ total: 0, page: 1, pages: 1 });
   const [selected, setSelected] = useState<Contact | null>(null);
+  const [importing, setImporting] = useState(false);
+  const agent = useAuthStore((s) => s.agent);
   const { t } = useTranslations();
 
   const fetchContacts = useCallback(async (s: string, p: number) => {
@@ -66,7 +71,22 @@ export default function ContactsPage() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <div className="border-b px-4 py-3 md:px-6">
-          <h1 className="text-xl font-bold mb-3">{t.contacts.title}</h1>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h1 className="text-xl font-bold">{t.contacts.title}</h1>
+            {agent?.role === "admin" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelected(null);
+                  setImporting(true);
+                }}
+              >
+                <Upload className="size-4" />
+                {t.contacts.import}
+              </Button>
+            )}
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -98,11 +118,12 @@ export default function ContactsPage() {
                   <li key={contact.id}>
                     <button
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
+                        setImporting(false);
                         setSelected(
                           selected?.id === contact.id ? null : contact
-                        )
-                      }
+                        );
+                      }}
                       className={`w-full flex items-center gap-3 px-4 py-3 md:px-6 hover:bg-muted/50 transition-colors text-left ${
                         selected?.id === contact.id
                           ? "bg-primary/5"
@@ -169,8 +190,17 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      {/* Contact detail side panel */}
-      <RightPanel open={!!selected} onClose={() => setSelected(null)}>
+      {/* Contact detail / import side panel */}
+      <RightPanel
+        open={!!selected || importing}
+        onClose={() => {
+          setSelected(null);
+          setImporting(false);
+        }}
+      >
+        {importing && (
+          <CsvImportPanel onImported={() => fetchContacts(search, 1)} />
+        )}
         {selected && (
           <>
             <div className="bg-[var(--asis-surface-header)] pt-8 pb-6 flex flex-col items-center">

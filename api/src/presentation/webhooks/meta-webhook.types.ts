@@ -16,9 +16,43 @@ export interface MetaWebhookChange {
   value: MetaWebhookValue;
 }
 
+// ── WABA-level template webhook values ───────────────────────────
+// These arrive with entry.id = wabaId and no metadata.phone_number_id.
+
+export interface MetaTemplateStatusValue {
+  event: string; // APPROVED | REJECTED | PAUSED | DISABLED | PENDING | ...
+  message_template_id: number | string;
+  message_template_name: string;
+  message_template_language: string;
+  reason?: string | null;
+  disable_info?: { disable_date?: string };
+}
+
+export interface MetaTemplateQualityValue {
+  previous_quality_score?: string;
+  new_quality_score: string; // GREEN | YELLOW | RED | UNKNOWN
+  message_template_id: number | string;
+  message_template_name: string;
+  message_template_language: string;
+}
+
+export interface MetaTemplateCategoryValue {
+  previous_category?: string;
+  new_category: string;
+  message_template_id: number | string;
+  message_template_name: string;
+  message_template_language: string;
+}
+
+export interface ParsedTemplateEvent {
+  wabaId: string;
+  field: string;
+  value: MetaTemplateStatusValue | MetaTemplateQualityValue | MetaTemplateCategoryValue;
+}
+
 export interface MetaWebhookValue {
   messaging_product: string;
-  metadata: {
+  metadata?: {
     phone_number_id: string;
     display_phone_number: string;
   };

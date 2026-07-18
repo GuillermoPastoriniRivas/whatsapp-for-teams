@@ -16,5 +16,8 @@ export class Message {
     public readonly timestamp: Date,
     public readonly senderAgentId: string | null,
     public readonly senderAgentName: string | null,
+    public readonly campaignId: string | null = null,
+    public readonly waErrorCode: string | null = null,
+    public readonly waErrorMessage: string | null = null,
   ) {}
 }

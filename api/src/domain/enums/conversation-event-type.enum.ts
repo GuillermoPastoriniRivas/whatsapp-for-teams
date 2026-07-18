@@ -11,5 +11,4 @@ export enum ConversationEventType {
   LABEL_REMOVED = 'label_removed',
   CONTACT_UPDATED = 'contact_updated',
   GOAL_COMPLETED = 'goal_completed',
-  ORDER_CREATED = 'order_created',
 }

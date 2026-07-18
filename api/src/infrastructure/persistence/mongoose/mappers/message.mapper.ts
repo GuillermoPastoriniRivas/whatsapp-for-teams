@@ -19,6 +19,9 @@ export class MessageMapper {
       doc.timestamp,
       doc.senderAgentId ?? null,
       doc.senderAgentName ?? null,
+      doc.campaignId?.toHexString() ?? null,
+      doc.waErrorCode ?? null,
+      doc.waErrorMessage ?? null,
     );
   }
 }

@@ -20,7 +20,7 @@ export class CreateAiAgentUseCase {
     const agent = await this.agentRepo.create({
       tenantId: input.tenantId,
       name: input.name,
-      email: `ai-${Date.now()}@hivvo.chat`,
+      email: `ai-${Date.now()}@asis.chat`,
       passwordHash: '',
       role: AgentRole.AGENT,
       status: AgentStatus.AVAILABLE,
@@ -34,13 +34,23 @@ export class CreateAiAgentUseCase {
     const config = await this.configRepo.create({
       agentId: agent.id,
       tenantId: input.tenantId,
-      provider: input.provider,
-      model: input.model,
-      apiKey: input.apiKey,
-      systemPrompt: input.systemPrompt ?? '',
-      knowledgeBase: input.knowledgeBase ?? '',
-      goals: input.goals ?? '',
-      persona: input.persona,
+      businessProfile: {
+        vertical: input.businessProfile.vertical,
+        businessName: input.businessProfile.businessName,
+        description: input.businessProfile.description ?? '',
+        address: input.businessProfile.address ?? '',
+        paymentMethods: input.businessProfile.paymentMethods ?? '',
+        catalog: input.businessProfile.catalog ?? [],
+        faqs: input.businessProfile.faqs ?? [],
+        extraNotes: input.businessProfile.extraNotes ?? '',
+      },
+      behavior: {
+        language: input.behavior?.language ?? 'es',
+        formality: input.behavior?.formality ?? 'informal',
+        useEmojis: input.behavior?.useEmojis ?? true,
+        goal: input.behavior?.goal ?? '',
+        customInstructions: input.behavior?.customInstructions ?? '',
+      },
       handoffRules: {
         keywords: input.handoffRules?.keywords ?? [],
         maxConsecutiveFailures: input.handoffRules?.maxConsecutiveFailures ?? 3,
@@ -56,7 +66,7 @@ export class CreateAiAgentUseCase {
         maxTokensPerDay: input.rateLimits?.maxTokensPerDay ?? 0,
       },
       isActive: true,
-      multiMessage: { enabled: false, maxBubbles: 4, interBubbleDelayMs: 1200, debounceWindowMs: 2000, debounceMaxWaitMs: 20000 },
+      multiMessage: { enabled: true, maxBubbles: 3, interBubbleDelayMs: 1200, debounceWindowMs: 2000, debounceMaxWaitMs: 20000 },
       timezone: input.timezone ?? null,
       businessHours: input.businessHours ?? null,
     });

@@ -40,8 +40,18 @@ export class MessageModel {
 
   @Prop({ type: String, default: null })
   senderAgentName: string | null;
+
+  @Prop({ type: Types.ObjectId, default: null })
+  campaignId: Types.ObjectId | null;
+
+  @Prop({ type: String, default: null })
+  waErrorCode: string | null;
+
+  @Prop({ type: String, default: null })
+  waErrorMessage: string | null;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(MessageModel);
 
 MessageSchema.index({ conversationId: 1, timestamp: 1 });
+MessageSchema.index({ campaignId: 1 }, { sparse: true });

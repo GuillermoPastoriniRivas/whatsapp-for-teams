@@ -11,12 +11,14 @@ import { JobQueuePort } from '../../ports/job-queue.port.js';
 import { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import { InboundMessageInput } from '../../dtos/webhook/inbound-message-input.dto.js';
 import { AutoAssignConversationUseCase } from '../conversation/auto-assign-conversation.use-case.js';
+import { AttributeCampaignReplyUseCase } from '../campaign/attribute-campaign-reply.use-case.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
+import { ConversationOrigin } from '../../../domain/enums/conversation-origin.enum.js';
 
 const AI_RESPONSE_JOB = 'ai.process-response';
 
@@ -33,6 +35,7 @@ export class HandleInboundMessageUseCase {
     private readonly jobQueue: JobQueuePort,
     private readonly aiConfigRepo: AiAgentConfigRepository,
     private readonly messagingApi: MessagingApiPort,
+    private readonly attributeCampaignReply: AttributeCampaignReplyUseCase,
   ) {}
 
   async execute(input: InboundMessageInput): Promise<void> {
@@ -63,6 +66,9 @@ export class HandleInboundMessageUseCase {
       lastMessageAt: now,
       lastInboundAt: now,
       pendingAiSince: null,
+      origin: ConversationOrigin.INBOUND,
+      hasReplied: true,
+      repliedAt: null,
     });
     let conversation = foundConversation;
 
@@ -115,11 +121,17 @@ export class HandleInboundMessageUseCase {
       senderAgentName: null,
     });
 
-    // 5. Update conversation timestamps
+    // 5. Update conversation timestamps.
+    // A reply to a campaign conversation promotes it into the regular inbox.
+    const promotedFromCampaign = !conversation.hasReplied;
     await this.conversationRepo.update(conversation.id, {
       lastMessageAt: now,
       lastInboundAt: now,
+      ...(promotedFromCampaign ? { hasReplied: true, repliedAt: now } : {}),
     } as any);
+
+    // 5b. Attribute this reply to any open campaign sends for the contact
+    await this.attributeCampaignReply.execute(contact.id, now);
 
     // 6. If needs assignment (new or reopened) → auto-assign
     let assignedAgent: Agent | null = null;

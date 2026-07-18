@@ -1,4 +1,3 @@
-import { PhoneNumberPlugin } from '../../../domain/enums/phone-number-plugin.enum.js';
 import { PhoneNumberStatus } from '../../../domain/enums/phone-number-status.enum.js';
 
 export interface UpdatePhoneNumberInput {
@@ -11,5 +10,4 @@ export interface UpdatePhoneNumberInput {
   wabaId?: string;
   phoneNumberId?: string;
   displayPhone?: string;
-  plugins?: PhoneNumberPlugin[];
 }

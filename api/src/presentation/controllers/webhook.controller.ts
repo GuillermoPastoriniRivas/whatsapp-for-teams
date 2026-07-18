@@ -4,11 +4,11 @@ import { ApiTags, ApiOperation, ApiQuery, ApiResponse, ApiExcludeEndpoint } from
 import type { Request, Response } from 'express';
 import { Public } from '../decorators/public.decorator.js';
 import { WebhookSignatureGuard } from '../guards/webhook-signature.guard.js';
-import { parseMetaWebhook, mapMetaMessageToInbound, mapMetaStatusToUpdate } from '../webhooks/meta-webhook.parser.js';
+import { parseMetaWebhook, mapMetaMessageToInbound, mapMetaStatusToUpdate, mapTemplateEventToInput } from '../webhooks/meta-webhook.parser.js';
 import type { MetaWebhookPayload } from '../webhooks/meta-webhook.types.js';
 import type { PhoneNumber } from '../../domain/entities/phone-number.entity.js';
 import type { JobQueuePort } from '../../application/ports/job-queue.port.js';
-import { INBOUND_MESSAGE_JOB, STATUS_UPDATE_JOB } from '../../infrastructure/queue/webhook-job.processor.js';
+import { INBOUND_MESSAGE_JOB, STATUS_UPDATE_JOB, TEMPLATE_EVENT_JOB } from '../../infrastructure/queue/webhook-job.processor.js';
 
 @Public()
 @ApiTags('Webhooks')
@@ -56,7 +56,7 @@ export class WebhookController {
     const phoneNumber = (req as any).phoneNumber as PhoneNumber;
     const apiVersion = this.configService.get<string>('meta.apiVersion', 'v21.0');
 
-    const { messages, statuses } = parseMetaWebhook(body);
+    const { messages, statuses, templateEvents } = parseMetaWebhook(body);
 
     // Enqueue inbound messages
     for (const parsed of messages) {
@@ -71,6 +71,11 @@ export class WebhookController {
     // Enqueue status updates
     for (const status of statuses) {
       await this.queue.enqueue(STATUS_UPDATE_JOB, mapMetaStatusToUpdate(status));
+    }
+
+    // Enqueue WABA-level template events (status/quality/category updates)
+    for (const event of templateEvents) {
+      await this.queue.enqueue(TEMPLATE_EVENT_JOB, mapTemplateEventToInput(event));
     }
 
     return { status: 'ok' };

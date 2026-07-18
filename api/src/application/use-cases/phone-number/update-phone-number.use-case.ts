@@ -20,7 +20,6 @@ export class UpdatePhoneNumberUseCase {
       wabaId: input.wabaId,
       phoneNumberId: input.phoneNumberId,
       displayPhone: input.displayPhone,
-      plugins: input.plugins,
     });
 
     return ok(updated!);

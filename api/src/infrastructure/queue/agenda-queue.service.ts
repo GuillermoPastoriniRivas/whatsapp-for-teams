@@ -20,6 +20,13 @@ export class AgendaQueueService implements JobQueuePort, OnModuleInit, OnModuleD
       maxConcurrency: 10,
       defaultConcurrency: 5,
     });
+
+    // Without a listener, a dropped Mongo connection (Atlas closes idle
+    // sockets) becomes an unhandled 'error' event and kills the process.
+    // The driver reconnects on its own; jobs resume on the next tick.
+    this.agenda.on('error', (error: Error) => {
+      this.logger.error(`Agenda connection error (will auto-recover): ${error.message}`);
+    });
   }
 
   /**

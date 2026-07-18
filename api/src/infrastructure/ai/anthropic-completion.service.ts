@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type {
-  AiCompletionParams,
+  ResolvedAiCompletionParams,
   AiCompletionResult,
   ChatMessage,
   ToolDefinition,
@@ -11,7 +11,7 @@ import type {
 export class AnthropicCompletionService {
   private readonly logger = new Logger(AnthropicCompletionService.name);
 
-  async complete(params: AiCompletionParams): Promise<AiCompletionResult> {
+  async complete(params: ResolvedAiCompletionParams): Promise<AiCompletionResult> {
     const url = 'https://api.anthropic.com/v1/messages';
 
     const messages = this.buildMessages(params.messages);

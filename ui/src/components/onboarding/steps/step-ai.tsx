@@ -1,13 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { api, ApiError } from "@/lib/api";
+import type { BusinessVertical } from "@/types";
 
-const PROVIDERS = ["openai", "anthropic", "custom"] as const;
+const VERTICALS: { value: BusinessVertical; label: string }[] = [
+  { value: "beauty", label: "Estética y belleza" },
+  { value: "food", label: "Gastronomía" },
+  { value: "retail", label: "Tienda" },
+  { value: "generic", label: "Otro" },
+];
 
 interface StepAiProps {
   onNext: () => void;
@@ -18,12 +24,9 @@ export function StepAi({ onNext, onSkip }: StepAiProps) {
   const { t } = useTranslations();
   const [form, setForm] = useState({
     name: "",
-    provider: "openai" as (typeof PROVIDERS)[number],
-    model: "",
-    apiKey: "",
-    systemPrompt: "",
+    vertical: "beauty" as BusinessVertical,
+    businessName: "",
   });
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState(false);
@@ -34,15 +37,16 @@ export function StepAi({ onNext, onSkip }: StepAiProps) {
     try {
       await api.post("/ai-agents", {
         name: form.name,
-        provider: form.provider,
-        model: form.model,
-        apiKey: form.apiKey,
-        ...(form.systemPrompt ? { systemPrompt: form.systemPrompt } : {}),
+        businessProfile: {
+          vertical: form.vertical,
+          businessName: form.businessName,
+        },
+        handoffRules: { onCustomerRequest: true, maxConsecutiveFailures: 3 },
       });
       setCreated(true);
       setTimeout(() => onNext(), 1200);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error al crear el agente IA");
+      setError(err instanceof ApiError ? err.message : "Error al crear el asistente");
     } finally {
       setIsLoading(false);
     }
@@ -52,7 +56,9 @@ export function StepAi({ onNext, onSkip }: StepAiProps) {
     <div className="flex flex-col gap-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold">{t.onboarding.aiTitle}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{t.onboarding.aiSubtitle}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Contanos lo básico y creamos tu asistente. Después lo completás con tus precios y preguntas frecuentes.
+        </p>
       </div>
 
       <div className="space-y-3">
@@ -66,65 +72,33 @@ export function StepAi({ onNext, onSkip }: StepAiProps) {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">{t.onboarding.aiProvider}</label>
+          <label className="text-xs text-muted-foreground">Tipo de negocio</label>
           <div className="flex gap-2 flex-wrap">
-            {PROVIDERS.map((p) => (
+            {VERTICALS.map((v) => (
               <button
-                key={p}
+                key={v.value}
                 type="button"
-                onClick={() => setForm({ ...form, provider: p })}
+                onClick={() => setForm({ ...form, vertical: v.value })}
                 className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-                  form.provider === p
+                  form.vertical === v.value
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border hover:bg-muted"
                 }`}
               >
-                {p.charAt(0).toUpperCase() + p.slice(1)}
+                {v.label}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">{t.onboarding.aiModel}</label>
-            <Input
-              placeholder={t.onboarding.aiModelPlaceholder}
-              value={form.model}
-              onChange={(e) => setForm({ ...form, model: e.target.value })}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">{t.onboarding.aiApiKey}</label>
-            <Input
-              type="password"
-              placeholder="sk-..."
-              value={form.apiKey}
-              onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
-            />
-          </div>
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Nombre del negocio</label>
+          <Input
+            placeholder='Ej: "Barbería Don Pedro"'
+            value={form.businessName}
+            onChange={(e) => setForm({ ...form, businessName: e.target.value })}
+          />
         </div>
-
-        <button
-          type="button"
-          onClick={() => setShowAdvanced((v) => !v)}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          {t.onboarding.advancedOptions}
-        </button>
-
-        {showAdvanced && (
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">{t.onboarding.aiSystemPrompt}</label>
-            <textarea
-              className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder={t.onboarding.aiSystemPromptPlaceholder}
-              value={form.systemPrompt}
-              onChange={(e) => setForm({ ...form, systemPrompt: e.target.value })}
-            />
-          </div>
-        )}
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -138,7 +112,7 @@ export function StepAi({ onNext, onSkip }: StepAiProps) {
         <Button
           className="w-full rounded-xl h-11"
           onClick={handleCreate}
-          disabled={isLoading || !form.name || !form.model || !form.apiKey}
+          disabled={isLoading || !form.name || !form.businessName}
         >
           {isLoading ? t.onboarding.creating : t.onboarding.createAiAgent}
         </Button>

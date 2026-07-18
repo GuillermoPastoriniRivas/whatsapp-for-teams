@@ -51,7 +51,8 @@ class ApiClient {
     isRetry = false
   ): Promise<T> {
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      // FormData bodies set their own multipart boundary — don't override it
+      ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       ...(options.headers as Record<string, string>),
     };
 
@@ -102,6 +103,10 @@ class ApiClient {
 
   delete<T>(path: string) {
     return this.request<T>(path, { method: "DELETE" });
+  }
+
+  upload<T>(path: string, form: FormData) {
+    return this.request<T>(path, { method: "POST", body: form });
   }
 }
 

@@ -1,23 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
-import { Bot, Save, Trash2, Send, Eye, EyeOff } from "lucide-react";
-import type { AiAgentWithConfig, BusinessHours, BusinessHoursRange, WeekDay } from "@/types";
-
-type ProviderValue = "openai" | "anthropic" | "gemini" | "openrouter";
-
-const providers: { value: ProviderValue; label: string; models: string[] }[] = [
-  { value: "openai", label: "OpenAI", models: ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-5-nano", "gpt-5.1", "gpt-5.4-nano"] },
-  { value: "anthropic", label: "Anthropic", models: ["claude-sonnet-4-20250514", "claude-haiku-4-5-20251001", "claude-opus-4-20250514"] },
-  { value: "gemini", label: "Gemini", models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"] },
-  { value: "openrouter", label: "OpenRouter", models: [] },
-];
+import { Bot, Save, Trash2, Send, Plus } from "lucide-react";
+import type {
+  AiAgentWithConfig, BusinessHours, BusinessHoursRange, WeekDay,
+  BusinessVertical, CatalogItem, FaqEntry,
+} from "@/types";
 
 interface Props {
   agent: AiAgentWithConfig;
@@ -25,12 +19,18 @@ interface Props {
   onDeleted: () => void;
 }
 
-const providerLabels: Record<string, string> = {
-  openai: "OpenAI",
-  anthropic: "Anthropic",
-  gemini: "Gemini",
-  openrouter: "OpenRouter",
-};
+const verticals: { value: BusinessVertical; label: string; catalogLabel: string }[] = [
+  { value: "beauty", label: "Estética y belleza", catalogLabel: "Servicios y precios" },
+  { value: "food", label: "Gastronomía", catalogLabel: "Menú y precios" },
+  { value: "retail", label: "Tienda", catalogLabel: "Productos y precios" },
+  { value: "generic", label: "Otro negocio", catalogLabel: "Productos / servicios y precios" },
+];
+
+const languages = [
+  { value: "es", label: "Español" },
+  { value: "en", label: "English" },
+  { value: "pt", label: "Português" },
+];
 
 const WEEK_DAYS: { key: WeekDay; label: string }[] = [
   { key: "monday", label: "Lunes" },
@@ -79,30 +79,38 @@ function hasAnyHours(bh: Record<WeekDay, BusinessHoursRange | null>): boolean {
   return WEEK_DAYS.some((d) => bh[d.key] !== null);
 }
 
+interface PlaygroundMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const [name, setName] = useState(agent.name);
-  const [knowledgeBase, setKnowledgeBase] = useState(agent.config.knowledgeBase || "");
-  const [systemPrompt, setSystemPrompt] = useState(agent.config.systemPrompt || "");
-  const [personaRole, setPersonaRole] = useState(agent.config.persona.role || "");
-  const [personaTone, setPersonaTone] = useState(agent.config.persona.tone || "");
-  const [personaLanguage, setPersonaLanguage] = useState(agent.config.persona.language || "");
-  const [personaInstructions, setPersonaInstructions] = useState(agent.config.persona.instructions || "");
 
-  const [provider, setProvider] = useState(agent.config.provider || "openai");
-  const [model, setModel] = useState(agent.config.model || "");
-  const [apiKey, setApiKey] = useState("");
-  const [showApiKey, setShowApiKey] = useState(false);
+  // Business profile
+  const [vertical, setVertical] = useState<BusinessVertical>(agent.config.businessProfile?.vertical ?? "generic");
+  const [businessName, setBusinessName] = useState(agent.config.businessProfile?.businessName ?? "");
+  const [description, setDescription] = useState(agent.config.businessProfile?.description ?? "");
+  const [address, setAddress] = useState(agent.config.businessProfile?.address ?? "");
+  const [paymentMethods, setPaymentMethods] = useState(agent.config.businessProfile?.paymentMethods ?? "");
+  const [catalog, setCatalog] = useState<CatalogItem[]>(agent.config.businessProfile?.catalog ?? []);
+  const [faqs, setFaqs] = useState<FaqEntry[]>(agent.config.businessProfile?.faqs ?? []);
+  const [extraNotes, setExtraNotes] = useState(agent.config.businessProfile?.extraNotes ?? "");
 
-  const selectedProvider = providers.find((p) => p.value === provider);
+  // Behavior
+  const [language, setLanguage] = useState(agent.config.behavior?.language ?? "es");
+  const [formality, setFormality] = useState<"informal" | "formal">(agent.config.behavior?.formality ?? "informal");
+  const [useEmojis, setUseEmojis] = useState(agent.config.behavior?.useEmojis ?? true);
+  const [goal, setGoal] = useState(agent.config.behavior?.goal ?? "");
+  const [customInstructions, setCustomInstructions] = useState(agent.config.behavior?.customInstructions ?? "");
 
-  const [goals, setGoals] = useState(agent.config.goals || "");
-
-  const [multiMessageEnabled, setMultiMessageEnabled] = useState(agent.config.multiMessage?.enabled ?? false);
-  const [maxBubbles, setMaxBubbles] = useState(agent.config.multiMessage?.maxBubbles ?? 4);
+  // Advanced
+  const [multiMessageEnabled, setMultiMessageEnabled] = useState(agent.config.multiMessage?.enabled ?? true);
+  const [maxBubbles, setMaxBubbles] = useState(agent.config.multiMessage?.maxBubbles ?? 3);
   const [interBubbleDelay, setInterBubbleDelay] = useState(agent.config.multiMessage?.interBubbleDelayMs ?? 1200);
   const [debounceWindow, setDebounceWindow] = useState(agent.config.multiMessage?.debounceWindowMs ?? 2000);
   const [debounceMaxWait, setDebounceMaxWait] = useState(agent.config.multiMessage?.debounceMaxWaitMs ?? 20000);
@@ -111,26 +119,32 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
   const [hoursEnabled, setHoursEnabled] = useState(!!agent.config.businessHours && Object.values(agent.config.businessHours).some((v) => v != null));
   const [hours, setHours] = useState<Record<WeekDay, BusinessHoursRange | null>>(hydrateBusinessHours(agent.config.businessHours));
 
-  const [testMessage, setTestMessage] = useState("");
-  const [testResponse, setTestResponse] = useState("");
-  const [testing, setTesting] = useState(false);
+  // Playground
+  const [chat, setChat] = useState<PlaygroundMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatting, setChatting] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  const selectedVertical = verticals.find((v) => v.value === vertical) ?? verticals[3];
 
   // Reset state when agent changes
   useEffect(() => {
     setName(agent.name);
-    setKnowledgeBase(agent.config.knowledgeBase || "");
-    setSystemPrompt(agent.config.systemPrompt || "");
-    setPersonaRole(agent.config.persona.role || "");
-    setPersonaTone(agent.config.persona.tone || "");
-    setPersonaLanguage(agent.config.persona.language || "");
-    setPersonaInstructions(agent.config.persona.instructions || "");
-    setGoals(agent.config.goals || "");
-    setProvider(agent.config.provider || "openai");
-    setModel(agent.config.model || "");
-    setApiKey("");
-    setShowApiKey(false);
-    setMultiMessageEnabled(agent.config.multiMessage?.enabled ?? false);
-    setMaxBubbles(agent.config.multiMessage?.maxBubbles ?? 4);
+    setVertical(agent.config.businessProfile?.vertical ?? "generic");
+    setBusinessName(agent.config.businessProfile?.businessName ?? "");
+    setDescription(agent.config.businessProfile?.description ?? "");
+    setAddress(agent.config.businessProfile?.address ?? "");
+    setPaymentMethods(agent.config.businessProfile?.paymentMethods ?? "");
+    setCatalog(agent.config.businessProfile?.catalog ?? []);
+    setFaqs(agent.config.businessProfile?.faqs ?? []);
+    setExtraNotes(agent.config.businessProfile?.extraNotes ?? "");
+    setLanguage(agent.config.behavior?.language ?? "es");
+    setFormality(agent.config.behavior?.formality ?? "informal");
+    setUseEmojis(agent.config.behavior?.useEmojis ?? true);
+    setGoal(agent.config.behavior?.goal ?? "");
+    setCustomInstructions(agent.config.behavior?.customInstructions ?? "");
+    setMultiMessageEnabled(agent.config.multiMessage?.enabled ?? true);
+    setMaxBubbles(agent.config.multiMessage?.maxBubbles ?? 3);
     setInterBubbleDelay(agent.config.multiMessage?.interBubbleDelayMs ?? 1200);
     setDebounceWindow(agent.config.multiMessage?.debounceWindowMs ?? 2000);
     setDebounceMaxWait(agent.config.multiMessage?.debounceMaxWaitMs ?? 20000);
@@ -139,8 +153,13 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
     setHours(hydrateBusinessHours(agent.config.businessHours));
     setError(null);
     setSuccess(null);
-    setTestResponse("");
+    setChat([]);
+    setChatInput("");
   }, [agent.id]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chat]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -150,24 +169,30 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
     try {
       const payload: Record<string, any> = {
         name,
-        provider,
-        model,
-        knowledgeBase,
-        goals,
-        systemPrompt,
-        persona: {
-          role: personaRole,
-          tone: personaTone,
-          language: personaLanguage,
-          instructions: personaInstructions,
+        businessProfile: {
+          vertical,
+          businessName,
+          description,
+          address,
+          paymentMethods,
+          catalog: catalog.filter((c) => c.name.trim().length > 0),
+          faqs: faqs.filter((f) => f.question.trim().length > 0 && f.answer.trim().length > 0),
+          extraNotes,
         },
-      };
-      payload.multiMessage = {
-        enabled: multiMessageEnabled,
-        maxBubbles,
-        interBubbleDelayMs: interBubbleDelay,
-        debounceWindowMs: debounceWindow,
-        debounceMaxWaitMs: debounceMaxWait,
+        behavior: {
+          language,
+          formality,
+          useEmojis,
+          goal,
+          customInstructions,
+        },
+        multiMessage: {
+          enabled: multiMessageEnabled,
+          maxBubbles,
+          interBubbleDelayMs: interBubbleDelay,
+          debounceWindowMs: debounceWindow,
+          debounceMaxWaitMs: debounceMaxWait,
+        },
       };
 
       payload.timezone = timezone.trim() ? timezone.trim() : null;
@@ -181,46 +206,58 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
         payload.businessHours = null;
       }
 
-      if (apiKey.trim()) {
-        payload.apiKey = apiKey;
-      }
       await api.patch(`/ai-agents/${agent.id}`, payload);
-      setSuccess("Saved successfully");
+      setSuccess("Guardado");
       onUpdated();
     } catch (err: any) {
-      setError(err.message || "Failed to save");
+      setError(err.message || "No se pudo guardar");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this AI agent?")) return;
+    if (!confirm("¿Seguro que querés eliminar este asistente?")) return;
 
     try {
       await api.delete(`/ai-agents/${agent.id}`);
       onDeleted();
     } catch (err: any) {
-      setError(err.message || "Failed to delete");
+      setError(err.message || "No se pudo eliminar");
     }
   };
 
-  const handleTest = async () => {
-    if (!testMessage.trim()) return;
-    setTesting(true);
-    setTestResponse("");
+  const handleChatSend = async () => {
+    const text = chatInput.trim();
+    if (!text || chatting) return;
+
+    const nextChat: PlaygroundMessage[] = [...chat, { role: "user", content: text }];
+    setChat(nextChat);
+    setChatInput("");
+    setChatting(true);
 
     try {
-      const result = await api.post<{ response: string; tokensUsed: any }>(
-        `/ai-agents/${agent.id}/test`,
-        { message: testMessage }
+      const result = await api.post<{ bubbles: string[]; tokensUsed: any }>(
+        `/ai-agents/${agent.id}/playground`,
+        { messages: nextChat }
       );
-      setTestResponse(result.response);
+      const replies: PlaygroundMessage[] = result.bubbles
+        .filter((b) => b.trim().length > 0)
+        .map((b) => ({ role: "assistant" as const, content: b }));
+      setChat((prev) => [...prev, ...replies]);
     } catch (err: any) {
-      setTestResponse(`Error: ${err.message}`);
+      setChat((prev) => [...prev, { role: "assistant", content: `⚠️ Error: ${err.message}` }]);
     } finally {
-      setTesting(false);
+      setChatting(false);
     }
+  };
+
+  const updateCatalogItem = (i: number, patch: Partial<CatalogItem>) => {
+    setCatalog((prev) => prev.map((item, idx) => (idx === i ? { ...item, ...patch } : item)));
+  };
+
+  const updateFaq = (i: number, patch: Partial<FaqEntry>) => {
+    setFaqs((prev) => prev.map((item, idx) => (idx === i ? { ...item, ...patch } : item)));
   };
 
   return (
@@ -235,11 +272,13 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
             <h2 className="text-base font-semibold">{agent.name}</h2>
             <div className="flex items-center gap-1.5 mt-0.5">
               <Badge variant="outline" className="text-[10px] h-5">
-                {providerLabels[provider]}
+                {selectedVertical.label}
               </Badge>
-              <Badge variant="secondary" className="text-[10px] h-5">
-                {model}
-              </Badge>
+              {businessName && (
+                <Badge variant="secondary" className="text-[10px] h-5">
+                  {businessName}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -247,212 +286,72 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
 
       {/* Tabs */}
       <div className="px-4 py-4">
-        <Tabs defaultValue="config" className="w-full">
+        <Tabs defaultValue="business" className="w-full">
           <TabsList className="w-full">
-            <TabsTrigger value="config" className="flex-1 text-xs">Config</TabsTrigger>
-            <TabsTrigger value="knowledge" className="flex-1 text-xs">Knowledge</TabsTrigger>
-            <TabsTrigger value="goals" className="flex-1 text-xs">Goals</TabsTrigger>
-            <TabsTrigger value="test" className="flex-1 text-xs">Test</TabsTrigger>
+            <TabsTrigger value="business" className="flex-1 text-xs">Negocio</TabsTrigger>
+            <TabsTrigger value="catalog" className="flex-1 text-xs">Catálogo</TabsTrigger>
+            <TabsTrigger value="faqs" className="flex-1 text-xs">Preguntas</TabsTrigger>
+            <TabsTrigger value="behavior" className="flex-1 text-xs">Ajustes</TabsTrigger>
+            <TabsTrigger value="playground" className="flex-1 text-xs">Probar</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="config" className="mt-4 space-y-3">
+          {/* ── Negocio ─────────────────────────────────────────── */}
+          <TabsContent value="business" className="mt-4 space-y-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Name</label>
+              <label className="text-sm font-medium">Nombre del asistente</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
-
-            {/* AI Provider Settings */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Provider</label>
+              <label className="text-sm font-medium">Tipo de negocio</label>
               <div className="grid grid-cols-2 gap-2">
-                {providers.map((p) => (
+                {verticals.map((v) => (
                   <button
-                    key={p.value}
+                    key={v.value}
                     type="button"
-                    onClick={() => {
-                      setProvider(p.value);
-                      if (p.models.length > 0) setModel(p.models[0]);
-                      else setModel("");
-                    }}
+                    onClick={() => setVertical(v.value)}
                     className={`rounded-lg border p-2 text-left text-xs transition-colors ${
-                      provider === p.value
+                      vertical === v.value
                         ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
                         : "hover:bg-muted/50"
                     }`}
                   >
-                    {p.label}
+                    {v.label}
                   </button>
                 ))}
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Model</label>
-              {selectedProvider && selectedProvider.models.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedProvider.models.map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setModel(m)}
-                      className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
-                        model === m
-                          ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
-                          : "hover:bg-muted/50"
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <Input
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="e.g., openai/gpt-4o"
-                  className="text-sm"
-                />
-              )}
+              <label className="text-sm font-medium">Nombre del negocio</label>
+              <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">API Key</label>
-              <div className="relative">
-                <Input
-                  type={showApiKey ? "text" : "password"}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={agent.config.apiKeySet ? "••••••••  (leave empty to keep current)" : "sk-..."}
-                  className="pr-10 text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {agent.config.apiKeySet
-                  ? "A key is already set. Enter a new one only if you want to replace it."
-                  : "No API key set. Enter one to enable the agent."}
-              </p>
-            </div>
-
-            <hr className="my-1" />
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Role</label>
+              <label className="text-sm font-medium">¿Qué hace tu negocio?</label>
               <Input
-                value={personaRole}
-                onChange={(e) => setPersonaRole(e.target.value)}
-                placeholder="e.g., Customer support agent"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Tone</label>
-                <Input value={personaTone} onChange={(e) => setPersonaTone(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Language</label>
-                <Input value={personaLanguage} onChange={(e) => setPersonaLanguage(e.target.value)} />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Instructions</label>
-              <Textarea
-                value={personaInstructions}
-                onChange={(e) => setPersonaInstructions(e.target.value)}
-                rows={3}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder='Una frase: "Barbería clásica con cortes y afeitado"'
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">System Prompt Override</label>
-              <Textarea
-                value={systemPrompt}
-                onChange={(e) => setSystemPrompt(e.target.value)}
-                rows={3}
-                placeholder="Advanced: override the auto-generated system prompt"
+              <label className="text-sm font-medium">Dirección</label>
+              <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Medios de pago</label>
+              <Input
+                value={paymentMethods}
+                onChange={(e) => setPaymentMethods(e.target.value)}
+                placeholder='"Efectivo, débito, Mercado Pago"'
               />
             </div>
-
-            <hr className="my-1" />
-
-            {/* Multi-Message / Natural Conversation */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-sm font-medium">Natural conversation</label>
-                  <p className="text-xs text-muted-foreground">Multiple messages, typing indicators, and message accumulation</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMultiMessageEnabled(!multiMessageEnabled)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                    multiMessageEnabled ? "bg-violet-600" : "bg-muted"
-                  }`}
-                >
-                  <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                    multiMessageEnabled ? "translate-x-4" : "translate-x-0"
-                  }`} />
-                </button>
-              </div>
-
-              {multiMessageEnabled && (
-                <div className="space-y-2.5 rounded-lg border p-3 bg-muted/30">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Max messages per response</label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={maxBubbles}
-                        onChange={(e) => setMaxBubbles(Number(e.target.value))}
-                        className="text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Delay between messages (ms)</label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={5000}
-                        step={100}
-                        value={interBubbleDelay}
-                        onChange={(e) => setInterBubbleDelay(Number(e.target.value))}
-                        className="text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Wait for more messages (ms)</label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={10000}
-                        step={500}
-                        value={debounceWindow}
-                        onChange={(e) => setDebounceWindow(Number(e.target.value))}
-                        className="text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Max wait time (ms)</label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={60000}
-                        step={1000}
-                        value={debounceMaxWait}
-                        onChange={(e) => setDebounceMaxWait(Number(e.target.value))}
-                        className="text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Otra información importante (opcional)</label>
+              <Textarea
+                value={extraNotes}
+                onChange={(e) => setExtraNotes(e.target.value)}
+                rows={4}
+                placeholder="Cualquier dato extra que el asistente deba saber: promos, políticas de devolución, zonas de envío..."
+              />
             </div>
 
             <hr className="my-1" />
@@ -463,7 +362,7 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
                 <div>
                   <label className="text-sm font-medium">Horario de atención</label>
                   <p className="text-xs text-muted-foreground">
-                    Cuando está cerrado, el agente no crea pedidos y avisa al cliente.
+                    Cuando está cerrado, el asistente avisa al cliente el horario de atención.
                   </p>
                 </div>
                 <button
@@ -486,7 +385,7 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
                     <Input
                       value={timezone}
                       onChange={(e) => setTimezone(e.target.value)}
-                      placeholder="America/Bogota"
+                      placeholder="America/Montevideo"
                       list="tz-suggestions"
                       className="text-sm"
                     />
@@ -495,9 +394,6 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
                         <option key={z} value={z} />
                       ))}
                     </datalist>
-                    <p className="text-xs text-muted-foreground">
-                      Dejar vacío usa la zona del servidor. Recomendado: configurar la zona del negocio.
-                    </p>
                   </div>
 
                   <div className="space-y-1.5">
@@ -565,72 +461,320 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
             </div>
           </TabsContent>
 
-          <TabsContent value="knowledge" className="mt-4 space-y-3">
+          {/* ── Catálogo ────────────────────────────────────────── */}
+          <TabsContent value="catalog" className="mt-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Write everything your agent needs to know. This text is sent directly to the AI as context.
+              {selectedVertical.catalogLabel}. El asistente solo informa lo que esté cargado acá — nunca inventa precios.
             </p>
-            <Textarea
-              value={knowledgeBase}
-              onChange={(e) => setKnowledgeBase(e.target.value)}
-              rows={14}
-              className="font-mono text-sm"
-              placeholder="Business info, services, pricing, FAQs, policies..."
-            />
+            <div className="space-y-2">
+              {catalog.map((item, i) => (
+                <div key={i} className="rounded-lg border p-2 space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={item.name}
+                      onChange={(e) => updateCatalogItem(i, { name: e.target.value })}
+                      placeholder="Nombre"
+                      className="flex-1"
+                    />
+                    <Input
+                      value={item.price}
+                      onChange={(e) => updateCatalogItem(i, { price: e.target.value })}
+                      placeholder="$500"
+                      className="w-28"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setCatalog((prev) => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                  <Input
+                    value={item.description}
+                    onChange={(e) => updateCatalogItem(i, { description: e.target.value })}
+                    placeholder="Detalle opcional (duración, qué incluye...)"
+                  />
+                </div>
+              ))}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCatalog((prev) => [...prev, { name: "", price: "", description: "" }])}
+              className="gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              Agregar
+            </Button>
           </TabsContent>
 
-          <TabsContent value="goals" className="mt-4 space-y-3">
+          {/* ── Preguntas frecuentes ────────────────────────────── */}
+          <TabsContent value="faqs" className="mt-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Define what your agent should accomplish during conversations. Write naturally — the AI will figure out how to achieve these goals.
+              Lo que te preguntan siempre, con la respuesta exacta que querés que dé. Es la mejor forma de mejorar al asistente.
             </p>
-            <Textarea
-              value={goals}
-              onChange={(e) => setGoals(e.target.value)}
-              rows={10}
-              className="font-mono text-sm"
-              placeholder={`Example:\n\nQualify leads by asking:\n- Name and company\n- Budget range\n- Timeline for purchase\n\nIf budget is over $5,000, mark as qualified lead.\nIf they want to buy, collect delivery address.`}
-            />
+            <div className="space-y-2">
+              {faqs.map((faq, i) => (
+                <div key={i} className="rounded-lg border p-2 space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={faq.question}
+                      onChange={(e) => updateFaq(i, { question: e.target.value })}
+                      placeholder='"¿Hacen envíos?"'
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setFaqs((prev) => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={faq.answer}
+                    onChange={(e) => updateFaq(i, { answer: e.target.value })}
+                    placeholder='"Sí, hacemos envíos a todo el país."'
+                    rows={2}
+                  />
+                </div>
+              ))}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setFaqs((prev) => [...prev, { question: "", answer: "" }])}
+              className="gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              Agregar
+            </Button>
+          </TabsContent>
+
+          {/* ── Ajustes (comportamiento) ────────────────────────── */}
+          <TabsContent value="behavior" className="mt-4 space-y-3">
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Quick templates:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { label: "Qualify leads", text: "Qualify leads by asking:\n- Full name and company\n- Budget range\n- Timeline and urgency\n- How they found us\n\nIf budget is over $5,000 and timeline is within 30 days, mark as qualified lead." },
-                  { label: "Take orders", text: "Help customers place orders:\n- Ask what products/services they want\n- Confirm quantities\n- Collect delivery address\n- Summarize the complete order before confirming\n\nAlways confirm the total before finalizing." },
-                  { label: "Schedule appointments", text: "Schedule appointments:\n- Ask what service they need\n- Suggest available times (Mon-Fri 9am-6pm)\n- Collect their full name and phone\n- Confirm the date, time, and service before finalizing" },
-                ].map((t) => (
+              <label className="text-sm font-medium">Idioma</label>
+              <div className="flex flex-wrap gap-2">
+                {languages.map((l) => (
                   <button
-                    key={t.label}
+                    key={l.value}
                     type="button"
-                    onClick={() => setGoals((prev) => prev ? `${prev}\n\n${t.text}` : t.text)}
-                    className="rounded-md border px-2.5 py-1 text-xs hover:bg-muted/50 transition-colors"
+                    onClick={() => setLanguage(l.value)}
+                    className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
+                      language === l.value
+                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
+                        : "hover:bg-muted/50"
+                    }`}
                   >
-                    + {t.label}
+                    {l.label}
                   </button>
                 ))}
               </div>
             </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Trato</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: "informal" as const, label: "Cercano (vos / tú)" },
+                  { value: "formal" as const, label: "Formal (usted)" },
+                ].map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => setFormality(f.value)}
+                    className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
+                      formality === f.value
+                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
+                        : "hover:bg-muted/50"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Emojis</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: true, label: "Puede usar alguno" },
+                  { value: false, label: "Sin emojis" },
+                ].map((opt) => (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    onClick={() => setUseEmojis(opt.value)}
+                    className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
+                      useEmojis === opt.value
+                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
+                        : "hover:bg-muted/50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Objetivo de la conversación</label>
+              <Textarea
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                rows={3}
+                placeholder="Ej: que junte los datos del pedido y avise que lo confirmamos enseguida."
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Instrucciones extra (avanzado, opcional)</label>
+              <Textarea
+                value={customInstructions}
+                onChange={(e) => setCustomInstructions(e.target.value)}
+                rows={3}
+                placeholder="Reglas adicionales de comportamiento para el asistente."
+              />
+            </div>
+
+            <hr className="my-1" />
+
+            {/* Multi-Message / Natural Conversation */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium">Conversación natural</label>
+                  <p className="text-xs text-muted-foreground">Responde en varios mensajes cortos, como una persona</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMultiMessageEnabled(!multiMessageEnabled)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    multiMessageEnabled ? "bg-violet-600" : "bg-muted"
+                  }`}
+                >
+                  <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                    multiMessageEnabled ? "translate-x-4" : "translate-x-0"
+                  }`} />
+                </button>
+              </div>
+
+              {multiMessageEnabled && (
+                <div className="space-y-2.5 rounded-lg border p-3 bg-muted/30">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Máx. mensajes por respuesta</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={maxBubbles}
+                        onChange={(e) => setMaxBubbles(Number(e.target.value))}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Pausa entre mensajes (ms)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={5000}
+                        step={100}
+                        value={interBubbleDelay}
+                        onChange={(e) => setInterBubbleDelay(Number(e.target.value))}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Espera por más mensajes (ms)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={10000}
+                        step={500}
+                        value={debounceWindow}
+                        onChange={(e) => setDebounceWindow(Number(e.target.value))}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Espera máxima (ms)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={60000}
+                        step={1000}
+                        value={debounceMaxWait}
+                        onChange={(e) => setDebounceMaxWait(Number(e.target.value))}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </TabsContent>
 
-          <TabsContent value="test" className="mt-4 space-y-3">
+          {/* ── Playground ──────────────────────────────────────── */}
+          <TabsContent value="playground" className="mt-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Send a test message to see how your AI agent responds.
+              Hablá con tu asistente como si fueras un cliente. Usa exactamente la misma configuración que en WhatsApp.
+              Guardá los cambios antes de probar.
             </p>
+            <div className="rounded-lg border bg-muted/20 p-3 h-80 overflow-y-auto space-y-2">
+              {chat.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center pt-28">
+                  Escribí un mensaje para empezar la prueba.
+                </p>
+              )}
+              {chat.map((m, i) => (
+                <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`max-w-[80%] rounded-lg px-3 py-1.5 text-sm whitespace-pre-wrap ${
+                      m.role === "user"
+                        ? "bg-violet-600 text-white"
+                        : "bg-background border"
+                    }`}
+                  >
+                    {m.content}
+                  </div>
+                </div>
+              ))}
+              {chatting && (
+                <div className="flex justify-start">
+                  <div className="rounded-lg border bg-background px-3 py-1.5 text-sm text-muted-foreground">
+                    escribiendo...
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
             <div className="flex gap-2">
               <Input
-                value={testMessage}
-                onChange={(e) => setTestMessage(e.target.value)}
-                placeholder="Type a test message..."
-                onKeyDown={(e) => e.key === "Enter" && handleTest()}
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Escribí como un cliente..."
+                onKeyDown={(e) => e.key === "Enter" && handleChatSend()}
               />
-              <Button onClick={handleTest} disabled={testing} size="sm" className="gap-1 shrink-0">
+              <Button onClick={handleChatSend} disabled={chatting || !chatInput.trim()} size="sm" className="gap-1 shrink-0">
                 <Send className="h-4 w-4" />
-                {testing ? "..." : "Send"}
+                Enviar
               </Button>
             </div>
-            {testResponse && (
-              <div className="rounded-lg border bg-muted/50 p-3">
-                <p className="text-xs font-medium text-muted-foreground mb-1">AI Response:</p>
-                <p className="text-sm whitespace-pre-wrap">{testResponse}</p>
-              </div>
+            {chat.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setChat([])}
+              >
+                Reiniciar conversación
+              </Button>
             )}
           </TabsContent>
         </Tabs>
@@ -651,7 +795,7 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
             className="gap-1"
           >
             <Trash2 className="h-4 w-4" />
-            Delete
+            Eliminar
           </Button>
           <div className="flex-1" />
           <Button
@@ -661,7 +805,7 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
             className="gap-1 bg-primary hover:bg-primary/90"
           >
             <Save className="h-4 w-4" />
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Guardando..." : "Guardar"}
           </Button>
         </div>
       </div>

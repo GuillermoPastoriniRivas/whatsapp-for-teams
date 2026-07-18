@@ -1,4 +1,5 @@
 import { ConversationStatus } from '../enums/conversation-status.enum.js';
+import { ConversationOrigin } from '../enums/conversation-origin.enum.js';
 
 export class Conversation {
   constructor(
@@ -15,5 +16,8 @@ export class Conversation {
     public readonly closedBy: string | null,
     public readonly summary: string | null = null,
     public readonly pendingAiSince: Date | null = null,
+    public readonly origin: ConversationOrigin = ConversationOrigin.INBOUND,
+    public readonly hasReplied: boolean = true,
+    public readonly repliedAt: Date | null = null,
   ) {}
 }

@@ -7,11 +7,9 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, ShoppingBag } from "lucide-react";
+import { ArrowLeft, User } from "lucide-react";
 import { ChatMenu } from "./chat-menu";
 import { AssignAgentDialog } from "./assign-agent-dialog";
-import { CreateOrderSheet } from "./create-order-sheet";
-import { usePluginStore } from "@/stores/plugin.store";
 
 interface Props {
   conversationId: string;
@@ -27,10 +25,8 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
 
   const currentAgent = useAuthStore((s) => s.agent);
 
-  const hasOrders = usePluginStore((s) => s.has("orders"));
   const { t } = useTranslations();
   const [assignOpen, setAssignOpen] = useState(false);
-  const [orderOpen, setOrderOpen] = useState(false);
 
   const isMine = conversation?.agentId === currentAgent?.id;
 
@@ -98,17 +94,6 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
-          {hasOrders && !isResolved && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden sm:flex shrink-0 rounded-full px-3 h-9 shadow-sm gap-1.5"
-              onClick={() => setOrderOpen(true)}
-            >
-              <ShoppingBag className="h-4 w-4" />
-              {t.orders.createOrder}
-            </Button>
-          )}
           {!isResolved && !isMine && (
             <Button
               variant="outline"
@@ -146,14 +131,6 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
         conversationId={conversationId}
         onAssigned={handleAssigned}
       />
-
-      {hasOrders && (
-        <CreateOrderSheet
-          open={orderOpen}
-          onOpenChange={setOrderOpen}
-          conversationId={conversationId}
-        />
-      )}
     </>
   );
 }

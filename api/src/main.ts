@@ -1,4 +1,3 @@
-import { join } from 'path';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -10,11 +9,6 @@ import { GlobalExceptionFilter } from './presentation/filters/global-exception.f
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   app.use(helmet({ crossOriginResourcePolicy: false }));
-  app.useStaticAssets(join(process.cwd(), 'public'), {
-    prefix: '/api/public',
-    maxAge: '30d',
-    immutable: true,
-  });
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new GlobalExceptionFilter());
 

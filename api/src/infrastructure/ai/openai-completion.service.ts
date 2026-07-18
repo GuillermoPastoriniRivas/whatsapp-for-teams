@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import type {
-  AiCompletionParams,
+  ResolvedAiCompletionParams,
   AiCompletionResult,
   ChatMessage,
   ToolDefinition,
@@ -11,7 +11,7 @@ import type {
 export class OpenAiCompletionService {
   private readonly logger = new Logger(OpenAiCompletionService.name);
 
-  async complete(params: AiCompletionParams): Promise<AiCompletionResult> {
+  async complete(params: ResolvedAiCompletionParams): Promise<AiCompletionResult> {
     const url = 'https://api.openai.com/v1/chat/completions';
 
     const messages: any[] = [

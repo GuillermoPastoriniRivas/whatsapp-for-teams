@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Settings, Shield, Users, Contact, ShoppingBag } from "lucide-react";
+import { MessageSquare, Settings, Shield, Users, Contact, Megaphone } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
-import { usePluginStore } from "@/stores/plugin.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
 
@@ -15,15 +14,12 @@ export function MobileNav() {
   const totalUnread = useConversationStore((s) =>
     Object.values(s.unreadCounts).reduce((sum, n) => sum + n, 0)
   );
-  const hasOrders = usePluginStore((s) => s.has("orders"));
   const { t } = useTranslations();
 
   const tabs = [
     { href: "/conversations", icon: MessageSquare, label: t.nav.chats },
     { href: "/contacts", icon: Contact, label: t.nav.contacts },
-    ...(hasOrders
-      ? [{ href: "/orders", icon: ShoppingBag, label: t.nav.orders }]
-      : []),
+    { href: "/campaigns", icon: Megaphone, label: t.nav.campaigns },
     ...(agent?.role === "admin"
       ? [
           { href: "/agents", icon: Users, label: t.nav.agents },

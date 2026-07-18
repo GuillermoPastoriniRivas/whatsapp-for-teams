@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { ContactRepository } from '../../../../domain/repositories/contact.repository.js';
+import { BulkUpsertContactRow, ContactRepository } from '../../../../domain/repositories/contact.repository.js';
 import { Contact } from '../../../../domain/entities/contact.entity.js';
 import { ContactModel, ContactDocument } from '../schemas/contact.schema.js';
 import { ContactMapper } from '../mappers/contact.mapper.js';
@@ -76,5 +76,40 @@ export class MongoContactRepository implements ContactRepository {
 
     const doc = await this.model.findByIdAndUpdate(id, { $set: update }, { returnDocument: 'after' });
     return doc ? ContactMapper.toDomain(doc) : null;
+  }
+
+  async bulkUpsertByWaId(tenantId: string, rows: BulkUpsertContactRow[]): Promise<{ inserted: number; updated: number }> {
+    if (rows.length === 0) return { inserted: 0, updated: 0 };
+
+    const tenantObjectId = new Types.ObjectId(tenantId);
+    const result = await this.model.bulkWrite(
+      rows.map((row) => ({
+        updateOne: {
+          filter: { tenantId: tenantObjectId, waId: row.waId },
+          update: {
+            $set: {
+              name: row.name,
+              phone: row.phone,
+              ...(row.email !== undefined && { email: row.email }),
+              ...(row.company !== undefined && { company: row.company }),
+              ...(row.customFields && Object.keys(row.customFields).length > 0
+                ? Object.fromEntries(Object.entries(row.customFields).map(([k, v]) => [`customFields.${k}`, v]))
+                : {}),
+            },
+            $setOnInsert: { tenantId: tenantObjectId, waId: row.waId, lastSeenAt: new Date() },
+          },
+          upsert: true,
+        },
+      })),
+      { ordered: false },
+    );
+
+    return { inserted: result.upsertedCount ?? 0, updated: result.modifiedCount ?? 0 };
+  }
+
+  async findByIds(ids: string[]): Promise<Contact[]> {
+    if (ids.length === 0) return [];
+    const docs = await this.model.find({ _id: { $in: ids.map((id) => new Types.ObjectId(id)) } });
+    return docs.map(ContactMapper.toDomain);
   }
 }

@@ -74,14 +74,13 @@ export interface Message {
 export interface PhoneNumber {
   id: string;
   tenantId: string;
-  provider: "meta" | "twilio" | "360dialog" | "kapso";
+  provider: "meta" | "twilio" | "360dialog" | "kapso" | "demo";
   providerConfig: Record<string, string>;
   wabaId: string;
   phoneNumberId: string;
   displayPhone: string;
   label: string;
   status: "active" | "inactive";
-  plugins?: string[];
 }
 
 export interface Label {
@@ -146,22 +145,44 @@ export interface LoginResponse {
   agent: Pick<Agent, "id" | "name" | "email" | "role">;
 }
 
+export type BusinessVertical = "beauty" | "food" | "retail" | "generic";
+
+export interface CatalogItem {
+  name: string;
+  price: string;
+  description: string;
+}
+
+export interface FaqEntry {
+  question: string;
+  answer: string;
+}
+
+export interface BusinessProfile {
+  vertical: BusinessVertical;
+  businessName: string;
+  description: string;
+  address: string;
+  paymentMethods: string;
+  catalog: CatalogItem[];
+  faqs: FaqEntry[];
+  extraNotes: string;
+}
+
+export interface BotBehavior {
+  language: string;
+  formality: "informal" | "formal";
+  useEmojis: boolean;
+  goal: string;
+  customInstructions: string;
+}
+
 export interface AiAgentConfig {
   id: string;
   agentId: string;
   tenantId: string;
-  provider: "openai" | "anthropic" | "gemini" | "openrouter";
-  model: string;
-  apiKeySet: boolean;
-  systemPrompt: string;
-  knowledgeBase: string;
-  goals: string;
-  persona: {
-    role: string;
-    tone: string;
-    language: string;
-    instructions: string;
-  };
+  businessProfile: BusinessProfile;
+  behavior: BotBehavior;
   handoffRules: {
     keywords: string[];
     maxConsecutiveFailures: number;
@@ -264,45 +285,144 @@ export type ChatItem =
   | { kind: "event"; data: ConversationEvent }
   | { kind: "date"; date: string };
 
-// Orders
-export type OrderStatus =
-  | "pending"
-  | "confirmed"
-  | "preparing"
-  | "ready"
-  | "on_the_way"
-  | "delivered"
-  | "cancelled";
+// Message Templates
+export type TemplateStatus = "draft" | "pending" | "approved" | "rejected" | "paused" | "disabled";
+export type TemplateCategory = "marketing" | "utility" | "authentication";
+export type TemplateQuality = "unknown" | "green" | "yellow" | "red";
 
-export interface OrderItem {
-  name: string;
-  quantity: number;
-  unitPrice?: number;
-  notes?: string;
+export interface TemplateButton {
+  type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER" | "COPY_CODE";
+  text: string;
+  url?: string;
+  phone_number?: string;
+  example?: string[];
 }
 
-export interface Order {
+export interface TemplateComponent {
+  type: "HEADER" | "BODY" | "FOOTER" | "BUTTONS";
+  format?: "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT";
+  text?: string;
+  example?: Record<string, unknown>;
+  buttons?: TemplateButton[];
+}
+
+export interface MessageTemplate {
   id: string;
   tenantId: string;
-  conversationId: string;
-  contactId: string;
   phoneNumberId: string;
-  createdByAgentId: string | null;
-  status: OrderStatus;
-  items: OrderItem[];
-  deliveryType: "delivery" | "pickup";
-  deliveryAddress: string | null;
-  deliveryNotes: string | null;
-  estimatedTotal: number | null;
-  currency: string | null;
+  wabaId: string;
+  metaTemplateId: string | null;
+  name: string;
+  language: string;
+  category: TemplateCategory;
+  status: TemplateStatus;
+  qualityScore: TemplateQuality;
+  components: TemplateComponent[];
+  rejectionReason: string | null;
+  lastSyncedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  paymentMethod?: string | null;
-  customerName?: string | null;
-  customerPhone?: string | null;
-  deliveryCost?: number | null;
-  neighborhood?: string | null;
-  contactName?: string;
+}
+
+// Campaigns
+export type CampaignStatus =
+  | "draft"
+  | "scheduled"
+  | "running"
+  | "paused"
+  | "completed"
+  | "cancelled"
+  | "failed";
+
+export type CampaignRecipientStatus =
+  | "pending"
+  | "queued"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "failed"
+  | "skipped";
+
+export interface VariableMapping {
+  component: "header" | "body" | "button";
+  index?: number;
+  position: string;
+  source: "contact_field" | "static";
+  value: string;
+}
+
+export interface CampaignAudience {
+  type: "contactIds" | "filter";
+  contactIds?: string[];
+  search?: string;
+}
+
+export interface CampaignCounts {
+  total: number;
+  queued: number;
+  sent: number;
+  delivered: number;
+  read: number;
+  failed: number;
+  skipped: number;
+  replied: number;
+}
+
+export interface Campaign {
+  id: string;
+  tenantId: string;
+  phoneNumberId: string;
+  templateId: string;
+  name: string;
+  status: CampaignStatus;
+  variableMappings: VariableMapping[];
+  audience: CampaignAudience;
+  scheduledAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  throttle: { messagesPerSecond: number; batchSize: number };
+  replyWindowHours: number;
+  counts: CampaignCounts;
+  createdByAgentId: string;
+  failureReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CampaignRecipient {
+  id: string;
+  campaignId: string;
+  tenantId: string;
+  contactId: string;
+  waId: string;
+  phone: string;
+  resolvedVariables: Record<string, string>;
+  status: CampaignRecipientStatus;
+  attemptCount: number;
+  waMessageId: string | null;
+  messageId: string | null;
+  conversationId: string | null;
+  failureCode: string | null;
+  failureReason: string | null;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  readAt: string | null;
+  repliedAt: string | null;
+  createdAt: string;
+}
+
+export interface CampaignStats {
+  counts: CampaignCounts & { pending: number };
+  deliveredRate: number;
+  readRate: number;
+  responseRate: number;
+  failureBreakdown: Array<{ code: string; title: string; count: number }>;
+}
+
+export interface ImportContactsResult {
+  imported: number;
+  updated: number;
+  skipped: Array<{ row: number; reason: string }>;
 }
 
 export interface AiAgentWithConfig {

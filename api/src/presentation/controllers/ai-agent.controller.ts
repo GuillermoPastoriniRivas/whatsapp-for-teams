@@ -3,13 +3,13 @@ import {
   Inject, NotFoundException, HttpCode,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { z } from 'zod';
 import { CreateAiAgentUseCase } from '../../application/use-cases/ai/create-ai-agent.use-case.js';
 import { GetAiAgentUseCase } from '../../application/use-cases/ai/get-ai-agent.use-case.js';
 import { ListAiAgentsUseCase } from '../../application/use-cases/ai/list-ai-agents.use-case.js';
 import { UpdateAiAgentConfigUseCase } from '../../application/use-cases/ai/update-ai-agent-config.use-case.js';
 import { DeleteAiAgentUseCase } from '../../application/use-cases/ai/delete-ai-agent.use-case.js';
-import type { AiCompletionPort } from '../../application/ports/ai-completion.port.js';
-import type { AiAgentConfigRepository } from '../../domain/repositories/ai-agent-config.repository.js';
+import { PlaygroundChatUseCase } from '../../application/use-cases/ai/playground-chat.use-case.js';
 import type { AgentRepository } from '../../domain/repositories/agent.repository.js';
 import { Roles } from '../decorators/roles.decorator.js';
 import { DemoRestricted } from '../guards/demo.guard.js';
@@ -23,6 +23,14 @@ import type { UpdateAiAgentConfigRequestDto } from '../request-dtos/update-ai-ag
 import { RequirePlanLimit } from '../decorators/require-plan-limit.decorator.js';
 import { PlanLimitGuard } from '../guards/plan-limit.guard.js';
 
+const PlaygroundRequestSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string().min(1),
+  })).min(1).max(50),
+});
+type PlaygroundRequestDto = z.infer<typeof PlaygroundRequestSchema>;
+
 @ApiTags('AI Agents')
 @ApiBearerAuth('JWT')
 @Controller('ai-agents')
@@ -33,8 +41,7 @@ export class AiAgentController {
     @Inject('ListAiAgentsUseCase') private readonly listAiAgents: ListAiAgentsUseCase,
     @Inject('UpdateAiAgentConfigUseCase') private readonly updateAiAgent: UpdateAiAgentConfigUseCase,
     @Inject('DeleteAiAgentUseCase') private readonly deleteAiAgent: DeleteAiAgentUseCase,
-    @Inject('AiCompletionPort') private readonly aiCompletion: AiCompletionPort,
-    @Inject('AiAgentConfigRepository') private readonly configRepo: AiAgentConfigRepository,
+    @Inject('PlaygroundChatUseCase') private readonly playgroundChat: PlaygroundChatUseCase,
     @Inject('AgentRepository') private readonly agentRepo: AgentRepository,
   ) {}
 
@@ -43,7 +50,7 @@ export class AiAgentController {
   @DemoRestricted()
   @UseGuards(PlanLimitGuard)
   @RequirePlanLimit('ai_bots')
-  @ApiOperation({ summary: 'Create AI agent', description: 'Create a new AI agent with LLM configuration (admin only)' })
+  @ApiOperation({ summary: 'Create AI agent', description: 'Create a new AI agent from a structured business profile (admin only)' })
   @ApiResponse({ status: 201, description: 'AI agent created' })
   async create(
     @Body(new ZodValidationPipe(CreateAiAgentRequestSchema)) body: CreateAiAgentRequestDto,
@@ -58,7 +65,7 @@ export class AiAgentController {
       name: aiAgent.name,
       type: aiAgent.type,
       status: aiAgent.status,
-      config: this.sanitizeConfig(config),
+      config,
     };
   }
 
@@ -74,7 +81,7 @@ export class AiAgentController {
       type: aiAgent.type,
       status: aiAgent.status,
       activeCount: aiAgent.activeCount,
-      config: this.sanitizeConfig(config),
+      config,
     }));
   }
 
@@ -95,7 +102,7 @@ export class AiAgentController {
       type: aiAgent.type,
       status: aiAgent.status,
       activeCount: aiAgent.activeCount,
-      config: this.sanitizeConfig(config),
+      config,
     };
   }
 
@@ -120,7 +127,7 @@ export class AiAgentController {
     const result = await this.updateAiAgent.execute(id, agent.tenantId, configUpdate as any);
     if (!result.ok) throw new NotFoundException(result.error.message);
 
-    return { config: this.sanitizeConfig(result.value) };
+    return { config: result.value };
   }
 
   @Delete(':id')
@@ -136,53 +143,23 @@ export class AiAgentController {
     if (!result.ok) throw new NotFoundException(result.error.message);
   }
 
-  @Post(':id/test')
+  @Post(':id/playground')
   @Roles('admin')
-  @ApiOperation({ summary: 'Test AI agent', description: 'Send a test message and get AI response' })
+  @ApiOperation({ summary: 'Playground chat', description: 'Test the bot with the real production prompt, without touching WhatsApp' })
   @ApiParam({ name: 'id', description: 'AI Agent ID' })
-  @ApiResponse({ status: 200, description: 'Test response' })
-  async test(
+  @ApiResponse({ status: 200, description: 'Bot reply bubbles' })
+  async playground(
     @Param('id') id: string,
-    @Body() body: { message: string },
+    @Body(new ZodValidationPipe(PlaygroundRequestSchema)) body: PlaygroundRequestDto,
     @CurrentAgent() agent: RequestAgent,
   ) {
-    const config = await this.configRepo.findByAgentId(id);
-    if (!config || config.tenantId !== agent.tenantId) {
-      throw new NotFoundException('AI agent not found');
-    }
-
-    const now = new Date();
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const dayName = days[now.getDay()];
-
-    let systemPrompt = '';
-    systemPrompt += `Current datetime: ${dayName}, ${now.toISOString().slice(0, 10)}.\n\n`;
-    if (config.persona.role) systemPrompt += `You are ${config.persona.role}.\n`;
-    if (config.persona.tone) systemPrompt += `Tone: ${config.persona.tone}.\n`;
-    if (config.persona.language) systemPrompt += `Respond in: ${config.persona.language}.\n`;
-    if (config.persona.instructions) systemPrompt += `\n${config.persona.instructions}\n`;
-    if (config.systemPrompt) systemPrompt += `\n${config.systemPrompt}\n`;
-    if (config.knowledgeBase) systemPrompt += `\n--- Business Knowledge ---\n${config.knowledgeBase}\n--- End Knowledge ---\n`;
-
-    const result = await this.aiCompletion.complete({
-      provider: config.provider,
-      apiKey: config.apiKey,
-      model: config.model,
-      systemPrompt,
-      messages: [{ role: 'user', content: body.message }],
+    const result = await this.playgroundChat.execute({
+      agentId: id,
+      tenantId: agent.tenantId,
+      messages: body.messages,
     });
+    if (!result.ok) throw new NotFoundException(result.error.message);
 
-    return {
-      response: result.content ?? '',
-      tokensUsed: result.tokensUsed,
-    };
-  }
-
-  private sanitizeConfig(config: any) {
-    const { apiKey, ...rest } = config;
-    return {
-      ...rest,
-      apiKeySet: !!apiKey,
-    };
+    return result.value;
   }
 }

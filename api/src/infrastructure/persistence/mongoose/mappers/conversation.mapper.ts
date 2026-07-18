@@ -1,5 +1,6 @@
 import { Conversation } from '../../../../domain/entities/conversation.entity.js';
 import { ConversationStatus } from '../../../../domain/enums/conversation-status.enum.js';
+import { ConversationOrigin } from '../../../../domain/enums/conversation-origin.enum.js';
 import { ConversationDocument } from '../schemas/conversation.schema.js';
 
 export class ConversationMapper {
@@ -18,6 +19,9 @@ export class ConversationMapper {
       doc.closedBy,
       doc.summary ?? null,
       doc.pendingAiSince ?? null,
+      (doc.origin as ConversationOrigin) ?? ConversationOrigin.INBOUND,
+      doc.hasReplied ?? true,
+      doc.repliedAt ?? null,
     );
   }
 }

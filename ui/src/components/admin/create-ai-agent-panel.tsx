@@ -5,26 +5,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
-import { Bot, ChevronLeft, ChevronRight } from "lucide-react";
+import type { BusinessVertical, CatalogItem, FaqEntry } from "@/types";
+import { Bot, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 
 interface Props {
   onCreated: () => void;
   onCancel: () => void;
 }
 
-const providers = [
-  { value: "openai", label: "OpenAI", models: ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-5-nano", "gpt-5.1", "gpt-5.4-nano"] },
-  { value: "anthropic", label: "Anthropic", models: ["claude-sonnet-4-20250514", "claude-haiku-4-5-20251001", "claude-opus-4-20250514"] },
-  { value: "gemini", label: "Gemini", models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"] },
-  { value: "openrouter", label: "OpenRouter", models: [] },
+const verticals: { value: BusinessVertical; label: string; description: string; catalogLabel: string; catalogNamePlaceholder: string }[] = [
+  { value: "beauty", label: "Estética y belleza", description: "Barbería, peluquería, spa, estética", catalogLabel: "Servicios y precios", catalogNamePlaceholder: "Corte de pelo" },
+  { value: "food", label: "Gastronomía", description: "Restaurante, delivery, cafetería", catalogLabel: "Menú y precios", catalogNamePlaceholder: "Hamburguesa doble" },
+  { value: "retail", label: "Tienda", description: "Ropa, productos, retail", catalogLabel: "Productos y precios", catalogNamePlaceholder: "Remera básica" },
+  { value: "generic", label: "Otro negocio", description: "Servicios, software, lo que sea", catalogLabel: "Productos / servicios y precios", catalogNamePlaceholder: "Plan mensual" },
 ];
 
-const tones = ["friendly", "professional", "casual", "formal"];
 const languages = [
   { value: "es", label: "Español" },
   { value: "en", label: "English" },
   { value: "pt", label: "Português" },
-  { value: "auto", label: "Auto-detect" },
+];
+
+const goalTemplates = [
+  { label: "Agendar turnos", text: "Cuando alguien quiera un turno, preguntá qué servicio busca y qué día y horario prefiere. Después avisale que el equipo confirma la disponibilidad." },
+  { label: "Tomar pedidos", text: "Ayudá a los clientes a armar su pedido: qué quieren, si es delivery o retiro, dirección y medio de pago. Al final repetí el pedido completo para confirmar." },
+  { label: "Calificar clientes", text: "Si alguien muestra interés en comprar, preguntá su nombre, qué necesita y para cuándo lo necesita." },
 ];
 
 export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
@@ -33,18 +38,20 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
   const [loading, setLoading] = useState(false);
 
   const [name, setName] = useState("");
-  const [provider, setProvider] = useState("openai");
-  const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("gpt-4o-mini");
-  const [role, setRole] = useState("");
-  const [tone, setTone] = useState("friendly");
+  const [vertical, setVertical] = useState<BusinessVertical>("beauty");
+  const [businessName, setBusinessName] = useState("");
+  const [description, setDescription] = useState("");
+  const [address, setAddress] = useState("");
+  const [paymentMethods, setPaymentMethods] = useState("");
+  const [catalog, setCatalog] = useState<CatalogItem[]>([{ name: "", price: "", description: "" }]);
+  const [faqs, setFaqs] = useState<FaqEntry[]>([{ question: "", answer: "" }]);
   const [language, setLanguage] = useState("es");
-  const [instructions, setInstructions] = useState("");
-  const [knowledgeBase, setKnowledgeBase] = useState("");
-  const [goals, setGoals] = useState("");
+  const [formality, setFormality] = useState<"informal" | "formal">("informal");
+  const [useEmojis, setUseEmojis] = useState(true);
+  const [goal, setGoal] = useState("");
 
   const totalSteps = 5;
-  const selectedProvider = providers.find((p) => p.value === provider);
+  const selectedVertical = verticals.find((v) => v.value === vertical)!;
 
   const handleSubmit = async () => {
     setError(null);
@@ -53,17 +60,28 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
     try {
       await api.post("/ai-agents", {
         name,
-        provider,
-        model,
-        apiKey,
-        knowledgeBase,
-        goals,
-        persona: { role, tone, language, instructions },
+        businessProfile: {
+          vertical,
+          businessName,
+          description,
+          address,
+          paymentMethods,
+          catalog: catalog.filter((c) => c.name.trim().length > 0),
+          faqs: faqs.filter((f) => f.question.trim().length > 0 && f.answer.trim().length > 0),
+          extraNotes: "",
+        },
+        behavior: {
+          language,
+          formality,
+          useEmojis,
+          goal,
+          customInstructions: "",
+        },
         handoffRules: { onCustomerRequest: true, maxConsecutiveFailures: 3 },
       });
       onCreated();
     } catch (err: any) {
-      setError(err.message || "Failed to create AI agent");
+      setError(err.message || "No se pudo crear el asistente");
     } finally {
       setLoading(false);
     }
@@ -72,12 +90,20 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
   const canNext = () => {
     switch (step) {
       case 1: return name.trim().length > 0;
-      case 2: return apiKey.trim().length > 0 && model.trim().length > 0;
-      case 3: return role.trim().length > 0;
+      case 2: return businessName.trim().length > 0;
+      case 3: return true;
       case 4: return true;
       case 5: return true;
       default: return false;
     }
+  };
+
+  const updateCatalogItem = (i: number, patch: Partial<CatalogItem>) => {
+    setCatalog((prev) => prev.map((item, idx) => (idx === i ? { ...item, ...patch } : item)));
+  };
+
+  const updateFaq = (i: number, patch: Partial<FaqEntry>) => {
+    setFaqs((prev) => prev.map((item, idx) => (idx === i ? { ...item, ...patch } : item)));
   };
 
   return (
@@ -89,8 +115,8 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
             <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
           </div>
           <div>
-            <h2 className="text-base font-semibold">New AI Agent</h2>
-            <p className="text-xs text-muted-foreground">Step {step} of {totalSteps}</p>
+            <h2 className="text-base font-semibold">Nuevo asistente</h2>
+            <p className="text-xs text-muted-foreground">Paso {step} de {totalSteps}</p>
           </div>
         </div>
 
@@ -109,16 +135,33 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
       <div className="px-4 pb-4 space-y-4">
         {step === 1 && (
           <>
-            <h3 className="font-medium text-sm">Agent Identity</h3>
+            <h3 className="font-medium text-sm">¿Qué tipo de negocio tenés?</h3>
+            <div className="grid grid-cols-1 gap-2">
+              {verticals.map((v) => (
+                <button
+                  key={v.value}
+                  type="button"
+                  onClick={() => setVertical(v.value)}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    vertical === v.value
+                      ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
+                      : "hover:bg-muted/50"
+                  }`}
+                >
+                  <span className="text-sm font-medium">{v.label}</span>
+                  <p className="text-xs text-muted-foreground">{v.description}</p>
+                </button>
+              ))}
+            </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Name</label>
+              <label className="text-sm font-medium">Nombre del asistente</label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder='e.g., "Ana", "Support Bot"'
+                placeholder='Ej: "Sofi", "Asistente de Lo de Marcos"'
               />
               <p className="text-xs text-muted-foreground">
-                This is how the agent will be identified in the system.
+                Así lo vas a identificar dentro de asis.chat.
               </p>
             </div>
           </>
@@ -126,104 +169,148 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
 
         {step === 2 && (
           <>
-            <h3 className="font-medium text-sm">AI Provider</h3>
+            <h3 className="font-medium text-sm">Datos del negocio</h3>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Provider</label>
-              <div className="grid grid-cols-2 gap-2">
-                {providers.map((p) => (
-                  <button
-                    key={p.value}
-                    type="button"
-                    onClick={() => {
-                      setProvider(p.value);
-                      if (p.models.length > 0) setModel(p.models[0]);
-                      else setModel("");
-                    }}
-                    className={`rounded-lg border p-3 text-left text-sm transition-colors ${
-                      provider === p.value
-                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
-                        : "hover:bg-muted/50"
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">API Key</label>
+              <label className="text-sm font-medium">Nombre del negocio</label>
               <Input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                placeholder='Ej: "Barbería Don Pedro"'
               />
-              <p className="text-xs text-muted-foreground">
-                Your API key is encrypted and stored securely.
-              </p>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Model</label>
-              {selectedProvider && selectedProvider.models.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {selectedProvider.models.map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setModel(m)}
-                      className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
-                        model === m
-                          ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
-                          : "hover:bg-muted/50"
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <Input
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="e.g., openai/gpt-4o"
-                />
-              )}
+              <label className="text-sm font-medium">¿Qué hace tu negocio? (una frase)</label>
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder='Ej: "Barbería clásica con cortes y afeitado"'
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Dirección (opcional)</label>
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder='Ej: "Av. Italia 1234, Montevideo"'
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Medios de pago (opcional)</label>
+              <Input
+                value={paymentMethods}
+                onChange={(e) => setPaymentMethods(e.target.value)}
+                placeholder='Ej: "Efectivo, débito, Mercado Pago"'
+              />
             </div>
           </>
         )}
 
         {step === 3 && (
           <>
-            <h3 className="font-medium text-sm">Personality</h3>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Role</label>
-              <Input
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                placeholder='e.g., "Customer support agent"'
-              />
+            <h3 className="font-medium text-sm">{selectedVertical.catalogLabel}</h3>
+            <p className="text-sm text-muted-foreground">
+              El asistente solo va a informar lo que cargues acá. Podés dejarlo vacío y completarlo después.
+            </p>
+            <div className="space-y-2">
+              {catalog.map((item, i) => (
+                <div key={i} className="rounded-lg border p-2 space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={item.name}
+                      onChange={(e) => updateCatalogItem(i, { name: e.target.value })}
+                      placeholder={selectedVertical.catalogNamePlaceholder}
+                      className="flex-1"
+                    />
+                    <Input
+                      value={item.price}
+                      onChange={(e) => updateCatalogItem(i, { price: e.target.value })}
+                      placeholder="$500"
+                      className="w-28"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setCatalog((prev) => prev.filter((_, idx) => idx !== i))}
+                      disabled={catalog.length === 1}
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                  <Input
+                    value={item.description}
+                    onChange={(e) => updateCatalogItem(i, { description: e.target.value })}
+                    placeholder="Detalle opcional (duración, qué incluye...)"
+                  />
+                </div>
+              ))}
             </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Tone</label>
-              <div className="flex flex-wrap gap-2">
-                {tones.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTone(t)}
-                    className={`rounded-md border px-3 py-1.5 text-xs capitalize transition-colors ${
-                      tone === t
-                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
-                        : "hover:bg-muted/50"
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCatalog((prev) => [...prev, { name: "", price: "", description: "" }])}
+              className="gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              Agregar otro
+            </Button>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <h3 className="font-medium text-sm">Preguntas frecuentes</h3>
+            <p className="text-sm text-muted-foreground">
+              ¿Qué te preguntan siempre por WhatsApp? Cargá la pregunta y cómo querés que la responda.
+            </p>
+            <div className="space-y-2">
+              {faqs.map((faq, i) => (
+                <div key={i} className="rounded-lg border p-2 space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={faq.question}
+                      onChange={(e) => updateFaq(i, { question: e.target.value })}
+                      placeholder='Ej: "¿Hacen envíos?"'
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setFaqs((prev) => prev.filter((_, idx) => idx !== i))}
+                      disabled={faqs.length === 1}
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={faq.answer}
+                    onChange={(e) => updateFaq(i, { answer: e.target.value })}
+                    placeholder='Ej: "Sí, hacemos envíos a todo el país por DAC."'
+                    rows={2}
+                  />
+                </div>
+              ))}
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setFaqs((prev) => [...prev, { question: "", answer: "" }])}
+              className="gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              Agregar otra
+            </Button>
+          </>
+        )}
+
+        {step === 5 && (
+          <>
+            <h3 className="font-medium text-sm">¿Cómo tiene que responder?</h3>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Language</label>
+              <label className="text-sm font-medium">Idioma</label>
               <div className="flex flex-wrap gap-2">
                 {languages.map((l) => (
                   <button
@@ -242,58 +329,63 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Additional Instructions</label>
+              <label className="text-sm font-medium">Trato</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: "informal" as const, label: "Cercano (vos / tú)" },
+                  { value: "formal" as const, label: "Formal (usted)" },
+                ].map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => setFormality(f.value)}
+                    className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
+                      formality === f.value
+                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
+                        : "hover:bg-muted/50"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Emojis</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: true, label: "Puede usar alguno" },
+                  { value: false, label: "Sin emojis" },
+                ].map((opt) => (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    onClick={() => setUseEmojis(opt.value)}
+                    className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
+                      useEmojis === opt.value
+                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
+                        : "hover:bg-muted/50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">¿Qué querés que logre? (opcional)</label>
               <Textarea
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-                placeholder="Any specific instructions for the agent..."
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                placeholder="Ej: que junte los datos del pedido y avise que lo confirmamos enseguida."
                 rows={3}
               />
-            </div>
-          </>
-        )}
-
-        {step === 4 && (
-          <>
-            <h3 className="font-medium text-sm">Knowledge Base</h3>
-            <p className="text-sm text-muted-foreground">
-              Write everything your agent needs to know about your business.
-            </p>
-            <Textarea
-              value={knowledgeBase}
-              onChange={(e) => setKnowledgeBase(e.target.value)}
-              placeholder={`Example:\n\nWe are Acme Corp, a dental clinic.\nHours: Mon-Fri 9am-6pm\nServices: Cleaning ($50), Filling ($120)\n\nFAQ:\nQ: Do you accept insurance?\nA: Yes, most major plans.`}
-              rows={10}
-              className="font-mono text-sm"
-            />
-          </>
-        )}
-
-        {step === 5 && (
-          <>
-            <h3 className="font-medium text-sm">Goals (Optional)</h3>
-            <p className="text-sm text-muted-foreground">
-              Define what your agent should accomplish. Write naturally — the AI will figure out how.
-            </p>
-            <Textarea
-              value={goals}
-              onChange={(e) => setGoals(e.target.value)}
-              placeholder={`Example:\n\nQualify leads by asking:\n- Name and company\n- Budget range\n- Timeline for purchase\n\nIf budget is over $5,000, mark as qualified lead.`}
-              rows={8}
-              className="font-mono text-sm"
-            />
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Quick templates:</p>
               <div className="flex flex-wrap gap-1.5">
-                {[
-                  { label: "Qualify leads", text: "Qualify leads by asking:\n- Full name and company\n- Budget range\n- Timeline and urgency\n\nIf budget is over $5,000, mark as qualified lead." },
-                  { label: "Take orders", text: "Help customers place orders:\n- Ask what products/services they want\n- Confirm quantities\n- Collect delivery address\n- Summarize the order before confirming" },
-                  { label: "Schedule appointments", text: "Schedule appointments:\n- Ask what service they need\n- Suggest available times\n- Collect full name and phone\n- Confirm date, time, and service" },
-                ].map((t) => (
+                {goalTemplates.map((t) => (
                   <button
                     key={t.label}
                     type="button"
-                    onClick={() => setGoals((prev) => prev ? `${prev}\n\n${t.text}` : t.text)}
+                    onClick={() => setGoal(t.text)}
                     className="rounded-md border px-2.5 py-1 text-xs hover:bg-muted/50 transition-colors"
                   >
                     + {t.label}
@@ -321,7 +413,7 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
               className="gap-1"
             >
               <ChevronLeft className="h-4 w-4" />
-              Back
+              Atrás
             </Button>
           ) : (
             <Button
@@ -330,7 +422,7 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
               size="sm"
               onClick={onCancel}
             >
-              Cancel
+              Cancelar
             </Button>
           )}
           <div className="flex-1" />
@@ -342,7 +434,7 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
               disabled={!canNext()}
               className="gap-1 bg-primary hover:bg-primary/90"
             >
-              Next
+              Siguiente
               <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
@@ -353,7 +445,7 @@ export function CreateAiAgentPanel({ onCreated, onCancel }: Props) {
               disabled={loading}
               className="bg-primary hover:bg-primary/90"
             >
-              {loading ? "Creating..." : "Create Agent"}
+              {loading ? "Creando..." : "Crear asistente"}
             </Button>
           )}
         </div>

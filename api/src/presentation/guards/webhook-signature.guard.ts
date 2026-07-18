@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { PhoneNumberRepository } from '../../domain/repositories/phone-number.repository.js';
+import type { PhoneNumber } from '../../domain/entities/phone-number.entity.js';
 
 @Injectable()
 export class WebhookSignatureGuard implements CanActivate {
@@ -16,18 +17,23 @@ export class WebhookSignatureGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
 
-    // Extract phone_number_id from the parsed body to look up the phone number
+    // Extract phone_number_id from the parsed body to look up the phone number.
+    // WABA-level events (e.g. template status updates) carry no metadata.phone_number_id;
+    // for those, entry[0].id is the WABA id and any active phone of that WABA
+    // shares the Meta App Secret used for signature validation.
     const body = request.body;
     const phoneNumberId = body?.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
+    const wabaId = body?.entry?.[0]?.id;
 
-    if (!phoneNumberId) {
-      this.logger.warn('Cannot determine phone_number_id from webhook payload');
-      throw new UnauthorizedException('Cannot determine phone number from payload');
+    let phoneNumber: PhoneNumber | null = null;
+    if (phoneNumberId) {
+      phoneNumber = await this.phoneRepo.findByPhoneNumberId(phoneNumberId);
+    } else if (wabaId) {
+      phoneNumber = await this.phoneRepo.findByWabaId(wabaId);
     }
 
-    const phoneNumber = await this.phoneRepo.findByPhoneNumberId(phoneNumberId);
     if (!phoneNumber) {
-      this.logger.warn(`Unknown phone_number_id: ${phoneNumberId}`);
+      this.logger.warn(`Cannot resolve phone number from webhook payload (phone_number_id=${phoneNumberId ?? 'none'}, wabaId=${wabaId ?? 'none'})`);
       throw new UnauthorizedException('Unknown phone number');
     }
 
@@ -50,7 +56,7 @@ export class WebhookSignatureGuard implements CanActivate {
     }
 
     if (!phoneNumber.webhookSecret) {
-      this.logger.error(`Phone number ${phoneNumberId} has no webhookSecret (Meta App Secret) configured`);
+      this.logger.error(`Phone number ${phoneNumber.phoneNumberId} has no webhookSecret (Meta App Secret) configured`);
       throw new UnauthorizedException('Webhook secret not configured for this phone number');
     }
 
@@ -69,7 +75,7 @@ export class WebhookSignatureGuard implements CanActivate {
     const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
 
     if (sigBuffer.length !== expectedBuffer.length || !timingSafeEqual(sigBuffer, expectedBuffer)) {
-      this.logger.warn(`Invalid signature for phone ${phoneNumberId} — got: ${signature.substring(0, 20)}... expected: ${expectedSignature.substring(0, 20)}...`);
+      this.logger.warn(`Invalid signature for phone ${phoneNumber.phoneNumberId} — got: ${signature.substring(0, 20)}... expected: ${expectedSignature.substring(0, 20)}...`);
       throw new UnauthorizedException('Invalid webhook signature');
     }
 

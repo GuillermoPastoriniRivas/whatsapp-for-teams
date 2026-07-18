@@ -16,6 +16,8 @@ import { ConversationController } from './controllers/conversation.controller.js
 import { TenantController } from './controllers/tenant.controller.js';
 import { WebhookController } from './controllers/webhook.controller.js';
 import { ContactController } from './controllers/contact.controller.js';
+import { TemplateController } from './controllers/template.controller.js';
+import { CampaignController } from './controllers/campaign.controller.js';
 
 // Use Cases — Auth
 import { LoginUseCase } from '../application/use-cases/auth/login.use-case.js';
@@ -44,7 +46,6 @@ import { GetAgentPhoneAccessUseCase } from '../application/use-cases/agent/get-a
 import { RegisterPhoneNumberUseCase } from '../application/use-cases/phone-number/register-phone-number.use-case.js';
 import { ListPhoneNumbersUseCase } from '../application/use-cases/phone-number/list-phone-numbers.use-case.js';
 import { UpdatePhoneNumberUseCase } from '../application/use-cases/phone-number/update-phone-number.use-case.js';
-import { GetActivePluginsUseCase } from '../application/use-cases/phone-number/get-active-plugins.use-case.js';
 
 // Use Cases — Conversation
 import { ListConversationsUseCase } from '../application/use-cases/conversation/list-conversations.use-case.js';
@@ -62,6 +63,30 @@ import { DemoAiReplyUseCase } from '../application/use-cases/conversation/demo-a
 // Use Cases — Contact
 import { UpdateContactUseCase } from '../application/use-cases/contact/update-contact.use-case.js';
 import { ListContactsUseCase } from '../application/use-cases/contact/list-contacts.use-case.js';
+import { ImportContactsUseCase } from '../application/use-cases/contact/import-contacts.use-case.js';
+
+// Use Cases — Template
+import { CreateTemplateUseCase } from '../application/use-cases/template/create-template.use-case.js';
+import { UpdateTemplateUseCase } from '../application/use-cases/template/update-template.use-case.js';
+import { DeleteTemplateUseCase } from '../application/use-cases/template/delete-template.use-case.js';
+import { ListTemplatesUseCase } from '../application/use-cases/template/list-templates.use-case.js';
+import { GetTemplateUseCase } from '../application/use-cases/template/get-template.use-case.js';
+import { SyncTemplatesUseCase } from '../application/use-cases/template/sync-templates.use-case.js';
+
+// Use Cases — Campaign
+import { CreateCampaignUseCase } from '../application/use-cases/campaign/create-campaign.use-case.js';
+import { UpdateCampaignUseCase } from '../application/use-cases/campaign/update-campaign.use-case.js';
+import { StartCampaignUseCase } from '../application/use-cases/campaign/start-campaign.use-case.js';
+import { PauseCampaignUseCase } from '../application/use-cases/campaign/pause-campaign.use-case.js';
+import { ResumeCampaignUseCase } from '../application/use-cases/campaign/resume-campaign.use-case.js';
+import { CancelCampaignUseCase } from '../application/use-cases/campaign/cancel-campaign.use-case.js';
+import { DeleteCampaignUseCase } from '../application/use-cases/campaign/delete-campaign.use-case.js';
+import { ListCampaignsUseCase } from '../application/use-cases/campaign/list-campaigns.use-case.js';
+import { GetCampaignUseCase } from '../application/use-cases/campaign/get-campaign.use-case.js';
+import { ListCampaignRecipientsUseCase } from '../application/use-cases/campaign/list-campaign-recipients.use-case.js';
+import { GetCampaignStatsUseCase } from '../application/use-cases/campaign/get-campaign-stats.use-case.js';
+import { ProcessCampaignBatchUseCase } from '../application/use-cases/campaign/process-campaign-batch.use-case.js';
+import { AttributeCampaignReplyUseCase } from '../application/use-cases/campaign/attribute-campaign-reply.use-case.js';
 
 // Use Cases — Tenant
 import { CreateTenantUseCase } from '../application/use-cases/tenant/create-tenant.use-case.js';
@@ -70,6 +95,9 @@ import { GetTenantUseCase } from '../application/use-cases/tenant/get-tenant.use
 // Use Cases — Webhook
 import { HandleInboundMessageUseCase } from '../application/use-cases/webhook/handle-inbound-message.use-case.js';
 import { HandleStatusUpdateUseCase } from '../application/use-cases/webhook/handle-status-update.use-case.js';
+import { HandleTemplateStatusUpdateUseCase } from '../application/use-cases/webhook/handle-template-status-update.use-case.js';
+import { HandleTemplateQualityUpdateUseCase } from '../application/use-cases/webhook/handle-template-quality-update.use-case.js';
+import { HandleTemplateCategoryUpdateUseCase } from '../application/use-cases/webhook/handle-template-category-update.use-case.js';
 
 // Use Cases — AI Agent
 import { CreateAiAgentUseCase } from '../application/use-cases/ai/create-ai-agent.use-case.js';
@@ -78,15 +106,8 @@ import { ListAiAgentsUseCase } from '../application/use-cases/ai/list-ai-agents.
 import { UpdateAiAgentConfigUseCase } from '../application/use-cases/ai/update-ai-agent-config.use-case.js';
 import { DeleteAiAgentUseCase } from '../application/use-cases/ai/delete-ai-agent.use-case.js';
 import { ProcessAiResponseUseCase } from '../application/use-cases/ai/process-ai-response.use-case.js';
+import { PlaygroundChatUseCase } from '../application/use-cases/ai/playground-chat.use-case.js';
 import { HandoffToHumanUseCase } from '../application/use-cases/ai/handoff-to-human.use-case.js';
-import { OrderDirectiveHandler } from '../application/use-cases/ai/handlers/order-directive.handler.js';
-
-// Use Cases — Order
-import { CreateOrderUseCase } from '../application/use-cases/order/create-order.use-case.js';
-import { ListOrdersUseCase } from '../application/use-cases/order/list-orders.use-case.js';
-import { GetOrderUseCase } from '../application/use-cases/order/get-order.use-case.js';
-import { UpdateOrderStatusUseCase } from '../application/use-cases/order/update-order-status.use-case.js';
-import { NotifyOrderStatusUseCase } from '../application/use-cases/order/notify-order-status.use-case.js';
 
 // Use Cases — Label
 import { CreateLabelUseCase } from '../application/use-cases/label/create-label.use-case.js';
@@ -99,9 +120,6 @@ import { GetConversationLabelsUseCase } from '../application/use-cases/label/get
 
 // Controllers — AI
 import { AiAgentController } from './controllers/ai-agent.controller.js';
-
-// Controllers — Order
-import { OrderController } from './controllers/order.controller.js';
 
 // Controllers — Label
 import { LabelController } from './controllers/label.controller.js';
@@ -129,6 +147,7 @@ import { PlanLimitGuard } from './guards/plan-limit.guard.js';
 import { WebhookJobProcessor } from '../infrastructure/queue/webhook-job.processor.js';
 import { AiResponseJobProcessor } from '../infrastructure/queue/ai-response-job.processor.js';
 import { EmailJobProcessor } from '../infrastructure/queue/email-job.processor.js';
+import { CampaignJobProcessor } from '../infrastructure/queue/campaign-job.processor.js';
 
 const useCaseProviders = [
   // Auth
@@ -263,11 +282,6 @@ const useCaseProviders = [
     useFactory: (phoneRepo: any) => new UpdatePhoneNumberUseCase(phoneRepo),
     inject: ['PhoneNumberRepository'],
   },
-  {
-    provide: 'GetActivePluginsUseCase',
-    useFactory: (phoneRepo: any) => new GetActivePluginsUseCase(phoneRepo),
-    inject: ['PhoneNumberRepository'],
-  },
 
   // Conversation
   {
@@ -321,9 +335,9 @@ const useCaseProviders = [
   },
   {
     provide: 'ResolveConversationUseCase',
-    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any, pluginStateRepo: any) =>
-      new ResolveConversationUseCase(convRepo, agentRepo, gateway, eventRepo, pluginStateRepo),
-    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository', 'PluginStateRepository'],
+    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any) =>
+      new ResolveConversationUseCase(convRepo, agentRepo, gateway, eventRepo),
+    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository'],
   },
 
   // Tenant
@@ -349,18 +363,148 @@ const useCaseProviders = [
     useFactory: (contactRepo: any) => new ListContactsUseCase(contactRepo),
     inject: ['ContactRepository'],
   },
+  {
+    provide: 'ImportContactsUseCase',
+    useFactory: (contactRepo: any) => new ImportContactsUseCase(contactRepo),
+    inject: ['ContactRepository'],
+  },
 
   // Webhook
   {
     provide: 'HandleInboundMessageUseCase',
-    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any) =>
-      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi),
-    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort'],
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any) =>
+      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase'],
   },
   {
     provide: 'HandleStatusUpdateUseCase',
-    useFactory: (msgRepo: any, gateway: any) => new HandleStatusUpdateUseCase(msgRepo, gateway),
-    inject: ['MessageRepository', 'RealtimeGatewayPort'],
+    useFactory: (msgRepo: any, gateway: any, campaignRepo: any, recipientRepo: any) =>
+      new HandleStatusUpdateUseCase(msgRepo, gateway, campaignRepo, recipientRepo),
+    inject: ['MessageRepository', 'RealtimeGatewayPort', 'CampaignRepository', 'CampaignRecipientRepository'],
+  },
+  {
+    provide: 'HandleTemplateStatusUpdateUseCase',
+    useFactory: (templateRepo: any, campaignRepo: any, gateway: any) =>
+      new HandleTemplateStatusUpdateUseCase(templateRepo, campaignRepo, gateway),
+    inject: ['MessageTemplateRepository', 'CampaignRepository', 'RealtimeGatewayPort'],
+  },
+  {
+    provide: 'HandleTemplateQualityUpdateUseCase',
+    useFactory: (templateRepo: any, gateway: any) => new HandleTemplateQualityUpdateUseCase(templateRepo, gateway),
+    inject: ['MessageTemplateRepository', 'RealtimeGatewayPort'],
+  },
+  {
+    provide: 'HandleTemplateCategoryUpdateUseCase',
+    useFactory: (templateRepo: any) => new HandleTemplateCategoryUpdateUseCase(templateRepo),
+    inject: ['MessageTemplateRepository'],
+  },
+
+  // Template
+  {
+    provide: 'CreateTemplateUseCase',
+    useFactory: (templateRepo: any, phoneRepo: any, templateApi: any) =>
+      new CreateTemplateUseCase(templateRepo, phoneRepo, templateApi),
+    inject: ['MessageTemplateRepository', 'PhoneNumberRepository', 'TemplateManagementPort'],
+  },
+  {
+    provide: 'UpdateTemplateUseCase',
+    useFactory: (templateRepo: any, phoneRepo: any, templateApi: any) =>
+      new UpdateTemplateUseCase(templateRepo, phoneRepo, templateApi),
+    inject: ['MessageTemplateRepository', 'PhoneNumberRepository', 'TemplateManagementPort'],
+  },
+  {
+    provide: 'DeleteTemplateUseCase',
+    useFactory: (templateRepo: any, phoneRepo: any, campaignRepo: any, templateApi: any) =>
+      new DeleteTemplateUseCase(templateRepo, phoneRepo, campaignRepo, templateApi),
+    inject: ['MessageTemplateRepository', 'PhoneNumberRepository', 'CampaignRepository', 'TemplateManagementPort'],
+  },
+  {
+    provide: 'ListTemplatesUseCase',
+    useFactory: (templateRepo: any) => new ListTemplatesUseCase(templateRepo),
+    inject: ['MessageTemplateRepository'],
+  },
+  {
+    provide: 'GetTemplateUseCase',
+    useFactory: (templateRepo: any) => new GetTemplateUseCase(templateRepo),
+    inject: ['MessageTemplateRepository'],
+  },
+  {
+    provide: 'SyncTemplatesUseCase',
+    useFactory: (templateRepo: any, phoneRepo: any, templateApi: any) =>
+      new SyncTemplatesUseCase(templateRepo, phoneRepo, templateApi),
+    inject: ['MessageTemplateRepository', 'PhoneNumberRepository', 'TemplateManagementPort'],
+  },
+
+  // Campaign
+  {
+    provide: 'CreateCampaignUseCase',
+    useFactory: (campaignRepo: any, templateRepo: any, phoneRepo: any) =>
+      new CreateCampaignUseCase(campaignRepo, templateRepo, phoneRepo),
+    inject: ['CampaignRepository', 'MessageTemplateRepository', 'PhoneNumberRepository'],
+  },
+  {
+    provide: 'UpdateCampaignUseCase',
+    useFactory: (campaignRepo: any, templateRepo: any) => new UpdateCampaignUseCase(campaignRepo, templateRepo),
+    inject: ['CampaignRepository', 'MessageTemplateRepository'],
+  },
+  {
+    provide: 'StartCampaignUseCase',
+    useFactory: (campaignRepo: any, recipientRepo: any, templateRepo: any, contactRepo: any, jobQueue: any) =>
+      new StartCampaignUseCase(campaignRepo, recipientRepo, templateRepo, contactRepo, jobQueue),
+    inject: ['CampaignRepository', 'CampaignRecipientRepository', 'MessageTemplateRepository', 'ContactRepository', 'JobQueuePort'],
+  },
+  {
+    provide: 'PauseCampaignUseCase',
+    useFactory: (campaignRepo: any) => new PauseCampaignUseCase(campaignRepo),
+    inject: ['CampaignRepository'],
+  },
+  {
+    provide: 'ResumeCampaignUseCase',
+    useFactory: (campaignRepo: any, templateRepo: any, jobQueue: any) =>
+      new ResumeCampaignUseCase(campaignRepo, templateRepo, jobQueue),
+    inject: ['CampaignRepository', 'MessageTemplateRepository', 'JobQueuePort'],
+  },
+  {
+    provide: 'CancelCampaignUseCase',
+    useFactory: (campaignRepo: any, recipientRepo: any) => new CancelCampaignUseCase(campaignRepo, recipientRepo),
+    inject: ['CampaignRepository', 'CampaignRecipientRepository'],
+  },
+  {
+    provide: 'DeleteCampaignUseCase',
+    useFactory: (campaignRepo: any, recipientRepo: any) => new DeleteCampaignUseCase(campaignRepo, recipientRepo),
+    inject: ['CampaignRepository', 'CampaignRecipientRepository'],
+  },
+  {
+    provide: 'ListCampaignsUseCase',
+    useFactory: (campaignRepo: any) => new ListCampaignsUseCase(campaignRepo),
+    inject: ['CampaignRepository'],
+  },
+  {
+    provide: 'GetCampaignUseCase',
+    useFactory: (campaignRepo: any) => new GetCampaignUseCase(campaignRepo),
+    inject: ['CampaignRepository'],
+  },
+  {
+    provide: 'ListCampaignRecipientsUseCase',
+    useFactory: (campaignRepo: any, recipientRepo: any) => new ListCampaignRecipientsUseCase(campaignRepo, recipientRepo),
+    inject: ['CampaignRepository', 'CampaignRecipientRepository'],
+  },
+  {
+    provide: 'GetCampaignStatsUseCase',
+    useFactory: (campaignRepo: any, recipientRepo: any) => new GetCampaignStatsUseCase(campaignRepo, recipientRepo),
+    inject: ['CampaignRepository', 'CampaignRecipientRepository'],
+  },
+  {
+    provide: 'ProcessCampaignBatchUseCase',
+    useFactory: (campaignRepo: any, recipientRepo: any, templateRepo: any, phoneRepo: any, convRepo: any, msgRepo: any, messagingApi: any, jobQueue: any, gateway: any) =>
+      new ProcessCampaignBatchUseCase(campaignRepo, recipientRepo, templateRepo, phoneRepo, convRepo, msgRepo, messagingApi, jobQueue, gateway),
+    inject: ['CampaignRepository', 'CampaignRecipientRepository', 'MessageTemplateRepository', 'PhoneNumberRepository', 'ConversationRepository', 'MessageRepository', 'MessagingApiPort', 'JobQueuePort', 'RealtimeGatewayPort'],
+  },
+  {
+    provide: 'AttributeCampaignReplyUseCase',
+    useFactory: (campaignRepo: any, recipientRepo: any, gateway: any) =>
+      new AttributeCampaignReplyUseCase(campaignRepo, recipientRepo, gateway),
+    inject: ['CampaignRepository', 'CampaignRecipientRepository', 'RealtimeGatewayPort'],
   },
 
   // AI Agent
@@ -390,6 +534,11 @@ const useCaseProviders = [
     inject: ['AgentRepository', 'AiAgentConfigRepository'],
   },
   {
+    provide: 'PlaygroundChatUseCase',
+    useFactory: (configRepo: any, aiCompletion: any) => new PlaygroundChatUseCase(configRepo, aiCompletion),
+    inject: ['AiAgentConfigRepository', 'AiCompletionPort'],
+  },
+  {
     provide: 'HandoffToHumanUseCase',
     useFactory: (convRepo: any, agentRepo: any, noteRepo: any, eventRepo: any, gateway: any, autoAssign: any) =>
       new HandoffToHumanUseCase(convRepo, agentRepo, noteRepo, eventRepo, gateway, autoAssign),
@@ -397,9 +546,9 @@ const useCaseProviders = [
   },
   {
     provide: 'ProcessAiResponseUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, orderRepo: any, orderHandler: any) =>
-      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, orderRepo, orderHandler, process.env.NODE_ENV !== 'local' ? 'https://asis.chat/api' : 'http://localhost:3007/api'),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', 'OrderRepository', OrderDirectiveHandler],
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any) =>
+      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository'],
   },
 
   // Label
@@ -441,35 +590,6 @@ const useCaseProviders = [
     useFactory: (convLabelRepo: any, labelRepo: any) =>
       new GetConversationLabelsUseCase(convLabelRepo, labelRepo),
     inject: ['ConversationLabelRepository', 'LabelRepository'],
-  },
-
-  // Order
-  {
-    provide: 'CreateOrderUseCase',
-    useFactory: (orderRepo: any, eventRepo: any, gateway: any) =>
-      new CreateOrderUseCase(orderRepo, eventRepo, gateway),
-    inject: ['OrderRepository', 'ConversationEventRepository', 'RealtimeGatewayPort'],
-  },
-  {
-    provide: 'ListOrdersUseCase',
-    useFactory: (orderRepo: any) => new ListOrdersUseCase(orderRepo),
-    inject: ['OrderRepository'],
-  },
-  {
-    provide: 'GetOrderUseCase',
-    useFactory: (orderRepo: any) => new GetOrderUseCase(orderRepo),
-    inject: ['OrderRepository'],
-  },
-  {
-    provide: 'NotifyOrderStatusUseCase',
-    useFactory: (convRepo: any, contactRepo: any, phoneRepo: any, msgRepo: any, agentRepo: any, configRepo: any, aiCompletion: any, messagingApi: any, gateway: any) =>
-      new NotifyOrderStatusUseCase(convRepo, contactRepo, phoneRepo, msgRepo, agentRepo, configRepo, aiCompletion, messagingApi, gateway),
-    inject: ['ConversationRepository', 'ContactRepository', 'PhoneNumberRepository', 'MessageRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort'],
-  },
-  {
-    provide: 'UpdateOrderStatusUseCase',
-    useFactory: (orderRepo: any, gateway: any, notifyOrderStatus: any) => new UpdateOrderStatusUseCase(orderRepo, gateway, notifyOrderStatus),
-    inject: ['OrderRepository', 'RealtimeGatewayPort', 'NotifyOrderStatusUseCase'],
   },
 
   // Billing
@@ -529,12 +649,6 @@ const useCaseProviders = [
     inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase'],
   },
 
-  // Order Directive Handler
-  {
-    provide: OrderDirectiveHandler,
-    useFactory: (createOrder: any) => new OrderDirectiveHandler(createOrder),
-    inject: ['CreateOrderUseCase'],
-  },
 ];
 
 @Module({
@@ -547,9 +661,10 @@ const useCaseProviders = [
     TenantController,
     WebhookController,
     ContactController,
+    TemplateController,
+    CampaignController,
     AiAgentController,
     LabelController,
-    OrderController,
     BillingController,
     PaymentWebhookController,
   ],
@@ -558,6 +673,7 @@ const useCaseProviders = [
     WebhookJobProcessor,
     AiResponseJobProcessor,
     EmailJobProcessor,
+    CampaignJobProcessor,
     PlanLimitGuard,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
