@@ -208,6 +208,20 @@ export function ChatPanel({ conversationId }: Props) {
     }
   }, [chatItems.length]);
 
+  // Con interactive-widget=resizes-content, abrir el teclado encoge el área de
+  // mensajes: re-scrollear al final para no perder los últimos mensajes.
+  useEffect(() => {
+    const scrollToBottom = () => {
+      const viewport = scrollAreaRef.current?.querySelector(
+        "[data-slot=scroll-area-viewport]"
+      ) as HTMLElement | null;
+      if (viewport) viewport.scrollTop = viewport.scrollHeight;
+    };
+    window.visualViewport?.addEventListener("resize", scrollToBottom);
+    return () =>
+      window.visualViewport?.removeEventListener("resize", scrollToBottom);
+  }, []);
+
   return (
     <div className="flex h-full overflow-hidden">
       {/* Chat column */}

@@ -23,6 +23,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // El teclado encoge el layout (header fijo arriba, composer sobre el teclado)
+  // en vez de superponerse y empujar la página hacia arriba
+  interactiveWidget: "resizes-content",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#04070f" },
