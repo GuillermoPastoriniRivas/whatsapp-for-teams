@@ -30,6 +30,7 @@ import { ResetPasswordUseCase } from '../application/use-cases/auth/reset-passwo
 import { SignupUseCase } from '../application/use-cases/auth/signup.use-case.js';
 import { VerifyEmailUseCase } from '../application/use-cases/auth/verify-email.use-case.js';
 import { CompleteOnboardingUseCase } from '../application/use-cases/auth/complete-onboarding.use-case.js';
+import { SetPasswordUseCase } from '../application/use-cases/auth/set-password.use-case.js';
 
 // Use Cases — Agent
 import { CreateAgentUseCase } from '../application/use-cases/agent/create-agent.use-case.js';
@@ -216,6 +217,12 @@ const useCaseProviders = [
     useFactory: (agentRepo: any) => new CompleteOnboardingUseCase(agentRepo),
     inject: ['AgentRepository'],
   },
+  {
+    provide: 'SetPasswordUseCase',
+    useFactory: (agentRepo: any, refreshTokenRepo: any, resetTokenRepo: any, hasher: any, tokenProvider: any) =>
+      new SetPasswordUseCase(agentRepo, refreshTokenRepo, resetTokenRepo, hasher, tokenProvider),
+    inject: ['AgentRepository', 'RefreshTokenRepository', 'PasswordResetTokenRepository', 'PasswordHasherPort', 'TokenProviderPort'],
+  },
 
   // Agent
   {
@@ -380,9 +387,9 @@ const useCaseProviders = [
   // Webhook
   {
     provide: 'HandleInboundMessageUseCase',
-    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any, sendPush: any) =>
-      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply, sendPush),
-    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase'],
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any, sendPush: any, accessRepo: any) =>
+      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply, sendPush, accessRepo),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase', 'AgentPhoneAccessRepository'],
   },
   {
     provide: 'HandleStatusUpdateUseCase',

@@ -18,6 +18,7 @@ interface AuthState {
   logout: () => void;
   hydrate: () => void;
   completeOnboarding: () => Promise<void>;
+  setPassword: (password: string, currentPassword?: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -147,5 +148,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       localStorage.setItem("agent", JSON.stringify(updated));
       set({ agent: updated });
     }
+  },
+
+  // Lanza el error para que el form lo muestre en linea, en vez de dejarlo en el store
+  setPassword: async (password, currentPassword) => {
+    const data = await api.patch<LoginResponse>("/auth/password", {
+      password,
+      ...(currentPassword ? { currentPassword } : {}),
+    });
+
+    // El backend revoca las demas sesiones y emite tokens nuevos para esta
+    api.setToken(data.accessToken);
+    localStorage.setItem("accessToken", data.accessToken);
+    localStorage.setItem("refreshToken", data.refreshToken);
+    localStorage.setItem("agent", JSON.stringify(data.agent));
+
+    set({ agent: data.agent, accessToken: data.accessToken });
   },
 }));

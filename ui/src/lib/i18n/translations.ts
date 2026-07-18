@@ -343,6 +343,26 @@ const translations = {
       pushIosInstall:
         'En iPhone o iPad primero instala la app: en Safari toca Compartir y elige "Agregar a inicio".',
       pushError: "No se pudieron activar las notificaciones. Prueba de nuevo.",
+      password: "Contraseña",
+      passwordCreateTitle: "Crear una contraseña",
+      passwordCreateDescription:
+        "Entraste con Google, así que todavía no tenés contraseña. Creá una para poder entrar también con tu email.",
+      passwordChangeDescription:
+        "Cambiá tu contraseña. Vas a cerrar sesión en el resto de tus dispositivos.",
+      passwordCurrent: "Contraseña actual",
+      passwordNew: "Contraseña nueva",
+      passwordRepeat: "Repetir contraseña",
+      passwordCreateSubmit: "Crear contraseña",
+      passwordChangeSubmit: "Cambiar contraseña",
+      passwordSaving: "Guardando...",
+      passwordSaved: "Listo, ya podés entrar con tu email y contraseña.",
+      passwordSavedChange: "Listo, tu contraseña quedó actualizada.",
+      passwordEdit: "Cambiar",
+      passwordCancel: "Cancelar",
+      passwordRules:
+        "Mínimo 8 caracteres, con una mayúscula, una minúscula y un número.",
+      passwordMismatch: "Las contraseñas no coinciden.",
+      passwordError: "No se pudo guardar la contraseña. Prueba de nuevo.",
     },
     agents: {
       title: "Agentes",
@@ -1023,6 +1043,26 @@ const translations = {
       pushIosInstall:
         'On iPhone or iPad, install the app first: in Safari tap Share and choose "Add to Home Screen".',
       pushError: "Notifications could not be enabled. Please try again.",
+      password: "Password",
+      passwordCreateTitle: "Create a password",
+      passwordCreateDescription:
+        "You signed in with Google, so you don't have a password yet. Create one to also sign in with your email.",
+      passwordChangeDescription:
+        "Change your password. You'll be signed out on your other devices.",
+      passwordCurrent: "Current password",
+      passwordNew: "New password",
+      passwordRepeat: "Repeat password",
+      passwordCreateSubmit: "Create password",
+      passwordChangeSubmit: "Change password",
+      passwordSaving: "Saving...",
+      passwordSaved: "Done, you can now sign in with your email and password.",
+      passwordSavedChange: "Done, your password has been updated.",
+      passwordEdit: "Change",
+      passwordCancel: "Cancel",
+      passwordRules:
+        "At least 8 characters, with one uppercase letter, one lowercase letter and one number.",
+      passwordMismatch: "Passwords do not match.",
+      passwordError: "The password could not be saved. Please try again.",
     },
     agents: {
       title: "Agents",

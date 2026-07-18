@@ -5,6 +5,7 @@ import { MessageRepository } from '../../../domain/repositories/message.reposito
 import { PhoneNumberRepository } from '../../../domain/repositories/phone-number.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
+import { AgentPhoneAccessRepository } from '../../../domain/repositories/agent-phone-access.repository.js';
 import { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-config.repository.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { JobQueuePort } from '../../ports/job-queue.port.js';
@@ -38,6 +39,7 @@ export class HandleInboundMessageUseCase {
     private readonly messagingApi: MessagingApiPort,
     private readonly attributeCampaignReply: AttributeCampaignReplyUseCase,
     private readonly sendPushToAgent: SendPushToAgentUseCase,
+    private readonly accessRepo: AgentPhoneAccessRepository,
   ) {}
 
   async execute(input: InboundMessageInput): Promise<void> {
@@ -167,15 +169,39 @@ export class HandleInboundMessageUseCase {
       await this.enqueueAiResponse(aiAgent, conversation.id, phone, contact.waId);
     }
 
-    // 9. Web push to the assigned human agent (fire-and-forget; the SW
-    // suppresses it when the app is focused)
+    // 9. Web push (fire-and-forget; the SW suppresses it when the app is
+    // focused). Assigned human → only them; AI-assigned or unassigned →
+    // every human agent with access to this phone number.
+    const payload = {
+      title: contact.name || contact.phone,
+      body: this.messagePreview(input.body, input.messageType),
+      url: `/conversations/${conversation.id}`,
+      tag: `conv-${conversation.id}`,
+    };
     if (humanAgent) {
-      void this.sendPushToAgent.execute(humanAgent.id, {
-        title: contact.name || contact.phone,
-        body: this.messagePreview(input.body, input.messageType),
-        url: `/conversations/${conversation.id}`,
-        tag: `conv-${conversation.id}`,
-      });
+      void this.sendPushToAgent.execute(humanAgent.id, payload);
+    } else {
+      void this.pushToHumansWithPhoneAccess(phone.id, payload);
+    }
+  }
+
+  private async pushToHumansWithPhoneAccess(
+    phoneId: string,
+    payload: { title: string; body: string; url: string; tag: string },
+  ): Promise<void> {
+    try {
+      const accessList = await this.accessRepo.findByPhoneNumberId(phoneId);
+      const agents = await Promise.all(accessList.map((a) => this.agentRepo.findById(a.agentId)));
+      const humanIds = new Set(
+        agents
+          .filter((a): a is Agent => !!a && a.type === AgentType.HUMAN)
+          .map((a) => a.id),
+      );
+      await Promise.allSettled(
+        [...humanIds].map((id) => this.sendPushToAgent.execute(id, payload)),
+      );
+    } catch {
+      // el push nunca debe romper el flujo del webhook
     }
   }
 

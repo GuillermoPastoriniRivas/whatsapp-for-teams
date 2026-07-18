@@ -11,6 +11,7 @@ import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-pas
 import { SignupUseCase } from '../../application/use-cases/auth/signup.use-case.js';
 import { VerifyEmailUseCase } from '../../application/use-cases/auth/verify-email.use-case.js';
 import { CompleteOnboardingUseCase } from '../../application/use-cases/auth/complete-onboarding.use-case.js';
+import { SetPasswordUseCase } from '../../application/use-cases/auth/set-password.use-case.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import { LoginRequestSchema } from '../request-dtos/login-request.dto.js';
 import type { LoginRequestDto } from '../request-dtos/login-request.dto.js';
@@ -26,6 +27,8 @@ import { SignupRequestSchema } from '../request-dtos/signup-request.dto.js';
 import type { SignupRequestDto } from '../request-dtos/signup-request.dto.js';
 import { VerifyEmailRequestSchema } from '../request-dtos/verify-email-request.dto.js';
 import type { VerifyEmailRequestDto } from '../request-dtos/verify-email-request.dto.js';
+import { SetPasswordRequestSchema } from '../request-dtos/set-password-request.dto.js';
+import type { SetPasswordRequestDto } from '../request-dtos/set-password-request.dto.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { Public } from '../decorators/public.decorator.js';
@@ -44,6 +47,7 @@ export class AuthController {
     @Inject('SignupUseCase') private readonly signupUseCase: SignupUseCase,
     @Inject('VerifyEmailUseCase') private readonly verifyEmailUseCase: VerifyEmailUseCase,
     @Inject('CompleteOnboardingUseCase') private readonly completeOnboardingUseCase: CompleteOnboardingUseCase,
+    @Inject('SetPasswordUseCase') private readonly setPasswordUseCase: SetPasswordUseCase,
   ) {}
 
   @Public()
@@ -244,6 +248,34 @@ export class AuthController {
     return { ok: true };
   }
 
+  @Patch('password')
+  @HttpCode(200)
+  @ApiBearerAuth('JWT')
+  @Throttle({ short: { ttl: 60000, limit: 5 } })
+  @UsePipes(new ZodValidationPipe(SetPasswordRequestSchema))
+  @ApiOperation({
+    summary: 'Set or change password',
+    description:
+      'Set a password for the authenticated agent. Accounts created via Google have no password yet and may omit currentPassword; otherwise it is required. Revokes all other sessions and returns fresh tokens.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['password'],
+      properties: {
+        currentPassword: { type: 'string', description: 'Required unless the account has no password yet' },
+        password: { type: 'string', minLength: 8 },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Password set. Returns new JWT tokens.' })
+  @ApiResponse({ status: 401, description: 'Current password is missing or incorrect' })
+  async setPassword(@CurrentAgent() agent: RequestAgent, @Body() body: SetPasswordRequestDto) {
+    const result = await this.setPasswordUseCase.execute({ agentId: agent._id, ...body });
+    if (!result.ok) throw new UnauthorizedException(result.error.message);
+    return result.value;
+  }
+
   @Get('me')
   @ApiBearerAuth('JWT')
   @ApiOperation({ summary: 'Get current agent', description: 'Returns the authenticated agent profile' })
@@ -256,6 +288,7 @@ export class AuthController {
       role: { type: 'string', enum: ['admin', 'agent'] },
       status: { type: 'string', enum: ['available', 'busy', 'offline'] },
       tenantId: { type: 'string' },
+      hasPassword: { type: 'boolean', description: 'False for accounts created via Google that never set one' },
     },
   }})
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -263,6 +296,6 @@ export class AuthController {
     const result = await this.getCurrentAgentUseCase.execute(agent._id);
     if (!result.ok) throw new UnauthorizedException(result.error.message);
     const a = result.value;
-    return { id: a.id, name: a.name, email: a.email, role: a.role, status: a.status, tenantId: a.tenantId };
+    return { id: a.id, name: a.name, email: a.email, role: a.role, status: a.status, tenantId: a.tenantId, hasPassword: a.passwordHash !== '' };
   }
 }

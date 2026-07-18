@@ -11,7 +11,7 @@ export class PasswordResetTokenModel {
   @Prop({ required: true, unique: true })
   tokenHash: string;
 
-  @Prop({ required: true, enum: ['reset', 'invitation'], default: 'reset' })
+  @Prop({ required: true, enum: ['reset', 'invitation', 'email_verification'], default: 'reset' })
   type: string;
 
   @Prop({ required: true })
