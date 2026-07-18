@@ -54,6 +54,7 @@ import { GetConversationDetailUseCase } from '../application/use-cases/conversat
 import { GetConversationMessagesUseCase } from '../application/use-cases/conversation/get-conversation-messages.use-case.js';
 import { SendMessageUseCase } from '../application/use-cases/conversation/send-message.use-case.js';
 import { SendTemplateMessageUseCase } from '../application/use-cases/conversation/send-template-message.use-case.js';
+import { MarkConversationReadUseCase } from '../application/use-cases/conversation/mark-conversation-read.use-case.js';
 import { AssignConversationUseCase } from '../application/use-cases/conversation/assign-conversation.use-case.js';
 import { AutoAssignConversationUseCase } from '../application/use-cases/conversation/auto-assign-conversation.use-case.js';
 import { GetConversationEventsUseCase } from '../application/use-cases/conversation/get-conversation-events.use-case.js';
@@ -319,6 +320,11 @@ const useCaseProviders = [
     useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, messagingApi: any, gateway: any, agentRepo: any) =>
       new SendMessageUseCase(convRepo, msgRepo, contactRepo, phoneRepo, messagingApi, gateway, agentRepo),
     inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'AgentRepository'],
+  },
+  {
+    provide: 'MarkConversationReadUseCase',
+    useFactory: (convRepo: any, gateway: any) => new MarkConversationReadUseCase(convRepo, gateway),
+    inject: ['ConversationRepository', 'RealtimeGatewayPort'],
   },
   {
     provide: 'SendTemplateMessageUseCase',

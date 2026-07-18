@@ -109,7 +109,12 @@ export function ConversationItem({ conversation, onSelect }: Props) {
       
       <div className="flex-1 min-w-0 border-b border-slate-100 dark:border-slate-800/60 pb-1 group-last:border-transparent h-full flex flex-col justify-center">
         <div className="flex items-center gap-1.5 mb-0.5">
-          <span className="truncate font-medium text-[15px] text-slate-900 dark:text-slate-100">
+          <span
+            className={cn(
+              "truncate text-[15px] text-slate-900 dark:text-slate-100",
+              unreadCount > 0 ? "font-semibold" : "font-medium"
+            )}
+          >
             {contactName || `+${conversation.contact?.waId || t.chat.unknown}`}
           </span>
           {conversation.phoneLabel && (

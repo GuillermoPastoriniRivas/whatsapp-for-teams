@@ -179,6 +179,10 @@ export function ChatPanel({ conversationId }: Props) {
 
     const handleNewMessage = (msg: any) => {
       useMessageStore.getState().appendMessage(conversationId, msg);
+      // El agente lo está viendo: resetear el contador del servidor
+      if (msg?.direction === "inbound") {
+        useConversationStore.getState().clearUnread(conversationId);
+      }
     };
     const handleStatusUpdate = (data: any) => {
       useMessageStore.getState().updateStatus(data.waMessageId, data.waStatus);

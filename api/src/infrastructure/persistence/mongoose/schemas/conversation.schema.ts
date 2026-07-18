@@ -49,6 +49,9 @@ export class ConversationModel {
   @Prop({ type: Date, default: null })
   repliedAt: Date | null;
 
+  @Prop({ required: true, default: 0 })
+  unreadCount: number;
+
   createdAt: Date;
 }
 

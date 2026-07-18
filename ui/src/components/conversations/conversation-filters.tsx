@@ -11,6 +11,7 @@ export function ConversationFilters() {
 
   const filters = [
     { value: "", label: t.conversations.filterAll },
+    { value: "unread", label: t.conversations.filterUnread },
     { value: "active", label: t.conversations.filterActive },
     { value: "unassigned", label: t.conversations.filterUnassigned },
   ];

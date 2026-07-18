@@ -92,6 +92,7 @@ const translations = {
         "Elegi una conversacion para empezar. Todas tus cuentas en un solo lugar.",
       searchPlaceholder: "Buscar conversaciones...",
       filterAll: "Todas",
+      filterUnread: "No leídas",
       filterActive: "Activas",
       filterUnassigned: "Sin asignar",
       noConversations: "No hay conversaciones",
@@ -111,6 +112,7 @@ const translations = {
       sendError: "Error al enviar mensaje",
       today: "Hoy",
       yesterday: "Ayer",
+      newMessage: "Nuevo mensaje",
       windowExpiredTitle: "Ventana de 24 horas cerrada",
       windowExpiredBody:
         "Pasaron más de 24 horas desde el último mensaje del cliente. WhatsApp solo permite responder libremente dentro de esa ventana; para retomar la conversación, envía una plantilla aprobada.",
@@ -816,6 +818,7 @@ const translations = {
         "Pick a conversation to get started. All your accounts in one place.",
       searchPlaceholder: "Search conversations...",
       filterAll: "All",
+      filterUnread: "Unread",
       filterActive: "Active",
       filterUnassigned: "Unassigned",
       noConversations: "No conversations",
@@ -835,6 +838,7 @@ const translations = {
       sendError: "Failed to send message",
       today: "Today",
       yesterday: "Yesterday",
+      newMessage: "New message",
       windowExpiredTitle: "24-hour window closed",
       windowExpiredBody:
         "More than 24 hours have passed since the customer's last message. WhatsApp only allows free-form replies within that window; to resume the conversation, send an approved template.",

@@ -122,9 +122,20 @@ export class HandleInboundMessageUseCase {
       assignedAgent = await this.autoAssign.execute(conversation.id);
     }
 
+    // 6b. Contador de no leídos persistido; se resetea al abrir la conversación
+    await this.conversationRepo.incrementUnread(conversation.id);
+
     // 7. Emit WebSocket events
     this.gateway.emitToConversation(conversation.id, 'message.new', message);
     this.gateway.emitToTenant(tenantId, 'conversation.updated', { conversationId: conversation.id });
+    // Preview tenant-wide: message.new solo llega a quien tiene abierta la
+    // conversación; este evento alimenta el toast in-app del resto
+    this.gateway.emitToTenant(tenantId, 'message.preview', {
+      conversationId: conversation.id,
+      contactName: contact.name || contact.phone,
+      body: this.messagePreview(input.body, input.messageType),
+      messageId: message.id,
+    });
 
     // 8. If assigned to AI agent → enqueue AI response job (with debounce if enabled)
     let aiAgent: Agent | null = null;

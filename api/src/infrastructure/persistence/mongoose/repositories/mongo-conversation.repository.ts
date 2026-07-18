@@ -19,7 +19,7 @@ export class MongoConversationRepository implements ConversationRepository {
     @InjectModel(ConversationModel.name) private readonly model: Model<ConversationDocument>,
   ) {}
 
-  async create(data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy'>): Promise<Conversation> {
+  async create(data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount'>): Promise<Conversation> {
     const doc = await this.model.create({
       tenantId: new Types.ObjectId(data.tenantId),
       phoneNumberId: new Types.ObjectId(data.phoneNumberId),
@@ -36,7 +36,7 @@ export class MongoConversationRepository implements ConversationRepository {
   }
 
   async findOrCreateByContactAndPhone(
-    data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary'>,
+    data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount'>,
   ): Promise<FindOrCreateResult> {
     const result = await this.model.findOneAndUpdate(
       {
@@ -107,6 +107,8 @@ export class MongoConversationRepository implements ConversationRepository {
       query.hasReplied = false;
     }
 
+    if (filters.unread) query.unreadCount = { $gt: 0 };
+
     const [docs, total] = await Promise.all([
       this.model
         .find(query)
@@ -155,6 +157,14 @@ export class MongoConversationRepository implements ConversationRepository {
     }
     const doc = await this.model.findByIdAndUpdate(id, { $set: updateData }, { returnDocument: 'after' });
     return doc ? ConversationMapper.toDomain(doc) : null;
+  }
+
+  async incrementUnread(id: string): Promise<void> {
+    await this.model.updateOne({ _id: new Types.ObjectId(id) }, { $inc: { unreadCount: 1 } });
+  }
+
+  async clearUnread(id: string): Promise<void> {
+    await this.model.updateOne({ _id: new Types.ObjectId(id) }, { $set: { unreadCount: 0 } });
   }
 
   async countByTenantIdSince(tenantId: string, since: Date): Promise<number> {

@@ -33,25 +33,18 @@ export function ConversationList() {
       useConversationStore.getState().fetch();
     };
 
-    const handleNewMessage = (msg: { conversationId?: string }) => {
-      const activeId = useConversationStore.getState().activeId;
-      if (msg.conversationId && msg.conversationId !== activeId) {
-        useConversationStore.getState().incrementUnread(msg.conversationId);
-      }
-    };
-
+    // conversation.updated llega a todo el tenant con cada mensaje entrante:
+    // el refetch trae lastMessageAt y unreadCount actualizados del servidor
     socket.on("conversation.new", refetch);
     socket.on("conversation.assigned", refetch);
     socket.on("conversation.updated", refetch);
     socket.on("conversation.unassigned", refetch);
-    socket.on("message.new", handleNewMessage);
 
     return () => {
       socket.off("conversation.new", refetch);
       socket.off("conversation.assigned", refetch);
       socket.off("conversation.updated", refetch);
       socket.off("conversation.unassigned", refetch);
-      socket.off("message.new", handleNewMessage);
     };
   }, []);
 

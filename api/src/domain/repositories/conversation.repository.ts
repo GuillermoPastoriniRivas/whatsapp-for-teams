@@ -9,6 +9,7 @@ export interface ConversationFilters {
   agentId?: string;
   phoneNumberId?: string;
   view?: ConversationView;
+  unread?: boolean;
   page: number;
   limit: number;
 }
@@ -24,9 +25,9 @@ export interface FindOrCreateResult {
 }
 
 export interface ConversationRepository {
-  create(conversation: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary'>): Promise<Conversation>;
+  create(conversation: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount'>): Promise<Conversation>;
   findOrCreateByContactAndPhone(
-    data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary'>,
+    data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount'>,
   ): Promise<FindOrCreateResult>;
   findById(id: string): Promise<Conversation | null>;
   findOpenByContactAndPhone(contactId: string, phoneNumberId: string): Promise<Conversation | null>;
@@ -35,5 +36,7 @@ export interface ConversationRepository {
   findActiveByAgentId(agentId: string): Promise<Conversation[]>;
   findActiveByAgentAndPhone(agentId: string, phoneNumberId: string): Promise<Conversation[]>;
   update(id: string, data: Partial<Conversation>): Promise<Conversation | null>;
+  incrementUnread(id: string): Promise<void>;
+  clearUnread(id: string): Promise<void>;
   countByTenantIdSince(tenantId: string, since: Date): Promise<number>;
 }

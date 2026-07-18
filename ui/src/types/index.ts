@@ -23,6 +23,7 @@ export interface Conversation {
   lastMessageAt: string;
   lastInboundAt: string;
   createdAt: string;
+  unreadCount: number;
   phoneLabel: string | null;
   phoneDisplay: string | null;
   agentName: string | null;

@@ -21,6 +21,7 @@ import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import { SendMessageRequestSchema } from '../request-dtos/send-message-request.dto.js';
 import type { SendMessageRequestDto } from '../request-dtos/send-message-request.dto.js';
 import { SendTemplateMessageUseCase } from '../../application/use-cases/conversation/send-template-message.use-case.js';
+import { MarkConversationReadUseCase } from '../../application/use-cases/conversation/mark-conversation-read.use-case.js';
 import { SendTemplateRequestSchema } from '../request-dtos/send-template-request.dto.js';
 import type { SendTemplateRequestDto } from '../request-dtos/send-template-request.dto.js';
 import { AssignConversationRequestSchema } from '../request-dtos/assign-conversation-request.dto.js';
@@ -50,6 +51,7 @@ export class ConversationController {
     @Inject('GetConversationMessagesUseCase') private readonly getMessages: GetConversationMessagesUseCase,
     @Inject('SendMessageUseCase') private readonly sendMessage: SendMessageUseCase,
     @Inject('SendTemplateMessageUseCase') private readonly sendTemplateMessage: SendTemplateMessageUseCase,
+    @Inject('MarkConversationReadUseCase') private readonly markConversationRead: MarkConversationReadUseCase,
     @Inject('AssignConversationUseCase') private readonly assignConversation: AssignConversationUseCase,
     @Inject('GetConversationEventsUseCase') private readonly getConversationEvents: GetConversationEventsUseCase,
     @Inject('AddConversationNoteUseCase') private readonly addNote: AddConversationNoteUseCase,
@@ -249,6 +251,16 @@ export class ConversationController {
       throw new NotFoundException(error.message);
     }
     return result.value;
+  }
+
+  @Post(':id/read')
+  @ApiOperation({ summary: 'Mark conversation as read', description: 'Reset the unread counter for a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 201, description: 'Unread counter cleared' })
+  async markRead(@Param('id') id: string, @CurrentAgent() agent: RequestAgent) {
+    await this.verifyTenantAccess(id, agent.tenantId);
+    await this.markConversationRead.execute(id, agent.tenantId);
+    return { read: true };
   }
 
   @Post(':id/send-template')

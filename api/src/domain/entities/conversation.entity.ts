@@ -19,5 +19,7 @@ export class Conversation {
     public readonly origin: ConversationOrigin = ConversationOrigin.INBOUND,
     public readonly hasReplied: boolean = true,
     public readonly repliedAt: Date | null = null,
+    /** Mensajes entrantes sin leer; se resetea cuando un agente abre la conversación */
+    public readonly unreadCount: number = 0,
   ) {}
 }

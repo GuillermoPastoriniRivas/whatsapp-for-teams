@@ -7,6 +7,7 @@ export interface ConversationFiltersInput {
   agentId?: string;
   phoneNumberId?: string;
   view?: ConversationView;
+  unread?: boolean;
   page: number;
   limit: number;
 }

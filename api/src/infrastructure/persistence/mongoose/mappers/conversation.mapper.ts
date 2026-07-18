@@ -22,6 +22,7 @@ export class ConversationMapper {
       (doc.origin as ConversationOrigin) ?? ConversationOrigin.INBOUND,
       doc.hasReplied ?? true,
       doc.repliedAt ?? null,
+      doc.unreadCount ?? 0,
     );
   }
 }

@@ -40,18 +40,30 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     try {
       const filter = status ?? get().statusFilter;
       const params = new URLSearchParams({ page: String(page), limit: "30" });
-      if (filter) params.set("status", filter);
+      // "unread" es un filtro propio, no un status del backend
+      if (filter === "unread") params.set("unread", "true");
+      else if (filter) params.set("status", filter);
       // Default 'inbox' sends no param — server behavior stays untouched
       if (get().view === "campaign") params.set("view", "campaign");
 
       const data = await api.get<PaginatedResponse<Conversation>>(
         `/conversations?${params}`
       );
+
+      // El servidor es la fuente de verdad de los no leídos; la conversación
+      // abierta se mantiene en 0 (el mark-read puede estar en vuelo)
+      const activeId = get().activeId;
+      const unreadCounts = { ...get().unreadCounts };
+      for (const conv of data.data) {
+        unreadCounts[conv.id] = conv.id === activeId ? 0 : (conv.unreadCount ?? 0);
+      }
+
       set({
         conversations: data.data,
         total: data.meta.total,
         page: data.meta.page,
         pages: data.meta.pages,
+        unreadCounts,
         isLoading: false,
       });
     } catch {
@@ -99,5 +111,8 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       const { [convId]: _, ...rest } = state.unreadCounts;
       return { unreadCounts: rest };
     });
+    // Siempre persistir: el contador local puede estar en 0 aunque el del
+    // servidor no (p. ej. mensaje entrante con el chat abierto)
+    api.post(`/conversations/${convId}/read`).catch(() => {});
   },
 }));
