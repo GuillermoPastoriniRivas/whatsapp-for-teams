@@ -5,7 +5,6 @@ import { PlanTier } from '../../../domain/enums/plan-tier.enum.js';
 import { PaymentProvider } from '../../../domain/enums/payment-provider.enum.js';
 import { SubscriptionStatus } from '../../../domain/enums/subscription-status.enum.js';
 import { BillingEventType } from '../../../domain/enums/billing-event-type.enum.js';
-import { PLAN_LIMITS } from '../../../domain/constants/plan-limits.js';
 import { Result, ok, err } from '../../common/result.js';
 import { DomainError } from '../../../domain/errors/domain-errors.js';
 import { EnforcePlanLimitsUseCase } from './enforce-plan-limits.use-case.js';
@@ -23,10 +22,7 @@ export class SubscribeUseCase {
   ) {}
 
   async execute(input: SubscribeInput): Promise<Result<Subscription, DomainError>> {
-    if (input.plan !== PlanTier.FREE) {
-      return err(new DomainError('PAYMENT_REQUIRED', 'Paid plans require checkout. Use POST /billing/checkout.'));
-    }
-
+    // Free plan selection: any tier is activated immediately, no payment.
     const existing = await this.subscriptionRepo.findByTenantId(input.tenantId);
     if (existing && existing.status === SubscriptionStatus.ACTIVE) {
       return err(new DomainError('SUBSCRIPTION_EXISTS', 'An active subscription already exists. Use change plan instead.'));
@@ -60,25 +56,13 @@ export class SubscribeUseCase {
       });
     }
 
-    const limits = PLAN_LIMITS[input.plan];
-
     await this.billingRecordRepo.create({
       tenantId: input.tenantId,
       eventType: BillingEventType.SUBSCRIPTION_CREATED,
       plan: input.plan,
-      amountCents: limits.priceMonthly,
+      amountCents: 0,
       description: `Subscribed to ${input.plan} plan`,
     });
-
-    if (limits.priceMonthly > 0) {
-      await this.billingRecordRepo.create({
-        tenantId: input.tenantId,
-        eventType: BillingEventType.PAYMENT_SUCCESS,
-        plan: input.plan,
-        amountCents: limits.priceMonthly,
-        description: `Payment for ${input.plan} plan — $${(limits.priceMonthly / 100).toFixed(2)}/mo`,
-      });
-    }
 
     await this.enforceLimits.execute(input.tenantId);
 
