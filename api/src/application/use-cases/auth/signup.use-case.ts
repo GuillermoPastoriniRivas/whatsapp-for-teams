@@ -8,6 +8,7 @@ import { TokenProviderPort } from '../../ports/token-provider.port.js';
 import { JobQueuePort } from '../../ports/job-queue.port.js';
 import { LoginOutput } from '../../dtos/auth/login-output.dto.js';
 import { Result, ok, err } from '../../common/result.js';
+import { REFRESH_TOKEN_TTL_MS } from '../../common/auth-token-ttl.js';
 import { EmailAlreadyExistsError } from '../../../domain/errors/domain-errors.js';
 import { AgentRole } from '../../../domain/enums/agent-role.enum.js';
 import { AgentStatus } from '../../../domain/enums/agent-status.enum.js';
@@ -97,7 +98,7 @@ export class SignupUseCase {
     const refreshToken = this.tokenProvider.signRefresh(tokenPayload);
 
     const refreshTokenHash = createHash('sha256').update(refreshToken).digest('hex');
-    const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const refreshExpiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
 
     await this.refreshTokenRepo.create({ agentId: agent.id, tokenHash: refreshTokenHash, expiresAt: refreshExpiresAt });
 

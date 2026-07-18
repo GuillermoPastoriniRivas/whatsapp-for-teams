@@ -2,6 +2,7 @@ import { RefreshTokenRepository } from '../../../domain/repositories/refresh-tok
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { TokenProviderPort } from '../../ports/token-provider.port.js';
 import { Result, ok, err } from '../../common/result.js';
+import { REFRESH_TOKEN_TTL_MS } from '../../common/auth-token-ttl.js';
 import { InvalidCredentialsError } from '../../../domain/errors/domain-errors.js';
 import { createHash } from 'crypto';
 
@@ -11,6 +12,7 @@ export interface RefreshTokenInput {
 
 export interface RefreshTokenOutput {
   accessToken: string;
+  refreshToken: string;
 }
 
 export class RefreshTokenUseCase {
@@ -37,12 +39,25 @@ export class RefreshTokenUseCase {
     const agent = await this.agentRepo.findById(payload.sub);
     if (!agent) return err(new InvalidCredentialsError());
 
-    const accessToken = this.tokenProvider.signAccess({
+    const newPayload = {
       sub: agent.id,
       tenantId: agent.tenantId,
       role: agent.role,
+    };
+
+    const accessToken = this.tokenProvider.signAccess(newPayload);
+
+    // Rotación deslizante: cada uso emite un refresh token nuevo con TTL
+    // completo. El anterior NO se borra (vence solo por TTL) para no romper
+    // la sesión de otra pestaña/dispositivo que todavía lo tenga guardado.
+    const refreshToken = this.tokenProvider.signRefresh(newPayload);
+    const newTokenHash = createHash('sha256').update(refreshToken).digest('hex');
+    await this.refreshTokenRepo.create({
+      agentId: agent.id,
+      tokenHash: newTokenHash,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
     });
 
-    return ok({ accessToken });
+    return ok({ accessToken, refreshToken });
   }
 }

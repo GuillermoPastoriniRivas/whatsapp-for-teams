@@ -26,7 +26,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // API 401 already tried refresh internally — if it still fails, log out
     onUnauthorized(forceLogout);
 
-    // Socket auth error — try refresh, reconnect; if fails, log out
+    // Socket auth error — try refresh + reconnect. Solo cerrar sesión si el
+    // backend RECHAZÓ el refresh; un fallo de red no invalida la sesión.
     onSocketAuthError(async () => {
       try {
         const { tryRefreshToken } = await import("@/lib/api");
@@ -35,10 +36,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           reconnectSocket(newToken);
           return;
         }
+        forceLogout();
       } catch {
-        // refresh failed
+        // Error de red: mantener la sesión; se reintenta en la próxima
+        // acción o reconexión del socket.
       }
-      forceLogout();
     });
 
     useAuthStore.getState().hydrate();

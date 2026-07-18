@@ -7,6 +7,7 @@ import { TokenProviderPort } from '../../ports/token-provider.port.js';
 import { SetPasswordInput } from '../../dtos/auth/set-password-input.dto.js';
 import { LoginOutput } from '../../dtos/auth/login-output.dto.js';
 import { Result, ok, err } from '../../common/result.js';
+import { REFRESH_TOKEN_TTL_MS } from '../../common/auth-token-ttl.js';
 import { AgentNotFoundError, InvalidCredentialsError } from '../../../domain/errors/domain-errors.js';
 
 export class SetPasswordUseCase {
@@ -44,7 +45,7 @@ export class SetPasswordUseCase {
     const refreshToken = this.tokenProvider.signRefresh(payload);
 
     const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
 
     await this.refreshTokenRepo.create({ agentId: agent.id, tokenHash, expiresAt });
 

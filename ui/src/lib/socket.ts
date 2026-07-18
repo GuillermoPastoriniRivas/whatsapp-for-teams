@@ -29,16 +29,19 @@ export function connectSocket(token: string): Socket {
 
   socket.on("disconnect", (reason) => {
     console.log("[socket] disconnected:", reason);
+    // "io server disconnect" = el server nos echó (viene precedido por un
+    // evento auth_error si fue por token). Socket.io no auto-reconecta en
+    // este caso, así que pasamos por el flujo de refresh + reconexión.
     if (reason === "io server disconnect" && !intentionalDisconnect) {
       onAuthErrorCallback?.();
     }
   });
 
+  // connect_error es casi siempre red transitoria (PWA reabriendo, radio del
+  // celular despertando, deploy en curso). NO es un error de auth: socket.io
+  // reintenta solo. Los errores de token llegan por el evento "auth_error".
   socket.on("connect_error", (err) => {
     console.warn("[socket] connect_error:", err.message);
-    if (!intentionalDisconnect) {
-      onAuthErrorCallback?.();
-    }
   });
 
   socket.on("auth_error", () => {

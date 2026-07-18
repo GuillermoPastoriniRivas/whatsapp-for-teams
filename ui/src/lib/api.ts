@@ -8,6 +8,11 @@ export function onUnauthorized(cb: () => void) {
 
 let refreshPromise: Promise<string | null> | null = null;
 
+/**
+ * Devuelve el access token nuevo, o `null` si el backend RECHAZÓ el refresh
+ * (sesión inválida de verdad). Lanza si falló por red/servidor caído: en ese
+ * caso NO hay que cerrar la sesión, solo reintentar más tarde.
+ */
 export async function tryRefreshToken(): Promise<string | null> {
   if (refreshPromise) return refreshPromise;
 
@@ -22,14 +27,17 @@ export async function tryRefreshToken(): Promise<string | null> {
         body: JSON.stringify({ refreshToken }),
       });
 
-      if (!res.ok) return null;
+      if (res.status === 401 || res.status === 403) return null;
+      if (!res.ok) throw new Error(`refresh failed: ${res.status}`);
 
       const data = await res.json();
       localStorage.setItem("accessToken", data.accessToken);
+      // El backend rota el refresh token en cada uso (sesión deslizante)
+      if (data.refreshToken) {
+        localStorage.setItem("refreshToken", data.refreshToken);
+      }
       api.setToken(data.accessToken);
       return data.accessToken as string;
-    } catch {
-      return null;
     } finally {
       refreshPromise = null;
     }
@@ -66,11 +74,18 @@ class ApiClient {
     });
 
     if (res.status === 401 && !isRetry) {
-      const newToken = await tryRefreshToken();
+      let newToken: string | null = null;
+      let refreshNetworkError = false;
+      try {
+        newToken = await tryRefreshToken();
+      } catch {
+        refreshNetworkError = true;
+      }
       if (newToken) {
         return this.request<T>(path, options, true);
       }
-      onUnauthorizedCallback?.();
+      // Solo cerrar sesión si el refresh fue rechazado, no si falló la red
+      if (!refreshNetworkError) onUnauthorizedCallback?.();
       throw new ApiError(401, "Session expired");
     }
 

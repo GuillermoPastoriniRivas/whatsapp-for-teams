@@ -3,6 +3,7 @@ import { RefreshTokenRepository } from '../../../domain/repositories/refresh-tok
 import { TokenProviderPort } from '../../ports/token-provider.port.js';
 import { LoginOutput } from '../../dtos/auth/login-output.dto.js';
 import { Result, ok, err } from '../../common/result.js';
+import { REFRESH_TOKEN_TTL_MS } from '../../common/auth-token-ttl.js';
 import { createHash } from 'crypto';
 
 const DEMO_EMAIL = process.env.DEMO_AGENT_EMAIL ?? 'demo@asis.chat';
@@ -24,7 +25,7 @@ export class DemoLoginUseCase {
     const refreshToken = this.tokenProvider.signRefresh(payload);
 
     const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
 
     await this.refreshTokenRepo.create({ agentId: agent.id, tokenHash, expiresAt });
 
