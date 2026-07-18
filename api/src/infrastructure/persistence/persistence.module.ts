@@ -40,6 +40,8 @@ import { CampaignRecipientModel, CampaignRecipientSchema } from './mongoose/sche
 import { MongoMessageTemplateRepository } from './mongoose/repositories/mongo-message-template.repository.js';
 import { MongoCampaignRepository } from './mongoose/repositories/mongo-campaign.repository.js';
 import { MongoCampaignRecipientRepository } from './mongoose/repositories/mongo-campaign-recipient.repository.js';
+import { PushSubscriptionModel, PushSubscriptionSchema } from './mongoose/schemas/push-subscription.schema.js';
+import { MongoPushSubscriptionRepository } from './mongoose/repositories/mongo-push-subscription.repository.js';
 
 const schemas = MongooseModule.forFeature([
   { name: TenantModel.name, schema: TenantSchema },
@@ -62,6 +64,7 @@ const schemas = MongooseModule.forFeature([
   { name: MessageTemplateModel.name, schema: MessageTemplateSchema },
   { name: CampaignModel.name, schema: CampaignSchema },
   { name: CampaignRecipientModel.name, schema: CampaignRecipientSchema },
+  { name: PushSubscriptionModel.name, schema: PushSubscriptionSchema },
 ]);
 
 const repositories = [
@@ -85,6 +88,7 @@ const repositories = [
   { provide: 'MessageTemplateRepository', useClass: MongoMessageTemplateRepository },
   { provide: 'CampaignRepository', useClass: MongoCampaignRepository },
   { provide: 'CampaignRecipientRepository', useClass: MongoCampaignRecipientRepository },
+  { provide: 'PushSubscriptionRepository', useClass: MongoPushSubscriptionRepository },
 ];
 
 @Module({

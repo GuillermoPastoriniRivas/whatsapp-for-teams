@@ -31,6 +31,11 @@ export default () => ({
     replyToEmail: process.env.SES_REPLY_TO_EMAIL ?? 'contact@asis.chat',
   },
   frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3001',
+  vapid: {
+    publicKey: process.env.VAPID_PUBLIC_KEY ?? '',
+    privateKey: process.env.VAPID_PRIVATE_KEY ?? '',
+    subject: process.env.VAPID_SUBJECT ?? 'mailto:no-reply@asis.chat',
+  },
   lemonSqueezy: {
     apiKey: process.env.LEMON_SQUEEZY_API_KEY ?? '',
     storeId: process.env.LEMON_SQUEEZY_STORE_ID ?? '',

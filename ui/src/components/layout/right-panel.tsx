@@ -2,6 +2,8 @@
 
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "@/lib/i18n/use-translations";
+import { useMobileNavVisible } from "@/lib/use-mobile-nav-visible";
 
 interface RightPanelProps {
   open: boolean;
@@ -12,6 +14,9 @@ interface RightPanelProps {
 }
 
 export function RightPanel({ open, onClose, onOpen, children, className }: RightPanelProps) {
+  const { t } = useTranslations();
+  const navVisible = useMobileNavVisible();
+
   if (!open) {
     // Desktop-only collapsed handle
     if (!onOpen) return null;
@@ -46,7 +51,7 @@ export function RightPanel({ open, onClose, onOpen, children, className }: Right
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-5 w-5" />
-          <span>Back</span>
+          <span>{t.common.back}</span>
         </button>
       </div>
 
@@ -58,7 +63,14 @@ export function RightPanel({ open, onClose, onOpen, children, className }: Right
         <ChevronRight className="h-3.5 w-3.5" />
       </button>
 
-      <div className="flex-1 overflow-y-auto">{children}</div>
+      <div
+        className={cn(
+          "flex-1 overflow-y-auto md:pb-0",
+          navVisible && "pb-[calc(3.5rem+env(safe-area-inset-bottom))]"
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

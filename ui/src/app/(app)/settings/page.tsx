@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PushSettingsCard } from "@/components/pwa/push-settings-card";
 import { LogOut, User } from "lucide-react";
 
 export default function SettingsPage() {
@@ -41,6 +42,8 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <PushSettingsCard />
 
       <Button
         variant="destructive"

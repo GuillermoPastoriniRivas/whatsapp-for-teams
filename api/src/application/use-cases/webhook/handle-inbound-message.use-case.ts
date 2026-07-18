@@ -12,6 +12,7 @@ import { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import { InboundMessageInput } from '../../dtos/webhook/inbound-message-input.dto.js';
 import { AutoAssignConversationUseCase } from '../conversation/auto-assign-conversation.use-case.js';
 import { AttributeCampaignReplyUseCase } from '../campaign/attribute-campaign-reply.use-case.js';
+import { SendPushToAgentUseCase } from '../notification/send-push-to-agent.use-case.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
@@ -36,6 +37,7 @@ export class HandleInboundMessageUseCase {
     private readonly aiConfigRepo: AiAgentConfigRepository,
     private readonly messagingApi: MessagingApiPort,
     private readonly attributeCampaignReply: AttributeCampaignReplyUseCase,
+    private readonly sendPushToAgent: SendPushToAgentUseCase,
   ) {}
 
   async execute(input: InboundMessageInput): Promise<void> {
@@ -145,17 +147,46 @@ export class HandleInboundMessageUseCase {
 
     // 8. If assigned to AI agent → enqueue AI response job (with debounce if enabled)
     let aiAgent: Agent | null = null;
-    if (assignedAgent && assignedAgent.type === AgentType.AI) {
-      aiAgent = assignedAgent;
+    let humanAgent: Agent | null = null;
+    if (assignedAgent) {
+      if (assignedAgent.type === AgentType.AI) {
+        aiAgent = assignedAgent;
+      } else {
+        humanAgent = assignedAgent;
+      }
     } else if (!needsAssignment && conversation.agentId) {
       const currentAgent = await this.agentRepo.findById(conversation.agentId);
       if (currentAgent && currentAgent.type === AgentType.AI) {
         aiAgent = currentAgent;
+      } else {
+        humanAgent = currentAgent;
       }
     }
 
     if (aiAgent) {
       await this.enqueueAiResponse(aiAgent, conversation.id, phone, contact.waId);
+    }
+
+    // 9. Web push to the assigned human agent (fire-and-forget; the SW
+    // suppresses it when the app is focused)
+    if (humanAgent) {
+      void this.sendPushToAgent.execute(humanAgent.id, {
+        title: contact.name || contact.phone,
+        body: this.messagePreview(input.body, input.messageType),
+        url: `/conversations/${conversation.id}`,
+        tag: `conv-${conversation.id}`,
+      });
+    }
+  }
+
+  private messagePreview(body: string | null | undefined, messageType: string | undefined): string {
+    if (body) return body.length > 120 ? `${body.slice(0, 117)}...` : body;
+    switch (messageType) {
+      case MessageType.IMAGE: return '📷 Imagen';
+      case MessageType.VIDEO: return '🎬 Video';
+      case MessageType.AUDIO: return '🎵 Audio';
+      case MessageType.DOCUMENT: return '📄 Documento';
+      default: return 'Nuevo mensaje';
     }
   }
 

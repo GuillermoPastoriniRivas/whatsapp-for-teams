@@ -7,6 +7,8 @@ import { Result, ok, err } from '../../common/result.js';
 import { DomainError, ConversationNotFoundError, AgentNotFoundError } from '../../../domain/errors/domain-errors.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
+import { AgentType } from '../../../domain/enums/agent-type.enum.js';
+import { SendPushToAgentUseCase } from '../notification/send-push-to-agent.use-case.js';
 
 export interface AssignConversationInput {
   conversationId: string;
@@ -20,6 +22,7 @@ export class AssignConversationUseCase {
     private readonly agentRepo: AgentRepository,
     private readonly gateway: RealtimeGatewayPort,
     private readonly eventRepo: ConversationEventRepository,
+    private readonly sendPushToAgent: SendPushToAgentUseCase,
   ) {}
 
   async execute(input: AssignConversationInput): Promise<Result<Conversation, DomainError>> {
@@ -62,6 +65,15 @@ export class AssignConversationUseCase {
     this.gateway.emitToConversation(conversation.id, 'conversation.event', event);
 
     this.gateway.emitToAgent(input.agentId, 'conversation.assigned', updated);
+
+    if (newAgent.type === AgentType.HUMAN) {
+      void this.sendPushToAgent.execute(input.agentId, {
+        title: 'Nueva conversación asignada',
+        body: 'Te asignaron una conversación',
+        url: `/conversations/${conversation.id}`,
+        tag: `conv-${conversation.id}`,
+      });
+    }
 
     return ok(updated!);
   }

@@ -178,10 +178,10 @@ export default function TemplatesPage() {
               })}
             </div>
 
-            <div className="ml-auto flex items-center gap-2">
+            <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2">
               {phones.length > 1 && (
                 <SimpleSelect
-                  className="h-8 w-44 text-xs"
+                  className="h-8 w-36 sm:w-44 text-xs shrink-0"
                   value={selectedPhone}
                   onChange={(value) => {
                     setSelectedPhone(value);
@@ -193,10 +193,10 @@ export default function TemplatesPage() {
                   ]}
                 />
               )}
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-none">
                 <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  className="h-8 w-44 pl-8 text-xs md:w-56"
+                  className="h-8 w-full pl-8 text-base sm:text-xs sm:w-44 md:w-56"
                   placeholder={t.templates.searchPlaceholder}
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
@@ -229,7 +229,7 @@ export default function TemplatesPage() {
           ) : (
             <>
               {/* Desktop table */}
-              <div className="hidden md:block [&_[data-slot=table-container]]:overflow-x-hidden">
+              <div className="hidden md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>

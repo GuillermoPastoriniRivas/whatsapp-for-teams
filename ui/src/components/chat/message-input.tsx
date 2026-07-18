@@ -54,7 +54,7 @@ export function MessageInput({ conversationId }: Props) {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t.chat.typePlaceholder}
-          className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 shadow-none bg-transparent h-[38px] text-[15px]"
+          className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 shadow-none bg-transparent h-[38px] text-base md:text-[15px]"
           disabled={sending}
         />
       </div>

@@ -19,4 +19,7 @@ export interface EnvironmentVariables {
   LEMON_SQUEEZY_VARIANT_PRO?: string;
   LEMON_SQUEEZY_VARIANT_BUSINESS?: string;
   LEMON_SQUEEZY_VARIANT_AGENCIES?: string;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  VAPID_SUBJECT?: string;
 }

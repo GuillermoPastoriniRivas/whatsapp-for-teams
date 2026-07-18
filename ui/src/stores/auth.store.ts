@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { api } from "@/lib/api";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
+import { unsubscribeFromPush } from "@/lib/push";
 import type { Agent, LoginResponse } from "@/types";
 
 interface AuthState {
@@ -117,6 +118,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
+    // Best-effort: en un dispositivo compartido, dejar de recibir push al salir
+    unsubscribeFromPush().catch(() => {});
     api.setToken(null);
     disconnectSocket();
     localStorage.removeItem("accessToken");

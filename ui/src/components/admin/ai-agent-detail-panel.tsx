@@ -664,7 +664,7 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
 
               {multiMessageEnabled && (
                 <div className="space-y-2.5 rounded-lg border p-3 bg-muted/30">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">Máx. mensajes por respuesta</label>
                       <Input
@@ -689,7 +689,7 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">Espera por más mensajes (ms)</label>
                       <Input

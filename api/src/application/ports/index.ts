@@ -5,3 +5,5 @@ export type { TokenProviderPort, TokenPayload } from './token-provider.port.js';
 export type { EmailServicePort, EmailMessage, EmailRecipient } from './email-service.port.js';
 export type { PaymentProviderPort, CreateCheckoutParams, CreateCheckoutResult, WebhookEvent, WebhookEventType } from './payment-provider.port.js';
 export type { PaymentProviderResolverPort } from './payment-provider-resolver.port.js';
+export type { WebPushPort, WebPushTarget } from './web-push.port.js';
+export { PushSubscriptionGoneError } from './web-push.port.js';

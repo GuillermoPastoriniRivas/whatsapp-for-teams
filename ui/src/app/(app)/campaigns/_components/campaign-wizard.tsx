@@ -371,7 +371,7 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    className="h-8 pl-8 text-xs"
+                    className="h-8 pl-8 text-base sm:text-xs"
                     placeholder={t.campaigns.searchTemplates}
                     value={templateFilter}
                     onChange={(e) => setTemplateFilter(e.target.value)}
@@ -587,7 +587,7 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                           />
                           {mapping.customField && (
                             <Input
-                              className="h-8 text-xs"
+                              className="h-8 text-base sm:text-xs"
                               placeholder={t.campaigns.customFieldPlaceholder}
                               value={mapping.value.replace(/^customFields\./, "")}
                               onChange={(e) =>
@@ -601,7 +601,7 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                         </div>
                       ) : (
                         <Input
-                          className="h-8 text-xs"
+                          className="h-8 text-base sm:text-xs"
                           placeholder={t.campaigns.staticPlaceholder}
                           value={mapping.value}
                           onChange={(e) => setMappings((prev) => ({ ...prev, [key]: { ...mapping, value: e.target.value } }))}

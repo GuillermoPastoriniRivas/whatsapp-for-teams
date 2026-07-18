@@ -113,7 +113,7 @@ export function RecipientsTable({ campaignId, refreshKey }: { campaignId: string
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden md:block [&_[data-slot=table-container]]:overflow-x-hidden">
+          <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>

@@ -10,7 +10,7 @@ export function AppHeader() {
   if (!agent) return null;
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-background px-4">
+    <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-background px-4 h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)]">
       <div className="flex items-center gap-2">
         <AsisLogo size={32} className="text-primary" />
         <span className="font-semibold hidden sm:inline">

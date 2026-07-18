@@ -7,9 +7,10 @@ import { QueueModule } from './queue/queue.module.js';
 import { AiModule } from './ai/ai.module.js';
 import { EmailModule } from './email/email.module.js';
 import { PaymentModule } from './payment/payment.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 
 @Module({
-  imports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule],
-  exports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule],
+  imports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule],
+  exports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule],
 })
 export class InfrastructureModule {}

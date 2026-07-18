@@ -166,7 +166,7 @@ export default function ContactsPage() {
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="px-3 py-1.5 text-sm rounded-md border disabled:opacity-40 hover:bg-muted transition-colors"
+                    className="px-4 py-2.5 md:py-1.5 text-sm rounded-md border disabled:opacity-40 hover:bg-muted transition-colors"
                   >
                     {t.contacts.previous}
                   </button>
@@ -179,7 +179,7 @@ export default function ContactsPage() {
                       setPage((p) => Math.min(meta.pages, p + 1))
                     }
                     disabled={page >= meta.pages}
-                    className="px-3 py-1.5 text-sm rounded-md border disabled:opacity-40 hover:bg-muted transition-colors"
+                    className="px-4 py-2.5 md:py-1.5 text-sm rounded-md border disabled:opacity-40 hover:bg-muted transition-colors"
                   >
                     {t.contacts.next}
                   </button>

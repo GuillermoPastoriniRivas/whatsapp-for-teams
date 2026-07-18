@@ -128,6 +128,14 @@ import { LabelController } from './controllers/label.controller.js';
 import { BillingController } from './controllers/billing.controller.js';
 import { PaymentWebhookController } from './controllers/payment-webhook.controller.js';
 
+// Controllers — Notifications
+import { NotificationController } from './controllers/notification.controller.js';
+
+// Use Cases — Notifications
+import { SubscribePushUseCase } from '../application/use-cases/notification/subscribe-push.use-case.js';
+import { UnsubscribePushUseCase } from '../application/use-cases/notification/unsubscribe-push.use-case.js';
+import { SendPushToAgentUseCase } from '../application/use-cases/notification/send-push-to-agent.use-case.js';
+
 // Use Cases — Billing
 import { SubscribeUseCase } from '../application/use-cases/billing/subscribe.use-case.js';
 import { ChangePlanUseCase } from '../application/use-cases/billing/change-plan.use-case.js';
@@ -307,9 +315,9 @@ const useCaseProviders = [
   },
   {
     provide: 'AssignConversationUseCase',
-    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any) =>
-      new AssignConversationUseCase(convRepo, agentRepo, gateway, eventRepo),
-    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository'],
+    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any, sendPush: any) =>
+      new AssignConversationUseCase(convRepo, agentRepo, gateway, eventRepo, sendPush),
+    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository', 'SendPushToAgentUseCase'],
   },
   {
     provide: 'GetConversationEventsUseCase',
@@ -372,9 +380,9 @@ const useCaseProviders = [
   // Webhook
   {
     provide: 'HandleInboundMessageUseCase',
-    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any) =>
-      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply),
-    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase'],
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any, sendPush: any) =>
+      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply, sendPush),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase'],
   },
   {
     provide: 'HandleStatusUpdateUseCase',
@@ -649,6 +657,23 @@ const useCaseProviders = [
     inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase'],
   },
 
+  // Notifications (web push)
+  {
+    provide: 'SubscribePushUseCase',
+    useFactory: (pushRepo: any) => new SubscribePushUseCase(pushRepo),
+    inject: ['PushSubscriptionRepository'],
+  },
+  {
+    provide: 'UnsubscribePushUseCase',
+    useFactory: (pushRepo: any) => new UnsubscribePushUseCase(pushRepo),
+    inject: ['PushSubscriptionRepository'],
+  },
+  {
+    provide: 'SendPushToAgentUseCase',
+    useFactory: (pushRepo: any, webPush: any) => new SendPushToAgentUseCase(pushRepo, webPush),
+    inject: ['PushSubscriptionRepository', 'WebPushPort'],
+  },
+
 ];
 
 @Module({
@@ -667,6 +692,7 @@ const useCaseProviders = [
     LabelController,
     BillingController,
     PaymentWebhookController,
+    NotificationController,
   ],
   providers: [
     ...useCaseProviders,

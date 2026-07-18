@@ -331,6 +331,18 @@ const translations = {
       email: "Email",
       role: "Rol",
       signOut: "Cerrar sesion",
+      notifications: "Notificaciones",
+      pushDescription:
+        "Recibe un aviso cuando llega un mensaje nuevo o te asignan una conversación, incluso con la app cerrada.",
+      pushEnable: "Activar notificaciones",
+      pushEnabled: "Notificaciones activadas en este dispositivo",
+      pushDisable: "Desactivar",
+      pushDenied:
+        "Bloqueaste las notificaciones en el navegador. Actívalas desde la configuración del sitio para usarlas.",
+      pushUnsupported: "Tu navegador no soporta notificaciones push.",
+      pushIosInstall:
+        'En iPhone o iPad primero instala la app: en Safari toca Compartir y elige "Agregar a inicio".',
+      pushError: "No se pudieron activar las notificaciones. Prueba de nuevo.",
     },
     agents: {
       title: "Agentes",
@@ -356,7 +368,7 @@ const translations = {
       heroTitleHighlight: "WhatsApp",
       heroTitleEnd: "",
       heroSubtitle:
-        "Centralizá conversaciones, agendá, facturá y coordiná a tu equipo. Todo en el canal donde ya están tus clientes.",
+        "Centralizá conversaciones, automatizá respuestas y llegá a todos tus clientes con mensajes masivos. Todo en el canal donde ya están tus clientes.",
       ctaDemo: "Probar demo",
       ctaHowItWorks: "Como funciona",
       navHowItWorks: "Como funciona",
@@ -367,10 +379,10 @@ const translations = {
       navWorkspace: "Ir al workspace",
       howItWorksLabel: "Como funciona",
       howItWorksTitle:
-        "De WhatsApp fragmentado a equipo coordinado en 3 pasos",
+        "De WhatsApp fragmentado a equipo coordinado en 4 pasos",
       featuresLabel: "Funcionalidades",
       featuresTitle: "Todo lo que tu equipo necesita en un solo lugar",
-      featuresSubtitle: "Sin funciones inventadas. Esto es lo que asis.chat hace hoy.",
+      featuresSubtitle: "Sin funciones inventadas. Esto es lo que asis.chat hace hoy; lo que viene, esta marcado.",
       ctaTitle: "Prueba asis.chat con tu equipo",
       ctaSubtitle:
         "Conecta tu primer numero de WhatsApp en minutos. Mira el demo en vivo.",
@@ -382,7 +394,7 @@ const translations = {
       footerTerms: "Terminos",
       footerRights: "Todos los derechos reservados.",
       footerTagline:
-        "Bandeja compartida de WhatsApp para equipos. Agentes humanos e IA en un solo lugar.",
+        "Bandeja compartida de WhatsApp para equipos. Agentes humanos, bots de IA y campanas en un solo lugar.",
       aiSuggestion: "IA ha generado una respuesta sugerida",
       whatsappAria: "Contactar por WhatsApp",
       whatsappCta: "Escribinos por WhatsApp",
@@ -392,12 +404,19 @@ const translations = {
       feature2Title: "Colaboracion entre agentes humanos",
       feature2Desc:
         "Asigna conversaciones a miembros del equipo, deja notas internas invisibles para el cliente y colabora en tiempo real sin que nadie lo note.",
-      feature3Title: "Agentes de IA con tu propio modelo",
+      feature3Title: "Agentes de IA que responden por vos",
       feature3Desc:
-        "Conecta tu LLM (OpenAI, Anthropic, Gemini) para que responda automaticamente. Configura cuando interviene la IA, cuando pasa a un humano y que base de conocimiento usa.",
+        "Crea un bot con el perfil de tu negocio en minutos: que ofreces, como atiendes y que tono usa. Pruebalo en el playground antes de activarlo y define cuando escala a un humano.",
       feature4Title: "Control y permisos de administrador",
       feature4Desc:
         "Define quien ve que numeros, asigna roles y permisos a cada miembro. Manten control total sobre quien accede a que conversaciones.",
+      feature5Title: "Templates y campanas masivas",
+      feature5Desc:
+        "Crea templates de marketing, utility y autenticacion, sincroniza su aprobacion con Meta y envia campanas segmentadas. Mide entregados, leidos y respondidos, y continua cada respuesta en el inbox.",
+      feature6Title: "Dashboard de costos",
+      feature6Desc:
+        "Conoce cuanto te cuesta cada conversacion: mensajes por categoria, tarifas por pais y proyeccion de tu factura de Meta. Cuando WhatsApp cobre por mensaje, vas a saber exactamente cuanto y como bajarlo.",
+      comingSoon: "Muy pronto",
       step1Title: "Conecta tus numeros",
       step1Desc:
         "Registra tus numeros de WhatsApp Business. Puedes conectar todos los que necesites desde el panel de administracion.",
@@ -406,7 +425,10 @@ const translations = {
         "Las conversaciones se asignan a agentes humanos. Colabora con notas internas, transfiere chats y responde en tiempo real.",
       step3Title: "La IA te ayuda",
       step3Desc:
-        "Configura agentes de IA con tu propio modelo de lenguaje. Responden automaticamente y escalan al humano cuando no pueden resolver.",
+        "Configura agentes de IA con el perfil de tu negocio. Responden automaticamente y escalan al humano cuando no pueden resolver.",
+      step4Title: "Llega a todos con campanas",
+      step4Desc:
+        "Crea templates aprobados por Meta y envia campanas segmentadas a tus contactos. Mide entregas, lecturas y respuestas, y sigue la conversacion en el inbox.",
       pricingLabel: "Precios",
       pricingTitle: "Planes simples",
       pricingSubtitle: "Elige el plan que mejor se adapte a tu equipo. Todos incluyen WhatsApp multi-numero y agentes de IA.",
@@ -607,6 +629,21 @@ const translations = {
       demoBanner: "Estas explorando el demo de asis.chat",
       demoCta: "Crea tu cuenta gratis",
       cancel: "Cancelar",
+      back: "Volver",
+    },
+    pwa: {
+      installTitle: "Instala asis.chat",
+      installBody:
+        "Agrégala a tu pantalla de inicio para abrirla como una app y recibir notificaciones.",
+      installAction: "Instalar",
+      installDismiss: "Ahora no",
+      iosInstructions:
+        'En Safari: toca Compartir y elige "Agregar a inicio".',
+      pushPromptTitle: "No te pierdas ningún mensaje",
+      pushPromptBody:
+        "Activa las notificaciones para enterarte cuando un cliente te escribe.",
+      pushPromptAccept: "Activar",
+      pushPromptDismiss: "Ahora no",
     },
   },
   en: {
@@ -974,6 +1011,18 @@ const translations = {
       email: "Email",
       role: "Role",
       signOut: "Sign out",
+      notifications: "Notifications",
+      pushDescription:
+        "Get notified when a new message arrives or a conversation is assigned to you, even with the app closed.",
+      pushEnable: "Enable notifications",
+      pushEnabled: "Notifications enabled on this device",
+      pushDisable: "Disable",
+      pushDenied:
+        "You blocked notifications in your browser. Enable them from the site settings to use them.",
+      pushUnsupported: "Your browser does not support push notifications.",
+      pushIosInstall:
+        'On iPhone or iPad, install the app first: in Safari tap Share and choose "Add to Home Screen".',
+      pushError: "Notifications could not be enabled. Please try again.",
     },
     agents: {
       title: "Agents",
@@ -999,7 +1048,7 @@ const translations = {
       heroTitleHighlight: "WhatsApp",
       heroTitleEnd: "",
       heroSubtitle:
-        "Centralize conversations, schedule, invoice, and coordinate your team. All on the channel where your customers already are.",
+        "Centralize conversations, reply with AI, and reach every customer with WhatsApp campaigns. All on the channel your customers already use.",
       ctaDemo: "Try demo",
       ctaHowItWorks: "How it works",
       navHowItWorks: "How it works",
@@ -1010,10 +1059,10 @@ const translations = {
       navWorkspace: "Go to workspace",
       howItWorksLabel: "How it works",
       howItWorksTitle:
-        "From fragmented WhatsApp to a coordinated team in 3 steps",
+        "From fragmented WhatsApp to a coordinated team in 4 steps",
       featuresLabel: "Features",
       featuresTitle: "Everything your team needs in one place",
-      featuresSubtitle: "No made-up features. This is what asis.chat does today.",
+      featuresSubtitle: "No made-up features. This is what asis.chat does today; what's coming is clearly marked.",
       ctaTitle: "Try asis.chat with your team",
       ctaSubtitle:
         "Connect your first WhatsApp number in minutes. See the live demo.",
@@ -1025,7 +1074,7 @@ const translations = {
       footerTerms: "Terms",
       footerRights: "All rights reserved.",
       footerTagline:
-        "Shared WhatsApp inbox for teams. Human and AI agents in one place.",
+        "Shared WhatsApp inbox for teams. Human agents, AI bots, and campaigns in one place.",
       aiSuggestion: "AI generated a suggested reply",
       whatsappAria: "Contact via WhatsApp",
       whatsappCta: "Message us on WhatsApp",
@@ -1035,12 +1084,19 @@ const translations = {
       feature2Title: "Human agent collaboration",
       feature2Desc:
         "Assign conversations to team members, leave internal notes invisible to the customer, and collaborate in real time without anyone noticing.",
-      feature3Title: "AI agents with your own model",
+      feature3Title: "AI agents that reply for you",
       feature3Desc:
-        "Connect your LLM (OpenAI, Anthropic, Gemini) to reply automatically. Configure when AI steps in, when it hands off to a human, and which knowledge base it uses.",
+        "Set up a bot with your business profile in minutes: what you offer, how you serve, and the tone it uses. Test it in the playground before going live and define when it hands off to a human.",
       feature4Title: "Admin controls and permissions",
       feature4Desc:
         "Define who sees which numbers, assign roles and permissions to each member. Keep full control over who accesses which conversations.",
+      feature5Title: "Templates and bulk campaigns",
+      feature5Desc:
+        "Create marketing, utility, and authentication templates, sync approval status with Meta, and send segmented campaigns. Track delivered, read, and replied metrics, and continue every reply in the inbox.",
+      feature6Title: "Cost dashboard",
+      feature6Desc:
+        "Know what every conversation costs: messages by category, per-country rates, and a projection of your Meta bill. When WhatsApp starts charging per message, you'll know exactly how much and how to lower it.",
+      comingSoon: "Coming soon",
       step1Title: "Connect your numbers",
       step1Desc:
         "Register your WhatsApp Business numbers. You can connect as many as you need from the admin panel.",
@@ -1049,7 +1105,10 @@ const translations = {
         "Conversations are assigned to human agents. Collaborate with internal notes, transfer chats, and reply in real time.",
       step3Title: "AI helps you out",
       step3Desc:
-        "Set up AI agents with your own language model. They reply automatically and escalate to a human when they can't resolve.",
+        "Set up AI agents with your business profile. They reply automatically and escalate to a human when they can't resolve.",
+      step4Title: "Reach everyone with campaigns",
+      step4Desc:
+        "Create Meta-approved templates and send segmented campaigns to your contacts. Measure deliveries, reads, and replies, and continue the conversation in the inbox.",
       pricingLabel: "Pricing",
       pricingTitle: "Simple plans",
       pricingSubtitle: "Choose the plan that fits your team. All plans include multi-number WhatsApp and AI agents.",
@@ -1211,6 +1270,21 @@ const translations = {
       demoBanner: "You're exploring the asis.chat demo",
       demoCta: "Create your free account",
       cancel: "Cancel",
+      back: "Back",
+    },
+    pwa: {
+      installTitle: "Install asis.chat",
+      installBody:
+        "Add it to your home screen to open it like an app and receive notifications.",
+      installAction: "Install",
+      installDismiss: "Not now",
+      iosInstructions:
+        'In Safari: tap Share and choose "Add to Home Screen".',
+      pushPromptTitle: "Don't miss any messages",
+      pushPromptBody:
+        "Enable notifications to know when a customer writes to you.",
+      pushPromptAccept: "Enable",
+      pushPromptDismiss: "Not now",
     },
   },
 } as const;

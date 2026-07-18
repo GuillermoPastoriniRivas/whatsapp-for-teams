@@ -22,6 +22,8 @@ import {
   Zap,
   Crown,
   Building2,
+  Megaphone,
+  BarChart3,
 } from "lucide-react";
 import { AsisLogo } from "@/components/brand/asis-logo";
 
@@ -84,6 +86,17 @@ export default function LandingPage() {
       title: t.landing.feature4Title,
       description: t.landing.feature4Desc,
     },
+    {
+      icon: Megaphone,
+      title: t.landing.feature5Title,
+      description: t.landing.feature5Desc,
+    },
+    {
+      icon: BarChart3,
+      title: t.landing.feature6Title,
+      description: t.landing.feature6Desc,
+      comingSoon: true,
+    },
   ];
 
   const steps = [
@@ -104,6 +117,12 @@ export default function LandingPage() {
       icon: Bot,
       title: t.landing.step3Title,
       description: t.landing.step3Desc,
+    },
+    {
+      number: "04",
+      icon: Megaphone,
+      title: t.landing.step4Title,
+      description: t.landing.step4Desc,
     },
   ];
 
@@ -188,7 +207,7 @@ export default function LandingPage() {
               <Sparkles className="h-4 w-4" />
               <span>{t.landing.badge}</span>
             </div>
-            <h1 className="mx-auto max-w-4xl text-5xl font-extrabold tracking-tight text-slate-900 sm:text-7xl">
+            <h1 className="mx-auto max-w-4xl text-4xl min-[420px]:text-5xl font-extrabold tracking-tight text-slate-900 sm:text-7xl">
               {t.landing.heroTitle}<span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">{t.landing.heroTitleHighlight}</span>{t.landing.heroTitleEnd}
             </h1>
             <p className="mx-auto mt-8 max-w-2xl text-lg text-slate-600 sm:text-xl">
@@ -348,15 +367,15 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((step) => (
-              <div key={step.number} className="relative flex flex-col items-center text-center p-8 rounded-2xl bg-slate-50 border border-slate-200 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
+              <div key={step.number} className="relative flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
                 <div className="mb-4 text-5xl font-black text-primary/15">{step.number}</div>
                 <div className="mb-4 rounded-xl bg-primary/10 p-3 ring-1 ring-primary/20">
                   <step.icon className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">{step.title}</h3>
-                <p className="text-base text-slate-600 leading-7">{step.description}</p>
+                <h3 className="text-lg font-bold text-slate-900 mb-3">{step.title}</h3>
+                <p className="text-sm text-slate-600 leading-6">{step.description}</p>
               </div>
             ))}
           </div>
@@ -380,6 +399,11 @@ export default function LandingPage() {
             <dl className="grid grid-cols-1 gap-8 lg:grid-cols-2">
               {features.map((feature) => (
                 <div key={feature.title} className="group flex flex-col items-start p-8 rounded-2xl bg-white border border-slate-200 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 relative overflow-hidden">
+                  {"comingSoon" in feature && feature.comingSoon && (
+                    <span className="absolute top-6 right-6 rounded-full bg-accent/10 text-accent text-xs font-semibold px-3 py-1 ring-1 ring-accent/20">
+                      {t.landing.comingSoon}
+                    </span>
+                  )}
                   <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100 group-hover:bg-primary/10 group-hover:ring-primary/20 transition-all">
                     <feature.icon className="h-6 w-6 text-slate-700 group-hover:text-primary transition-colors" aria-hidden="true" />
                   </div>

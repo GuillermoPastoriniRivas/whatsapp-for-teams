@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Sin conexión — asis.chat</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafb;
+      color: #1e293b;
+      padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
+      text-align: center;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #04070f; color: #f1f5f9; }
+    }
+    .card { max-width: 360px; }
+    img { width: 72px; height: 72px; border-radius: 18px; margin-bottom: 20px; }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    p { font-size: 0.95rem; opacity: 0.75; margin: 0 0 24px; line-height: 1.5; }
+    button {
+      font: inherit;
+      background: #00987c;
+      color: #fff;
+      border: 0;
+      border-radius: 9999px;
+      padding: 12px 28px;
+      cursor: pointer;
+      min-height: 44px;
+    }
+    button:active { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img src="/icons/icon-192.png" alt="asis.chat" />
+    <h1>Sin conexión</h1>
+    <p>asis.chat necesita internet para mostrar tus conversaciones. Revisa tu conexión e intenta de nuevo.</p>
+    <button onclick="location.reload()">Reintentar</button>
+  </div>
+</body>
+</html>

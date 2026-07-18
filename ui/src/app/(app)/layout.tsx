@@ -6,7 +6,10 @@ import { AppHeader } from "@/components/layout/app-header";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { DemoBanner } from "@/components/demo-banner";
+import { PwaProvider } from "@/components/pwa/pwa-provider";
 import { useBillingStore } from "@/stores/billing.store";
+import { useMobileNavVisible } from "@/lib/use-mobile-nav-visible";
+import { cn } from "@/lib/utils";
 
 function BillingLoader() {
   const fetchSubscription = useBillingStore((s) => s.fetchSubscription);
@@ -15,10 +18,12 @@ function BillingLoader() {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const navVisible = useMobileNavVisible();
   return (
     <AuthProvider>
       <BillingLoader />
-      <div className="flex flex-col h-screen w-full overflow-hidden bg-background font-sans">
+      <PwaProvider />
+      <div className="flex flex-col h-dvh w-full overflow-hidden bg-background font-sans">
         <DemoBanner />
         <div className="flex flex-1 overflow-hidden">
           <AppSidebar />
@@ -26,7 +31,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="md:hidden">
               <AppHeader />
             </div>
-            <main className="flex-1 overflow-hidden relative pb-14 md:pb-0">
+            <main
+              className={cn(
+                "flex-1 overflow-hidden relative md:pb-0",
+                navVisible
+                  ? "pb-[calc(3.5rem+env(safe-area-inset-bottom))]"
+                  : "pb-[env(safe-area-inset-bottom)]"
+              )}
+            >
               {children}
             </main>
             <MobileNav />

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Settings, Shield, Users, Contact, Megaphone } from "lucide-react";
+import { MessageSquare, Settings, Shield, Contact, Megaphone } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
+import { useMobileNavVisible } from "@/lib/use-mobile-nav-visible";
 import { cn } from "@/lib/utils";
 
 export function MobileNav() {
@@ -16,24 +17,23 @@ export function MobileNav() {
   );
   const { t } = useTranslations();
 
+  const visible = useMobileNavVisible();
+
+  // Max 5 tabs so labels fit at 360px; /agents stays reachable from the sidebar and /admin
   const tabs = [
     { href: "/conversations", icon: MessageSquare, label: t.nav.chats },
     { href: "/contacts", icon: Contact, label: t.nav.contacts },
     { href: "/campaigns", icon: Megaphone, label: t.nav.campaigns },
     ...(agent?.role === "admin"
-      ? [
-          { href: "/agents", icon: Users, label: t.nav.agents },
-          { href: "/admin", icon: Shield, label: t.nav.admin },
-        ]
+      ? [{ href: "/admin", icon: Shield, label: t.nav.admin }]
       : []),
     { href: "/settings", icon: Settings, label: t.nav.settings },
   ];
 
-  // Hide nav on login page or when inside a chat on mobile
-  if (pathname === "/login") return null;
+  if (!visible) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around">
         {tabs.map((tab) => {
           const isActive =
