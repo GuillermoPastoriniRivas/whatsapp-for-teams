@@ -5,6 +5,22 @@ import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
 import { onUnauthorized } from "@/lib/api";
 import { onSocketAuthError, reconnectSocket } from "@/lib/socket";
+import { AsisLogo } from "@/components/brand/asis-logo";
+
+/**
+ * Continúa visualmente el splash del sistema (fondo claro + logo) mientras
+ * la app hidrata la sesión o redirige, en vez de mostrar un blanco vacío.
+ */
+function AppSplash() {
+  return (
+    <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 bg-background">
+      <AsisLogo size={88} className="text-primary animate-pulse" />
+      <p className="text-sm font-semibold text-muted-foreground">
+        asis<span className="text-primary">.chat</span>
+      </p>
+    </div>
+  );
+}
 
 function isDemoHost(): boolean {
   if (typeof window === "undefined") return false;
@@ -80,7 +96,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [hydrated, agent, pathname]);
 
-  if (!hydrated || autoLoggingIn) return null;
+  // Sin sesión también mostramos el splash: el useEffect ya está redirigiendo
+  // a /login y así no se flashea la UI protegida vacía en el medio.
+  if (!hydrated || autoLoggingIn || !agent) return <AppSplash />;
 
   return <>{children}</>;
 }
