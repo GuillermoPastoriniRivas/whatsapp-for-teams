@@ -13,7 +13,9 @@ import { RightPanel } from "@/components/layout/right-panel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getSocket } from "@/lib/socket";
 import { useIsDesktop } from "@/lib/use-is-desktop";
+import { useConversationWindow } from "@/lib/use-conversation-window";
 import { useTranslations } from "@/lib/i18n/use-translations";
+import { Clock } from "lucide-react";
 import type { ChatItem, ConversationEvent } from "@/types";
 
 function formatDateLabel(
@@ -59,6 +61,21 @@ function DateSeparator({
   );
 }
 
+function WindowExpiredNotice() {
+  const { t } = useTranslations();
+  return (
+    <div className="flex items-start gap-3 bg-[var(--asis-surface-header)] px-4 py-3 sm:px-6 w-full border-t border-border z-10">
+      <Clock className="h-5 w-5 shrink-0 text-muted-foreground mt-0.5" />
+      <div className="min-w-0 text-sm">
+        <p className="font-medium">{t.chat.windowExpiredTitle}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {t.chat.windowExpiredBody}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 const INLINE_EVENT_TYPES = new Set([
   "assigned",
   "reassigned",
@@ -87,6 +104,7 @@ export function ChatPanel({ conversationId }: Props) {
 
   const isDesktop = useIsDesktop();
   const [contactInfoOpen, setContactInfoOpen] = useState(false);
+  const windowOpen = useConversationWindow(conversation, convMessages);
 
   // Open panel by default on desktop
   useEffect(() => {
@@ -191,7 +209,11 @@ export function ChatPanel({ conversationId }: Props) {
             )}
           </div>
         </ScrollArea>
-        <MessageInput conversationId={conversationId} />
+        {windowOpen ? (
+          <MessageInput conversationId={conversationId} />
+        ) : (
+          <WindowExpiredNotice />
+        )}
       </div>
 
       {/* Contact info side panel */}

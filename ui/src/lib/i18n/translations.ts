@@ -106,6 +106,9 @@ const translations = {
       sendError: "Error al enviar mensaje",
       today: "Hoy",
       yesterday: "Ayer",
+      windowExpiredTitle: "Ventana de 24 horas cerrada",
+      windowExpiredBody:
+        "Pasaron más de 24 horas desde el último mensaje del cliente. WhatsApp solo permite responder libremente dentro de esa ventana; para retomar la conversación, envía una plantilla aprobada.",
     },
     contacts: {
       title: "Contactos",
@@ -806,6 +809,9 @@ const translations = {
       sendError: "Failed to send message",
       today: "Today",
       yesterday: "Yesterday",
+      windowExpiredTitle: "24-hour window closed",
+      windowExpiredBody:
+        "More than 24 hours have passed since the customer's last message. WhatsApp only allows free-form replies within that window; to resume the conversation, send an approved template.",
     },
     contacts: {
       title: "Contacts",
