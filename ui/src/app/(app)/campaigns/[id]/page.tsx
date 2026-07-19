@@ -60,17 +60,14 @@ export default function CampaignDetailPage() {
 
     const handler = (event: CampaignProgressEvent) => {
       if (event.campaignId !== campaignId) return;
+      // No mergear event.counts: son los contadores acumulativos del cache;
+      // las tarjetas se alimentan del refetch de stats (fuente de verdad)
       setCampaign((prev) =>
         prev
           ? {
               ...prev,
               ...(event.status ? { status: event.status } : {}),
               ...(event.failureReason !== undefined ? { failureReason: event.failureReason } : {}),
-              counts: {
-                ...prev.counts,
-                ...(event.counts ?? {}),
-                ...(event.replied !== undefined ? { replied: event.replied } : {}),
-              },
             }
           : prev
       );
@@ -117,9 +114,14 @@ export default function CampaignDetailPage() {
     );
   }
 
-  const { counts } = campaign;
-  const processed = counts.sent + counts.delivered + counts.read + counts.failed + counts.skipped;
-  const progressPct = counts.total ? (processed / counts.total) * 100 : 0;
+  // stats.counts = estados exclusivos por destinatario (fuente de verdad);
+  // fallback: contadores acumulativos del campaign (sent ya incluye etapas posteriores)
+  const sc = stats?.counts;
+  const processed = sc
+    ? sc.sent + sc.delivered + sc.read + sc.failed + sc.skipped
+    : campaign.counts.sent + campaign.counts.failed + campaign.counts.skipped;
+  const totalCount = sc?.total ?? campaign.counts.total;
+  const progressPct = totalCount ? Math.min(100, (processed / totalCount) * 100) : 0;
 
   return (
     <div className="flex h-full flex-col">
@@ -180,7 +182,7 @@ export default function CampaignDetailPage() {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              {processed}/{counts.total} {t.campaigns.progressLabel}
+              {processed}/{totalCount} {t.campaigns.progressLabel}
             </span>
             <span>{Math.round(progressPct)}%</span>
           </div>

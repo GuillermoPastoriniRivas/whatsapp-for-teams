@@ -12,17 +12,25 @@ function pct(rate: number): string {
 
 export function StatTiles({ campaign, stats }: { campaign: Campaign; stats: CampaignStats | null }) {
   const { t } = useTranslations();
-  const { counts } = campaign;
-  // Delivered/read are cumulative stages: a read message was also delivered.
-  const reached = counts.delivered + counts.read;
-  const attempted = counts.sent + reached + counts.failed;
+  // stats.counts viene de la agregación por destinatario (estados EXCLUSIVOS:
+  // un leído cuenta solo como leído) — la fuente de verdad. El fallback
+  // campaign.counts son contadores ACUMULATIVOS por etapa (sent incluye a los
+  // que después fueron entregados/leídos), así que la aritmética difiere.
+  const s = stats?.counts;
+  const c = campaign.counts;
+  const attempted = s ? s.sent + s.delivered + s.read + s.failed : c.sent + c.failed;
+  const reached = s ? s.delivered + s.read : c.delivered;
+  const read = s ? s.read : c.read;
+  const replied = s ? s.replied : c.replied;
+  const failed = s ? s.failed : c.failed;
+  const total = s ? s.total : c.total;
 
   const tiles = [
     {
       label: t.campaigns.statSent,
       icon: Send,
       value: `${attempted}`,
-      sub: `/ ${counts.total}`,
+      sub: `/ ${total}`,
       accent: "",
     },
     {
@@ -35,22 +43,22 @@ export function StatTiles({ campaign, stats }: { campaign: Campaign; stats: Camp
     {
       label: t.campaigns.statRead,
       icon: Eye,
-      value: `${counts.read}`,
+      value: `${read}`,
       sub: stats ? pct(stats.readRate) : undefined,
       accent: "",
     },
     {
       label: t.campaigns.statReplied,
       icon: MessageCircleReply,
-      value: `${counts.replied}`,
+      value: `${replied}`,
       sub: stats ? pct(stats.responseRate) : undefined,
       accent: "text-emerald-600 dark:text-emerald-400",
     },
     {
       label: t.campaigns.statFailed,
       icon: XCircle,
-      value: `${counts.failed}`,
-      accent: counts.failed > 0 ? "text-destructive" : "",
+      value: `${failed}`,
+      accent: failed > 0 ? "text-destructive" : "",
     },
   ];
 

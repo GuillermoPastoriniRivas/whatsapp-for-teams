@@ -34,10 +34,17 @@ import type { Campaign, CampaignStatus } from "@/types";
 
 const STATUS_TABS: (CampaignStatus | "")[] = ["", "draft", "scheduled", "running", "paused", "completed", "cancelled", "failed"];
 
+// campaign.counts son contadores ACUMULATIVOS por etapa: sent ya incluye a los
+// que después fueron entregados/leídos, así que no se suman entre sí.
+export function campaignProcessed(campaign: Campaign): number {
+  const { sent, failed, skipped } = campaign.counts;
+  return sent + failed + skipped;
+}
+
 export function campaignProgressPct(campaign: Campaign): number {
-  const { sent, delivered, read, failed, skipped, total } = campaign.counts;
+  const { total } = campaign.counts;
   if (!total) return 0;
-  return ((sent + delivered + read + failed + skipped) / total) * 100;
+  return Math.min(100, (campaignProcessed(campaign) / total) * 100);
 }
 
 export default function CampaignsPage() {
@@ -180,7 +187,7 @@ export default function CampaignsPage() {
                           <div className="flex items-center gap-2">
                             <Progress value={campaignProgressPct(campaign)} className="h-1.5 flex-1" />
                             <span className="whitespace-nowrap text-[11px] text-muted-foreground">
-                              {campaign.counts.sent + campaign.counts.delivered + campaign.counts.read}/{campaign.counts.total}
+                              {campaignProcessed(campaign)}/{campaign.counts.total}
                             </span>
                           </div>
                         </TableCell>
@@ -246,7 +253,7 @@ export default function CampaignsPage() {
                     <div className="mt-2 flex items-center gap-2">
                       <Progress value={campaignProgressPct(campaign)} className="h-1.5 flex-1" />
                       <span className="text-[11px] text-muted-foreground">
-                        {campaign.counts.sent + campaign.counts.delivered + campaign.counts.read}/{campaign.counts.total}
+                        {campaignProcessed(campaign)}/{campaign.counts.total}
                       </span>
                     </div>
                   </div>
