@@ -8,7 +8,6 @@ import { useTranslations } from "@/lib/i18n/use-translations";
 import { ConversationItem } from "./conversation-item";
 import { ConversationFilters } from "./conversation-filters";
 import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { getSocket } from "@/lib/socket";
 import { Search } from "lucide-react";
@@ -78,7 +77,9 @@ export function ConversationList() {
         </div>
         <ConversationFilters />
       </div>
-      <ScrollArea className="flex-1">
+      {/* Scroll nativo: el ScrollArea de Radix envuelve en display:table y se
+          estira al contenido más ancho, empujando hora/badge fuera de vista */}
+      <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">
         {isLoading && conversations.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
             {t.common.loading}
@@ -102,7 +103,7 @@ export function ConversationList() {
             ))}
           </div>
         )}
-      </ScrollArea>
+      </div>
     </div>
   );
 }
