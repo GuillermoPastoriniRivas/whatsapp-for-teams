@@ -143,7 +143,7 @@ export default function TemplatesPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Status pills */}
-            <div className="-mb-1 flex gap-1.5 overflow-x-auto pb-1">
+            <div className="scrollbar-hide -mb-1 flex gap-1.5 overflow-x-auto pb-1">
               {STATUS_TABS.map((status) => {
                 const label = status
                   ? {

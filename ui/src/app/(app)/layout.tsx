@@ -9,6 +9,7 @@ import { DemoBanner } from "@/components/demo-banner";
 import { PwaProvider } from "@/components/pwa/pwa-provider";
 import { MessageToast } from "@/components/notifications/message-toast";
 import { useBillingStore } from "@/stores/billing.store";
+import { useZoomStore } from "@/stores/zoom.store";
 import { useMobileNavVisible } from "@/lib/use-mobile-nav-visible";
 import { cn } from "@/lib/utils";
 
@@ -18,11 +19,25 @@ function BillingLoader() {
   return null;
 }
 
+/** Publishes the stored content zoom as a CSS var; globals.css applies it on desktop. */
+function ContentZoom() {
+  const zoom = useZoomStore((s) => s.zoom);
+  const hydrate = useZoomStore((s) => s.hydrate);
+
+  useEffect(() => { hydrate(); }, [hydrate]);
+  useEffect(() => {
+    document.documentElement.style.setProperty("--content-zoom", String(zoom));
+  }, [zoom]);
+
+  return null;
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const navVisible = useMobileNavVisible();
   return (
     <AuthProvider>
       <BillingLoader />
+      <ContentZoom />
       <PwaProvider />
       <MessageToast />
       <div className="flex flex-col h-dvh w-full overflow-hidden bg-background font-sans">
@@ -35,7 +50,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
             <main
               className={cn(
-                "flex-1 overflow-hidden relative md:pb-0",
+                "content-zoom flex-1 overflow-hidden relative md:pb-0",
                 navVisible
                   ? "pb-[calc(3.5rem+env(safe-area-inset-bottom))]"
                   : "pb-[env(safe-area-inset-bottom)]"

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PushSettingsCard } from "@/components/pwa/push-settings-card";
 import { PasswordSettingsCard } from "@/components/settings/password-settings-card";
+import { ZoomSettingsCard } from "@/components/settings/zoom-settings-card";
 import { LogOut, User } from "lucide-react";
 
 export default function SettingsPage() {
@@ -45,6 +46,8 @@ export default function SettingsPage() {
       </Card>
 
       <PasswordSettingsCard />
+
+      <ZoomSettingsCard />
 
       <PushSettingsCard />
 

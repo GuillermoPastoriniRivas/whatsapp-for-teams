@@ -18,7 +18,7 @@ export function ConversationFilters() {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex gap-1.5 overflow-x-auto">
+      <div className="scrollbar-hide flex gap-1.5 overflow-x-auto">
         {filters.map((f) => (
           <Button
             key={f.value}

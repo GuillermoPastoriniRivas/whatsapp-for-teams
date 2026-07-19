@@ -102,7 +102,7 @@ export default function BillingPage() {
   if (agent?.role !== "admin") return null;
 
   return (
-    <div className="h-full overflow-y-auto p-6 max-w-5xl mx-auto space-y-6 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
+    <div className="h-full overflow-y-auto p-6 max-w-5xl mx-auto space-y-6 scrollbar-hide">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button

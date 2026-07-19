@@ -82,7 +82,7 @@ export function RecipientsTable({ campaignId, refreshKey }: { campaignId: string
         <h2 className="text-sm font-semibold">
           {t.campaigns.recipientsTitle} <span className="font-normal text-muted-foreground">({meta.total})</span>
         </h2>
-        <div className="-mb-1 flex gap-1.5 overflow-x-auto pb-1">
+        <div className="scrollbar-hide -mb-1 flex gap-1.5 overflow-x-auto pb-1">
           {STATUS_TABS.map((status) => (
             <button
               key={status}

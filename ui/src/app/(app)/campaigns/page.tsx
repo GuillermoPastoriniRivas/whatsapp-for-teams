@@ -119,7 +119,7 @@ export default function CampaignsPage() {
           </div>
 
           {/* Status pills */}
-          <div className="-mb-1 flex gap-1.5 overflow-x-auto pb-1">
+          <div className="scrollbar-hide -mb-1 flex gap-1.5 overflow-x-auto pb-1">
             {STATUS_TABS.map((status) => {
               const isActive = statusFilter === status;
               const count = status ? (countByStatus[status] ?? 0) : campaigns.length;

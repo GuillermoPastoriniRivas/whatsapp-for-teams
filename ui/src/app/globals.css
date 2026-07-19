@@ -4,6 +4,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Scrollable, but the bar itself never shows — Chromium/Safari + Firefox. */
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -131,6 +136,17 @@
   --asis-bubble-inbound: #1E293B;
   --asis-surface-header: #1E293B;
   --asis-surface-panel: #0F172A;
+}
+
+/**
+ * Content-only zoom. On desktop the pages sit in a lot of empty space and read
+ * small, so the content column is scaled up while the sidebar keeps its size.
+ * Tune with --content-zoom; mobile is left untouched.
+ */
+@media (min-width: 768px) {
+  .content-zoom {
+    zoom: var(--content-zoom, 1.15);
+  }
 }
 
 @layer base {
