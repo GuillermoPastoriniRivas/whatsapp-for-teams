@@ -27,10 +27,14 @@ export class AssignConversationUseCase {
 
   async execute(input: AssignConversationInput): Promise<Result<Conversation, DomainError>> {
     const conversation = await this.conversationRepo.findById(input.conversationId);
-    if (!conversation) return err(new ConversationNotFoundError());
+    if (!conversation || conversation.tenantId !== input.tenantId) {
+      return err(new ConversationNotFoundError());
+    }
 
     const newAgent = await this.agentRepo.findById(input.agentId);
-    if (!newAgent) return err(new AgentNotFoundError());
+    if (!newAgent || newAgent.tenantId !== input.tenantId) {
+      return err(new AgentNotFoundError());
+    }
 
     const oldAgentId = conversation.agentId;
     let oldAgentName: string | null = null;

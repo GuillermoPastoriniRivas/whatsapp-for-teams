@@ -1,15 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useConversationStore } from "@/stores/conversation.store";
-import { useAuthStore } from "@/stores/auth.store";
-import { useTranslations } from "@/lib/i18n/use-translations";
-import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User } from "lucide-react";
 import { ChatMenu } from "./chat-menu";
-import { AssignAgentDialog } from "./assign-agent-dialog";
+import { AssignedToControl } from "./assigned-to-control";
 import { avatarStyle, initials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 
@@ -23,27 +19,6 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
   const conversation = useConversationStore((s) =>
     s.conversations.find((c) => c.id === conversationId)
   );
-  const updateConversation = useConversationStore((s) => s.updateConversation);
-
-  const currentAgent = useAuthStore((s) => s.agent);
-
-  const { t } = useTranslations();
-  const [assignOpen, setAssignOpen] = useState(false);
-
-  const isMine = conversation?.agentId === currentAgent?.id;
-
-  const handleClaim = async () => {
-    if (!currentAgent) return;
-    await api.patch(`/conversations/${conversationId}/assign`, {
-      agentId: currentAgent.id,
-    });
-    useConversationStore.getState().fetch();
-  };
-
-  const handleAssigned = () => {
-    useConversationStore.getState().fetch();
-  };
-
   const contact = conversation?.contact;
 
   return (
@@ -89,42 +64,20 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
                     · {conversation.phoneLabel}
                   </span>
                 )}
-                {conversation?.agentName && (
-                  <span className="ml-1.5 text-primary">
-                    · {conversation.agentName}
-                  </span>
-                )}
               </span>
             </div>
           </button>
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
-          {!isMine && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden sm:flex shrink-0 rounded-full px-4 h-9 shadow-sm"
-              onClick={handleClaim}
-            >
-              {t.chat.claim}
-            </Button>
-          )}
-          <ChatMenu
-            onViewContact={onToggleContactInfo}
-            onAssign={() => setAssignOpen(true)}
-            onClaim={handleClaim}
-            isMine={isMine}
+          <AssignedToControl
+            conversationId={conversationId}
+            assignedAgentId={conversation?.agentId}
+            assignedAgentName={conversation?.agentName}
           />
+          <ChatMenu onViewContact={onToggleContactInfo} />
         </div>
       </div>
-
-      <AssignAgentDialog
-        open={assignOpen}
-        onOpenChange={setAssignOpen}
-        conversationId={conversationId}
-        onAssigned={handleAssigned}
-      />
     </>
   );
 }

@@ -14,7 +14,6 @@ import { GetConversationNotesUseCase } from '../../application/use-cases/convers
 import { AssignLabelUseCase } from '../../application/use-cases/label/assign-label.use-case.js';
 import { RemoveLabelUseCase } from '../../application/use-cases/label/remove-label.use-case.js';
 import { GetConversationLabelsUseCase } from '../../application/use-cases/label/get-conversation-labels.use-case.js';
-import { Roles } from '../decorators/roles.decorator.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
@@ -396,8 +395,10 @@ export class ConversationController {
   }
 
   @Patch(':id/assign')
-  @Roles('admin')
-  @ApiOperation({ summary: 'Assign conversation', description: 'Assign a conversation to an agent (admin only)' })
+  @ApiOperation({
+    summary: 'Assign conversation',
+    description: 'Assign a conversation to an agent. Any agent can assign to themselves (claim); assigning to someone else requires admin.',
+  })
   @ApiParam({ name: 'id', description: 'Conversation ID' })
   @ApiBody({
     schema: {
@@ -409,13 +410,18 @@ export class ConversationController {
     },
   })
   @ApiResponse({ status: 200, description: 'Conversation assigned' })
-  @ApiResponse({ status: 403, description: 'Admin role required' })
+  @ApiResponse({ status: 403, description: 'Admin role required to assign to another agent' })
   @ApiResponse({ status: 404, description: 'Conversation or agent not found' })
   async assign(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(AssignConversationRequestSchema)) body: AssignConversationRequestDto,
     @CurrentAgent() agent: RequestAgent,
   ) {
+    const isSelfAssign = body.agentId === agent._id;
+    if (!isSelfAssign && agent.role !== 'admin') {
+      throw new ForbiddenException('Only admins can assign a conversation to another agent');
+    }
+
     const result = await this.assignConversation.execute({
       conversationId: id,
       agentId: body.agentId,
