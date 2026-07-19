@@ -5,7 +5,6 @@ import { User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { LabelBadge } from "@/components/chat/label-badge";
-import { useConversationStore } from "@/stores/conversation.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import type { Conversation } from "@/types";
 
@@ -26,29 +25,7 @@ function timeAgo(dateStr: string, yesterdayLabel: string): string {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-// La API de WhatsApp no expone la foto de perfil de los clientes: avatar de
-// iniciales con color determinístico por nombre, estilo apps de mensajería
-const AVATAR_COLORS = [
-  "bg-teal-600",
-  "bg-orange-500",
-  "bg-sky-600",
-  "bg-violet-600",
-  "bg-rose-500",
-  "bg-amber-600",
-  "bg-emerald-600",
-  "bg-indigo-500",
-];
-
-function avatarColor(seed: string): string {
-  let hash = 0;
-  for (const ch of seed) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
-}
+import { avatarStyle, initials } from "@/lib/avatar";
 
 interface Props {
   conversation: Conversation;
@@ -58,7 +35,8 @@ interface Props {
 export function ConversationItem({ conversation, onSelect }: Props) {
   const pathname = usePathname();
   const isActive = pathname.includes(conversation.id);
-  const unreadCount = useConversationStore((s) => s.unreadCounts[conversation.id] || 0);
+  // Directo del dato del servidor; la conversación abierta nunca muestra badge
+  const unreadCount = isActive ? 0 : (conversation.unreadCount ?? 0);
   const { t } = useTranslations();
 
   const contactName = conversation.contact?.name?.trim() || "";
@@ -88,8 +66,8 @@ export function ConversationItem({ conversation, onSelect }: Props) {
         ) : contactName ? (
           <div
             className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-full text-[15px] font-semibold text-white",
-              avatarColor(contactName)
+              "flex h-12 w-12 items-center justify-center rounded-full text-[15px] font-semibold",
+              avatarStyle(contactName)
             )}
           >
             {initials(contactName)}

@@ -29,7 +29,7 @@ export function MobileNav() {
   const router = useRouter();
   const agent = useAuthStore((s) => s.agent);
   const totalUnread = useConversationStore((s) =>
-    Object.values(s.unreadCounts).reduce((sum, n) => sum + n, 0)
+    s.conversations.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0)
   );
   const { t } = useTranslations();
   const visible = useMobileNavVisible();

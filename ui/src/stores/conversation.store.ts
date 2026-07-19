@@ -13,14 +13,12 @@ interface ConversationState {
   statusFilter: string;
   view: "inbox" | "campaign";
   isLoading: boolean;
-  unreadCounts: Record<string, number>;
   fetch: (status?: string, page?: number) => Promise<void>;
   setActive: (id: string | null) => void;
   setFilter: (status: string) => void;
   setView: (view: "inbox" | "campaign") => void;
   updateConversation: (conv: Partial<Conversation> & { id: string }) => void;
   addConversation: (conv: Conversation) => void;
-  incrementUnread: (convId: string) => void;
   clearUnread: (convId: string) => void;
 }
 
@@ -33,7 +31,6 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   statusFilter: "",
   view: "inbox",
   isLoading: false,
-  unreadCounts: {},
 
   fetch: async (status?: string, page = 1) => {
     set({ isLoading: true });
@@ -50,20 +47,18 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         `/conversations?${params}`
       );
 
-      // El servidor es la fuente de verdad de los no leídos; la conversación
-      // abierta se mantiene en 0 (el mark-read puede estar en vuelo)
+      // La conversación abierta siempre se muestra leída (el mark-read puede
+      // estar en vuelo mientras el servidor todavía reporta > 0)
       const activeId = get().activeId;
-      const unreadCounts = { ...get().unreadCounts };
-      for (const conv of data.data) {
-        unreadCounts[conv.id] = conv.id === activeId ? 0 : (conv.unreadCount ?? 0);
-      }
+      const conversations = data.data.map((conv) =>
+        conv.id === activeId ? { ...conv, unreadCount: 0 } : conv
+      );
 
       set({
-        conversations: data.data,
+        conversations,
         total: data.meta.total,
         page: data.meta.page,
         pages: data.meta.pages,
-        unreadCounts,
         isLoading: false,
       });
     } catch {
@@ -97,20 +92,13 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     }));
   },
 
-  incrementUnread: (convId) => {
-    set((state) => ({
-      unreadCounts: {
-        ...state.unreadCounts,
-        [convId]: (state.unreadCounts[convId] || 0) + 1,
-      },
-    }));
-  },
-
   clearUnread: (convId) => {
-    set((state) => {
-      const { [convId]: _, ...rest } = state.unreadCounts;
-      return { unreadCounts: rest };
-    });
+    // Optimista: la fila deja de mostrar el badge al instante
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === convId ? { ...c, unreadCount: 0 } : c
+      ),
+    }));
     // Siempre persistir: el contador local puede estar en 0 aunque el del
     // servidor no (p. ej. mensaje entrante con el chat abierto)
     api.post(`/conversations/${convId}/read`).catch(() => {});

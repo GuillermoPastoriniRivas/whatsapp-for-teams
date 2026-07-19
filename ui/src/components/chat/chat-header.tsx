@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, User } from "lucide-react";
 import { ChatMenu } from "./chat-menu";
 import { AssignAgentDialog } from "./assign-agent-dialog";
+import { avatarStyle, initials } from "@/lib/avatar";
+import { cn } from "@/lib/utils";
 
 interface Props {
   conversationId: string;
@@ -62,9 +64,20 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
             onClick={onToggleContactInfo}
             className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500">
-              <User className="h-6 w-6 mt-1" />
-            </div>
+            {contact?.name?.trim() ? (
+              <div
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
+                  avatarStyle(contact.name.trim())
+                )}
+              >
+                {initials(contact.name)}
+              </div>
+            ) : (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500">
+                <User className="h-6 w-6 mt-1" />
+              </div>
+            )}
             <div className="flex flex-col min-w-0 text-left">
               <h2 className="truncate font-medium text-[15px] leading-tight text-slate-900 dark:text-slate-100">
                 {contact?.name || "Unknown"}

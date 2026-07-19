@@ -37,7 +37,7 @@ export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const agent = useAuthStore((s) => s.agent);
   const totalUnread = useConversationStore((s) =>
-    Object.values(s.unreadCounts).reduce((sum, n) => sum + n, 0)
+    s.conversations.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0)
   );
   const billingPlan = useBillingStore((s) => s.plan);
   const { t } = useTranslations();
