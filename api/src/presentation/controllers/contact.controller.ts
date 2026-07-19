@@ -38,7 +38,6 @@ export class ContactController {
 
   @Post()
   @Roles('admin')
-  @DemoRestricted()
   @HttpCode(200)
   @ApiOperation({
     summary: 'Create contact by phone',
@@ -68,7 +67,6 @@ export class ContactController {
 
   @Post('import')
   @Roles('admin')
-  @DemoRestricted()
   @HttpCode(200)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_CSV_BYTES } }))
   @ApiOperation({

@@ -5,10 +5,33 @@
  *   npm run seed:demo
  *
  * Idempotent: wipes all demo tenant data, then re-creates everything.
+ *
+ * Los modelos se arman con los MISMOS schemas que usa la app (no con copias
+ * inline): si alguien agrega un campo al modelo real, el seed lo respeta sin
+ * que haya que acordarse de actualizar este archivo.
  */
 
 import * as bcrypt from 'bcrypt';
-import { connect, connection, model, Schema, Types } from 'mongoose';
+import { connect, connection, model, Types } from 'mongoose';
+
+import { TenantSchema } from './infrastructure/persistence/mongoose/schemas/tenant.schema.js';
+import { AgentSchema } from './infrastructure/persistence/mongoose/schemas/agent.schema.js';
+import { PhoneNumberSchema } from './infrastructure/persistence/mongoose/schemas/phone-number.schema.js';
+import { AgentPhoneAccessSchema } from './infrastructure/persistence/mongoose/schemas/agent-phone-access.schema.js';
+import { ContactSchema } from './infrastructure/persistence/mongoose/schemas/contact.schema.js';
+import { ConversationSchema } from './infrastructure/persistence/mongoose/schemas/conversation.schema.js';
+import { MessageSchema } from './infrastructure/persistence/mongoose/schemas/message.schema.js';
+import { ConversationEventSchema } from './infrastructure/persistence/mongoose/schemas/conversation-event.schema.js';
+import { ConversationNoteSchema } from './infrastructure/persistence/mongoose/schemas/conversation-note.schema.js';
+import { LabelSchema } from './infrastructure/persistence/mongoose/schemas/label.schema.js';
+import { ConversationLabelSchema } from './infrastructure/persistence/mongoose/schemas/conversation-label.schema.js';
+import { AiAgentConfigSchema } from './infrastructure/persistence/mongoose/schemas/ai-agent-config.schema.js';
+import { MessageTemplateSchema } from './infrastructure/persistence/mongoose/schemas/message-template.schema.js';
+import { CampaignSchema } from './infrastructure/persistence/mongoose/schemas/campaign.schema.js';
+import { CampaignRecipientSchema } from './infrastructure/persistence/mongoose/schemas/campaign-recipient.schema.js';
+import { SubscriptionSchema } from './infrastructure/persistence/mongoose/schemas/subscription.schema.js';
+import { BillingRecordSchema } from './infrastructure/persistence/mongoose/schemas/billing-record.schema.js';
+import { AiUsageSchema } from './infrastructure/persistence/mongoose/schemas/ai-usage.schema.js';
 
 // ── Helpers ─────────────────────────────────────────────
 
@@ -16,137 +39,17 @@ function ago(minutes: number): Date {
   return new Date(Date.now() - minutes * 60 * 1000);
 }
 
+function inDays(days: number): Date {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+}
+
+function dayKey(daysAgo: number): string {
+  return new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 function waId(): string {
   return `demo-${new Types.ObjectId().toHexString()}`;
 }
-
-// ── Inline Schemas ──────────────────────────────────────
-
-const TenantSchema = new Schema({
-  name: String,
-  slug: { type: String, unique: true },
-  isDemo: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now },
-});
-
-const AgentSchema = new Schema({
-  tenantId: Types.ObjectId,
-  name: String,
-  email: { type: String, unique: true },
-  passwordHash: String,
-  role: { type: String, default: 'agent' },
-  status: { type: String, default: 'available' },
-  activeCount: { type: Number, default: 0 },
-  type: { type: String, default: 'human' },
-  createdAt: { type: Date, default: Date.now },
-});
-
-const PhoneNumberSchema = new Schema({
-  tenantId: Types.ObjectId,
-  provider: String,
-  providerConfig: Object,
-  wabaId: String,
-  phoneNumberId: { type: String, unique: true },
-  displayPhone: String,
-  label: String,
-  webhookSecret: String,
-  status: { type: String, default: 'active' },
-  createdAt: { type: Date, default: Date.now },
-});
-
-const AgentPhoneAccessSchema = new Schema({
-  agentId: Types.ObjectId,
-  phoneNumberId: Types.ObjectId,
-});
-
-const ContactSchema = new Schema({
-  tenantId: Types.ObjectId,
-  waId: String,
-  name: String,
-  phone: String,
-  profilePicUrl: String,
-  email: String,
-  company: String,
-  notes: String,
-  customFields: Object,
-  lastSeenAt: Date,
-  createdAt: { type: Date, default: Date.now },
-});
-
-const ConversationSchema = new Schema({
-  tenantId: Types.ObjectId,
-  phoneNumberId: Types.ObjectId,
-  contactId: Types.ObjectId,
-  agentId: { type: Types.ObjectId, default: null },
-  status: { type: String, default: 'unassigned' },
-  lastMessageAt: Date,
-  lastInboundAt: Date,
-  resolvedAt: { type: Date, default: null },
-  closedBy: { type: String, default: null },
-  summary: { type: String, default: null },
-  createdAt: { type: Date, default: Date.now },
-});
-
-const MessageSchema = new Schema({
-  conversationId: Types.ObjectId,
-  direction: String,
-  messageType: { type: String, default: 'text' },
-  body: String,
-  mediaUrl: { type: String, default: null },
-  mimeType: { type: String, default: null },
-  waMessageId: { type: String, unique: true },
-  waStatus: { type: String, default: 'delivered' },
-  timestamp: Date,
-  senderAgentId: { type: String, default: null },
-  senderAgentName: { type: String, default: null },
-});
-
-const ConversationEventSchema = new Schema({
-  conversationId: Types.ObjectId,
-  tenantId: Types.ObjectId,
-  type: String,
-  performedBy: { type: String, default: null },
-  data: { type: Object, default: {} },
-  createdAt: { type: Date, default: Date.now },
-});
-
-const ConversationNoteSchema = new Schema({
-  conversationId: Types.ObjectId,
-  tenantId: Types.ObjectId,
-  authorId: String,
-  authorName: String,
-  body: String,
-  createdAt: { type: Date, default: Date.now },
-});
-
-const LabelSchema = new Schema({
-  tenantId: Types.ObjectId,
-  name: String,
-  color: String,
-  createdAt: { type: Date, default: Date.now },
-});
-
-const ConversationLabelSchema = new Schema({
-  conversationId: Types.ObjectId,
-  tenantId: Types.ObjectId,
-  labelId: Types.ObjectId,
-  assignedBy: String,
-  createdAt: { type: Date, default: Date.now },
-});
-
-const AiAgentConfigSchema = new Schema({
-  agentId: Types.ObjectId,
-  tenantId: Types.ObjectId,
-  businessProfile: Object,
-  behavior: Object,
-  handoffRules: Object,
-  contextConfig: Object,
-  rateLimits: Object,
-  multiMessage: Object,
-  isActive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-});
 
 // ── Main ────────────────────────────────────────────────
 
@@ -157,18 +60,24 @@ async function seedDemo() {
   await connect(mongoUri);
   console.log('Connected.\n');
 
-  const Tenant = model('Tenant', TenantSchema, 'tenants');
-  const Agent = model('Agent', AgentSchema, 'agents');
-  const PhoneNumber = model('PhoneNumber', PhoneNumberSchema, 'phone_numbers');
-  const Access = model('AgentPhoneAccess', AgentPhoneAccessSchema, 'agent_phone_access');
-  const Contact = model('Contact', ContactSchema, 'contacts');
-  const Conversation = model('Conversation', ConversationSchema, 'conversations');
-  const Message = model('Message', MessageSchema, 'messages');
-  const ConvEvent = model('ConversationEvent', ConversationEventSchema, 'conversation_events');
-  const ConvNote = model('ConversationNote', ConversationNoteSchema, 'conversation_notes');
-  const AiConfig = model('AiAgentConfig', AiAgentConfigSchema, 'ai_agent_configs');
-  const Label = model('Label', LabelSchema, 'labels');
-  const ConvLabel = model('ConversationLabel', ConversationLabelSchema, 'conversation_labels');
+  const Tenant = model('Tenant', TenantSchema);
+  const Agent = model('Agent', AgentSchema);
+  const PhoneNumber = model('PhoneNumber', PhoneNumberSchema);
+  const Access = model('AgentPhoneAccess', AgentPhoneAccessSchema);
+  const Contact = model('Contact', ContactSchema);
+  const Conversation = model('Conversation', ConversationSchema);
+  const Message = model('Message', MessageSchema);
+  const ConvEvent = model('ConversationEvent', ConversationEventSchema);
+  const ConvNote = model('ConversationNote', ConversationNoteSchema);
+  const AiConfig = model('AiAgentConfig', AiAgentConfigSchema);
+  const Label = model('Label', LabelSchema);
+  const ConvLabel = model('ConversationLabel', ConversationLabelSchema);
+  const Template = model('MessageTemplate', MessageTemplateSchema);
+  const Campaign = model('Campaign', CampaignSchema);
+  const Recipient = model('CampaignRecipient', CampaignRecipientSchema);
+  const Subscription = model('Subscription', SubscriptionSchema);
+  const BillingRecord = model('BillingRecord', BillingRecordSchema);
+  const AiUsage = model('AiUsage', AiUsageSchema);
 
   // ── 1. Clean existing demo data ──
   const existingTenant = await Tenant.findOne({ slug: 'demo-asis-chat' });
@@ -185,7 +94,7 @@ async function seedDemo() {
     await Message.deleteMany({ conversationId: { $in: convIds } });
 
     // Also clean orphan messages (from previous incomplete cleanups)
-    const allConvIds = await Conversation.distinct('_id') as Types.ObjectId[];
+    const allConvIds = (await Conversation.distinct('_id')) as Types.ObjectId[];
     const orphanResult = await Message.deleteMany({ conversationId: { $nin: allConvIds } });
     if (orphanResult.deletedCount > 0) console.log(`  Cleaned ${orphanResult.deletedCount} orphan messages`);
 
@@ -196,16 +105,21 @@ async function seedDemo() {
     await Contact.deleteMany({ tenantId: tid });
     await AiConfig.deleteMany({ tenantId: tid });
     await Label.deleteMany({ tenantId: tid });
+    await Recipient.deleteMany({ tenantId: tid });
+    await Campaign.deleteMany({ tenantId: tid });
+    await Template.deleteMany({ tenantId: tid });
+    await Subscription.deleteMany({ tenantId: tid });
+    await BillingRecord.deleteMany({ tenantId: tid });
+    await AiUsage.deleteMany({ tenantId: tid });
     await Access.deleteMany({ agentId: { $in: agentIds } });
     await PhoneNumber.deleteMany({ tenantId: tid });
     await Agent.deleteMany({ tenantId: tid });
     await Tenant.deleteOne({ _id: tid });
 
-    // Clean Agenda jobs and subscriptions
+    // Clean Agenda jobs
     const db = connection.db;
     if (db) {
       await db.collection('jobs').deleteMany({ 'data.tenantId': tid.toString() });
-      await db.collection('subscriptions').deleteMany({ tenantId: tid });
     }
 
     console.log('Cleaned.\n');
@@ -225,19 +139,19 @@ async function seedDemo() {
 
   const ana = await Agent.create({
     tenantId: T, name: 'Demo User', email: 'demo@asis.chat',
-    passwordHash, role: 'admin', status: 'available', type: 'human',
+    passwordHash, role: 'admin', status: 'available', type: 'human', emailVerified: true,
   });
   const carlos = await Agent.create({
     tenantId: T, name: 'Carlos Lopez', email: 'carlos@demo.asis.chat',
-    passwordHash, role: 'agent', status: 'available', type: 'human',
+    passwordHash, role: 'agent', status: 'available', type: 'human', emailVerified: true,
   });
   const lucia = await Agent.create({
     tenantId: T, name: 'Lucia Fernandez', email: 'lucia@demo.asis.chat',
-    passwordHash, role: 'agent', status: 'busy', type: 'human',
+    passwordHash, role: 'agent', status: 'busy', type: 'human', emailVerified: true,
   });
   const sofia = await Agent.create({
     tenantId: T, name: 'Sofia IA', email: 'sofia-ai@demo.asis.chat',
-    passwordHash, role: 'agent', status: 'available', type: 'ai',
+    passwordHash, role: 'agent', status: 'available', type: 'ai', emailVerified: true,
   });
 
   console.log(`+ 4 agents (Ana admin, Carlos, Lucia, Sofia IA)`);
@@ -281,6 +195,16 @@ async function seedDemo() {
     contextConfig: { maxHistoryMessages: 10, includeContactInfo: true },
     rateLimits: { maxMessagesPerDay: 500, maxTokensPerDay: 100000 },
     multiMessage: { enabled: true, maxBubbles: 3, interBubbleDelayMs: 1200, debounceWindowMs: 2000, debounceMaxWaitMs: 20000 },
+    timezone: 'America/Argentina/Buenos_Aires',
+    businessHours: {
+      mon: { open: '09:00', close: '18:00' },
+      tue: { open: '09:00', close: '18:00' },
+      wed: { open: '09:00', close: '18:00' },
+      thu: { open: '09:00', close: '18:00' },
+      fri: { open: '09:00', close: '18:00' },
+      sat: { open: '10:00', close: '14:00' },
+      sun: null,
+    },
     isActive: true,
   });
   console.log(`+ AI config for Sofia IA`);
@@ -316,25 +240,42 @@ async function seedDemo() {
     { tenantId: T, waId: '5491155551007', name: 'Isabella Acosta', phone: '+54 9 11 5555-1007', email: 'isa.acosta@gmail.com', lastSeenAt: ago(4320) },
     { tenantId: T, waId: '5491155551008', name: 'Mateo Vargas', phone: '+54 9 11 5555-1008', notes: 'Consulto por mayoreo', customFields: { tipo_cliente: 'mayorista', productos: 'remeras y buzos', cantidad_minima: '12 unidades' }, lastSeenAt: ago(60) },
     { tenantId: T, waId: '5491155551009', name: 'Florencia Diaz', phone: '+54 9 351 555-1009', email: 'florencia@tiendacba.com', company: '3 sucursales en Cordoba', customFields: { ciudad: 'Cordoba', volumen_mensual: '200 unidades', tipo_cliente: 'mayorista premium' }, lastSeenAt: ago(25) },
+    // Contactos de la campana: uno respondio, otro todavia no
+    { tenantId: T, waId: '5491155551010', name: 'Lucas Benitez', phone: '+54 9 11 5555-1010', customFields: { origen: 'campana bienvenida' }, lastSeenAt: ago(95) },
+    { tenantId: T, waId: '5491155551011', name: 'Agustina Rossi', phone: '+54 9 11 5555-1011', customFields: { origen: 'campana bienvenida' }, lastSeenAt: ago(180) },
+    // Contacto sin asignar, para que la cola de "Sin asignar" tenga trabajo
+    { tenantId: T, waId: '5491155551012', name: 'Nicolas Peralta', phone: '+54 9 11 5555-1012', lastSeenAt: ago(2) },
   ]);
-  console.log(`+ 9 contacts`);
+  console.log(`+ ${contacts.length} contacts`);
 
-  const [maria, juan, valentina, diego, camila, sebastian, _isabella, _mateo, florencia] = contacts;
+  const [maria, juan, valentina, diego, camila, sebastian, _isabella, _mateo, florencia, lucas, agustina, nicolas] = contacts;
 
   // ── 8. Conversations & Messages ──
 
   // Helper to create messages
-  async function createMessages(convId: Types.ObjectId, msgs: { dir: 'inbound' | 'outbound'; body: string; minutesAgo: number; agentId?: string; agentName?: string }[]) {
+  async function createMessages(
+    convId: Types.ObjectId,
+    msgs: {
+      dir: 'inbound' | 'outbound';
+      body: string;
+      minutesAgo: number;
+      agentId?: string;
+      agentName?: string;
+      type?: string;
+      campaignId?: Types.ObjectId;
+    }[],
+  ) {
     const docs = msgs.map((m) => ({
       conversationId: convId,
       direction: m.dir,
-      messageType: 'text',
+      messageType: m.type ?? 'text',
       body: m.body,
       waMessageId: waId(),
-      waStatus: m.dir === 'outbound' ? 'delivered' : undefined,
+      waStatus: m.dir === 'outbound' ? 'delivered' : 'read',
       timestamp: ago(m.minutesAgo),
       senderAgentId: m.agentId ?? null,
       senderAgentName: m.agentName ?? null,
+      campaignId: m.campaignId ?? null,
     }));
     await Message.insertMany(docs);
   }
@@ -361,10 +302,12 @@ async function seedDemo() {
   ]);
 
   // --- Conv 2: Juan → active, assigned to Carlos (order tracking, frustrated) ---
+  // Termina con dos mensajes del cliente sin leer: es el caso que muestra el badge.
   const conv2 = await Conversation.create({
     tenantId: T, phoneNumberId: phone._id, contactId: juan._id,
     agentId: carlos._id, status: 'active',
     lastMessageAt: ago(10), lastInboundAt: ago(10),
+    unreadCount: 2,
   });
   await createMessages(conv2._id, [
     { dir: 'inbound', body: 'Buenas, hice un pedido hace 5 dias y todavia no llego. Numero de orden: #4521', minutesAgo: 45 },
@@ -478,9 +421,224 @@ async function seedDemo() {
     { dir: 'outbound', body: 'El mail de ventas mayoristas es ventas@tienda.com. Tambien te podemos mandar un catalogo completo por ahi. Cualquier cosa escribime!', minutesAgo: 22, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
   ]);
 
-  console.log(`+ 9 conversations with messages`);
+  // --- Conv 10: Nicolas → sin asignar, con un mensaje sin leer (cola de entrada) ---
+  const conv10 = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: nicolas._id,
+    agentId: null, status: 'unassigned',
+    lastMessageAt: ago(2), lastInboundAt: ago(2),
+    unreadCount: 1,
+  });
+  await createMessages(conv10._id, [
+    { dir: 'inbound', body: 'Hola! Vi una campera en la vidriera del local, la tienen en talle L?', minutesAgo: 2 },
+  ]);
 
-  // ── 9. Conversation Events ──
+  console.log(`+ 10 conversations with messages`);
+
+  // ── 9. Templates ──
+  // Cubren los tres estados que el usuario ve en la lista (aprobada, en
+  // revision, rechazada) y las tres categorias de Meta.
+  const templates = await Template.insertMany([
+    {
+      tenantId: T, phoneNumberId: phone._id, wabaId: 'demo',
+      metaTemplateId: 'demo-tpl-bienvenida', name: 'bienvenida_nuevo_cliente',
+      language: 'es_AR', category: 'utility', status: 'approved', qualityScore: 'green',
+      components: [
+        { type: 'BODY', text: 'Hola {{1}}! Gracias por escribirnos. Somos Demo Store y te vamos a estar acompanando por acá. En que podemos ayudarte?' },
+        { type: 'FOOTER', text: 'Demo Store' },
+      ],
+      lastSyncedAt: ago(120),
+    },
+    {
+      tenantId: T, phoneNumberId: phone._id, wabaId: 'demo',
+      metaTemplateId: 'demo-tpl-promo', name: 'promo_temporada',
+      language: 'es_AR', category: 'marketing', status: 'approved', qualityScore: 'green',
+      components: [
+        { type: 'HEADER', format: 'TEXT', text: 'Nueva temporada' },
+        { type: 'BODY', text: 'Hola {{1}}! Arrancó la nueva temporada con {{2}} de descuento en toda la coleccion. Te esperamos!' },
+        { type: 'FOOTER', text: 'Respondé BAJA para no recibir mas promociones' },
+        { type: 'BUTTONS', buttons: [{ type: 'URL', text: 'Ver catalogo', url: 'https://asis.chat/demo' }] },
+      ],
+      lastSyncedAt: ago(120),
+    },
+    {
+      tenantId: T, phoneNumberId: phone._id, wabaId: 'demo',
+      metaTemplateId: 'demo-tpl-carrito', name: 'recordatorio_carrito',
+      language: 'es_AR', category: 'marketing', status: 'approved', qualityScore: 'yellow',
+      components: [
+        { type: 'BODY', text: 'Hola {{1}}, dejaste productos en el carrito. Los guardamos por 48hs por si querés terminar la compra.' },
+      ],
+      lastSyncedAt: ago(240),
+    },
+    {
+      tenantId: T, phoneNumberId: phone._id, wabaId: 'demo',
+      metaTemplateId: 'demo-tpl-envio', name: 'aviso_envio',
+      language: 'es_AR', category: 'utility', status: 'approved', qualityScore: 'green',
+      components: [
+        { type: 'BODY', text: 'Hola {{1}}! Tu pedido {{2}} ya salio de nuestro deposito y llega en 24-48hs.' },
+      ],
+      lastSyncedAt: ago(240),
+    },
+    {
+      tenantId: T, phoneNumberId: phone._id, wabaId: 'demo',
+      metaTemplateId: null, name: 'promo_black_friday',
+      language: 'es_AR', category: 'marketing', status: 'pending', qualityScore: 'unknown',
+      components: [
+        { type: 'BODY', text: 'Hola {{1}}! Black Friday: 40% en toda la tienda solo por hoy.' },
+      ],
+    },
+    {
+      tenantId: T, phoneNumberId: phone._id, wabaId: 'demo',
+      metaTemplateId: null, name: 'descuento_ultimo_momento',
+      language: 'es_AR', category: 'marketing', status: 'rejected', qualityScore: 'unknown',
+      components: [
+        { type: 'BODY', text: 'ULTIMA OPORTUNIDAD!!! COMPRA YA!!! No te lo pierdas!!!' },
+      ],
+      rejectionReason: 'El contenido no cumple las politicas de Meta: uso excesivo de mayusculas y lenguaje promocional agresivo.',
+    },
+  ]);
+  const [tplBienvenida, tplPromo, tplCarrito] = templates;
+  console.log(`+ ${templates.length} templates (aprobadas, en revision y rechazada)`);
+
+  // ── 10. Campaigns ──
+  const audienceAll = { type: 'contactIds', contactIds: contacts.slice(0, 9).map((c) => c._id.toString()) };
+
+  // Campana 1: completada, con destinatarios y metricas reales.
+  const campaignDone = await Campaign.create({
+    tenantId: T, phoneNumberId: phone._id, templateId: tplBienvenida._id,
+    name: 'Bienvenida clientes nuevos',
+    status: 'completed',
+    variableMappings: [{ component: 'body', position: '1', source: 'contact_field', value: 'name' }],
+    audience: audienceAll,
+    scheduledAt: null,
+    startedAt: ago(200), completedAt: ago(195),
+    throttle: { messagesPerSecond: 10, batchSize: 50 },
+    replyWindowHours: 72,
+    counts: { total: 9, queued: 0, sent: 9, delivered: 9, read: 7, failed: 0, skipped: 0, replied: 3 },
+    createdByAgentId: ana._id,
+  });
+
+  // Campana 2: completada con un fallo y un salteado, para que se vea que
+  // la pantalla tambien muestra los errores.
+  const campaignMixed = await Campaign.create({
+    tenantId: T, phoneNumberId: phone._id, templateId: tplCarrito._id,
+    name: 'Recordatorio carrito abandonado',
+    status: 'completed',
+    variableMappings: [{ component: 'body', position: '1', source: 'contact_field', value: 'name' }],
+    audience: audienceAll,
+    scheduledAt: null,
+    startedAt: ago(2880), completedAt: ago(2875),
+    throttle: { messagesPerSecond: 10, batchSize: 50 },
+    replyWindowHours: 72,
+    counts: { total: 9, queued: 0, sent: 7, delivered: 6, read: 4, failed: 1, skipped: 1, replied: 1 },
+    createdByAgentId: ana._id,
+  });
+
+  // Campana 3: borrador — el visitante puede abrirla, editarla y arrancarla.
+  const campaignDraft = await Campaign.create({
+    tenantId: T, phoneNumberId: phone._id, templateId: tplPromo._id,
+    name: 'Promo primavera (borrador)',
+    status: 'draft',
+    variableMappings: [
+      { component: 'body', position: '1', source: 'contact_field', value: 'name' },
+      { component: 'body', position: '2', source: 'static', value: '25%' },
+    ],
+    audience: audienceAll,
+    scheduledAt: null,
+    startedAt: null, completedAt: null,
+    throttle: { messagesPerSecond: 10, batchSize: 50 },
+    replyWindowHours: 72,
+    counts: { total: 0, queued: 0, sent: 0, delivered: 0, read: 0, failed: 0, skipped: 0, replied: 0 },
+    createdByAgentId: ana._id,
+  });
+  console.log(`+ 3 campaigns (2 completadas + 1 borrador para arrancar en vivo)`);
+
+  // ── 11. Campaign recipients ──
+  const doneStatuses: Array<{ status: string; read: boolean; replied: boolean }> = [
+    { status: 'read', read: true, replied: true },
+    { status: 'read', read: true, replied: true },
+    { status: 'read', read: true, replied: true },
+    { status: 'read', read: true, replied: false },
+    { status: 'read', read: true, replied: false },
+    { status: 'read', read: true, replied: false },
+    { status: 'read', read: true, replied: false },
+    { status: 'delivered', read: false, replied: false },
+    { status: 'delivered', read: false, replied: false },
+  ];
+
+  await Recipient.insertMany(
+    contacts.slice(0, 9).map((contact, i) => {
+      const row = doneStatuses[i];
+      return {
+        campaignId: campaignDone._id, tenantId: T, contactId: contact._id,
+        waId: contact.waId, phone: contact.phone,
+        resolvedVariables: { 'body.1': contact.name },
+        status: row.status,
+        attemptCount: 1,
+        waMessageId: waId(),
+        sentAt: ago(200), deliveredAt: ago(199),
+        readAt: row.read ? ago(198) : null,
+        repliedAt: row.replied ? ago(190) : null,
+        replyWindowExpiresAt: inDays(1),
+      };
+    }),
+  );
+
+  await Recipient.insertMany(
+    contacts.slice(0, 9).map((contact, i) => {
+      // El ultimo falla y el anteultimo se saltea por falta de variables.
+      const failed = i === 8;
+      const skipped = i === 7;
+      return {
+        campaignId: campaignMixed._id, tenantId: T, contactId: contact._id,
+        waId: contact.waId, phone: contact.phone,
+        resolvedVariables: skipped ? {} : { 'body.1': contact.name },
+        status: failed ? 'failed' : skipped ? 'skipped' : i < 4 ? 'read' : 'delivered',
+        attemptCount: failed ? 3 : 1,
+        waMessageId: failed || skipped ? null : waId(),
+        sentAt: failed || skipped ? null : ago(2880),
+        deliveredAt: failed || skipped ? null : ago(2879),
+        readAt: !failed && !skipped && i < 4 ? ago(2878) : null,
+        repliedAt: i === 0 ? ago(2870) : null,
+        failureCode: failed ? '131026' : null,
+        failureReason: failed
+          ? 'El numero no tiene WhatsApp o no puede recibir mensajes'
+          : skipped
+            ? 'Missing variables: body.1'
+            : null,
+      };
+    }),
+  );
+  console.log(`+ 18 campaign recipients`);
+
+  // ── 12. Conversaciones nacidas de la campana ──
+  // origin 'campaign' + hasReplied distingue quien contesto un envio masivo:
+  // es el embudo que muestra la pantalla de campanas.
+  const convCampaignReplied = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: lucas._id,
+    agentId: sofia._id, status: 'active',
+    lastMessageAt: ago(90), lastInboundAt: ago(90),
+    origin: 'campaign', hasReplied: true, repliedAt: ago(95),
+    unreadCount: 1,
+  });
+  await createMessages(convCampaignReplied._id, [
+    { dir: 'outbound', body: 'Hola Lucas! Gracias por escribirnos. Somos Demo Store y te vamos a estar acompanando por acá. En que podemos ayudarte?', minutesAgo: 200, type: 'template', agentId: ana._id.toString(), agentName: 'Demo User', campaignId: campaignDone._id },
+    { dir: 'inbound', body: 'Hola! Justo estaba buscando una campera de abrigo, tienen?', minutesAgo: 95 },
+    { dir: 'outbound', body: 'Hola Lucas! Si, tenemos camperas de abrigo desde $24.900. Que talle buscas?', minutesAgo: 93, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+    { dir: 'inbound', body: 'Talle L. Me pasas fotos?', minutesAgo: 90 },
+  ]);
+
+  const convCampaignSilent = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: agustina._id,
+    agentId: null, status: 'unassigned',
+    lastMessageAt: ago(200), lastInboundAt: ago(200),
+    origin: 'campaign', hasReplied: false, repliedAt: null,
+  });
+  await createMessages(convCampaignSilent._id, [
+    { dir: 'outbound', body: 'Hola Agustina! Gracias por escribirnos. Somos Demo Store y te vamos a estar acompanando por acá. En que podemos ayudarte?', minutesAgo: 200, type: 'template', agentId: ana._id.toString(), agentName: 'Demo User', campaignId: campaignDone._id },
+  ]);
+  console.log(`+ 2 conversaciones originadas en campana (una respondio, otra no)`);
+
+  // ── 13. Conversation Events ──
   const events = [
     // Conv 1 — Sofia IA primero, handoff a Carlos
     { conversationId: conv1._id, tenantId: T, type: 'created', createdAt: ago(120) },
@@ -521,11 +679,17 @@ async function seedDemo() {
     { conversationId: conv1._id, tenantId: T, type: 'contact_updated', performedBy: sofia._id.toString(), data: { fields: ['direccion', 'presupuesto'], source: 'ai' }, createdAt: ago(109) },
     // Conv 3 — contact data collected by Sofia
     { conversationId: conv3._id, tenantId: T, type: 'contact_updated', performedBy: sofia._id.toString(), data: { fields: ['talle', 'interes'], source: 'ai' }, createdAt: ago(5) },
+    // Conv 10 — entro sin asignar
+    { conversationId: conv10._id, tenantId: T, type: 'created', createdAt: ago(2) },
+    // Conversacion nacida de la campana
+    { conversationId: convCampaignReplied._id, tenantId: T, type: 'created', createdAt: ago(200) },
+    { conversationId: convCampaignReplied._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(94) },
+    { conversationId: convCampaignSilent._id, tenantId: T, type: 'created', createdAt: ago(200) },
   ];
   await ConvEvent.insertMany(events);
   console.log(`+ ${events.length} conversation events`);
 
-  // ── 10. Conversation Notes ──
+  // ── 14. Conversation Notes ──
   await ConvNote.insertMany([
     {
       conversationId: conv1._id, tenantId: T,
@@ -548,7 +712,7 @@ async function seedDemo() {
   ]);
   console.log(`+ 3 conversation notes`);
 
-  // ── 11. Labels ──
+  // ── 15. Labels ──
   const labels = await Label.insertMany([
     { tenantId: T, name: 'VIP', color: 'yellow' },
     { tenantId: T, name: 'Urgente', color: 'red' },
@@ -560,7 +724,7 @@ async function seedDemo() {
   const [lVip, lUrgente, lNuevo, lEnvio, lDevolucion, lMayorista] = labels;
   console.log(`+ 6 labels`);
 
-  // ── 12. Conversation Labels ──
+  // ── 16. Conversation Labels ──
   await ConvLabel.insertMany([
     { conversationId: conv1._id, tenantId: T, labelId: lVip._id, assignedBy: carlos._id.toString() },
     { conversationId: conv2._id, tenantId: T, labelId: lUrgente._id, assignedBy: carlos._id.toString() },
@@ -572,8 +736,38 @@ async function seedDemo() {
     { conversationId: conv8._id, tenantId: T, labelId: lMayorista._id, assignedBy: sofia._id.toString() },
     { conversationId: conv9._id, tenantId: T, labelId: lMayorista._id, assignedBy: sofia._id.toString() },
     { conversationId: conv9._id, tenantId: T, labelId: lVip._id, assignedBy: sofia._id.toString() },
+    { conversationId: convCampaignReplied._id, tenantId: T, labelId: lNuevo._id, assignedBy: sofia._id.toString() },
   ]);
-  console.log(`+ 10 conversation-label assignments`);
+  console.log(`+ 11 conversation-label assignments`);
+
+  // ── 17. Suscripcion + historial de facturacion ──
+  // Sin esto el demo cae a FREE, que no alcanza para 3 agentes humanos y deja
+  // la pantalla de Facturacion vacia.
+  await Subscription.create({
+    tenantId: T,
+    plan: 'pro',
+    status: 'active',
+    currentPeriodStart: ago(12 * 24 * 60),
+    currentPeriodEnd: inDays(18),
+    paymentProvider: 'none',
+  });
+  await BillingRecord.insertMany([
+    { tenantId: T, eventType: 'subscription_created', plan: 'pro', amountCents: 4900, description: 'Suscripcion al plan Pro', createdAt: ago(72 * 24 * 60) },
+    { tenantId: T, eventType: 'payment_success', plan: 'pro', amountCents: 4900, description: 'Pago mensual - plan Pro', createdAt: ago(42 * 24 * 60) },
+    { tenantId: T, eventType: 'payment_success', plan: 'pro', amountCents: 4900, description: 'Pago mensual - plan Pro', createdAt: ago(12 * 24 * 60) },
+  ]);
+  console.log(`+ Suscripcion Pro activa + 3 registros de facturacion`);
+
+  // ── 18. Uso de IA (ultimos 14 dias) ──
+  const usage = Array.from({ length: 14 }, (_, i) => ({
+    tenantId: T,
+    aiAgentId: sofia._id,
+    date: dayKey(i),
+    messageCount: 18 + ((i * 7) % 23),
+    tokenCount: 4200 + ((i * 811) % 5300),
+  }));
+  await AiUsage.insertMany(usage);
+  console.log(`+ ${usage.length} dias de uso de IA`);
 
   // ── Done ──
   console.log('\n--- Demo seed complete ---');

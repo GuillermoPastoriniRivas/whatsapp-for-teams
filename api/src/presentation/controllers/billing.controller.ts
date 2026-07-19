@@ -15,6 +15,7 @@ import type { PaymentProviderPort } from '../../application/ports/payment-provid
 import { PlanTier } from '../../domain/enums/plan-tier.enum.js';
 import { PaymentProvider } from '../../domain/enums/payment-provider.enum.js';
 import { Roles } from '../decorators/roles.decorator.js';
+import { DemoRestricted } from '../guards/demo.guard.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
@@ -51,6 +52,7 @@ export class BillingController {
 
   @Post('checkout')
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Create checkout session', description: 'Creates an external payment checkout URL for a paid plan.' })
   async checkout(
     @Body(new ZodValidationPipe(CheckoutRequestSchema)) body: CheckoutRequestDto,
@@ -68,6 +70,7 @@ export class BillingController {
 
   @Get('portal')
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Get customer portal URL', description: 'Returns the payment provider customer portal URL for managing payment methods.' })
   async getPortal(@CurrentAgent() agent: RequestAgent) {
     const sub = await this.getSub.execute(agent.tenantId);
@@ -80,6 +83,7 @@ export class BillingController {
 
   @Post('subscribe')
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Subscribe to plan', description: 'Subscribe the tenant to a plan (admin only). Mock payment — always succeeds.' })
   async subscribeToPlan(
     @Body(new ZodValidationPipe(SubscribeRequestSchema)) body: SubscribeRequestDto,
@@ -95,6 +99,7 @@ export class BillingController {
 
   @Patch('plan')
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Change plan', description: 'Change the tenant subscription plan (admin only). Mock payment — always succeeds.' })
   async changePlanAction(
     @Body(new ZodValidationPipe(ChangePlanRequestSchema)) body: ChangePlanRequestDto,
@@ -110,6 +115,7 @@ export class BillingController {
 
   @Post('cancel')
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Cancel subscription', description: 'Cancel the current subscription (admin only)' })
   async cancelSubscription(@CurrentAgent() agent: RequestAgent) {
     const result = await this.cancelSub.execute(agent.tenantId);
@@ -132,6 +138,7 @@ export class BillingController {
 
   @Post('toggle-resource')
   @Roles('admin')
+  @DemoRestricted()
   @ApiOperation({ summary: 'Toggle resource', description: 'Activate/deactivate a resource within plan limits (swap). Admin only.' })
   async toggle(
     @Body(new ZodValidationPipe(ToggleResourceRequestSchema)) body: ToggleResourceRequestDto,

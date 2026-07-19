@@ -109,7 +109,6 @@ export class CampaignController {
 
   @Post()
   @Roles('admin')
-  @DemoRestricted()
   @ApiOperation({ summary: 'Create campaign', description: 'Create a draft campaign for an approved template (admin only)' })
   @ApiResponse({ status: 201, description: 'Campaign created as draft' })
   async create(
@@ -134,7 +133,6 @@ export class CampaignController {
 
   @Patch(':id')
   @Roles('admin')
-  @DemoRestricted()
   @ApiOperation({ summary: 'Update campaign', description: 'Edit a draft campaign (admin only)' })
   @ApiParam({ name: 'id', description: 'Campaign ID' })
   @ApiResponse({ status: 200, description: 'Campaign updated' })
@@ -150,7 +148,6 @@ export class CampaignController {
 
   @Post(':id/start')
   @Roles('admin')
-  @DemoRestricted()
   @HttpCode(200)
   @ApiOperation({ summary: 'Start campaign', description: 'Materialize the audience and start (or schedule) sending (admin only)' })
   @ApiParam({ name: 'id', description: 'Campaign ID' })
@@ -163,7 +160,6 @@ export class CampaignController {
 
   @Post(':id/pause')
   @Roles('admin')
-  @DemoRestricted()
   @HttpCode(200)
   @ApiOperation({ summary: 'Pause campaign', description: 'Pause a running or scheduled campaign (admin only)' })
   @ApiParam({ name: 'id', description: 'Campaign ID' })
@@ -176,7 +172,6 @@ export class CampaignController {
 
   @Post(':id/resume')
   @Roles('admin')
-  @DemoRestricted()
   @HttpCode(200)
   @ApiOperation({ summary: 'Resume campaign', description: 'Resume a paused campaign (admin only)' })
   @ApiParam({ name: 'id', description: 'Campaign ID' })
@@ -189,7 +184,6 @@ export class CampaignController {
 
   @Post(':id/cancel')
   @Roles('admin')
-  @DemoRestricted()
   @HttpCode(200)
   @ApiOperation({ summary: 'Cancel campaign', description: 'Cancel a campaign; unsent recipients are skipped (admin only)' })
   @ApiParam({ name: 'id', description: 'Campaign ID' })

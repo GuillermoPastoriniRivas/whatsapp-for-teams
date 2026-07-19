@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/commo
 import type { ConversationRepository } from '../../domain/repositories/conversation.repository.js';
 import type { MessageRepository } from '../../domain/repositories/message.repository.js';
 import type { AgentRepository } from '../../domain/repositories/agent.repository.js';
+import type { ContactRepository } from '../../domain/repositories/contact.repository.js';
 import type { TenantRepository } from '../../domain/repositories/tenant.repository.js';
 import type { RealtimeGatewayPort } from '../../application/ports/realtime-gateway.port.js';
 import { MessageDirection } from '../../domain/enums/message-direction.enum.js';
@@ -50,6 +51,7 @@ export class DemoSimulationService implements OnModuleInit, OnModuleDestroy {
   private readonly conversationRepo: ConversationRepository;
   private readonly messageRepo: MessageRepository;
   private readonly agentRepo: AgentRepository;
+  private readonly contactRepo: ContactRepository;
   private readonly tenantRepo: TenantRepository;
   private readonly gateway: RealtimeGatewayPort;
 
@@ -57,12 +59,14 @@ export class DemoSimulationService implements OnModuleInit, OnModuleDestroy {
     @Inject('ConversationRepository') conversationRepo: any,
     @Inject('MessageRepository') messageRepo: any,
     @Inject('AgentRepository') agentRepo: any,
+    @Inject('ContactRepository') contactRepo: any,
     @Inject('TenantRepository') tenantRepo: any,
     @Inject('RealtimeGatewayPort') gateway: any,
   ) {
     this.conversationRepo = conversationRepo;
     this.messageRepo = messageRepo;
     this.agentRepo = agentRepo;
+    this.contactRepo = contactRepo;
     this.tenantRepo = tenantRepo;
     this.gateway = gateway;
   }
@@ -151,8 +155,20 @@ export class DemoSimulationService implements OnModuleInit, OnModuleDestroy {
       lastInboundAt: new Date(),
     } as any);
 
+    // Mismo recorrido que un inbound real: contador de no leidos + preview
+    // tenant-wide, para que el visitante vea el badge y el toast en vivo.
+    await this.conversationRepo.incrementUnread(conv.id);
+
+    const contact = await this.contactRepo.findById(conv.contactId);
+
     this.gateway.emitToConversation(conv.id, 'message.new', message);
     this.gateway.emitToTenant(this.demoTenantId!, 'conversation.updated', { conversationId: conv.id });
+    this.gateway.emitToTenant(this.demoTenantId!, 'message.preview', {
+      conversationId: conv.id,
+      contactName: contact?.name ?? contact?.phone ?? 'Contacto',
+      body,
+      messageId: message.id,
+    });
     this.messageCount++;
   }
 

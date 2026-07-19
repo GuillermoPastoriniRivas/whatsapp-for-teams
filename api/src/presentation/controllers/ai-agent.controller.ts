@@ -47,7 +47,6 @@ export class AiAgentController {
 
   @Post()
   @Roles('admin')
-  @DemoRestricted()
   @UseGuards(PlanLimitGuard)
   @RequirePlanLimit('ai_bots')
   @ApiOperation({ summary: 'Create AI agent', description: 'Create a new AI agent from a structured business profile (admin only)' })
@@ -108,7 +107,6 @@ export class AiAgentController {
 
   @Patch(':id')
   @Roles('admin')
-  @DemoRestricted()
   @ApiOperation({ summary: 'Update AI agent', description: 'Update AI agent configuration' })
   @ApiParam({ name: 'id', description: 'AI Agent ID' })
   @ApiResponse({ status: 200, description: 'Updated AI agent config' })

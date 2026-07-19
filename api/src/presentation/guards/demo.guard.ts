@@ -6,6 +6,17 @@ export const DEMO_RESTRICTED_KEY = 'DEMO_RESTRICTED';
 
 /**
  * Decorator: marks an endpoint as restricted in demo mode.
+ *
+ * Criterio para decidir si un endpoint lleva este decorador:
+ *
+ *   BLOQUEADO — sale del tenant demo: llamadas reales a Meta, emails,
+ *   cobros o credenciales de terceros (billing, phone numbers, invitaciones)
+ *   — o destruye la vitrina para el proximo visitante (los DELETE).
+ *
+ *   PERMITIDO — todo lo que se resuelve dentro del tenant demo contra el
+ *   proveedor 'demo', que es un stub sin efectos externos: crear y editar
+ *   plantillas, campanas, contactos y bots. El visitante tiene que poder
+ *   recorrer el producto, no solo mirarlo.
  */
 export function DemoRestricted(): MethodDecorator {
   return (target, key, descriptor) => {

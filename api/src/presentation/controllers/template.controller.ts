@@ -68,7 +68,6 @@ export class TemplateController {
 
   @Post()
   @Roles('admin')
-  @DemoRestricted()
   @ApiOperation({ summary: 'Create template', description: 'Create a message template and submit it to Meta for review (admin only)' })
   @ApiResponse({ status: 201, description: 'Template created and submitted for review' })
   @ApiResponse({ status: 400, description: 'Validation error or provider rejection' })
@@ -90,7 +89,6 @@ export class TemplateController {
 
   @Patch(':id')
   @Roles('admin')
-  @DemoRestricted()
   @ApiOperation({ summary: 'Update template', description: 'Edit a template (goes back through Meta review, admin only)' })
   @ApiParam({ name: 'id', description: 'Template ID' })
   @ApiResponse({ status: 200, description: 'Template updated and resubmitted for review' })
@@ -123,7 +121,6 @@ export class TemplateController {
 
   @Post('sync')
   @Roles('admin')
-  @DemoRestricted()
   @HttpCode(200)
   @ApiOperation({ summary: 'Sync templates', description: 'Pull all templates from the WABA and upsert them locally (admin only)' })
   @ApiResponse({ status: 200, description: 'Sync result with count' })
