@@ -99,7 +99,7 @@ export class ConversationController {
       Promise.all(agentIds.map((id) => this.agentRepo.findById(id))),
       Promise.all(phoneIds.map((id) => this.phoneRepo.findById(id))),
     ]);
-    const agentMap = new Map(agents.filter(Boolean).map((a) => [a!.id, a!.name]));
+    const agentMap = new Map(agents.filter(Boolean).map((a) => [a!.id, { name: a!.name, type: a!.type }]));
     const phoneMap = new Map(phones.filter(Boolean).map((p) => [p!.id, { label: p!.label, displayPhone: p!.displayPhone }]));
 
     // Batch-lookup labels for all conversations
@@ -127,7 +127,8 @@ export class ConversationController {
           contact: contact
             ? { name: contact.name, phone: contact.phone, waId: contact.waId, profilePicUrl: contact.profilePicUrl }
             : null,
-          agentName: conv.agentId ? (agentMap.get(conv.agentId) ?? null) : null,
+          agentName: conv.agentId ? (agentMap.get(conv.agentId)?.name ?? null) : null,
+          agentType: conv.agentId ? (agentMap.get(conv.agentId)?.type ?? null) : null,
           phoneLabel: phoneInfo?.label ?? null,
           phoneDisplay: phoneInfo?.displayPhone ?? null,
           labels: convLabelMap.get(conv.id) ?? [],
@@ -171,6 +172,7 @@ export class ConversationController {
           }
         : null,
       agentName: assignedAgent?.name ?? null,
+      agentType: assignedAgent?.type ?? null,
       phoneLabel: phone?.label ?? null,
       phoneDisplay: phone?.displayPhone ?? null,
       labels: convLabels

@@ -27,6 +27,7 @@ export interface Conversation {
   phoneLabel: string | null;
   phoneDisplay: string | null;
   agentName: string | null;
+  agentType?: "human" | "ai" | null;
   labels?: { id: string; name: string; color: string }[];
   contact: {
     id: string;

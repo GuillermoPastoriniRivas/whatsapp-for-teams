@@ -29,12 +29,14 @@ interface Props {
   /** Agent the conversation is currently assigned to, if any. */
   assignedAgentId?: string | null;
   assignedAgentName?: string | null;
+  assignedAgentType?: "human" | "ai" | null;
 }
 
 export function AssignedToControl({
   conversationId,
   assignedAgentId,
   assignedAgentName,
+  assignedAgentType,
 }: Props) {
   const currentAgent = useAuthStore((s) => s.agent);
   const { t } = useTranslations();
@@ -86,25 +88,33 @@ export function AssignedToControl({
     <DropdownMenu onOpenChange={loadAgents}>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
-          size="sm"
-          className="shrink-0 rounded-full h-9 pl-3 pr-2 gap-1.5 shadow-sm max-w-[190px]"
+          variant="ghost"
+          className="shrink-0 h-auto max-w-[180px] gap-1.5 rounded-md px-2 py-1 hover:bg-black/5 dark:hover:bg-white/10"
         >
-          <span className="hidden sm:inline text-xs text-muted-foreground shrink-0">
-            {t.chat.assignedTo}:
+          {assignedAgentType === "ai" ? (
+            <Bot className="h-4 w-4 shrink-0 text-violet-500" />
+          ) : assignedAgentId ? (
+            <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" />
+          ) : null}
+
+          <span className="flex flex-col items-start min-w-0 leading-none">
+            <span className="text-[10px] font-normal text-muted-foreground">
+              {t.chat.assignedTo}
+            </span>
+            <span
+              className={cn(
+                "mt-0.5 max-w-full truncate text-sm font-semibold text-slate-900 dark:text-slate-100",
+                !assignedAgentId && "font-normal text-muted-foreground"
+              )}
+            >
+              {label}
+            </span>
           </span>
-          <span
-            className={cn(
-              "truncate text-sm font-medium",
-              !assignedAgentId && "text-muted-foreground font-normal"
-            )}
-          >
-            {label}
-          </span>
+
           {assigning ? (
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
           ) : (
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           )}
         </Button>
       </DropdownMenuTrigger>

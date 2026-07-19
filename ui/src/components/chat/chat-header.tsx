@@ -74,6 +74,7 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
             conversationId={conversationId}
             assignedAgentId={conversation?.agentId}
             assignedAgentName={conversation?.agentName}
+            assignedAgentType={conversation?.agentType}
           />
           <ChatMenu onViewContact={onToggleContactInfo} />
         </div>
