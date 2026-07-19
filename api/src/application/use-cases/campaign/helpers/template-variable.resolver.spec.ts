@@ -19,7 +19,7 @@ const contact = new Contact(
   'guille@example.com',
   'Pizzaquira',
   null,
-  { barrio: 'Palermo' },
+  { ciudad: 'Palermo' },
 );
 
 const bodyOnlyTemplate: MessageTemplateComponent[] = [
@@ -57,7 +57,7 @@ describe('listTemplatePlaceholders', () => {
 describe('resolveVariables', () => {
   const mappings: CampaignVariableMapping[] = [
     { component: 'body', position: '1', source: 'contact_field', value: 'name' },
-    { component: 'body', position: '2', source: 'contact_field', value: 'customFields.barrio' },
+    { component: 'body', position: '2', source: 'contact_field', value: 'customFields.ciudad' },
   ];
 
   it('resolves contact fields and custom fields', () => {

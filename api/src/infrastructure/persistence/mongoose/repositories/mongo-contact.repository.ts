@@ -41,6 +41,11 @@ export class MongoContactRepository implements ContactRepository {
     return doc ? ContactMapper.toDomain(doc) : null;
   }
 
+  async findByWaId(tenantId: string, waId: string): Promise<Contact | null> {
+    const doc = await this.model.findOne({ tenantId: new Types.ObjectId(tenantId), waId });
+    return doc ? ContactMapper.toDomain(doc) : null;
+  }
+
   async findByTenantId(tenantId: string, options: { search?: string; page: number; limit: number }) {
     const filter: Record<string, unknown> = { tenantId: new Types.ObjectId(tenantId) };
     if (options.search) {

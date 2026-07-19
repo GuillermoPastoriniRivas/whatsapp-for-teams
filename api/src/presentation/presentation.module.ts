@@ -66,6 +66,7 @@ import { DemoAiReplyUseCase } from '../application/use-cases/conversation/demo-a
 import { UpdateContactUseCase } from '../application/use-cases/contact/update-contact.use-case.js';
 import { ListContactsUseCase } from '../application/use-cases/contact/list-contacts.use-case.js';
 import { ImportContactsUseCase } from '../application/use-cases/contact/import-contacts.use-case.js';
+import { CreateContactUseCase } from '../application/use-cases/contact/create-contact.use-case.js';
 
 // Use Cases — Template
 import { CreateTemplateUseCase } from '../application/use-cases/template/create-template.use-case.js';
@@ -387,6 +388,11 @@ const useCaseProviders = [
   {
     provide: 'ImportContactsUseCase',
     useFactory: (contactRepo: any) => new ImportContactsUseCase(contactRepo),
+    inject: ['ContactRepository'],
+  },
+  {
+    provide: 'CreateContactUseCase',
+    useFactory: (contactRepo: any) => new CreateContactUseCase(contactRepo),
     inject: ['ContactRepository'],
   },
 

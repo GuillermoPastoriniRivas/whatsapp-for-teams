@@ -17,6 +17,7 @@ export interface ContactRepository {
     data: { name: string; phone: string; profilePicUrl?: string | null },
   ): Promise<Contact>;
   findById(id: string): Promise<Contact | null>;
+  findByWaId(tenantId: string, waId: string): Promise<Contact | null>;
   findByTenantId(tenantId: string, options: { search?: string; page: number; limit: number }): Promise<PaginatedResult<Contact>>;
   update(
     id: string,

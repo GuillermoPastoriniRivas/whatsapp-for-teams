@@ -16,6 +16,9 @@ import { DemoRestricted } from '../guards/demo.guard.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import { UpdateContactRequestSchema } from '../request-dtos/update-contact-request.dto.js';
 import type { UpdateContactRequestDto } from '../request-dtos/update-contact-request.dto.js';
+import { CreateContactRequestSchema } from '../request-dtos/create-contact-request.dto.js';
+import type { CreateContactRequestDto } from '../request-dtos/create-contact-request.dto.js';
+import { CreateContactUseCase } from '../../application/use-cases/contact/create-contact.use-case.js';
 import type { ContactRepository } from '../../domain/repositories/contact.repository.js';
 
 const KNOWN_COLUMNS = new Set(['phone', 'name', 'email', 'company']);
@@ -29,8 +32,39 @@ export class ContactController {
     @Inject('UpdateContactUseCase') private readonly updateContact: UpdateContactUseCase,
     @Inject('ListContactsUseCase') private readonly listContacts: ListContactsUseCase,
     @Inject('ImportContactsUseCase') private readonly importContacts: ImportContactsUseCase,
+    @Inject('CreateContactUseCase') private readonly createContact: CreateContactUseCase,
     @Inject('ContactRepository') private readonly contactRepo: ContactRepository,
   ) {}
+
+  @Post()
+  @Roles('admin')
+  @DemoRestricted()
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Create contact by phone',
+    description:
+      'Find-or-create a contact from a raw phone number. Returns the existing contact untouched if the number is already saved.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['phone'],
+      properties: {
+        phone: { type: 'string', description: 'International number; symbols and spaces are ignored' },
+        name: { type: 'string', maxLength: 200 },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'The existing or newly created contact' })
+  @ApiResponse({ status: 400, description: 'Invalid phone number' })
+  async create(
+    @Body(new ZodValidationPipe(CreateContactRequestSchema)) body: CreateContactRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.createContact.execute({ tenantId: agent.tenantId, ...body });
+    if (!result.ok) throw new BadRequestException(result.error.message);
+    return result.value;
+  }
 
   @Post('import')
   @Roles('admin')

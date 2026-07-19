@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Search, User } from "lucide-react";
+import { Loader2, Plus, Search, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { api } from "@/lib/api";
 import type { Contact, PaginatedResponse } from "@/types";
+
+/** Accepts a paste of several numbers separated by commas, semicolons or newlines. */
+const MANUAL_SEPARATORS = /[\s,;]+/;
 
 interface ContactPickerProps {
   selected: Map<string, Contact>;
@@ -26,6 +30,9 @@ export function ContactPicker({ selected, onChange }: ContactPickerProps) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [manualInput, setManualInput] = useState("");
+  const [manualAdding, setManualAdding] = useState(false);
+  const [manualRejected, setManualRejected] = useState<string[]>([]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -50,6 +57,31 @@ export function ContactPicker({ selected, onChange }: ContactPickerProps) {
     if (next.has(contact.id)) next.delete(contact.id);
     else next.set(contact.id, contact);
     onChange(next);
+  };
+
+  /**
+   * Turns typed numbers into contacts (created on the fly if they aren't saved
+   * yet) and adds them to the same selection as the picked ones.
+   */
+  const addManual = async () => {
+    const numbers = manualInput.split(MANUAL_SEPARATORS).filter(Boolean);
+    if (numbers.length === 0) return;
+
+    setManualAdding(true);
+    const next = new Map(selected);
+    const rejected: string[] = [];
+    for (const phone of numbers) {
+      try {
+        const contact = await api.post<Contact>("/contacts", { phone });
+        next.set(contact.id, contact);
+      } catch {
+        rejected.push(phone);
+      }
+    }
+    onChange(next);
+    setManualRejected(rejected);
+    setManualInput(rejected.join(", "));
+    setManualAdding(false);
   };
 
   const selectPage = () => {
@@ -81,6 +113,40 @@ export function ContactPicker({ selected, onChange }: ContactPickerProps) {
             </Button>
           )}
         </div>
+      </div>
+
+      {/* Manual entry — numbers that aren't in the contact list yet */}
+      <div className="space-y-1.5">
+        <div className="flex gap-2">
+          <Input
+            className="h-8 flex-1 text-base sm:text-xs"
+            placeholder={t.campaigns.manualPhonePlaceholder}
+            value={manualInput}
+            onChange={(e) => setManualInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              if (!manualAdding) void addManual();
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0 text-xs"
+            disabled={manualAdding || manualInput.trim().length === 0}
+            onClick={addManual}
+          >
+            {manualAdding ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+            <span className="ml-1">{t.campaigns.manualPhoneAdd}</span>
+          </Button>
+        </div>
+        <p className="text-[10px] leading-tight text-muted-foreground">{t.campaigns.manualPhoneHint}</p>
+        {manualRejected.length > 0 && (
+          <InlineNotice variant="error" className="text-xs">
+            {t.campaigns.manualPhoneInvalid}: {manualRejected.join(", ")}
+          </InlineNotice>
+        )}
       </div>
 
       <div className="relative">

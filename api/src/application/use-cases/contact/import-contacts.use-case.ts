@@ -1,6 +1,7 @@
 import { BulkUpsertContactRow, ContactRepository } from '../../../domain/repositories/contact.repository.js';
 import { Result, ok } from '../../common/result.js';
 import { DomainError } from '../../../domain/errors/domain-errors.js';
+import { normalizePhone } from './normalize-phone.js';
 
 export interface ImportContactRow {
   phone: string;
@@ -63,12 +64,4 @@ export class ImportContactsUseCase {
 
     return ok({ imported: inserted, updated, skipped });
   }
-}
-
-/** Normalizes to WhatsApp wa_id format: international number, digits only, no '+'. */
-function normalizePhone(raw: string | undefined): string | null {
-  if (!raw) return null;
-  const digits = raw.replace(/\D/g, '').replace(/^0+/, '');
-  if (digits.length < 8 || digits.length > 15) return null;
-  return digits;
 }

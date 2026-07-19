@@ -144,7 +144,7 @@ const translations = {
       importTitle: "Importar contactos",
       importHint:
         "Subi un archivo CSV con la columna phone (obligatoria). Tambien podes incluir name, email y company. Cualquier otra columna se guarda como campo personalizado.",
-      importExample: "phone,name,email,barrio",
+      importExample: "phone,name,email,company",
       selectFile: "Elegir archivo CSV",
       importing: "Importando...",
       imported: "Importados",
@@ -277,7 +277,12 @@ const translations = {
       goToTemplates: "Ir a Plantillas",
       audienceMode: "Como queres elegir los destinatarios?",
       audiencePick: "Elegir contactos",
-      audiencePickHint: "Selecciona contactos uno por uno de tu lista",
+      audiencePickHint: "Elegilos de tu lista o escribi numeros a mano",
+      manualPhonePlaceholder: "5491122334455, 5491199887766",
+      manualPhoneAdd: "Agregar",
+      manualPhoneHint:
+        "Escribi o pega numeros con codigo de pais (sin +). Los que no esten en tu lista se guardan como contactos nuevos.",
+      manualPhoneInvalid: "Numeros invalidos",
       audienceSearch: "Por busqueda",
       audienceSearchHint: "Todos los contactos que coincidan con una busqueda",
       audienceCsv: "Importar CSV",
@@ -386,6 +391,9 @@ const translations = {
         "Mínimo 8 caracteres, con una mayúscula, una minúscula y un número.",
       passwordMismatch: "Las contraseñas no coinciden.",
       passwordError: "No se pudo guardar la contraseña. Prueba de nuevo.",
+      zoomTitle: "Tamaño del contenido",
+      zoomHint:
+        "Que tan grande se ve el contenido de las pantallas en computadora. El menú lateral no cambia. Se guarda en este dispositivo.",
     },
     agents: {
       title: "Agentes",
@@ -870,7 +878,7 @@ const translations = {
       importTitle: "Import contacts",
       importHint:
         "Upload a CSV with a phone column (required). You can also include name, email and company. Any other column is stored as a custom field.",
-      importExample: "phone,name,email,neighborhood",
+      importExample: "phone,name,email,company",
       selectFile: "Choose CSV file",
       importing: "Importing...",
       imported: "Imported",
@@ -1003,7 +1011,12 @@ const translations = {
       goToTemplates: "Go to Templates",
       audienceMode: "How do you want to pick recipients?",
       audiencePick: "Pick contacts",
-      audiencePickHint: "Select contacts one by one from your list",
+      audiencePickHint: "Pick them from your list or type numbers by hand",
+      manualPhonePlaceholder: "5491122334455, 5491199887766",
+      manualPhoneAdd: "Add",
+      manualPhoneHint:
+        "Type or paste numbers with country code (no +). Numbers that aren't in your list are saved as new contacts.",
+      manualPhoneInvalid: "Invalid numbers",
       audienceSearch: "By search",
       audienceSearchHint: "Every contact matching a search",
       audienceCsv: "Import CSV",
@@ -1112,6 +1125,9 @@ const translations = {
         "At least 8 characters, with one uppercase letter, one lowercase letter and one number.",
       passwordMismatch: "Passwords do not match.",
       passwordError: "The password could not be saved. Please try again.",
+      zoomTitle: "Content size",
+      zoomHint:
+        "How large the page content looks on desktop. The sidebar stays the same. Saved on this device.",
     },
     agents: {
       title: "Agents",
