@@ -81,10 +81,20 @@ const AgentPhoneAccessSeedSchema = new Schema({
   phoneNumberId: Types.ObjectId,
 });
 
+/** La URI trae usuario y contrasena: nunca va entera a los logs. */
+function safeUri(uri: string): string {
+  try {
+    const url = new URL(uri);
+    return `${url.protocol}//${url.hostname}${url.pathname}`;
+  } catch {
+    return '(uri invalida)';
+  }
+}
+
 async function seed() {
   const mongoUri = process.env.MONGODB_URI ?? 'mongodb://localhost:27017/whatsapp-teams';
 
-  console.log(`Connecting to ${mongoUri}...`);
+  console.log(`Connecting to ${safeUri(mongoUri)}...`);
   await connect(mongoUri);
   console.log('Connected.\n');
 
