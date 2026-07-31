@@ -10,9 +10,12 @@ import type { MessageRepository } from '../../../domain/repositories/message.rep
 import type { Message } from '../../../domain/entities/message.entity.js';
 import type { AiAgentConfig } from '../../../domain/entities/ai-agent-config.entity.js';
 import type { Contact } from '../../../domain/entities/contact.entity.js';
+import type { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
+import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
+import { serializeMessage } from '../developer/developer-payloads.util.js';
 import { buildSystemPrompt } from './prompts/system-prompt.builder.js';
 import { computeBusinessStatus } from './prompts/business-hours.util.js';
 
@@ -126,6 +129,9 @@ export interface SendBubblesParams {
   senderAgentName: string | null;
   bubbles: string[];
   interBubbleDelayMs: number;
+  /** Si están presentes, cada burbuja emite message.sent al webhook de desarrolladores */
+  devEvents?: DeveloperEventsPort;
+  tenantId?: string;
 }
 
 /** Envía burbujas de texto con typing + delay entre burbujas, persiste y emite WS */
@@ -170,5 +176,13 @@ export async function sendBubbles(params: SendBubblesParams): Promise<void> {
     });
 
     gateway.emitToConversation(conversationId, 'message.new', message);
+
+    if (params.devEvents && params.tenantId) {
+      params.devEvents.emit(params.tenantId, DeveloperEventType.MESSAGE_SENT, {
+        message: serializeMessage(message),
+        conversationId,
+        via: 'ai',
+      });
+    }
   }
 }

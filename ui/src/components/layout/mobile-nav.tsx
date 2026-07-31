@@ -14,6 +14,7 @@ import {
   Phone,
   ChevronRight,
   Workflow,
+  Code2,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
@@ -23,7 +24,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { cn } from "@/lib/utils";
 
 // Rutas que viven dentro de "Más": el tab se marca activo en cualquiera de ellas
-const MORE_ROUTES = ["/templates", "/flows", "/agents", "/admin", "/settings", "/notifications"];
+const MORE_ROUTES = ["/templates", "/flows", "/agents", "/admin", "/settings", "/notifications", "/developers"];
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -49,6 +50,7 @@ export function MobileNav() {
     { href: "/flows", icon: Workflow, label: t.nav.flows, adminOnly: true },
     { href: "/agents", icon: Users, label: t.nav.team, adminOnly: true },
     { href: "/admin", icon: Phone, label: t.nav.phoneAdmin, adminOnly: true },
+    { href: "/developers", icon: Code2, label: t.nav.developers, adminOnly: true },
     { href: "/settings", icon: Settings, label: t.nav.settings, adminOnly: false },
   ].filter((item) => !item.adminOnly || isAdmin);
 

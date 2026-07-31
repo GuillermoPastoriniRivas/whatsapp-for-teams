@@ -14,6 +14,7 @@ import { AiCompletionPort } from '../../ports/ai-completion.port.js';
 import type { ChatMessage } from '../../ports/ai-completion.port.js';
 import { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
+import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { HandoffToHumanUseCase } from './handoff-to-human.use-case.js';
 import { HandoffDetectionDomainService } from '../../../domain/services/handoff-detection.domain-service.js';
 import { ContactDirectiveHandler } from './handlers/contact-directive.handler.js';
@@ -62,6 +63,7 @@ export class ProcessAiResponseUseCase {
     private readonly convLabelRepo: ConversationLabelRepository,
     private readonly eventRepo: ConversationEventRepository,
     private readonly flowExecRepo: FlowExecutionRepository,
+    private readonly devEvents: DeveloperEventsPort,
   ) {
     this.contactHandler = new ContactDirectiveHandler(this.contactRepo, this.eventRepo, this.gateway);
   }
@@ -332,6 +334,8 @@ export class ProcessAiResponseUseCase {
       senderAgentName: agent.name,
       bubbles,
       interBubbleDelayMs: config.multiMessage?.interBubbleDelayMs ?? 1200,
+      devEvents: this.devEvents,
+      tenantId: conversation.tenantId,
     });
 
     await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date(), pendingAiSince: null } as any);

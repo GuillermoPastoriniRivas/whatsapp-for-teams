@@ -3,11 +3,13 @@ import { ConversationRepository } from '../../../domain/repositories/conversatio
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
+import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { Result, ok, err } from '../../common/result.js';
 import { DomainError, ConversationNotFoundError, AgentNotFoundError } from '../../../domain/errors/domain-errors.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
+import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
 import { SendPushToAgentUseCase } from '../notification/send-push-to-agent.use-case.js';
 import { CancelActiveFlowExecutionUseCase } from '../flow/cancel-active-flow-execution.use-case.js';
 
@@ -25,6 +27,7 @@ export class AssignConversationUseCase {
     private readonly eventRepo: ConversationEventRepository,
     private readonly sendPushToAgent: SendPushToAgentUseCase,
     private readonly cancelActiveFlow: CancelActiveFlowExecutionUseCase,
+    private readonly devEvents: DeveloperEventsPort,
   ) {}
 
   async execute(input: AssignConversationInput): Promise<Result<Conversation, DomainError>> {
@@ -74,6 +77,15 @@ export class AssignConversationUseCase {
     this.gateway.emitToConversation(conversation.id, 'conversation.event', event);
 
     this.gateway.emitToAgent(input.agentId, 'conversation.assigned', updated);
+
+    this.devEvents.emit(conversation.tenantId, DeveloperEventType.CONVERSATION_ASSIGNED, {
+      conversationId: conversation.id,
+      agentId: input.agentId,
+      agentName: newAgent.name,
+      agentType: newAgent.type,
+      previousAgentId: oldAgentId,
+      assignedBy: 'manual',
+    });
 
     if (newAgent.type === AgentType.HUMAN) {
       void this.sendPushToAgent.execute(input.agentId, {

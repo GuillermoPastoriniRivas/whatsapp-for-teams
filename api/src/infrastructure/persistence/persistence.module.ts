@@ -47,6 +47,12 @@ import { FlowVersionModel, FlowVersionSchema } from './mongoose/schemas/flow-ver
 import { FlowExecutionModel, FlowExecutionSchema } from './mongoose/schemas/flow-execution.schema.js';
 import { FlowNodeStatModel, FlowNodeStatSchema } from './mongoose/schemas/flow-node-stat.schema.js';
 import { FlowConnectionModel, FlowConnectionSchema } from './mongoose/schemas/flow-connection.schema.js';
+import { ApiKeyModel, ApiKeySchema } from './mongoose/schemas/api-key.schema.js';
+import { WebhookEndpointModel, WebhookEndpointSchema } from './mongoose/schemas/webhook-endpoint.schema.js';
+import { WebhookDeliveryModel, WebhookDeliverySchema } from './mongoose/schemas/webhook-delivery.schema.js';
+import { MongoApiKeyRepository } from './mongoose/repositories/mongo-api-key.repository.js';
+import { MongoWebhookEndpointRepository } from './mongoose/repositories/mongo-webhook-endpoint.repository.js';
+import { MongoWebhookDeliveryRepository } from './mongoose/repositories/mongo-webhook-delivery.repository.js';
 import { MongoFlowRepository } from './mongoose/repositories/mongo-flow.repository.js';
 import { MongoFlowVersionRepository } from './mongoose/repositories/mongo-flow-version.repository.js';
 import { MongoFlowExecutionRepository } from './mongoose/repositories/mongo-flow-execution.repository.js';
@@ -80,6 +86,9 @@ const schemas = MongooseModule.forFeature([
   { name: FlowExecutionModel.name, schema: FlowExecutionSchema },
   { name: FlowNodeStatModel.name, schema: FlowNodeStatSchema },
   { name: FlowConnectionModel.name, schema: FlowConnectionSchema },
+  { name: ApiKeyModel.name, schema: ApiKeySchema },
+  { name: WebhookEndpointModel.name, schema: WebhookEndpointSchema },
+  { name: WebhookDeliveryModel.name, schema: WebhookDeliverySchema },
 ]);
 
 const repositories = [
@@ -109,6 +118,9 @@ const repositories = [
   { provide: 'FlowExecutionRepository', useClass: MongoFlowExecutionRepository },
   { provide: 'FlowNodeStatRepository', useClass: MongoFlowNodeStatRepository },
   { provide: 'FlowConnectionRepository', useClass: MongoFlowConnectionRepository },
+  { provide: 'ApiKeyRepository', useClass: MongoApiKeyRepository },
+  { provide: 'WebhookEndpointRepository', useClass: MongoWebhookEndpointRepository },
+  { provide: 'WebhookDeliveryRepository', useClass: MongoWebhookDeliveryRepository },
 ];
 
 @Module({

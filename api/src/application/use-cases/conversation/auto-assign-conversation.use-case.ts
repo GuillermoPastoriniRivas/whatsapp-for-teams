@@ -4,9 +4,11 @@ import { AgentRepository } from '../../../domain/repositories/agent.repository.j
 import { AgentPhoneAccessRepository } from '../../../domain/repositories/agent-phone-access.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
+import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
+import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
 
 export interface AutoAssignOptions {
   excludeAi?: boolean;
@@ -19,6 +21,7 @@ export class AutoAssignConversationUseCase {
     private readonly accessRepo: AgentPhoneAccessRepository,
     private readonly gateway: RealtimeGatewayPort,
     private readonly eventRepo: ConversationEventRepository,
+    private readonly devEvents: DeveloperEventsPort,
   ) {}
 
   async execute(conversationId: string, options?: AutoAssignOptions): Promise<Agent | null> {
@@ -73,6 +76,15 @@ export class AutoAssignConversationUseCase {
     this.gateway.emitToConversation(conversationId, 'conversation.event', assignEvent);
 
     this.gateway.emitToAgent(agent.id, 'conversation.new', { conversationId });
+
+    this.devEvents.emit(conversation.tenantId, DeveloperEventType.CONVERSATION_ASSIGNED, {
+      conversationId,
+      agentId: agent.id,
+      agentName: agent.name,
+      agentType: agent.type,
+      previousAgentId: conversation.agentId,
+      assignedBy: 'auto',
+    });
 
     return agent;
   }

@@ -17,6 +17,7 @@ import {
   LayoutTemplate,
   Megaphone,
   Workflow,
+  Code2,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
@@ -69,6 +70,7 @@ export function AppSidebar({ className }: { className?: string }) {
           { href: "/flows", icon: Workflow, label: t.nav.flows },
           { href: "/agents", icon: Users, label: t.nav.agents },
           { href: "/admin", icon: Shield, label: t.nav.admin },
+          { href: "/developers", icon: Code2, label: t.nav.developers },
         ]
       : []),
   ];

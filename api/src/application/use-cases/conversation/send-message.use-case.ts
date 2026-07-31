@@ -6,6 +6,9 @@ import { PhoneNumberRepository } from '../../../domain/repositories/phone-number
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
+import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
+import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
+import { serializeMessage } from '../developer/developer-payloads.util.js';
 import { SendMessageInput } from '../../dtos/conversation/send-message-input.dto.js';
 import { Result, ok, err } from '../../common/result.js';
 import { DomainError, ConversationNotFoundError, AgentNotAssignedError, ConversationWindowExpiredError } from '../../../domain/errors/domain-errors.js';
@@ -26,6 +29,7 @@ export class SendMessageUseCase {
     private readonly gateway: RealtimeGatewayPort,
     private readonly agentRepo: AgentRepository,
     private readonly cancelActiveFlow: CancelActiveFlowExecutionUseCase,
+    private readonly devEvents: DeveloperEventsPort,
   ) {}
 
   async execute(input: SendMessageInput): Promise<Result<Message, DomainError>> {
@@ -77,6 +81,12 @@ export class SendMessageUseCase {
     await this.cancelActiveFlow.execute(conversation.id, 'agent_takeover', input.agentId);
 
     this.gateway.emitToConversation(conversation.id, 'message.new', message);
+
+    this.devEvents.emit(conversation.tenantId, DeveloperEventType.MESSAGE_SENT, {
+      message: serializeMessage(message),
+      conversationId: conversation.id,
+      via: 'agent',
+    });
 
     return ok(message);
   }

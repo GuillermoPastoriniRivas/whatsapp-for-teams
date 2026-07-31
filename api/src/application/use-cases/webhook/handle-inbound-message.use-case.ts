@@ -11,6 +11,9 @@ import { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-c
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { JobQueuePort } from '../../ports/job-queue.port.js';
 import { MessagingApiPort } from '../../ports/messaging-api.port.js';
+import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
+import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
+import { serializeMessage, serializeConversation, serializeContact } from '../developer/developer-payloads.util.js';
 import { InboundMessageInput } from '../../dtos/webhook/inbound-message-input.dto.js';
 import { AutoAssignConversationUseCase } from '../conversation/auto-assign-conversation.use-case.js';
 import { AttributeCampaignReplyUseCase } from '../campaign/attribute-campaign-reply.use-case.js';
@@ -45,6 +48,7 @@ export class HandleInboundMessageUseCase {
     private readonly sendPushToAgent: SendPushToAgentUseCase,
     private readonly accessRepo: AgentPhoneAccessRepository,
     private readonly flowRouter: FlowInboundRouterUseCase,
+    private readonly devEvents: DeveloperEventsPort,
   ) {}
 
   async execute(input: InboundMessageInput): Promise<void> {
@@ -90,6 +94,11 @@ export class HandleInboundMessageUseCase {
         data: { contactName: contact.name, contactPhone: contact.phone },
       });
       this.gateway.emitToConversation(conversation.id, 'conversation.event', createdEvent);
+
+      this.devEvents.emit(tenantId, DeveloperEventType.CONVERSATION_CREATED, {
+        conversation: serializeConversation(conversation),
+        contact: serializeContact(contact),
+      });
 
       needsAssignment = true;
     }
@@ -168,6 +177,14 @@ export class HandleInboundMessageUseCase {
       contactName: contact.name || contact.phone,
       body: this.messagePreview(input.body, input.messageType),
       messageId: message.id,
+    });
+
+    // Webhook para desarrolladores: cada mensaje entrante del cliente
+    this.devEvents.emit(tenantId, DeveloperEventType.MESSAGE_RECEIVED, {
+      message: serializeMessage(message),
+      conversationId: conversation.id,
+      contact: serializeContact(contact),
+      phoneNumberId: phone.id,
     });
 
     // 8. If assigned to AI agent → enqueue AI response job (with debounce if enabled)

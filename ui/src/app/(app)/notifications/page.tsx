@@ -48,37 +48,39 @@ const mockNotifications = [
 
 export default function NotificationsPage() {
   return (
-    <div className="p-4 space-y-4 pb-20 max-w-lg">
-      <h1 className="text-lg font-semibold flex items-center gap-2">
-        <Bell className="h-5 w-5" />
-        Notificaciones
-      </h1>
+    <div className="h-full overflow-y-auto">
+      <div className="p-4 space-y-4 pb-20 max-w-lg">
+        <h1 className="text-lg font-semibold flex items-center gap-2">
+          <Bell className="h-5 w-5" />
+          Notificaciones
+        </h1>
 
-      <div className="space-y-2">
-        {mockNotifications.map((n) => (
-          <Card
-            key={n.id}
-            className={n.read ? "opacity-60" : "border-primary/30"}
-          >
-            <CardContent className="flex items-start gap-3 p-3">
-              <n.icon className="h-5 w-5 mt-0.5 shrink-0 text-muted-foreground" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium">{n.title}</p>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {n.time}
-                  </span>
+        <div className="space-y-2">
+          {mockNotifications.map((n) => (
+            <Card
+              key={n.id}
+              className={n.read ? "opacity-60" : "border-primary/30"}
+            >
+              <CardContent className="flex items-start gap-3 p-3">
+                <n.icon className="h-5 w-5 mt-0.5 shrink-0 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium">{n.title}</p>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {n.time}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {n.description}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {n.description}
-                </p>
-              </div>
-              {!n.read && (
-                <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                {!n.read && (
+                  <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );

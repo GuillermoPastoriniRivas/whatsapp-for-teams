@@ -154,6 +154,27 @@ import { HandlePaymentWebhookUseCase } from '../application/use-cases/billing/ha
 // Guards — Plan Limit
 import { PlanLimitGuard } from './guards/plan-limit.guard.js';
 
+// Developer platform (API pública + webhooks)
+import { DeveloperController } from './controllers/developer.controller.js';
+import { PublicApiController } from './controllers/public-api.controller.js';
+import { ApiKeyGuard } from './guards/api-key.guard.js';
+import { GetDeveloperOverviewUseCase } from '../application/use-cases/developer/get-developer-overview.use-case.js';
+import { CreateApiKeyUseCase } from '../application/use-cases/developer/create-api-key.use-case.js';
+import { ListApiKeysUseCase } from '../application/use-cases/developer/list-api-keys.use-case.js';
+import { RevokeApiKeyUseCase } from '../application/use-cases/developer/revoke-api-key.use-case.js';
+import { AuthenticateApiKeyUseCase } from '../application/use-cases/developer/authenticate-api-key.use-case.js';
+import { CreateWebhookEndpointUseCase } from '../application/use-cases/developer/create-webhook-endpoint.use-case.js';
+import { UpdateWebhookEndpointUseCase } from '../application/use-cases/developer/update-webhook-endpoint.use-case.js';
+import { DeleteWebhookEndpointUseCase } from '../application/use-cases/developer/delete-webhook-endpoint.use-case.js';
+import { ListWebhookEndpointsUseCase } from '../application/use-cases/developer/list-webhook-endpoints.use-case.js';
+import { RotateWebhookSecretUseCase } from '../application/use-cases/developer/rotate-webhook-secret.use-case.js';
+import { ListWebhookDeliveriesUseCase } from '../application/use-cases/developer/list-webhook-deliveries.use-case.js';
+import { RetryWebhookDeliveryUseCase } from '../application/use-cases/developer/retry-webhook-delivery.use-case.js';
+import { SendTestWebhookUseCase } from '../application/use-cases/developer/send-test-webhook.use-case.js';
+import { DeliverWebhookUseCase } from '../application/use-cases/developer/deliver-webhook.use-case.js';
+import { SendApiMessageUseCase } from '../application/use-cases/developer/send-api-message.use-case.js';
+import { DeveloperWebhookJobProcessor } from '../infrastructure/queue/developer-webhook-job.processor.js';
+
 // Queue Processors
 import { WebhookJobProcessor } from '../infrastructure/queue/webhook-job.processor.js';
 import { AiResponseJobProcessor } from '../infrastructure/queue/ai-response-job.processor.js';
@@ -269,9 +290,9 @@ const useCaseProviders = [
   },
   {
     provide: 'AutoAssignConversationUseCase',
-    useFactory: (convRepo: any, agentRepo: any, accessRepo: any, gateway: any, eventRepo: any) =>
-      new AutoAssignConversationUseCase(convRepo, agentRepo, accessRepo, gateway, eventRepo),
-    inject: ['ConversationRepository', 'AgentRepository', 'AgentPhoneAccessRepository', 'RealtimeGatewayPort', 'ConversationEventRepository'],
+    useFactory: (convRepo: any, agentRepo: any, accessRepo: any, gateway: any, eventRepo: any, devEvents: any) =>
+      new AutoAssignConversationUseCase(convRepo, agentRepo, accessRepo, gateway, eventRepo, devEvents),
+    inject: ['ConversationRepository', 'AgentRepository', 'AgentPhoneAccessRepository', 'RealtimeGatewayPort', 'ConversationEventRepository', 'DeveloperEventsPort'],
   },
   {
     provide: 'UpdateAgentStatusUseCase',
@@ -342,9 +363,9 @@ const useCaseProviders = [
   },
   {
     provide: 'SendMessageUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, messagingApi: any, gateway: any, agentRepo: any, cancelFlow: any) =>
-      new SendMessageUseCase(convRepo, msgRepo, contactRepo, phoneRepo, messagingApi, gateway, agentRepo, cancelFlow),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'AgentRepository', 'CancelActiveFlowExecutionUseCase'],
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, messagingApi: any, gateway: any, agentRepo: any, cancelFlow: any, devEvents: any) =>
+      new SendMessageUseCase(convRepo, msgRepo, contactRepo, phoneRepo, messagingApi, gateway, agentRepo, cancelFlow, devEvents),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'AgentRepository', 'CancelActiveFlowExecutionUseCase', 'DeveloperEventsPort'],
   },
   {
     provide: 'MarkConversationReadUseCase',
@@ -353,15 +374,15 @@ const useCaseProviders = [
   },
   {
     provide: 'SendTemplateMessageUseCase',
-    useFactory: (convRepo: any, templateRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, messagingApi: any, gateway: any) =>
-      new SendTemplateMessageUseCase(convRepo, templateRepo, msgRepo, contactRepo, phoneRepo, agentRepo, messagingApi, gateway),
-    inject: ['ConversationRepository', 'MessageTemplateRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'MessagingApiPort', 'RealtimeGatewayPort'],
+    useFactory: (convRepo: any, templateRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, messagingApi: any, gateway: any, devEvents: any) =>
+      new SendTemplateMessageUseCase(convRepo, templateRepo, msgRepo, contactRepo, phoneRepo, agentRepo, messagingApi, gateway, devEvents),
+    inject: ['ConversationRepository', 'MessageTemplateRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'DeveloperEventsPort'],
   },
   {
     provide: 'AssignConversationUseCase',
-    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any, sendPush: any, cancelFlow: any) =>
-      new AssignConversationUseCase(convRepo, agentRepo, gateway, eventRepo, sendPush, cancelFlow),
-    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository', 'SendPushToAgentUseCase', 'CancelActiveFlowExecutionUseCase'],
+    useFactory: (convRepo: any, agentRepo: any, gateway: any, eventRepo: any, sendPush: any, cancelFlow: any, devEvents: any) =>
+      new AssignConversationUseCase(convRepo, agentRepo, gateway, eventRepo, sendPush, cancelFlow, devEvents),
+    inject: ['ConversationRepository', 'AgentRepository', 'RealtimeGatewayPort', 'ConversationEventRepository', 'SendPushToAgentUseCase', 'CancelActiveFlowExecutionUseCase', 'DeveloperEventsPort'],
   },
   {
     provide: 'GetConversationEventsUseCase',
@@ -563,15 +584,15 @@ const useCaseProviders = [
   // Webhook
   {
     provide: 'HandleInboundMessageUseCase',
-    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any, sendPush: any, accessRepo: any, flowRouter: any) =>
-      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply, sendPush, accessRepo, flowRouter),
-    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase', 'AgentPhoneAccessRepository', 'FlowInboundRouterUseCase'],
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any, sendPush: any, accessRepo: any, flowRouter: any, devEvents: any) =>
+      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply, sendPush, accessRepo, flowRouter, devEvents),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase', 'AgentPhoneAccessRepository', 'FlowInboundRouterUseCase', 'DeveloperEventsPort'],
   },
   {
     provide: 'HandleStatusUpdateUseCase',
-    useFactory: (msgRepo: any, gateway: any, campaignRepo: any, recipientRepo: any) =>
-      new HandleStatusUpdateUseCase(msgRepo, gateway, campaignRepo, recipientRepo),
-    inject: ['MessageRepository', 'RealtimeGatewayPort', 'CampaignRepository', 'CampaignRecipientRepository'],
+    useFactory: (msgRepo: any, gateway: any, campaignRepo: any, recipientRepo: any, convRepo: any, devEvents: any) =>
+      new HandleStatusUpdateUseCase(msgRepo, gateway, campaignRepo, recipientRepo, convRepo, devEvents),
+    inject: ['MessageRepository', 'RealtimeGatewayPort', 'CampaignRepository', 'CampaignRecipientRepository', 'ConversationRepository', 'DeveloperEventsPort'],
   },
   {
     provide: 'HandleTemplateStatusUpdateUseCase',
@@ -737,9 +758,9 @@ const useCaseProviders = [
   },
   {
     provide: 'ProcessAiResponseUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, flowExecRepo: any) =>
-      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, flowExecRepo),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', 'FlowExecutionRepository'],
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, flowExecRepo: any, devEvents: any) =>
+      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, flowExecRepo, devEvents),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', 'FlowExecutionRepository', 'DeveloperEventsPort'],
   },
 
   // Label
@@ -840,6 +861,87 @@ const useCaseProviders = [
     inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase'],
   },
 
+  // Developer platform
+  {
+    provide: 'GetDeveloperOverviewUseCase',
+    useFactory: (subRepo: any, apiKeyRepo: any, endpointRepo: any) =>
+      new GetDeveloperOverviewUseCase(subRepo, apiKeyRepo, endpointRepo),
+    inject: ['SubscriptionRepository', 'ApiKeyRepository', 'WebhookEndpointRepository'],
+  },
+  {
+    provide: 'CreateApiKeyUseCase',
+    useFactory: (apiKeyRepo: any, subRepo: any) => new CreateApiKeyUseCase(apiKeyRepo, subRepo),
+    inject: ['ApiKeyRepository', 'SubscriptionRepository'],
+  },
+  {
+    provide: 'ListApiKeysUseCase',
+    useFactory: (apiKeyRepo: any) => new ListApiKeysUseCase(apiKeyRepo),
+    inject: ['ApiKeyRepository'],
+  },
+  {
+    provide: 'RevokeApiKeyUseCase',
+    useFactory: (apiKeyRepo: any) => new RevokeApiKeyUseCase(apiKeyRepo),
+    inject: ['ApiKeyRepository'],
+  },
+  {
+    provide: 'AuthenticateApiKeyUseCase',
+    useFactory: (apiKeyRepo: any, subRepo: any) => new AuthenticateApiKeyUseCase(apiKeyRepo, subRepo),
+    inject: ['ApiKeyRepository', 'SubscriptionRepository'],
+  },
+  {
+    provide: 'CreateWebhookEndpointUseCase',
+    useFactory: (endpointRepo: any, subRepo: any) => new CreateWebhookEndpointUseCase(endpointRepo, subRepo),
+    inject: ['WebhookEndpointRepository', 'SubscriptionRepository'],
+  },
+  {
+    provide: 'UpdateWebhookEndpointUseCase',
+    useFactory: (endpointRepo: any) => new UpdateWebhookEndpointUseCase(endpointRepo),
+    inject: ['WebhookEndpointRepository'],
+  },
+  {
+    provide: 'DeleteWebhookEndpointUseCase',
+    useFactory: (endpointRepo: any, deliveryRepo: any) => new DeleteWebhookEndpointUseCase(endpointRepo, deliveryRepo),
+    inject: ['WebhookEndpointRepository', 'WebhookDeliveryRepository'],
+  },
+  {
+    provide: 'ListWebhookEndpointsUseCase',
+    useFactory: (endpointRepo: any) => new ListWebhookEndpointsUseCase(endpointRepo),
+    inject: ['WebhookEndpointRepository'],
+  },
+  {
+    provide: 'RotateWebhookSecretUseCase',
+    useFactory: (endpointRepo: any) => new RotateWebhookSecretUseCase(endpointRepo),
+    inject: ['WebhookEndpointRepository'],
+  },
+  {
+    provide: 'ListWebhookDeliveriesUseCase',
+    useFactory: (endpointRepo: any, deliveryRepo: any) => new ListWebhookDeliveriesUseCase(endpointRepo, deliveryRepo),
+    inject: ['WebhookEndpointRepository', 'WebhookDeliveryRepository'],
+  },
+  {
+    provide: 'RetryWebhookDeliveryUseCase',
+    useFactory: (deliveryRepo: any, jobQueue: any) => new RetryWebhookDeliveryUseCase(deliveryRepo, jobQueue),
+    inject: ['WebhookDeliveryRepository', 'JobQueuePort'],
+  },
+  {
+    provide: 'SendTestWebhookUseCase',
+    useFactory: (endpointRepo: any, deliveryRepo: any, jobQueue: any) =>
+      new SendTestWebhookUseCase(endpointRepo, deliveryRepo, jobQueue),
+    inject: ['WebhookEndpointRepository', 'WebhookDeliveryRepository', 'JobQueuePort'],
+  },
+  {
+    provide: 'DeliverWebhookUseCase',
+    useFactory: (deliveryRepo: any, endpointRepo: any, http: any, jobQueue: any) =>
+      new DeliverWebhookUseCase(deliveryRepo, endpointRepo, http, jobQueue),
+    inject: ['WebhookDeliveryRepository', 'WebhookEndpointRepository', 'FlowHttpPort', 'JobQueuePort'],
+  },
+  {
+    provide: 'SendApiMessageUseCase',
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, templateRepo: any, eventRepo: any, messagingApi: any, gateway: any, devEvents: any) =>
+      new SendApiMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, templateRepo, eventRepo, messagingApi, gateway, devEvents),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'MessageTemplateRepository', 'ConversationEventRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'DeveloperEventsPort'],
+  },
+
   // Notifications (web push)
   {
     provide: 'SubscribePushUseCase',
@@ -880,6 +982,8 @@ const useCaseProviders = [
     FlowExecutionController,
     FlowConnectionController,
     FlowWebhookController,
+    DeveloperController,
+    PublicApiController,
   ],
   providers: [
     ...useCaseProviders,
@@ -888,7 +992,9 @@ const useCaseProviders = [
     EmailJobProcessor,
     CampaignJobProcessor,
     FlowJobProcessor,
+    DeveloperWebhookJobProcessor,
     PlanLimitGuard,
+    ApiKeyGuard,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },

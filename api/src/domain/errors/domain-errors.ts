@@ -228,3 +228,39 @@ export class FlowConnectionInUseError extends DomainError {
     super('FLOW_CONNECTION_IN_USE', 'The connection is referenced by a published flow. Unpublish it first.');
   }
 }
+
+export class ApiKeyNotFoundError extends DomainError {
+  constructor() {
+    super('API_KEY_NOT_FOUND', 'API key not found.');
+  }
+}
+
+export class InvalidApiKeyError extends DomainError {
+  constructor() {
+    super('INVALID_API_KEY', 'The API key is invalid or has been revoked.');
+  }
+}
+
+export class WebhookEndpointNotFoundError extends DomainError {
+  constructor() {
+    super('WEBHOOK_ENDPOINT_NOT_FOUND', 'Webhook endpoint not found.');
+  }
+}
+
+export class WebhookDeliveryNotFoundError extends DomainError {
+  constructor() {
+    super('WEBHOOK_DELIVERY_NOT_FOUND', 'Webhook delivery not found.');
+  }
+}
+
+export class FeatureNotInPlanError extends DomainError {
+  constructor(feature: string) {
+    super('FEATURE_NOT_IN_PLAN', `Your current plan does not include ${feature}. Upgrade to unlock it.`);
+  }
+}
+
+export class RecipientNotReachableError extends DomainError {
+  constructor(detail?: string) {
+    super('INVALID_RECIPIENT', detail ?? 'The destination phone number is not valid.');
+  }
+}

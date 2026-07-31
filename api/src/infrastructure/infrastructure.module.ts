@@ -10,9 +10,10 @@ import { PaymentModule } from './payment/payment.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { CryptoModule } from './crypto/crypto.module.js';
 import { HttpModule } from './http/http.module.js';
+import { DeveloperModule } from './developer/developer.module.js';
 
 @Module({
-  imports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule, CryptoModule, HttpModule],
-  exports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule, CryptoModule, HttpModule],
+  imports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule, CryptoModule, HttpModule, DeveloperModule],
+  exports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule, CryptoModule, HttpModule, DeveloperModule],
 })
 export class InfrastructureModule {}

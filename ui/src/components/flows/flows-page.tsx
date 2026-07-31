@@ -57,73 +57,75 @@ export function FlowsPage() {
   if (agent?.role !== "admin") return null;
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <h1 className="text-xl font-semibold flex items-center gap-2">
-          <Workflow className="size-5 text-primary" />
-          {t.flows.title}
-        </h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowConnections(true)}>
-            <KeyRound className="size-4 mr-1" />
-            {t.flows.connections}
-          </Button>
-          <Button size="sm" onClick={() => setShowGallery(true)}>
-            <Plus className="size-4 mr-1" />
-            {t.flows.newFlow}
-          </Button>
+    <div className="h-full overflow-y-auto">
+      <div className="p-4 pb-20 md:p-6 max-w-5xl mx-auto">
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <h1 className="text-xl font-semibold flex items-center gap-2">
+            <Workflow className="size-5 text-primary" />
+            {t.flows.title}
+          </h1>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowConnections(true)}>
+              <KeyRound className="size-4 mr-1" />
+              {t.flows.connections}
+            </Button>
+            <Button size="sm" onClick={() => setShowGallery(true)}>
+              <Plus className="size-4 mr-1" />
+              {t.flows.newFlow}
+            </Button>
+          </div>
         </div>
+        <p className="text-sm text-muted-foreground mb-6">{t.flows.subtitle}</p>
+
+        {isLoading && flows.length === 0 ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : flows.length === 0 ? (
+          <EmptyState onCreate={() => setShowGallery(true)} />
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">{t.flows.priorityHint}</p>
+            {[...flows]
+              .sort((a, b) => a.priority - b.priority)
+              .map((flow, index, ordered) => (
+                <FlowRow
+                  key={flow.id}
+                  flow={flow}
+                  isFirst={index === 0}
+                  isLast={index === ordered.length - 1}
+                  onOpen={() => router.push(`/flows/${flow.id}`)}
+                  onMoveUp={() => void move(flow, -1)}
+                  onMoveDown={() => void move(flow, 1)}
+                  onPause={() => void pauseFlow(flow.id)}
+                  onActivate={() => void activateFlow(flow.id)}
+                  onArchive={() => {
+                    if (window.confirm(t.flows.archiveConfirm)) void archiveFlow(flow.id);
+                  }}
+                />
+              ))}
+          </div>
+        )}
+
+        {showGallery && (
+          <TemplateGallery
+            templates={templates}
+            creating={creating}
+            onClose={() => setShowGallery(false)}
+            onPick={(templateId) => void handleCreate(templateId)}
+            onBlank={() => void handleCreate(undefined)}
+          />
+        )}
+
+        <Sheet open={showConnections} onOpenChange={setShowConnections}>
+          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>{t.flows.connections}</SheetTitle>
+            </SheetHeader>
+            <ConnectionsManager />
+          </SheetContent>
+        </Sheet>
       </div>
-      <p className="text-sm text-muted-foreground mb-6">{t.flows.subtitle}</p>
-
-      {isLoading && flows.length === 0 ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : flows.length === 0 ? (
-        <EmptyState onCreate={() => setShowGallery(true)} />
-      ) : (
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">{t.flows.priorityHint}</p>
-          {[...flows]
-            .sort((a, b) => a.priority - b.priority)
-            .map((flow, index, ordered) => (
-              <FlowRow
-                key={flow.id}
-                flow={flow}
-                isFirst={index === 0}
-                isLast={index === ordered.length - 1}
-                onOpen={() => router.push(`/flows/${flow.id}`)}
-                onMoveUp={() => void move(flow, -1)}
-                onMoveDown={() => void move(flow, 1)}
-                onPause={() => void pauseFlow(flow.id)}
-                onActivate={() => void activateFlow(flow.id)}
-                onArchive={() => {
-                  if (window.confirm(t.flows.archiveConfirm)) void archiveFlow(flow.id);
-                }}
-              />
-            ))}
-        </div>
-      )}
-
-      {showGallery && (
-        <TemplateGallery
-          templates={templates}
-          creating={creating}
-          onClose={() => setShowGallery(false)}
-          onPick={(templateId) => void handleCreate(templateId)}
-          onBlank={() => void handleCreate(undefined)}
-        />
-      )}
-
-      <Sheet open={showConnections} onOpenChange={setShowConnections}>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{t.flows.connections}</SheetTitle>
-          </SheetHeader>
-          <ConnectionsManager />
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }

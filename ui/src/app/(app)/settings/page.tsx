@@ -21,44 +21,46 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-4 space-y-4 pb-20 max-w-lg">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <User className="h-4 w-4" />
-            {t.settings.profile}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div>
-            <span className="text-muted-foreground">{t.settings.name}:</span>{" "}
-            {agent?.name}
-          </div>
-          <div>
-            <span className="text-muted-foreground">{t.settings.email}:</span>{" "}
-            {agent?.email}
-          </div>
-          <div>
-            <span className="text-muted-foreground">{t.settings.role}:</span>{" "}
-            {agent?.role}
-          </div>
-        </CardContent>
-      </Card>
+    <div className="h-full overflow-y-auto">
+      <div className="p-4 space-y-4 pb-20 max-w-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <User className="h-4 w-4" />
+              {t.settings.profile}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div>
+              <span className="text-muted-foreground">{t.settings.name}:</span>{" "}
+              {agent?.name}
+            </div>
+            <div>
+              <span className="text-muted-foreground">{t.settings.email}:</span>{" "}
+              {agent?.email}
+            </div>
+            <div>
+              <span className="text-muted-foreground">{t.settings.role}:</span>{" "}
+              {agent?.role}
+            </div>
+          </CardContent>
+        </Card>
 
-      <PasswordSettingsCard />
+        <PasswordSettingsCard />
 
-      <ZoomSettingsCard />
+        <ZoomSettingsCard />
 
-      <PushSettingsCard />
+        <PushSettingsCard />
 
-      <Button
-        variant="destructive"
-        className="w-full"
-        onClick={handleLogout}
-      >
-        <LogOut className="mr-2 h-4 w-4" />
-        {t.settings.signOut}
-      </Button>
+        <Button
+          variant="destructive"
+          className="w-full"
+          onClick={handleLogout}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          {t.settings.signOut}
+        </Button>
+      </div>
     </div>
   );
 }

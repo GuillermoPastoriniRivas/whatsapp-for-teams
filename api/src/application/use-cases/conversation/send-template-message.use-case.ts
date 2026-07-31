@@ -7,6 +7,9 @@ import { PhoneNumberRepository } from '../../../domain/repositories/phone-number
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
+import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
+import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
+import { serializeMessage } from '../developer/developer-payloads.util.js';
 import { Result, ok, err } from '../../common/result.js';
 import { DomainError, ConversationNotFoundError, AgentNotAssignedError } from '../../../domain/errors/domain-errors.js';
 import { listTemplatePlaceholders, buildTemplatePayload, TemplatePlaceholder } from '../campaign/helpers/template-variable.resolver.js';
@@ -44,6 +47,7 @@ export class SendTemplateMessageUseCase {
     private readonly agentRepo: AgentRepository,
     private readonly messagingApi: MessagingApiPort,
     private readonly gateway: RealtimeGatewayPort,
+    private readonly devEvents: DeveloperEventsPort,
   ) {}
 
   async execute(input: SendTemplateMessageInput): Promise<Result<Message, DomainError>> {
@@ -116,6 +120,12 @@ export class SendTemplateMessageUseCase {
     await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date() } as any);
 
     this.gateway.emitToConversation(conversation.id, 'message.new', message);
+
+    this.devEvents.emit(conversation.tenantId, DeveloperEventType.MESSAGE_SENT, {
+      message: serializeMessage(message),
+      conversationId: conversation.id,
+      via: 'agent',
+    });
 
     return ok(message);
   }

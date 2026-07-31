@@ -46,7 +46,7 @@ async function bootstrap() {
     origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Signature'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Signature', 'X-Api-Key'],
     maxAge: 86400,
   });
 
@@ -55,6 +55,7 @@ async function bootstrap() {
     .setDescription('Multi-tenant WhatsApp routing and team inbox API')
     .setVersion('1.0')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
+    .addApiKey({ type: 'apiKey', name: 'X-Api-Key', in: 'header' }, 'ApiKey')
     .addTag('Auth', 'Authentication & session management')
     .addTag('Agents', 'Agent CRUD & phone access management')
     .addTag('Phone Numbers', 'WhatsApp phone number management')
@@ -62,6 +63,8 @@ async function bootstrap() {
     .addTag('Contacts', 'Contact details & updates')
     .addTag('Tenants', 'Tenant management')
     .addTag('Webhooks', 'Inbound webhook receivers (Meta, Twilio)')
+    .addTag('Public API (v1)', 'REST API for developers (API key auth)')
+    .addTag('Developer Platform', 'API keys & webhook endpoints management')
     .addTag('Payment Webhooks', 'Payment provider webhook receivers (Lemon Squeezy)')
     .addTag('Billing', 'Subscription management and billing')
     .build();
