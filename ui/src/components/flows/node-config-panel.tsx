@@ -20,6 +20,7 @@ export interface BuilderRefs {
   phones: PhoneNumber[];
   templates: MessageTemplate[];
   connections: Array<{ id: string; name: string; headerName: string }>;
+  campaigns: Array<{ id: string; name: string }>;
 }
 
 interface PanelProps {
@@ -109,6 +110,16 @@ function renderForm(
       return <TriggerMessageForm data={data} set={set} refs={refs} onChangeTriggerType={onChangeTriggerType} />;
     case "trigger.webhook":
       return <TriggerWebhookForm data={data} set={set} refs={refs} onChangeTriggerType={onChangeTriggerType} />;
+    case "trigger.campaign_reply":
+      return <TriggerCampaignReplyForm data={data} set={set} refs={refs} onChangeTriggerType={onChangeTriggerType} />;
+    case "action.send_media":
+      return <SendMediaForm data={data} set={set} />;
+    case "action.set_variable":
+      return <SetVariableForm data={data} set={set} />;
+    case "action.emit_event":
+      return <EmitEventForm data={data} set={set} />;
+    case "logic.wait_business_hours":
+      return <ScheduleEditor rule={data} onChange={(patch) => set(patch)} />;
     case "action.send_text":
       return (
         <>
@@ -311,6 +322,7 @@ function TriggerTypeSwitch({ current, onChangeTriggerType }: { current: string; 
       value={current}
       options={[
         { value: "trigger.inbound_message", label: "Mensaje recibido en WhatsApp" },
+        { value: "trigger.campaign_reply", label: "Respuesta a una campaña" },
         { value: "trigger.webhook", label: "Webhook externo (CRM, tienda…)" },
       ]}
       onChange={(value) => value !== current && onChangeTriggerType(value)}
@@ -397,6 +409,178 @@ function TriggerWebhookForm({ data, set, refs, onChangeTriggerType }: { data: Re
         La URL del webhook aparece arriba después de publicar. El payload queda disponible como {"{{webhook.*}}"}.
         Como suele llegar fuera de la ventana de 24 h, empezá con una plantilla.
       </p>
+    </>
+  );
+}
+
+function TriggerCampaignReplyForm({ data, set, refs, onChangeTriggerType }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs; onChangeTriggerType: (t: string) => void }) {
+  const campaignIds: string[] = Array.isArray(data.campaignIds) ? data.campaignIds : [];
+  const phoneIds: string[] = Array.isArray(data.phoneNumberIds) ? data.phoneNumberIds : [];
+  return (
+    <>
+      <TriggerTypeSwitch current="trigger.campaign_reply" onChangeTriggerType={onChangeTriggerType} />
+      <div>
+        <FieldLabel>Números donde aplica (ninguno = todos)</FieldLabel>
+        <div className="space-y-1">
+          {refs.phones.map((phone) => (
+            <ToggleField
+              key={phone.id}
+              label={phone.label || phone.displayPhone || phone.phoneNumberId}
+              checked={phoneIds.includes(phone.id)}
+              onChange={(checked) =>
+                set({ phoneNumberIds: checked ? [...phoneIds, phone.id] : phoneIds.filter((id) => id !== phone.id) })
+              }
+            />
+          ))}
+        </div>
+      </div>
+      <div>
+        <FieldLabel>Campañas (ninguna = todas)</FieldLabel>
+        <div className="space-y-1 max-h-48 overflow-y-auto">
+          {refs.campaigns.length === 0 && (
+            <p className="text-[11px] text-muted-foreground">Todavía no tenés campañas.</p>
+          )}
+          {refs.campaigns.map((campaign) => (
+            <ToggleField
+              key={campaign.id}
+              label={campaign.name}
+              checked={campaignIds.includes(campaign.id)}
+              onChange={(checked) =>
+                set({ campaignIds: checked ? [...campaignIds, campaign.id] : campaignIds.filter((id) => id !== campaign.id) })
+              }
+            />
+          ))}
+        </div>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Dispara con la <strong>primera</strong> respuesta del contacto a una campaña. La ventana de 24 h
+        queda abierta por esa respuesta, así que podés seguir con mensajes normales.
+      </p>
+    </>
+  );
+}
+
+function SendMediaForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  return (
+    <>
+      <SelectField
+        label="Tipo de archivo"
+        value={data.mediaType ?? "image"}
+        options={[
+          { value: "image", label: "Imagen (JPG/PNG)" },
+          { value: "document", label: "Documento (PDF u otro)" },
+        ]}
+        onChange={(value) => set({ mediaType: value })}
+      />
+      <div>
+        <FieldLabel>URL del archivo (https)</FieldLabel>
+        <Input value={data.mediaUrl ?? ""} placeholder="https://…/catalogo.pdf" onChange={(e) => set({ mediaUrl: e.target.value })} />
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          Tiene que ser accesible públicamente: WhatsApp la descarga desde sus servidores.
+        </p>
+      </div>
+      {data.mediaType === "document" && (
+        <div>
+          <FieldLabel>Nombre con el que se descarga</FieldLabel>
+          <Input value={data.filename ?? ""} placeholder="catalogo-2026.pdf" onChange={(e) => set({ filename: e.target.value })} />
+        </div>
+      )}
+      <div>
+        <FieldLabel>Texto que acompaña (opcional)</FieldLabel>
+        <Textarea rows={2} value={data.caption ?? ""} onChange={(e) => set({ caption: e.target.value })} />
+      </div>
+      <WindowPolicyField data={data} set={set} />
+    </>
+  );
+}
+
+function SetVariableForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  const mode = String(data.mode ?? "text");
+  return (
+    <>
+      <div>
+        <FieldLabel>Nombre de la variable</FieldLabel>
+        <Input
+          value={data.saveAs ?? ""}
+          placeholder="ej: codigo"
+          onChange={(e) => set({ saveAs: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_") })}
+        />
+        {data.saveAs ? <p className="text-[11px] text-muted-foreground mt-0.5">La usás como {`{{vars.${data.saveAs}}}`}</p> : null}
+      </div>
+      <SelectField
+        label="Qué guardar"
+        value={mode}
+        options={[
+          { value: "text", label: "Texto (podés combinar variables)" },
+          { value: "number", label: "Número" },
+          { value: "increment", label: "Contador (sumar)" },
+          { value: "random_code", label: "Código de verificación" },
+        ]}
+        onChange={(value) => set({ mode: value })}
+      />
+      {mode === "random_code" ? (
+        <div>
+          <FieldLabel>Cantidad de dígitos</FieldLabel>
+          <Input
+            type="number"
+            min={4}
+            max={10}
+            value={data.length ?? 6}
+            onChange={(e) => set({ length: Number(e.target.value) })}
+          />
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Se genera con aleatoriedad criptográfica. Para enviarlo por WhatsApp como código de acceso,
+            Meta exige una plantilla de categoría <strong>autenticación</strong>.
+          </p>
+        </div>
+      ) : mode === "increment" ? (
+        <div>
+          <FieldLabel>Cuánto sumar</FieldLabel>
+          <Input value={data.value ?? ""} placeholder="1" onChange={(e) => set({ value: e.target.value })} />
+        </div>
+      ) : (
+        <div>
+          <FieldLabel>Valor</FieldLabel>
+          <Textarea
+            rows={2}
+            value={data.value ?? ""}
+            placeholder={mode === "number" ? "{{vars.monto}}" : "Hola {{contact.name}}"}
+            onChange={(e) => set({ value: e.target.value })}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+function EmitEventForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  const fields: Array<{ key: string; value: string }> = Array.isArray(data.fields) ? data.fields : [];
+  return (
+    <>
+      <div>
+        <FieldLabel>Nombre del evento</FieldLabel>
+        <Input value={data.eventName ?? ""} placeholder="lead_calificado" onChange={(e) => set({ eventName: e.target.value })} />
+      </div>
+      <div>
+        <FieldLabel>Datos a enviar</FieldLabel>
+        <div className="space-y-1.5">
+          {fields.map((field, index) => (
+            <div key={index} className="flex gap-1.5">
+              <Input className="w-28 text-xs" value={field.key} placeholder="clave" onChange={(e) => set({ fields: fields.map((f, i) => (i === index ? { ...f, key: e.target.value } : f)) })} />
+              <Input className="flex-1 text-xs" value={field.value} placeholder="{{vars.x}}" onChange={(e) => set({ fields: fields.map((f, i) => (i === index ? { ...f, value: e.target.value } : f)) })} />
+              <Button variant="ghost" size="sm" onClick={() => set({ fields: fields.filter((_, i) => i !== index) })}>
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+          ))}
+          <Button variant="outline" size="sm" className="w-full" onClick={() => set({ fields: [...fields, { key: "", value: "" }] })}>
+            <Plus className="size-3.5 mr-1" /> Agregar dato
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Llega como evento <code>flow.custom</code> a los webhooks configurados en Desarrolladores.
+        </p>
+      </div>
     </>
   );
 }
@@ -623,10 +807,17 @@ function AssignForm({ data, set, refs }: { data: Record<string, any>; set: (p: R
         value={data.mode ?? "auto"}
         options={[
           { value: "auto", label: "Automático (menos ocupado)" },
+          { value: "round_robin", label: "Por turnos (round-robin)" },
           { value: "specific", label: "Agente específico" },
         ]}
         onChange={(value) => set({ mode: value })}
       />
+      {data.mode === "round_robin" && (
+        <p className="text-[11px] text-muted-foreground -mt-2">
+          Reparte parejo entre los agentes disponibles con acceso al número, en orden rotativo.
+          A diferencia de "menos ocupado", no depende de cuántas conversaciones tenga abiertas cada uno.
+        </p>
+      )}
       {data.mode === "specific" && (
         <SelectField
           label="Agente"

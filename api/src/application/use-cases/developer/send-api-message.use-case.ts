@@ -25,6 +25,7 @@ import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js
 import { TemplateStatus } from '../../../domain/enums/template-status.enum.js';
 import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
 import { serializeMessage, serializeConversation, serializeContact } from './developer-payloads.util.js';
+import { CancelActiveFlowExecutionUseCase } from '../flow/cancel-active-flow-execution.use-case.js';
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const API_SENDER_NAME = 'API';
@@ -71,6 +72,7 @@ export class SendApiMessageUseCase {
     private readonly messagingApi: MessagingApiPort,
     private readonly gateway: RealtimeGatewayPort,
     private readonly devEvents: DeveloperEventsPort,
+    private readonly cancelActiveFlow: CancelActiveFlowExecutionUseCase,
   ) {}
 
   async execute(input: SendApiMessageInput): Promise<Result<SendApiMessageOutput, DomainError>> {
@@ -145,6 +147,13 @@ export class SendApiMessageUseCase {
     }
 
     await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date() } as any);
+
+    // Un sistema externo que escribe toma la conversación, igual que un agente
+    // humano: si un flujo estaba esperando respuesta, se detiene. Sin esto los
+    // dos le hablan al cliente y el flujo se come como respuesta a su menú lo
+    // que el cliente contestó al mensaje de la API. Va después del envío: un
+    // intento fallido no llegó al cliente y no debe matar la automatización.
+    await this.cancelActiveFlow.execute(conversation.id, 'api_takeover');
 
     if (created) {
       const createdEvent = await this.eventRepo.create({

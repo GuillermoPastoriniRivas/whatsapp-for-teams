@@ -144,6 +144,7 @@ export class HandleInboundMessageUseCase {
         contact,
         message,
         created,
+        promotedFromCampaign,
       });
     } catch (error: any) {
       // El router nunca puede tumbar el pipeline entrante.

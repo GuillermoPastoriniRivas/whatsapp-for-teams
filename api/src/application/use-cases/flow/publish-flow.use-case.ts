@@ -82,7 +82,7 @@ export class PublishFlowUseCase {
 
   private buildTriggerIndex(type: string, data: Record<string, any>): FlowTriggerIndex {
     return {
-      type: type === 'trigger.webhook' ? 'webhook' : 'inbound_message',
+      type: type === 'trigger.webhook' ? 'webhook' : type === 'trigger.campaign_reply' ? 'campaign_reply' : 'inbound_message',
       phoneNumberIds: Array.isArray(data.phoneNumberIds)
         ? data.phoneNumberIds.map(String)
         : data.phoneNumberId
@@ -95,6 +95,7 @@ export class PublishFlowUseCase {
       ignoreIfAssignedToHuman: data.ignoreIfAssignedToHuman !== false,
       contactPhoneField: typeof data.contactPhoneField === 'string' && data.contactPhoneField ? data.contactPhoneField : null,
       contactNameField: typeof data.contactNameField === 'string' && data.contactNameField ? data.contactNameField : null,
+      campaignIds: Array.isArray(data.campaignIds) ? data.campaignIds.map(String) : [],
     };
   }
 

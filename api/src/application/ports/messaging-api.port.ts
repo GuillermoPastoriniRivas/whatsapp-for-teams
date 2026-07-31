@@ -43,6 +43,8 @@ export interface SendMessageParams {
   type: string;
   body?: string;
   mediaUrl?: string;
+  /** Solo documentos: nombre con el que el cliente ve/descarga el archivo */
+  filename?: string;
   template?: TemplateSendPayload;
   interactive?: InteractiveSendPayload;
 }

@@ -7,7 +7,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   MessageSquareText, SquareMousePointer, List, LayoutTemplate, MessageCircleQuestion,
   Sparkles, Split, Bot, Users, UserPlus, Tag, ContactRound, StickyNote,
-  GitBranch, Clock, Globe, Zap, Webhook,
+  GitBranch, Clock, Globe, Zap, Webhook, Megaphone, Paperclip, Variable, CalendarClock, Radio,
 } from "lucide-react";
 
 export type NodeCategory = "trigger" | "message" | "ai" | "team" | "logic" | "integration";
@@ -58,12 +58,28 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     defaultData: { phoneNumberId: "", contactPhoneField: "phone", contactNameField: "" },
   },
   {
+    type: "trigger.campaign_reply",
+    label: "Respuesta de campaña",
+    description: "Se activa cuando alguien responde una campaña",
+    category: "trigger",
+    icon: Megaphone,
+    defaultData: { phoneNumberIds: [], campaignIds: [] },
+  },
+  {
     type: "action.send_text",
     label: "Enviar mensaje",
     description: "Texto simple con variables",
     category: "message",
     icon: MessageSquareText,
     defaultData: { body: "", windowPolicy: "error" },
+  },
+  {
+    type: "action.send_media",
+    label: "Enviar archivo",
+    description: "Imagen o PDF (catálogo, carta, comprobante)",
+    category: "message",
+    icon: Paperclip,
+    defaultData: { mediaType: "image", mediaUrl: "", caption: "", filename: "", windowPolicy: "error" },
   },
   {
     type: "action.send_buttons",
@@ -162,6 +178,32 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     defaultData: { body: "" },
   },
   {
+    type: "action.set_variable",
+    label: "Guardar valor",
+    description: "Texto, número, contador o código de verificación",
+    category: "logic",
+    icon: Variable,
+    defaultData: { saveAs: "", mode: "text", value: "", length: 6 },
+  },
+  {
+    type: "logic.wait_business_hours",
+    label: "Esperar a horario hábil",
+    description: "Sigue recién cuando abrís (evita mensajes de madrugada)",
+    category: "logic",
+    icon: CalendarClock,
+    defaultData: {
+      schedule: { days: [1, 2, 3, 4, 5], from: "09:00", to: "18:00", timezone: "America/Montevideo" },
+    },
+  },
+  {
+    type: "action.emit_event",
+    label: "Avisar a mis sistemas",
+    description: "Dispara un evento a tus webhooks de desarrollador",
+    category: "integration",
+    icon: Radio,
+    defaultData: { eventName: "", fields: [] },
+  },
+  {
     type: "logic.condition",
     label: "Condición",
     description: "Ramifica por variables, contacto u horario",
@@ -199,8 +241,10 @@ export function nodeHandles(node: FlowNode): Array<{ id: string; label: string; 
   switch (node.type) {
     case "trigger.inbound_message":
     case "trigger.webhook":
+    case "trigger.campaign_reply":
       return [{ id: "out", label: "", kind: "normal" }];
     case "action.send_text":
+    case "action.send_media":
       return [
         { id: "out", label: "", kind: "normal" },
         { id: "error", label: "Error", kind: "error" },
@@ -259,6 +303,8 @@ export function nodeHandles(node: FlowNode): Array<{ id: string; label: string; 
     case "action.label":
     case "action.update_contact":
     case "action.internal_note":
+    case "action.set_variable":
+    case "action.emit_event":
       return [{ id: "out", label: "", kind: "normal" }];
     case "logic.condition":
       return [
@@ -266,6 +312,7 @@ export function nodeHandles(node: FlowNode): Array<{ id: string; label: string; 
         { id: "no", label: "No", kind: "alt" },
       ];
     case "logic.delay":
+    case "logic.wait_business_hours":
       return [{ id: "out", label: "", kind: "normal" }];
     case "action.http":
       return [
@@ -289,6 +336,22 @@ export function nodeSummary(node: FlowNode): string {
           : "Cualquier mensaje";
     case "trigger.webhook":
       return "Sistemas externos → WhatsApp";
+    case "trigger.campaign_reply":
+      return Array.isArray(data.campaignIds) && data.campaignIds.length > 0
+        ? `${data.campaignIds.length} campaña(s)`
+        : "Cualquier campaña";
+    case "action.send_media":
+      return `${data.mediaType === "document" ? "PDF/archivo" : "Imagen"}${data.caption ? ` · ${truncate(String(data.caption), 30)}` : ""}`;
+    case "action.set_variable": {
+      const modes: Record<string, string> = {
+        text: "texto", number: "número", increment: "contador", random_code: "código aleatorio",
+      };
+      return `${data.saveAs ? `{{vars.${data.saveAs}}}` : "sin variable"} · ${modes[String(data.mode ?? "text")] ?? ""}`;
+    }
+    case "logic.wait_business_hours":
+      return `${data.schedule?.from ?? "09:00"}–${data.schedule?.to ?? "18:00"}`;
+    case "action.emit_event":
+      return data.eventName ? String(data.eventName) : "Sin nombre de evento";
     case "action.send_text":
     case "action.ask":
     case "action.internal_note":

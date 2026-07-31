@@ -89,7 +89,7 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
   const [showVersions, setShowVersions] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [stats, setStats] = useState<FlowNodeStatsSummary[]>([]);
-  const [refs, setRefs] = useState<BuilderRefs>({ labels: [], aiAgents: [], agents: [], phones: [], templates: [], connections: [] });
+  const [refs, setRefs] = useState<BuilderRefs>({ labels: [], aiAgents: [], agents: [], phones: [], templates: [], connections: [], campaigns: [] });
 
   const loadedRef = useRef(false);
   const lastSavedRef = useRef<string>("");
@@ -127,12 +127,13 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
   useEffect(() => {
     void labelStore.fetch();
     (async () => {
-      const [aiAgents, agents, phones, templates, connections] = await Promise.all([
+      const [aiAgents, agents, phones, templates, connections, campaigns] = await Promise.all([
         api.get<AiAgentWithConfig[]>("/ai-agents").catch(() => []),
         api.get<Agent[]>("/agents").catch(() => []),
         api.get<PhoneNumber[]>("/phone-numbers").catch(() => []),
         api.get<PaginatedResponse<MessageTemplate>>("/templates?page=1&limit=100").catch(() => null),
         api.get<Array<{ id: string; name: string; headerName: string }>>("/flow-connections").catch(() => []),
+        api.get<PaginatedResponse<{ id: string; name: string }>>("/campaigns?page=1&limit=100").catch(() => null),
       ]);
       setRefs((prev) => ({
         ...prev,
@@ -141,6 +142,7 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
         phones,
         templates: templates?.data ?? [],
         connections,
+        campaigns: campaigns?.data ?? [],
       }));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

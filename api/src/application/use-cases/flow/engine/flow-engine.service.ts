@@ -7,7 +7,7 @@
 // - Efectos at-most-once: cursor persistido tras cada nodo, jobs sin retry.
 
 import { Logger } from '@nestjs/common';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 import type { FlowRepository } from '../../../../domain/repositories/flow.repository.js';
 import type { FlowVersionRepository } from '../../../../domain/repositories/flow-version.repository.js';
 import type { FlowExecutionRepository } from '../../../../domain/repositories/flow-execution.repository.js';
@@ -17,6 +17,7 @@ import type { ConversationRepository } from '../../../../domain/repositories/con
 import type { ContactRepository } from '../../../../domain/repositories/contact.repository.js';
 import type { PhoneNumberRepository } from '../../../../domain/repositories/phone-number.repository.js';
 import type { AgentRepository } from '../../../../domain/repositories/agent.repository.js';
+import type { AgentPhoneAccessRepository } from '../../../../domain/repositories/agent-phone-access.repository.js';
 import type { AiAgentConfigRepository } from '../../../../domain/repositories/ai-agent-config.repository.js';
 import type { AiUsageRepository } from '../../../../domain/repositories/ai-usage.repository.js';
 import type { MessageRepository } from '../../../../domain/repositories/message.repository.js';
@@ -31,6 +32,8 @@ import type { MessagingApiPort, InteractiveSendPayload } from '../../../ports/me
 import type { AiCompletionPort } from '../../../ports/ai-completion.port.js';
 import type { RealtimeGatewayPort } from '../../../ports/realtime-gateway.port.js';
 import type { JobQueuePort } from '../../../ports/job-queue.port.js';
+import type { DeveloperEventsPort } from '../../../ports/developer-events.port.js';
+import { DeveloperEventType } from '../../../../domain/enums/developer-event-type.enum.js';
 import type { AutoAssignConversationUseCase } from '../../conversation/auto-assign-conversation.use-case.js';
 import { Flow } from '../../../../domain/entities/flow.entity.js';
 import type { FlowNode } from '../../../../domain/entities/flow.entity.js';
@@ -43,6 +46,7 @@ import { FlowExecutionStatus } from '../../../../domain/enums/flow-execution-sta
 import { ConversationStatus } from '../../../../domain/enums/conversation-status.enum.js';
 import { ConversationEventType } from '../../../../domain/enums/conversation-event-type.enum.js';
 import { AgentType } from '../../../../domain/enums/agent-type.enum.js';
+import { AgentStatus } from '../../../../domain/enums/agent-status.enum.js';
 import { MessageDirection } from '../../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../../domain/enums/message-wa-status.enum.js';
@@ -123,6 +127,8 @@ export class FlowEngineService {
     private readonly gateway: RealtimeGatewayPort,
     private readonly jobQueue: JobQueuePort,
     private readonly autoAssign: AutoAssignConversationUseCase,
+    private readonly devEvents: DeveloperEventsPort,
+    private readonly accessRepo: AgentPhoneAccessRepository,
   ) {}
 
   // ── Entradas desde los jobs ────────────────────────────────────
@@ -474,6 +480,14 @@ export class FlowEngineService {
     switch (node.type) {
       case 'action.send_text':
         return this.execSendText(ctx, data);
+      case 'action.send_media':
+        return this.execSendMedia(ctx, data);
+      case 'action.set_variable':
+        return this.execSetVariable(ctx, data);
+      case 'action.emit_event':
+        return this.execEmitEvent(ctx, data);
+      case 'logic.wait_business_hours':
+        return this.execWaitBusinessHours(ctx, data);
       case 'action.send_buttons':
         return this.execSendOptions(ctx, node, data, 'buttons');
       case 'action.send_list':
@@ -516,6 +530,185 @@ export class FlowEngineService {
     const { text, missing } = renderTemplate(String(data.body ?? ''), this.varCtx(ctx));
     await this.sendSessionMessage(ctx, text.substring(0, 4096));
     return { kind: 'advance', handle: 'out', note: missing.length ? `variables sin valor: ${missing.join(', ')}` : undefined };
+  }
+
+  private async execSendMedia(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const windowIssue = this.checkWindow(ctx, data.windowPolicy);
+    if (windowIssue) {
+      return windowIssue.policy === 'skip'
+        ? { kind: 'advance', handle: 'out', skipped: true, note: 'Ventana de 24 h cerrada — omitido' }
+        : { kind: 'error', message: 'Ventana de 24 h cerrada' };
+    }
+
+    const varCtx = this.varCtx(ctx);
+    const url = renderTemplate(String(data.mediaUrl ?? ''), varCtx).text.trim();
+    if (!/^https:\/\//i.test(url)) return { kind: 'error', message: 'La URL del archivo debe ser https' };
+
+    const caption = data.caption ? renderTemplate(String(data.caption), varCtx).text.substring(0, 1024) : undefined;
+    const messageType = data.mediaType === 'document' ? MessageType.DOCUMENT : MessageType.IMAGE;
+
+    const { waMessageId } = await this.messagingApi.sendMessage({
+      provider: ctx.phone.provider,
+      providerConfig: ctx.phone.providerConfig,
+      phoneNumberId: ctx.phone.phoneNumberId,
+      to: ctx.contact.waId,
+      type: messageType,
+      body: caption,
+      mediaUrl: url,
+      filename: data.filename ? String(data.filename) : undefined,
+    });
+
+    const message = await this.messageRepo.upsertByWaMessageId({
+      conversationId: ctx.conversation.id,
+      direction: MessageDirection.OUTBOUND,
+      messageType,
+      body: caption ?? null,
+      mediaUrl: url,
+      mimeType: null,
+      waMessageId,
+      waStatus: MessageWaStatus.SENT,
+      timestamp: new Date(),
+      senderAgentId: null,
+      senderAgentName: ctx.flow.name,
+    });
+    this.gateway.emitToConversation(ctx.conversation.id, 'message.new', message);
+    this.gateway.emitToTenant(ctx.tenantId, 'conversation.updated', { conversationId: ctx.conversation.id });
+    await this.conversationRepo.update(ctx.conversation.id, { lastMessageAt: new Date() } as any);
+
+    return { kind: 'advance', handle: 'out' };
+  }
+
+  /**
+   * Guardar valor: cubre los casos "custom" (contadores, códigos, textos
+   * compuestos) sin necesidad de ejecutar código del tenant.
+   */
+  private execSetVariable(ctx: RunCtx, data: Record<string, any>): NodeResult {
+    const saveAs = String(data.saveAs ?? '');
+    if (!saveAs) return { kind: 'error', message: 'Falta el nombre de la variable' };
+
+    const varCtx = this.varCtx(ctx);
+    const mode = String(data.mode ?? 'text');
+    const rendered = renderTemplate(String(data.value ?? ''), varCtx).text;
+
+    switch (mode) {
+      case 'number': {
+        const parsed = parseLatamNumber(rendered);
+        if (parsed === null) return { kind: 'error', message: `"${rendered}" no es un número válido` };
+        this.setVar(ctx, saveAs, parsed);
+        return { kind: 'advance', handle: 'out', note: String(parsed) };
+      }
+      case 'increment': {
+        const step = parseLatamNumber(rendered || '1') ?? 1;
+        const current = resolvePath(varCtx as any, `vars.${saveAs}`);
+        const base = typeof current === 'number' ? current : (parseLatamNumber(String(current ?? '0')) ?? 0);
+        const next = base + step;
+        this.setVar(ctx, saveAs, next);
+        return { kind: 'advance', handle: 'out', note: String(next) };
+      }
+      case 'random_code': {
+        // Código numérico para verificación (OTP). randomInt es criptográfico:
+        // Math.random sería predecible y esto termina autenticando gente.
+        const length = Math.min(Math.max(parseInt(String(data.length ?? 6), 10) || 6, 4), 10);
+        let code = '';
+        for (let i = 0; i < length; i++) code += String(randomInt(0, 10));
+        this.setVar(ctx, saveAs, code);
+        // El código no va al log de pasos: queda en las variables de la ejecución.
+        return { kind: 'advance', handle: 'out', note: `código de ${length} dígitos` };
+      }
+      case 'text':
+      default:
+        this.setVar(ctx, saveAs, rendered);
+        return { kind: 'advance', handle: 'out', note: rendered.substring(0, 60) };
+    }
+  }
+
+  /** Avisar a mis sistemas: publica un evento propio en los webhooks del tenant. */
+  private execEmitEvent(ctx: RunCtx, data: Record<string, any>): NodeResult {
+    const varCtx = this.varCtx(ctx);
+    const name = renderTemplate(String(data.eventName ?? ''), varCtx).text.trim();
+    if (!name) return { kind: 'error', message: 'Falta el nombre del evento' };
+
+    const payload: Record<string, unknown> = {};
+    for (const field of Array.isArray(data.fields) ? data.fields : []) {
+      const key = String(field?.key ?? '').trim();
+      if (key) payload[key] = renderTemplate(String(field?.value ?? ''), varCtx).text;
+    }
+
+    this.devEvents.emit(ctx.tenantId, DeveloperEventType.FLOW_CUSTOM, {
+      name,
+      flowId: ctx.flow.id,
+      executionId: ctx.execId,
+      conversationId: ctx.conversation.id,
+      contactId: ctx.contact.id,
+      data: payload,
+    });
+    return { kind: 'advance', handle: 'out', note: name };
+  }
+
+  /**
+   * Espera hasta la próxima franja hábil. Evita que un delay fijo termine
+   * mandando mensajes de madrugada.
+   */
+  private execWaitBusinessHours(ctx: RunCtx, data: Record<string, any>): NodeResult {
+    const schedule = data.schedule ?? { days: [1, 2, 3, 4, 5], from: '09:00', to: '18:00', timezone: 'America/Montevideo' };
+    const nextOpen = this.nextBusinessOpening(schedule);
+    if (!nextOpen) return { kind: 'advance', handle: 'out', skipped: true, note: 'ya está en horario' };
+
+    return {
+      kind: 'wait',
+      sentAt: new Date(),
+      wait: {
+        nodeId: '',
+        kind: 'delay',
+        timeoutAt: nextOpen,
+        waitingSince: new Date(),
+        saveAs: null,
+        optionMap: null,
+        textMap: null,
+        attempts: 0,
+        validation: null,
+      },
+    };
+  }
+
+  /** null = ya estamos dentro de la franja. Busca hasta 8 días adelante. */
+  private nextBusinessOpening(schedule: Record<string, any>): Date | null {
+    const timezone = typeof schedule.timezone === 'string' && schedule.timezone ? schedule.timezone : 'America/Montevideo';
+    const days: number[] = Array.isArray(schedule.days) && schedule.days.length > 0 ? schedule.days : [1, 2, 3, 4, 5];
+    const from = String(schedule.from ?? '09:00');
+    const to = String(schedule.to ?? '18:00');
+
+    const partsAt = (date: Date) => {
+      const fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'short',
+      });
+      const parts = fmt.formatToParts(date);
+      const weekday = parts.find((p) => p.type === 'weekday')?.value ?? '';
+      const hour = parts.find((p) => p.type === 'hour')?.value ?? '00';
+      const minute = parts.find((p) => p.type === 'minute')?.value ?? '00';
+      return {
+        day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekday),
+        time: `${hour}:${minute}`,
+      };
+    };
+
+    const now = new Date();
+    const current = partsAt(now);
+    const inWindow = from <= to
+      ? current.time >= from && current.time < to
+      : current.time >= from || current.time < to;
+    if (days.includes(current.day) && inWindow) return null;
+
+    // Se avanza de a 15 minutos: evita hacer aritmética de husos a mano
+    // (DST incluido) y con 8 días de tope siempre encuentra la apertura.
+    const STEP_MS = 15 * 60 * 1000;
+    for (let elapsed = STEP_MS; elapsed <= 8 * 86_400_000; elapsed += STEP_MS) {
+      const candidate = new Date(now.getTime() + elapsed);
+      const at = partsAt(candidate);
+      const open = from <= to ? at.time >= from && at.time < to : at.time >= from || at.time < to;
+      if (days.includes(at.day) && open) return candidate;
+    }
+    return new Date(now.getTime() + 86_400_000);
   }
 
   private async execSendOptions(ctx: RunCtx, node: FlowNode, data: Record<string, any>, kind: 'buttons' | 'list'): Promise<NodeResult> {
@@ -860,10 +1053,59 @@ export class FlowEngineService {
       return { kind: 'advance', handle: 'out', note: agent.name };
     }
 
+    if (data.mode === 'round_robin') {
+      const assigned = await this.assignRoundRobin(ctx);
+      ctx.conversation = (await this.conversationRepo.findById(ctx.conversation.id)) ?? ctx.conversation;
+      if (!assigned) return { kind: 'advance', handle: 'unassigned' };
+      return { kind: 'advance', handle: 'out', note: assigned };
+    }
+
     const agent = await this.autoAssign.execute(ctx.conversation.id, { excludeAi: true });
     ctx.conversation = (await this.conversationRepo.findById(ctx.conversation.id)) ?? ctx.conversation;
     if (!agent) return { kind: 'advance', handle: 'unassigned' };
     return { kind: 'advance', handle: 'out', note: agent.name };
+  }
+
+  /**
+   * Round-robin real (turnos rotativos) sobre los agentes humanos disponibles
+   * con acceso a la línea. A diferencia de "menos ocupado", reparte parejo aunque
+   * las conversaciones se cierren a distinto ritmo. El puntero se guarda por
+   * flujo en `Flow.stats.started`, que ya se incrementa una vez por ejecución:
+   * así el turno avanza sin agregar estado nuevo.
+   */
+  private async assignRoundRobin(ctx: RunCtx): Promise<string | null> {
+    const access = await this.accessRepo.findByPhoneNumberId(ctx.conversation.phoneNumberId);
+    const agents = (await Promise.all(access.map((a) => this.agentRepo.findById(a.agentId))))
+      .filter((a): a is NonNullable<typeof a> => !!a && a.type === AgentType.HUMAN && a.status === AgentStatus.AVAILABLE)
+      .sort((a, b) => a.id.localeCompare(b.id)); // orden estable entre ejecuciones
+    if (agents.length === 0) return null;
+
+    const flow = await this.flowRepo.findById(ctx.flow.id);
+    const turn = (flow?.stats.started ?? 1) - 1; // la ejecución actual ya sumó
+    const agent = agents[((turn % agents.length) + agents.length) % agents.length];
+
+    if (ctx.conversation.agentId && ctx.conversation.agentId !== agent.id) {
+      await this.agentRepo.incrementActiveCount(ctx.conversation.agentId, -1);
+    }
+    if (ctx.conversation.agentId !== agent.id) {
+      await this.agentRepo.incrementActiveCount(agent.id, 1);
+    }
+    await this.conversationRepo.update(ctx.conversation.id, {
+      agentId: agent.id,
+      status: ConversationStatus.ACTIVE,
+    } as any);
+
+    const event = await this.eventRepo.create({
+      conversationId: ctx.conversation.id,
+      tenantId: ctx.tenantId,
+      type: ConversationEventType.ASSIGNED,
+      performedBy: null,
+      data: { agentName: agent.name, via: 'flow', flowName: ctx.flow.name, strategy: 'round_robin' },
+    });
+    this.gateway.emitToConversation(ctx.conversation.id, 'conversation.event', event);
+    this.gateway.emitToAgent(agent.id, 'conversation.new', { conversationId: ctx.conversation.id });
+    this.gateway.emitToTenant(ctx.tenantId, 'conversation.updated', { conversationId: ctx.conversation.id });
+    return agent.name;
   }
 
   private async execLabel(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
@@ -1331,6 +1573,23 @@ export class FlowEngineService {
       conversationId: exec.conversationId,
       status,
     });
+
+    // Webhooks m2m: un integrador puede reaccionar a "el flujo terminó" o
+    // "el flujo falló" sin sondear la API.
+    this.devEvents.emit(
+      exec.tenantId,
+      failed ? DeveloperEventType.FLOW_FAILED : DeveloperEventType.FLOW_COMPLETED,
+      {
+        flowId: exec.flowId,
+        flowName,
+        executionId: exec.id,
+        conversationId: exec.conversationId,
+        contactId: exec.contactId,
+        endReason,
+        ...(exec.error ? { error: exec.error } : {}),
+        variables: (exec.variables?.vars as Record<string, unknown>) ?? {},
+      },
+    );
     this.gateway.emitToTenant(exec.tenantId, 'conversation.updated', { conversationId: exec.conversationId });
 
     // Fallback: un flujo fallado no puede dejar al cliente en el limbo.

@@ -10,6 +10,11 @@ export enum DeveloperEventType {
   MESSAGE_STATUS_UPDATED = 'message.status.updated',
   CONVERSATION_CREATED = 'conversation.created',
   CONVERSATION_ASSIGNED = 'conversation.assigned',
+  FLOW_STARTED = 'flow.started',
+  FLOW_COMPLETED = 'flow.completed',
+  FLOW_FAILED = 'flow.failed',
+  /** Evento propio disparado por el nodo "Avisar a mis sistemas" */
+  FLOW_CUSTOM = 'flow.custom',
   PING = 'ping',
 }
 
@@ -20,4 +25,8 @@ export const SUBSCRIBABLE_DEVELOPER_EVENTS: DeveloperEventType[] = [
   DeveloperEventType.MESSAGE_STATUS_UPDATED,
   DeveloperEventType.CONVERSATION_CREATED,
   DeveloperEventType.CONVERSATION_ASSIGNED,
+  DeveloperEventType.FLOW_STARTED,
+  DeveloperEventType.FLOW_COMPLETED,
+  DeveloperEventType.FLOW_FAILED,
+  DeveloperEventType.FLOW_CUSTOM,
 ];

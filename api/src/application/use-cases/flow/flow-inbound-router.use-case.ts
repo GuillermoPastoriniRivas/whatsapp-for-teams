@@ -8,13 +8,16 @@ import type { FlowRepository } from '../../../domain/repositories/flow.repositor
 import type { FlowVersionRepository } from '../../../domain/repositories/flow-version.repository.js';
 import type { FlowExecutionRepository } from '../../../domain/repositories/flow-execution.repository.js';
 import type { AgentRepository } from '../../../domain/repositories/agent.repository.js';
+import type { MessageRepository } from '../../../domain/repositories/message.repository.js';
 import type { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
 import type { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import type { JobQueuePort } from '../../ports/job-queue.port.js';
+import type { DeveloperEventsPort } from '../../ports/developer-events.port.js';
+import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
 import { Conversation } from '../../../domain/entities/conversation.entity.js';
 import { Contact } from '../../../domain/entities/contact.entity.js';
 import { Message } from '../../../domain/entities/message.entity.js';
-import { FlowVersion } from '../../../domain/entities/flow-version.entity.js';
+import type { FlowVersion } from '../../../domain/entities/flow-version.entity.js';
 import { FlowExecutionStatus } from '../../../domain/enums/flow-execution-status.enum.js';
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
@@ -31,6 +34,8 @@ export interface FlowRouteInput {
   contact: Contact;
   message: Message;
   created: boolean;
+  /** Primera respuesta del contacto a una conversación nacida de una campaña */
+  promotedFromCampaign: boolean;
 }
 
 export class FlowInboundRouterUseCase {
@@ -41,9 +46,11 @@ export class FlowInboundRouterUseCase {
     private readonly versionRepo: FlowVersionRepository,
     private readonly execRepo: FlowExecutionRepository,
     private readonly agentRepo: AgentRepository,
+    private readonly messageRepo: MessageRepository,
     private readonly eventRepo: ConversationEventRepository,
     private readonly gateway: RealtimeGatewayPort,
     private readonly jobQueue: JobQueuePort,
+    private readonly devEvents: DeveloperEventsPort,
   ) {}
 
   async route(input: FlowRouteInput): Promise<boolean> {
@@ -70,8 +77,16 @@ export class FlowInboundRouterUseCase {
 
     for (const flow of flows) {
       const version = flow.publishedVersionId ? versionById.get(flow.publishedVersionId) : undefined;
-      if (!version || version.trigger.type !== 'inbound_message') continue;
-      if (!(await this.triggerMatches(version, input, isAssignedToHuman))) continue;
+      if (!version) continue;
+
+      if (version.trigger.type === 'campaign_reply') {
+        if (!input.promotedFromCampaign) continue;
+        if (!(await this.campaignTriggerMatches(version, input))) continue;
+      } else if (version.trigger.type === 'inbound_message') {
+        if (!(await this.triggerMatches(version, input, isAssignedToHuman))) continue;
+      } else {
+        continue; // webhook: no se dispara desde mensajes entrantes
+      }
 
       // Guard anti-tormenta: si algo loopea, dejamos actuar al pipeline legado.
       const recentStarts = await this.execRepo.countStartedSince(
@@ -107,6 +122,21 @@ export class FlowInboundRouterUseCase {
     // running o waiting(delay): el flujo es dueño; el mensaje queda en el
     // historial. Los mensajes durante un delay NO responden preguntas futuras.
     return true;
+  }
+
+  /**
+   * Trigger por respuesta de campaña: se limita a la línea y, si el tenant lo
+   * configuró, a campañas concretas. La campaña se identifica por el
+   * `campaignId` que el envío estampó en el mensaje saliente.
+   */
+  private async campaignTriggerMatches(version: FlowVersion, input: FlowRouteInput): Promise<boolean> {
+    const trigger = version.trigger;
+    if (trigger.phoneNumberIds.length > 0 && !trigger.phoneNumberIds.includes(input.phoneId)) return false;
+    if (trigger.campaignIds.length === 0) return true;
+
+    const { data } = await this.messageRepo.findByConversationId(input.conversation.id, 1, 20);
+    const campaignId = data.find((m) => m.campaignId)?.campaignId;
+    return !!campaignId && trigger.campaignIds.includes(campaignId);
   }
 
   private async triggerMatches(
@@ -194,6 +224,13 @@ export class FlowInboundRouterUseCase {
       flowId,
       executionId: execution.id,
       conversationId: input.conversation.id,
+    });
+    this.devEvents.emit(input.tenantId, DeveloperEventType.FLOW_STARTED, {
+      flowId,
+      executionId: execution.id,
+      conversationId: input.conversation.id,
+      contactId: input.contact.id,
+      trigger: 'inbound_message',
     });
 
     await this.jobQueue.enqueue(FLOW_EXECUTE_JOB, { executionId: execution.id, token });

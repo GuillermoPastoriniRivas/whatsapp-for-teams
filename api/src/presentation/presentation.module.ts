@@ -450,6 +450,7 @@ const useCaseProviders = [
       usageRepo: any, msgRepo: any, labelRepo: any, convLabelRepo: any, noteRepo: any,
       eventRepo: any, templateRepo: any, secrets: any, http: any, messagingApi: any,
       aiCompletion: any, gateway: any, jobQueue: any, autoAssign: any,
+      devEvents: any, accessRepo: any,
     ) =>
       new FlowEngineService(
         flowRepo, versionRepo, execRepo, statRepo, connectionRepo,
@@ -457,6 +458,7 @@ const useCaseProviders = [
         usageRepo, msgRepo, labelRepo, convLabelRepo, noteRepo,
         eventRepo, templateRepo, secrets, http, messagingApi,
         aiCompletion, gateway, jobQueue, autoAssign,
+        devEvents, accessRepo,
       ),
     inject: [
       'FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'FlowNodeStatRepository', 'FlowConnectionRepository',
@@ -464,13 +466,14 @@ const useCaseProviders = [
       'AiUsageRepository', 'MessageRepository', 'LabelRepository', 'ConversationLabelRepository', 'ConversationNoteRepository',
       'ConversationEventRepository', 'MessageTemplateRepository', 'FlowSecretsPort', 'FlowHttpPort', 'MessagingApiPort',
       'AiCompletionPort', 'RealtimeGatewayPort', 'JobQueuePort', 'AutoAssignConversationUseCase',
+      'DeveloperEventsPort', 'AgentPhoneAccessRepository',
     ],
   },
   {
     provide: 'FlowInboundRouterUseCase',
-    useFactory: (flowRepo: any, versionRepo: any, execRepo: any, agentRepo: any, eventRepo: any, gateway: any, jobQueue: any) =>
-      new FlowInboundRouterUseCase(flowRepo, versionRepo, execRepo, agentRepo, eventRepo, gateway, jobQueue),
-    inject: ['FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'AgentRepository', 'ConversationEventRepository', 'RealtimeGatewayPort', 'JobQueuePort'],
+    useFactory: (flowRepo: any, versionRepo: any, execRepo: any, agentRepo: any, msgRepo: any, eventRepo: any, gateway: any, jobQueue: any, devEvents: any) =>
+      new FlowInboundRouterUseCase(flowRepo, versionRepo, execRepo, agentRepo, msgRepo, eventRepo, gateway, jobQueue, devEvents),
+    inject: ['FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'AgentRepository', 'MessageRepository', 'ConversationEventRepository', 'RealtimeGatewayPort', 'JobQueuePort', 'DeveloperEventsPort'],
   },
   {
     provide: 'CancelActiveFlowExecutionUseCase',
@@ -937,9 +940,9 @@ const useCaseProviders = [
   },
   {
     provide: 'SendApiMessageUseCase',
-    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, templateRepo: any, eventRepo: any, messagingApi: any, gateway: any, devEvents: any) =>
-      new SendApiMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, templateRepo, eventRepo, messagingApi, gateway, devEvents),
-    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'MessageTemplateRepository', 'ConversationEventRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'DeveloperEventsPort'],
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, templateRepo: any, eventRepo: any, messagingApi: any, gateway: any, devEvents: any, cancelFlow: any) =>
+      new SendApiMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, templateRepo, eventRepo, messagingApi, gateway, devEvents, cancelFlow),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'MessageTemplateRepository', 'ConversationEventRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'DeveloperEventsPort', 'CancelActiveFlowExecutionUseCase'],
   },
 
   // Notifications (web push)

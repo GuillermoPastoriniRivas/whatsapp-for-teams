@@ -307,6 +307,42 @@ Implementado completo (backend + UI), typecheck y builds verdes, 49 tests de API
 | Cancelar era admin-only pero el botón del inbox se muestra a todos | `@Roles('admin','agent')` en el handler + manejo del error en la UI |
 | Contador de caracteres 4096 en botones (el límite real es 1024); bots inactivos ofrecidos en el picker | Corregidos en el panel de config |
 
+### Integración con la API m2m y nodos agregados
+
+**Correcciones de convivencia con la API de desarrolladores:**
+
+| Problema | Fix |
+|---|---|
+| `SendApiMessageUseCase` era un camino de escritura paralelo: mandaba mensajes sin cancelar el flujo activo, así que el flujo y el sistema externo le hablaban al cliente a la vez y el flujo consumía como respuesta a su menú lo que el cliente contestaba a la API | Cancela la ejecución activa (`endReason: api_takeover`), igual que el envío humano y después del envío exitoso |
+| Los flujos no eran observables desde los webhooks m2m | `DeveloperEventType` += `flow.started`, `flow.completed`, `flow.failed`, `flow.custom` (todos suscribibles), emitidos por el router y por `afterFinish` |
+
+**Nodos nuevos (de 18 a 23):**
+
+- **`action.set_variable` — "Guardar valor"**: texto compuesto, número, contador (sumar) y **código de
+  verificación** con `crypto.randomInt`. Es la alternativa segura al nodo de JavaScript libre: cubre los
+  casos custom sin ejecutar código del tenant. Un OTP completo sale de `set_variable(random_code)` →
+  envío → `ask` → `condition(equals)`.
+- **`action.send_media` — "Enviar archivo"**: imagen o PDF con caption y `filename`. Se agregaron las
+  ramas `document`/`video`/`audio` a los adapters de Meta y Kapso (antes solo texto/imagen/plantilla/interactivo).
+- **`logic.wait_business_hours` — "Esperar a horario hábil"**: reanuda en la próxima franja abierta en la
+  timezone configurada, avanzando de a 15 min para no hacer aritmética de husos ni DST a mano. Evita que
+  un delay fijo dispare mensajes de madrugada. Cuenta como nodo de espera, así que corta ciclos.
+- **`action.emit_event` — "Avisar a mis sistemas"**: publica un evento propio (`flow.custom`) con campos
+  templateados hacia los webhooks del tenant.
+- **`trigger.campaign_reply` — "Respuesta de campaña"**: dispara con la primera respuesta a una campaña,
+  opcionalmente filtrando por campañas concretas. Usa el flag `promotedFromCampaign` que el pipeline ya
+  calcula (no relee estado, que sería frágil).
+- **`assign_agent` modo `round_robin`**: reparte por turnos rotativos entre los agentes disponibles con
+  acceso a la línea, en vez de "menos ocupado". El puntero se deriva de `Flow.stats.started`, que ya se
+  incrementa una vez por ejecución, así que no agrega estado nuevo.
+
+**Sobre el nodo de JavaScript libre:** se decidió no implementarlo. `eval`/`new Function` en el proceso
+de la API da acceso a `process.env` —donde vive `FLOW_SECRETS_KEY`, que descifra las Conexiones de todos
+los tenants—, a Mongo sin scoping y a la red sin el guard SSRF; y `node:vm` no es una frontera de
+seguridad. La escotilla para lógica custom es la API m2m + el nodo HTTP: código del tenant, en su
+infraestructura. Si alguna vez se implementa, sería QuickJS-WASM sin red ni `require`, con techos de CPU
+y memoria, fuera del worker de Agenda.
+
 ### Historial de versiones en el builder
 
 El pill de estado (`Activo · v2`) y el badge de "cambios sin publicar" abren un panel con el

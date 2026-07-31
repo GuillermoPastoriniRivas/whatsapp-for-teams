@@ -5,7 +5,7 @@ import type { FlowGraph } from './flow.entity.js';
  * entrantes sin parsear el grafo completo.
  */
 export interface FlowTriggerIndex {
-  type: 'inbound_message' | 'webhook';
+  type: 'inbound_message' | 'webhook' | 'campaign_reply';
   /** Vacío = todas las líneas del tenant */
   phoneNumberIds: string[];
   match: 'any' | 'keywords';
@@ -16,6 +16,8 @@ export interface FlowTriggerIndex {
   /** Solo trigger.webhook: dot-path del teléfono en el payload */
   contactPhoneField: string | null;
   contactNameField: string | null;
+  /** Solo trigger.campaign_reply: campañas que disparan (vacío = todas) */
+  campaignIds: string[];
 }
 
 /** Snapshot inmutable de un grafo publicado. Las ejecuciones lo fijan por id. */

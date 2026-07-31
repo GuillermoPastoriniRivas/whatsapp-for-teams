@@ -193,6 +193,52 @@ function validateNodeConfig(
     case 'action.send_text':
       requireText('body', 'el mensaje');
       break;
+    case 'action.send_media': {
+      const url = String(data.mediaUrl ?? '');
+      if (!/^https:\/\//i.test(url) && !url.includes('{{')) {
+        err('bad_media_url', 'La URL del archivo debe empezar con https://', id);
+      }
+      if (data.mediaType === 'document' && data.filename && String(data.filename).length > 240) {
+        err('filename_too_long', 'El nombre del archivo es demasiado largo.', id);
+      }
+      break;
+    }
+    case 'action.set_variable': {
+      if (typeof data.saveAs !== 'string' || !/^[a-z0-9_]+$/.test(data.saveAs)) {
+        err('missing_save_as', 'Definí el nombre de la variable (letras minúsculas, números y _).', id);
+      }
+      const mode = String(data.mode ?? 'text');
+      if (!['text', 'number', 'increment', 'random_code'].includes(mode)) {
+        err('bad_mode', 'Tipo de valor inválido.', id);
+      }
+      if (mode !== 'random_code' && mode !== 'increment' && !String(data.value ?? '').trim()) {
+        err('missing_value', 'Definí el valor a guardar.', id);
+      }
+      break;
+    }
+    case 'action.emit_event': {
+      const name = String(data.eventName ?? '').trim();
+      if (!name) err('missing_event_name', 'Definí el nombre del evento.', id);
+      else if (name.length > 60) err('event_name_too_long', 'El nombre del evento supera los 60 caracteres.', id);
+      break;
+    }
+    case 'logic.wait_business_hours': {
+      const schedule = data.schedule;
+      if (!schedule || !Array.isArray(schedule.days) || schedule.days.length === 0) {
+        err('missing_days', 'Elegí al menos un día hábil.', id);
+      }
+      if (!/^\d{2}:\d{2}$/.test(String(schedule?.from ?? '')) || !/^\d{2}:\d{2}$/.test(String(schedule?.to ?? ''))) {
+        err('bad_schedule', 'Definí el horario de apertura y cierre.', id);
+      }
+      break;
+    }
+    case 'trigger.campaign_reply': {
+      // Sin campañas elegidas dispara con cualquiera: es válido y es el default.
+      if (data.campaignIds !== undefined && !Array.isArray(data.campaignIds)) {
+        err('bad_campaigns', 'Selección de campañas inválida.', id);
+      }
+      break;
+    }
     case 'action.send_buttons': {
       requireText('body', 'el mensaje', 1024);
       const buttons: Array<{ title?: string }> = Array.isArray(data.buttons) ? data.buttons : [];

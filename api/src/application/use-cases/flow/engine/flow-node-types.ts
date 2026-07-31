@@ -4,11 +4,12 @@
 
 import type { FlowNode } from '../../../../domain/entities/flow.entity.js';
 
-export const TRIGGER_TYPES = ['trigger.inbound_message', 'trigger.webhook'] as const;
+export const TRIGGER_TYPES = ['trigger.inbound_message', 'trigger.webhook', 'trigger.campaign_reply'] as const;
 
 export const NODE_TYPES = [
   ...TRIGGER_TYPES,
   'action.send_text',
+  'action.send_media',
   'action.send_buttons',
   'action.send_list',
   'action.send_template',
@@ -21,8 +22,11 @@ export const NODE_TYPES = [
   'action.label',
   'action.update_contact',
   'action.internal_note',
+  'action.set_variable',
+  'action.emit_event',
   'logic.condition',
   'logic.delay',
+  'logic.wait_business_hours',
   'action.http',
 ] as const;
 
@@ -34,7 +38,13 @@ export function isTrigger(type: string): boolean {
 
 /** Nodos que entran en estado de espera (cortan cualquier ciclo) */
 export function isWaitNode(type: string): boolean {
-  return type === 'action.send_buttons' || type === 'action.send_list' || type === 'action.ask' || type === 'logic.delay';
+  return (
+    type === 'action.send_buttons' ||
+    type === 'action.send_list' ||
+    type === 'action.ask' ||
+    type === 'logic.delay' ||
+    type === 'logic.wait_business_hours'
+  );
 }
 
 /** Nodos terminales: la ejecución termina al procesarlos */
@@ -46,6 +56,7 @@ export function isTerminal(type: string): boolean {
 export function isSessionSend(type: string): boolean {
   return (
     type === 'action.send_text' ||
+    type === 'action.send_media' ||
     type === 'action.send_buttons' ||
     type === 'action.send_list' ||
     type === 'action.ask' ||
@@ -59,8 +70,10 @@ export function outputHandles(node: FlowNode): string[] {
   switch (node.type) {
     case 'trigger.inbound_message':
     case 'trigger.webhook':
+    case 'trigger.campaign_reply':
       return ['out'];
     case 'action.send_text':
+    case 'action.send_media':
       return ['out', 'error'];
     case 'action.send_buttons': {
       const buttons: unknown[] = Array.isArray(data.buttons) ? data.buttons : [];
@@ -88,10 +101,13 @@ export function outputHandles(node: FlowNode): string[] {
     case 'action.label':
     case 'action.update_contact':
     case 'action.internal_note':
+    case 'action.set_variable':
+    case 'action.emit_event':
       return ['out'];
     case 'logic.condition':
       return ['yes', 'no'];
     case 'logic.delay':
+    case 'logic.wait_business_hours':
       return ['out'];
     case 'action.http':
       return ['success', 'error'];

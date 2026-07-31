@@ -271,6 +271,79 @@ describe('flow-graph.validator', () => {
     expect(warnings.some((w) => w.code === 'interactive_degraded')).toBe(true);
   });
 
+  it('exige nombre de variable y valor en Guardar valor', () => {
+    const graph: FlowGraph = {
+      nodes: [
+        trigger,
+        { id: 'v', type: 'action.set_variable', position: { x: 1, y: 0 }, data: { saveAs: 'Mi Var', mode: 'text', value: '' } },
+      ],
+      edges: [{ id: 'e1', source: 't', sourceHandle: 'out', target: 'v' }],
+    };
+    const { errors } = validateFlowGraph(graph, refs);
+    expect(errors.some((e) => e.code === 'missing_save_as')).toBe(true);
+    expect(errors.some((e) => e.code === 'missing_value')).toBe(true);
+  });
+
+  it('acepta Guardar valor con código aleatorio sin exigir valor', () => {
+    const graph: FlowGraph = {
+      nodes: [
+        trigger,
+        { id: 'v', type: 'action.set_variable', position: { x: 1, y: 0 }, data: { saveAs: 'codigo', mode: 'random_code', length: 6 } },
+      ],
+      edges: [{ id: 'e1', source: 't', sourceHandle: 'out', target: 'v' }],
+    };
+    expect(validateFlowGraph(graph, refs).errors).toEqual([]);
+  });
+
+  it('exige https en el nodo Enviar archivo', () => {
+    const graph: FlowGraph = {
+      nodes: [
+        trigger,
+        { id: 'm', type: 'action.send_media', position: { x: 1, y: 0 }, data: { mediaType: 'image', mediaUrl: 'http://x/y.png' } },
+      ],
+      edges: [{ id: 'e1', source: 't', sourceHandle: 'out', target: 'm' }],
+    };
+    expect(validateFlowGraph(graph, refs).errors.some((e) => e.code === 'bad_media_url')).toBe(true);
+  });
+
+  it('acepta una URL de archivo construida con variables', () => {
+    const graph: FlowGraph = {
+      nodes: [
+        trigger,
+        { id: 'm', type: 'action.send_media', position: { x: 1, y: 0 }, data: { mediaType: 'document', mediaUrl: '{{vars.link}}' } },
+      ],
+      edges: [{ id: 'e1', source: 't', sourceHandle: 'out', target: 'm' }],
+    };
+    expect(validateFlowGraph(graph, refs).errors).toEqual([]);
+  });
+
+  it('exige nombre en el nodo Avisar a mis sistemas', () => {
+    const graph: FlowGraph = {
+      nodes: [
+        trigger,
+        { id: 'e', type: 'action.emit_event', position: { x: 1, y: 0 }, data: { eventName: '', fields: [] } },
+      ],
+      edges: [{ id: 'e1', source: 't', sourceHandle: 'out', target: 'e' }],
+    };
+    expect(validateFlowGraph(graph, refs).errors.some((x) => x.code === 'missing_event_name')).toBe(true);
+  });
+
+  it('la espera a horario hábil corta ciclos como cualquier espera', () => {
+    const graph: FlowGraph = {
+      nodes: [
+        trigger,
+        { id: 'w', type: 'logic.wait_business_hours', position: { x: 1, y: 0 }, data: { schedule: { days: [1], from: '09:00', to: '18:00', timezone: 'America/Montevideo' } } },
+        { id: 'n', type: 'action.internal_note', position: { x: 2, y: 0 }, data: { body: 'x' } },
+      ],
+      edges: [
+        { id: 'e1', source: 't', sourceHandle: 'out', target: 'w' },
+        { id: 'e2', source: 'w', sourceHandle: 'out', target: 'n' },
+        { id: 'e3', source: 'n', sourceHandle: 'out', target: 'w' },
+      ],
+    };
+    expect(validateFlowGraph(graph, refs).errors).toEqual([]);
+  });
+
   it('warning de sesión tras delay largo', () => {
     const graph: FlowGraph = {
       nodes: [
