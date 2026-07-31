@@ -32,6 +32,10 @@ const SUPPORTED_TYPES: Record<string, string> = {
   video: 'video',
   document: 'document',
   location: 'location',
+  // Respuestas a mensajes interactivos (botones/listas) y a quick-replies de
+  // plantillas ('button'). Se persisten como 'interactive'.
+  interactive: 'interactive',
+  button: 'interactive',
 };
 
 const MEDIA_TYPES = new Set(['image', 'audio', 'video', 'document', 'sticker']);
@@ -116,6 +120,8 @@ export function mapMetaMessageToInbound(
     mediaUrl: extractMediaUrl(msg, apiVersion),
     mimeType: extractMimeType(msg),
     timestamp: new Date(parseInt(msg.timestamp, 10) * 1000),
+    interactiveReplyId: extractInteractiveReplyId(msg),
+    contextWaMessageId: msg.context?.id,
   };
 }
 
@@ -182,9 +188,23 @@ function extractBody(msg: MetaWebhookMessage): string | undefined {
       }
       return `${loc.latitude},${loc.longitude}`;
     }
+    case 'interactive':
+      return msg.interactive?.button_reply?.title ?? msg.interactive?.list_reply?.title;
+    case 'button':
+      return msg.button?.text;
     default:
       return undefined;
   }
+}
+
+function extractInteractiveReplyId(msg: MetaWebhookMessage): string | undefined {
+  if (msg.type === 'interactive') {
+    return msg.interactive?.button_reply?.id ?? msg.interactive?.list_reply?.id;
+  }
+  if (msg.type === 'button') {
+    return msg.button?.payload;
+  }
+  return undefined;
 }
 
 function extractMediaUrl(msg: MetaWebhookMessage, apiVersion: string): string | undefined {

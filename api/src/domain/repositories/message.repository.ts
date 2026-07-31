@@ -2,8 +2,14 @@ import { Message } from '../entities/message.entity.js';
 import { MessageWaStatus } from '../enums/message-wa-status.enum.js';
 import { PaginatedResult } from './conversation.repository.js';
 
-export type UpsertMessageInput = Omit<Message, 'id' | 'campaignId' | 'waErrorCode' | 'waErrorMessage'> & {
+export type UpsertMessageInput = Omit<
+  Message,
+  'id' | 'campaignId' | 'waErrorCode' | 'waErrorMessage' | 'interactiveReplyId' | 'contextWaMessageId' | 'interactivePayload'
+> & {
   campaignId?: string | null;
+  interactiveReplyId?: string | null;
+  contextWaMessageId?: string | null;
+  interactivePayload?: Record<string, unknown> | null;
 };
 
 export interface MessageRepository {

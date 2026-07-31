@@ -22,6 +22,9 @@ export class MessageMapper {
       doc.campaignId?.toHexString() ?? null,
       doc.waErrorCode ?? null,
       doc.waErrorMessage ?? null,
+      doc.interactiveReplyId ?? null,
+      doc.contextWaMessageId ?? null,
+      doc.interactivePayload ?? null,
     );
   }
 }

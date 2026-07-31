@@ -1,0 +1,174 @@
+// ── Helpers compartidos del runtime de IA ────────────────────────
+// Extraídos de ProcessAiResponseUseCase para que el nodo de flujo
+// "Respuesta IA" reutilice exactamente la misma maquinaria.
+
+import type { Logger } from '@nestjs/common';
+import type { ChatMessage } from '../../ports/ai-completion.port.js';
+import type { MessagingApiPort } from '../../ports/messaging-api.port.js';
+import type { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
+import type { MessageRepository } from '../../../domain/repositories/message.repository.js';
+import type { Message } from '../../../domain/entities/message.entity.js';
+import type { AiAgentConfig } from '../../../domain/entities/ai-agent-config.entity.js';
+import type { Contact } from '../../../domain/entities/contact.entity.js';
+import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
+import { MessageType } from '../../../domain/enums/message-type.enum.js';
+import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
+import { buildSystemPrompt } from './prompts/system-prompt.builder.js';
+import { computeBusinessStatus } from './prompts/business-hours.util.js';
+
+/** Historial de chat con prefijo de timestamp (formato que el modelo ya conoce) */
+export function buildChatHistory(messages: Message[]): ChatMessage[] {
+  return messages.map((m) => ({
+    role: (m.direction === MessageDirection.INBOUND ? 'user' : 'assistant') as 'user' | 'assistant',
+    content: `[${m.timestamp.toISOString()}] ${m.body ?? ''}`,
+  }));
+}
+
+/** Quita los prefijos [ISO] que el modelo pueda haber copiado */
+export function stripTimestampPrefixes(text: string): string {
+  return text.replace(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\]\s?/g, '');
+}
+
+/** Parseo defensivo de la respuesta multi-burbuja (JSON directo → fence → regex) */
+export function parseMultiMessageResponse(raw: string, maxBubbles: number, logger?: Logger): string[] {
+  const tryParse = (str: string): string[] | null => {
+    try {
+      const parsed = JSON.parse(str);
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((s: unknown) => typeof s === 'string')) {
+        return parsed;
+      }
+    } catch { /* fall through */ }
+    return null;
+  };
+
+  let result = tryParse(raw);
+  if (result) return result.slice(0, maxBubbles);
+
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    result = tryParse(fenceMatch[1].trim());
+    if (result) return result.slice(0, maxBubbles);
+  }
+
+  const arrayMatch = raw.match(/\[[\s\S]*\]/);
+  if (arrayMatch) {
+    result = tryParse(arrayMatch[0]);
+    if (result) return result.slice(0, maxBubbles);
+  }
+
+  logger?.warn(`Failed to parse multi-message JSON, using single message. Raw: ${raw.substring(0, 200)}`);
+  return [raw];
+}
+
+/** Compila el system prompt de un agente IA con el boilerplate de fecha/estado */
+export function buildAgentSystemPrompt(params: {
+  config: AiAgentConfig;
+  contact: Contact | null;
+  conversationSummary: string | null;
+  labels: string[];
+  extraInstructions?: string;
+}): string {
+  const { config, contact, conversationSummary, labels, extraInstructions } = params;
+  const now = new Date();
+  const tz = config.timezone ?? undefined;
+  const dateOpts: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: tz };
+  const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: tz };
+  const weekdayFmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz });
+  const businessStatus = computeBusinessStatus(config.businessHours, config.timezone, now);
+
+  const behavior = extraInstructions
+    ? {
+        ...config.behavior,
+        customInstructions: [config.behavior.customInstructions, extraInstructions].filter(Boolean).join('\n\n'),
+      }
+    : config.behavior;
+
+  return buildSystemPrompt({
+    currentDay: weekdayFmt.format(now),
+    currentDate: now.toLocaleDateString('en-US', dateOpts),
+    currentTime: now.toLocaleTimeString('en-US', timeOpts),
+    businessStatus: businessStatus
+      ? { isOpen: businessStatus.isOpen, todayRange: businessStatus.todayRange, nextOpen: businessStatus.nextOpen }
+      : null,
+    businessProfile: config.businessProfile,
+    behavior,
+    contact: contact
+      ? {
+          name: contact.name,
+          phone: contact.phone ?? undefined,
+          email: contact.email ?? undefined,
+          company: contact.company ?? undefined,
+          notes: contact.notes ?? undefined,
+          customFields: contact.customFields ?? undefined,
+        }
+      : undefined,
+    conversationSummary: conversationSummary ?? undefined,
+    handoffRules: {
+      keywords: config.handoffRules.keywords,
+      urgencyKeywords: config.handoffRules.urgencyKeywords,
+      onCustomerRequest: config.handoffRules.onCustomerRequest,
+    },
+    labels,
+    multiMessage: config.multiMessage?.enabled
+      ? { enabled: true, maxBubbles: config.multiMessage.maxBubbles }
+      : undefined,
+  });
+}
+
+export interface SendBubblesParams {
+  messagingApi: MessagingApiPort;
+  messageRepo: MessageRepository;
+  gateway: RealtimeGatewayPort;
+  phone: { provider: any; providerConfig: any; phoneNumberId: string };
+  contactWaId: string;
+  conversationId: string;
+  senderAgentId: string | null;
+  senderAgentName: string | null;
+  bubbles: string[];
+  interBubbleDelayMs: number;
+}
+
+/** Envía burbujas de texto con typing + delay entre burbujas, persiste y emite WS */
+export async function sendBubbles(params: SendBubblesParams): Promise<void> {
+  const { messagingApi, messageRepo, gateway, phone, contactWaId, conversationId } = params;
+  const typingParams = {
+    provider: phone.provider,
+    providerConfig: phone.providerConfig,
+    phoneNumberId: phone.phoneNumberId,
+    to: contactWaId,
+  };
+
+  for (let i = 0; i < params.bubbles.length; i++) {
+    if (i > 0) {
+      messagingApi.sendTypingIndicator(typingParams).catch(() => {});
+      await new Promise((r) => setTimeout(r, params.interBubbleDelayMs));
+    }
+
+    const body = params.bubbles[i].substring(0, 4096);
+
+    const { waMessageId } = await messagingApi.sendMessage({
+      provider: phone.provider,
+      providerConfig: phone.providerConfig,
+      phoneNumberId: phone.phoneNumberId,
+      to: contactWaId,
+      type: MessageType.TEXT,
+      body,
+    });
+
+    const message = await messageRepo.upsertByWaMessageId({
+      conversationId,
+      direction: MessageDirection.OUTBOUND,
+      messageType: MessageType.TEXT,
+      body,
+      mediaUrl: null,
+      mimeType: null,
+      waMessageId,
+      waStatus: MessageWaStatus.SENT,
+      timestamp: new Date(),
+      senderAgentId: params.senderAgentId,
+      senderAgentName: params.senderAgentName,
+    });
+
+    gateway.emitToConversation(conversationId, 'message.new', message);
+  }
+}

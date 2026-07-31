@@ -9,6 +9,7 @@ import {
   ArrowRightLeft,
   Tag,
   Tags,
+  Workflow,
 } from "lucide-react";
 
 export const eventConfig: Record<
@@ -73,6 +74,26 @@ export const eventConfig: Record<
     icon: Tags,
     color: "text-slate-400",
     label: (data) => `${data.agentName} removed label "${data.labelName}"`,
+  },
+  flow_started: {
+    icon: Workflow,
+    color: "text-teal-500",
+    label: (data) => `⚡ Flujo «${data.flowName ?? "Flujo"}» iniciado`,
+  },
+  flow_completed: {
+    icon: Workflow,
+    color: "text-teal-500",
+    label: (data) => `Flujo «${data.flowName ?? "Flujo"}» completado`,
+  },
+  flow_failed: {
+    icon: Workflow,
+    color: "text-red-500",
+    label: (data) => `Flujo «${data.flowName ?? "Flujo"}» se detuvo por un error`,
+  },
+  flow_stopped: {
+    icon: Workflow,
+    color: "text-slate-400",
+    label: (data) => `Flujo «${data.flowName ?? "Flujo"}» detenido${data.reason === "agent_takeover" ? " (intervino un agente)" : ""}`,
   },
 };
 

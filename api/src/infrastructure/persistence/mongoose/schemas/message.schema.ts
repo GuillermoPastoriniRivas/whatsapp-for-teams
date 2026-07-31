@@ -49,6 +49,15 @@ export class MessageModel {
 
   @Prop({ type: String, default: null })
   waErrorMessage: string | null;
+
+  @Prop({ type: String, default: null })
+  interactiveReplyId: string | null;
+
+  @Prop({ type: String, default: null })
+  contextWaMessageId: string | null;
+
+  @Prop({ type: Object, default: null })
+  interactivePayload: Record<string, unknown> | null;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(MessageModel);

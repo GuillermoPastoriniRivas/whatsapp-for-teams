@@ -190,3 +190,41 @@ export class EmptyAudienceError extends DomainError {
     super('EMPTY_AUDIENCE', 'The campaign audience resolved to zero valid recipients.');
   }
 }
+
+export class FlowNotFoundError extends DomainError {
+  constructor() {
+    super('FLOW_NOT_FOUND', 'Flow not found.');
+  }
+}
+
+export class FlowInvalidGraphError extends DomainError {
+  constructor(
+    public readonly errors: Array<{ nodeId?: string; code: string; message: string }>,
+  ) {
+    super('FLOW_INVALID_GRAPH', 'The flow graph has validation errors.');
+  }
+}
+
+export class FlowInvalidStateError extends DomainError {
+  constructor(detail?: string) {
+    super('FLOW_INVALID_STATE', detail ?? 'The flow is not in a valid state for this operation.');
+  }
+}
+
+export class FlowExecutionNotFoundError extends DomainError {
+  constructor() {
+    super('FLOW_EXECUTION_NOT_FOUND', 'Flow execution not found.');
+  }
+}
+
+export class FlowConnectionNotFoundError extends DomainError {
+  constructor() {
+    super('FLOW_CONNECTION_NOT_FOUND', 'Connection not found.');
+  }
+}
+
+export class FlowConnectionInUseError extends DomainError {
+  constructor() {
+    super('FLOW_CONNECTION_IN_USE', 'The connection is referenced by a published flow. Unpublish it first.');
+  }
+}

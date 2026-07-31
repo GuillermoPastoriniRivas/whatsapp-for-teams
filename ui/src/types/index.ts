@@ -29,6 +29,7 @@ export interface Conversation {
   agentName: string | null;
   agentType?: "human" | "ai" | null;
   labels?: { id: string; name: string; color: string }[];
+  activeFlow?: { flowId: string; flowName: string; executionId: string; status: string } | null;
   contact: {
     id: string;
     name: string;
@@ -60,7 +61,7 @@ export interface Message {
   id: string;
   conversationId: string;
   direction: "inbound" | "outbound";
-  messageType: "text" | "image" | "audio" | "video" | "document" | "location" | "template";
+  messageType: "text" | "image" | "audio" | "video" | "document" | "location" | "template" | "interactive";
   body: string | null;
   mediaUrl: string | null;
   mimeType: string | null;
@@ -69,6 +70,17 @@ export interface Message {
   timestamp: string;
   senderAgentId: string | null;
   senderAgentName: string | null;
+  /** Respuesta a un interactivo: id del botón/fila elegido */
+  interactiveReplyId?: string | null;
+  /** Outbound interactivo: definición de botones/lista para renderizar */
+  interactivePayload?: {
+    kind: "buttons" | "list";
+    body: string;
+    footer?: string;
+    buttons?: Array<{ id: string; title: string }>;
+    buttonText?: string;
+    rows?: Array<{ id: string; title: string; description?: string }>;
+  } | null;
 }
 
 export interface PhoneNumber {
@@ -432,4 +444,129 @@ export interface AiAgentWithConfig {
   status: string;
   activeCount: number;
   config: AiAgentConfig;
+}
+
+// ── Flujos ────────────────────────────────────────────────────────
+
+export interface FlowNode {
+  id: string;
+  type: string;
+  position: { x: number; y: number };
+  data: Record<string, unknown>;
+}
+
+export interface FlowEdge {
+  id: string;
+  source: string;
+  sourceHandle: string;
+  target: string;
+}
+
+export interface FlowGraph {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+}
+
+export type FlowStatus = "draft" | "published" | "paused" | "archived";
+
+export interface FlowSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  status: FlowStatus;
+  publishedVersion: number | null;
+  priority: number;
+  stats: { started: number; completed: number; failed: number; cancelled: number };
+  hasWebhookTrigger: boolean;
+  updatedAt: string;
+}
+
+export interface Flow {
+  id: string;
+  tenantId: string;
+  name: string;
+  description: string | null;
+  status: FlowStatus;
+  draftGraph: FlowGraph;
+  publishedVersionId: string | null;
+  publishedVersion: number | null;
+  priority: number;
+  webhookToken: string | null;
+  stats: { started: number; completed: number; failed: number; cancelled: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FlowDetailResponse {
+  flow: Flow;
+  publishedVersion: { id: string; version: number; graph: FlowGraph; createdAt: string } | null;
+  hasUnpublishedChanges: boolean;
+}
+
+export interface FlowGraphIssue {
+  nodeId?: string;
+  code: string;
+  message: string;
+}
+
+export type FlowExecutionStatus = "running" | "waiting" | "completed" | "failed" | "cancelled";
+
+export interface FlowStepLog {
+  nodeId: string;
+  type: string;
+  status: "ok" | "error" | "skipped";
+  handle: string | null;
+  at: string;
+  ms: number;
+  note: string | null;
+}
+
+export interface FlowExecution {
+  id: string;
+  flowId: string;
+  flowVersionId: string;
+  conversationId: string;
+  contactId: string;
+  status: FlowExecutionStatus;
+  currentNodeId: string | null;
+  stepCount: number;
+  variables: Record<string, unknown>;
+  steps: FlowStepLog[];
+  endReason: string | null;
+  error: { nodeId: string; message: string } | null;
+  startedAt: string;
+  endedAt: string | null;
+}
+
+export interface FlowExecutionSummaryRow {
+  execution: FlowExecution;
+  contactName: string | null;
+}
+
+export interface FlowNodeStatsSummary {
+  nodeId: string;
+  entered: number;
+  errors: number;
+  outcomes: Record<string, number>;
+}
+
+export interface FlowTemplateDef {
+  id: string;
+  name: string;
+  description: string;
+  graph: FlowGraph;
+}
+
+export interface FlowConnection {
+  id: string;
+  name: string;
+  headerName: string;
+  createdAt: string;
+}
+
+export interface ActiveFlowInfo {
+  flowId: string;
+  flowName: string;
+  executionId: string;
+  status: string;
 }

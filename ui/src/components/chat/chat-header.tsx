@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, User } from "lucide-react";
 import { ChatMenu } from "./chat-menu";
 import { AssignedToControl } from "./assigned-to-control";
+import { FlowChip } from "./flow-chip";
 import { avatarStyle, initials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +71,7 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
+          <FlowChip conversationId={conversationId} />
           <AssignedToControl
             conversationId={conversationId}
             assignedAgentId={conversation?.agentId}

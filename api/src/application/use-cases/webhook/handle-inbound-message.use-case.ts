@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Agent } from '../../../domain/entities/agent.entity.js';
 import { ContactRepository } from '../../../domain/repositories/contact.repository.js';
 import { ConversationRepository } from '../../../domain/repositories/conversation.repository.js';
@@ -13,6 +14,7 @@ import { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import { InboundMessageInput } from '../../dtos/webhook/inbound-message-input.dto.js';
 import { AutoAssignConversationUseCase } from '../conversation/auto-assign-conversation.use-case.js';
 import { AttributeCampaignReplyUseCase } from '../campaign/attribute-campaign-reply.use-case.js';
+import { FlowInboundRouterUseCase } from '../flow/flow-inbound-router.use-case.js';
 import { SendPushToAgentUseCase } from '../notification/send-push-to-agent.use-case.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
@@ -25,6 +27,8 @@ import { ConversationOrigin } from '../../../domain/enums/conversation-origin.en
 const AI_RESPONSE_JOB = 'ai.process-response';
 
 export class HandleInboundMessageUseCase {
+  private readonly logger = new Logger(HandleInboundMessageUseCase.name);
+
   constructor(
     private readonly phoneRepo: PhoneNumberRepository,
     private readonly contactRepo: ContactRepository,
@@ -40,6 +44,7 @@ export class HandleInboundMessageUseCase {
     private readonly attributeCampaignReply: AttributeCampaignReplyUseCase,
     private readonly sendPushToAgent: SendPushToAgentUseCase,
     private readonly accessRepo: AgentPhoneAccessRepository,
+    private readonly flowRouter: FlowInboundRouterUseCase,
   ) {}
 
   async execute(input: InboundMessageInput): Promise<void> {
@@ -102,6 +107,8 @@ export class HandleInboundMessageUseCase {
       timestamp: input.timestamp,
       senderAgentId: null,
       senderAgentName: null,
+      interactiveReplyId: input.interactiveReplyId ?? null,
+      contextWaMessageId: input.contextWaMessageId ?? null,
     });
 
     // 5. Update conversation timestamps.
@@ -116,9 +123,35 @@ export class HandleInboundMessageUseCase {
     // 5b. Attribute this reply to any open campaign sends for the contact
     await this.attributeCampaignReply.execute(contact.id, now);
 
+    // 5c. Router de flujos: si un flujo consume el mensaje (resume de una
+    // espera, ejecución activa o trigger nuevo) se suprime el auto-assign y
+    // el bot IA para este mensaje. Sin flujos publicados: no-op.
+    let flowHandled = false;
+    try {
+      flowHandled = await this.flowRouter.route({
+        tenantId,
+        phoneId: phone.id,
+        conversation,
+        contact,
+        message,
+        created,
+      });
+    } catch (error: any) {
+      // El router nunca puede tumbar el pipeline entrante.
+      this.logger.error(`Flow router failed for conversation ${conversation.id}: ${error?.message}`, error?.stack);
+      flowHandled = false;
+    }
+
+    // El flujo toma la conversación: se suelta el latch del debounce de IA.
+    // Si quedara puesto, ningún job lo limpiaría (no encolamos ninguno) y el
+    // próximo turno del bot colapsaría su ventana contra el tope duro.
+    if (flowHandled && conversation.pendingAiSince) {
+      await this.conversationRepo.update(conversation.id, { pendingAiSince: null } as any);
+    }
+
     // 6. If needs assignment (new or reopened) → auto-assign
     let assignedAgent: Agent | null = null;
-    if (needsAssignment) {
+    if (needsAssignment && !flowHandled) {
       assignedAgent = await this.autoAssign.execute(conversation.id);
     }
 
@@ -155,7 +188,7 @@ export class HandleInboundMessageUseCase {
       }
     }
 
-    if (aiAgent) {
+    if (aiAgent && !flowHandled) {
       await this.enqueueAiResponse(aiAgent, conversation.id, phone, contact.waId);
     }
 

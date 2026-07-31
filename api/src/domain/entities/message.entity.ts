@@ -19,5 +19,11 @@ export class Message {
     public readonly campaignId: string | null = null,
     public readonly waErrorCode: string | null = null,
     public readonly waErrorMessage: string | null = null,
+    /** Id de la opción elegida en un mensaje interactivo (botón/fila) o payload de quick-reply de plantilla */
+    public readonly interactiveReplyId: string | null = null,
+    /** waMessageId del mensaje al que responde (context.id de Meta) */
+    public readonly contextWaMessageId: string | null = null,
+    /** Solo outbound interactivo: definición de botones/lista para render en el chat */
+    public readonly interactivePayload: Record<string, unknown> | null = null,
   ) {}
 }

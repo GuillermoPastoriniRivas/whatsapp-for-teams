@@ -147,6 +147,15 @@
   .content-zoom {
     zoom: var(--content-zoom, 1.15);
   }
+
+  /*
+   * Neutraliza el zoom del contenido para el canvas de flujos: el zoom CSS
+   * rompe la matemática de punteros de @xyflow (getBoundingClientRect no lo
+   * compensa). 1.15 × (1 / 1.15) = 1 → píxeles 1:1 dentro del builder.
+   */
+  .zoom-neutral {
+    zoom: calc(1 / var(--content-zoom, 1.15));
+  }
 }
 
 @layer base {

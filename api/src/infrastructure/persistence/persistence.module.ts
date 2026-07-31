@@ -42,6 +42,16 @@ import { MongoCampaignRepository } from './mongoose/repositories/mongo-campaign.
 import { MongoCampaignRecipientRepository } from './mongoose/repositories/mongo-campaign-recipient.repository.js';
 import { PushSubscriptionModel, PushSubscriptionSchema } from './mongoose/schemas/push-subscription.schema.js';
 import { MongoPushSubscriptionRepository } from './mongoose/repositories/mongo-push-subscription.repository.js';
+import { FlowModel, FlowSchema } from './mongoose/schemas/flow.schema.js';
+import { FlowVersionModel, FlowVersionSchema } from './mongoose/schemas/flow-version.schema.js';
+import { FlowExecutionModel, FlowExecutionSchema } from './mongoose/schemas/flow-execution.schema.js';
+import { FlowNodeStatModel, FlowNodeStatSchema } from './mongoose/schemas/flow-node-stat.schema.js';
+import { FlowConnectionModel, FlowConnectionSchema } from './mongoose/schemas/flow-connection.schema.js';
+import { MongoFlowRepository } from './mongoose/repositories/mongo-flow.repository.js';
+import { MongoFlowVersionRepository } from './mongoose/repositories/mongo-flow-version.repository.js';
+import { MongoFlowExecutionRepository } from './mongoose/repositories/mongo-flow-execution.repository.js';
+import { MongoFlowNodeStatRepository } from './mongoose/repositories/mongo-flow-node-stat.repository.js';
+import { MongoFlowConnectionRepository } from './mongoose/repositories/mongo-flow-connection.repository.js';
 
 const schemas = MongooseModule.forFeature([
   { name: TenantModel.name, schema: TenantSchema },
@@ -65,6 +75,11 @@ const schemas = MongooseModule.forFeature([
   { name: CampaignModel.name, schema: CampaignSchema },
   { name: CampaignRecipientModel.name, schema: CampaignRecipientSchema },
   { name: PushSubscriptionModel.name, schema: PushSubscriptionSchema },
+  { name: FlowModel.name, schema: FlowSchema },
+  { name: FlowVersionModel.name, schema: FlowVersionSchema },
+  { name: FlowExecutionModel.name, schema: FlowExecutionSchema },
+  { name: FlowNodeStatModel.name, schema: FlowNodeStatSchema },
+  { name: FlowConnectionModel.name, schema: FlowConnectionSchema },
 ]);
 
 const repositories = [
@@ -89,6 +104,11 @@ const repositories = [
   { provide: 'CampaignRepository', useClass: MongoCampaignRepository },
   { provide: 'CampaignRecipientRepository', useClass: MongoCampaignRecipientRepository },
   { provide: 'PushSubscriptionRepository', useClass: MongoPushSubscriptionRepository },
+  { provide: 'FlowRepository', useClass: MongoFlowRepository },
+  { provide: 'FlowVersionRepository', useClass: MongoFlowVersionRepository },
+  { provide: 'FlowExecutionRepository', useClass: MongoFlowExecutionRepository },
+  { provide: 'FlowNodeStatRepository', useClass: MongoFlowNodeStatRepository },
+  { provide: 'FlowConnectionRepository', useClass: MongoFlowConnectionRepository },
 ];
 
 @Module({

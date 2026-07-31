@@ -91,7 +91,7 @@ class ApiClient {
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({ message: res.statusText }));
-      throw new ApiError(res.status, error.message || res.statusText);
+      throw new ApiError(res.status, error.message || res.statusText, error);
     }
 
     if (res.status === 204) return undefined as T;
@@ -128,7 +128,9 @@ class ApiClient {
 export class ApiError extends Error {
   constructor(
     public status: number,
-    message: string
+    message: string,
+    /** Cuerpo completo de la respuesta de error (p. ej. errores de validación de flujos) */
+    public data?: unknown
   ) {
     super(message);
   }

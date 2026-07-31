@@ -23,6 +23,18 @@ export interface TemplateSendPayload {
   components?: TemplateSendComponent[];
 }
 
+export interface InteractiveSendPayload {
+  kind: 'buttons' | 'list';
+  body: string;
+  footer?: string;
+  /** kind 'buttons': 1–3 botones (title ≤ 20 chars) */
+  buttons?: Array<{ id: string; title: string }>;
+  /** kind 'list': texto del botón que abre la lista (≤ 20 chars) */
+  buttonText?: string;
+  /** kind 'list': 1–10 filas (title ≤ 24, description ≤ 72) */
+  rows?: Array<{ id: string; title: string; description?: string }>;
+}
+
 export interface SendMessageParams {
   provider: MessagingProvider;
   providerConfig: Record<string, string>;
@@ -32,6 +44,7 @@ export interface SendMessageParams {
   body?: string;
   mediaUrl?: string;
   template?: TemplateSendPayload;
+  interactive?: InteractiveSendPayload;
 }
 
 export interface SendMessageResult {

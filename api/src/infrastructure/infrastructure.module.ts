@@ -8,9 +8,11 @@ import { AiModule } from './ai/ai.module.js';
 import { EmailModule } from './email/email.module.js';
 import { PaymentModule } from './payment/payment.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { CryptoModule } from './crypto/crypto.module.js';
+import { HttpModule } from './http/http.module.js';
 
 @Module({
-  imports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule],
-  exports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule],
+  imports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule, CryptoModule, HttpModule],
+  exports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule, CryptoModule, HttpModule],
 })
 export class InfrastructureModule {}

@@ -1,0 +1,1350 @@
+// ── Motor de ejecución de flujos ─────────────────────────────────
+// Invariantes:
+// - Máx. 1 ejecución viva por conversación (índice único parcial en Mongo).
+// - resumeToken es un fencing token: TODO camino de avance (execute, resume,
+//   timeout, continuación) debe ganar un findOneAndUpdate CAS sobre
+//   {_id, status, resumeToken}. Jobs con token viejo mueren en silencio.
+// - Efectos at-most-once: cursor persistido tras cada nodo, jobs sin retry.
+
+import { Logger } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
+import type { FlowRepository } from '../../../../domain/repositories/flow.repository.js';
+import type { FlowVersionRepository } from '../../../../domain/repositories/flow-version.repository.js';
+import type { FlowExecutionRepository } from '../../../../domain/repositories/flow-execution.repository.js';
+import type { FlowNodeStatRepository } from '../../../../domain/repositories/flow-node-stat.repository.js';
+import type { FlowConnectionRepository } from '../../../../domain/repositories/flow-connection.repository.js';
+import type { ConversationRepository } from '../../../../domain/repositories/conversation.repository.js';
+import type { ContactRepository } from '../../../../domain/repositories/contact.repository.js';
+import type { PhoneNumberRepository } from '../../../../domain/repositories/phone-number.repository.js';
+import type { AgentRepository } from '../../../../domain/repositories/agent.repository.js';
+import type { AiAgentConfigRepository } from '../../../../domain/repositories/ai-agent-config.repository.js';
+import type { AiUsageRepository } from '../../../../domain/repositories/ai-usage.repository.js';
+import type { MessageRepository } from '../../../../domain/repositories/message.repository.js';
+import type { LabelRepository } from '../../../../domain/repositories/label.repository.js';
+import type { ConversationLabelRepository } from '../../../../domain/repositories/conversation-label.repository.js';
+import type { ConversationNoteRepository } from '../../../../domain/repositories/conversation-note.repository.js';
+import type { ConversationEventRepository } from '../../../../domain/repositories/conversation-event.repository.js';
+import type { MessageTemplateRepository } from '../../../../domain/repositories/message-template.repository.js';
+import type { FlowSecretsPort } from '../../../ports/flow-secrets.port.js';
+import type { FlowHttpPort } from '../../../ports/flow-http.port.js';
+import type { MessagingApiPort, InteractiveSendPayload } from '../../../ports/messaging-api.port.js';
+import type { AiCompletionPort } from '../../../ports/ai-completion.port.js';
+import type { RealtimeGatewayPort } from '../../../ports/realtime-gateway.port.js';
+import type { JobQueuePort } from '../../../ports/job-queue.port.js';
+import type { AutoAssignConversationUseCase } from '../../conversation/auto-assign-conversation.use-case.js';
+import { Flow } from '../../../../domain/entities/flow.entity.js';
+import type { FlowNode } from '../../../../domain/entities/flow.entity.js';
+import { FlowVersion } from '../../../../domain/entities/flow-version.entity.js';
+import { FlowExecution, FlowStepLog, FlowWaitState } from '../../../../domain/entities/flow-execution.entity.js';
+import { Conversation } from '../../../../domain/entities/conversation.entity.js';
+import { Contact } from '../../../../domain/entities/contact.entity.js';
+import { PhoneNumber } from '../../../../domain/entities/phone-number.entity.js';
+import { FlowExecutionStatus } from '../../../../domain/enums/flow-execution-status.enum.js';
+import { ConversationStatus } from '../../../../domain/enums/conversation-status.enum.js';
+import { ConversationEventType } from '../../../../domain/enums/conversation-event-type.enum.js';
+import { AgentType } from '../../../../domain/enums/agent-type.enum.js';
+import { MessageDirection } from '../../../../domain/enums/message-direction.enum.js';
+import { MessageType } from '../../../../domain/enums/message-type.enum.js';
+import { MessageWaStatus } from '../../../../domain/enums/message-wa-status.enum.js';
+import { TemplateStatus } from '../../../../domain/enums/template-status.enum.js';
+import { HandoffDetectionDomainService } from '../../../../domain/services/handoff-detection.domain-service.js';
+import { getProviderCapabilities } from '../../../../domain/constants/provider-capabilities.js';
+import { buildTemplatePayload } from '../../campaign/helpers/template-variable.resolver.js';
+import {
+  buildAgentSystemPrompt,
+  buildChatHistory,
+  parseMultiMessageResponse,
+  sendBubbles,
+  stripTimestampPrefixes,
+} from '../../ai/ai-run.helpers.js';
+import { FLOW_EXECUTE_JOB, FLOW_RESUME_JOB, FlowResumeJobData } from '../flow-jobs.constants.js';
+import { renderTemplate, renderJsonTemplate, resolvePath, normalizeText, FlowVariableContext } from './flow-variable.resolver.js';
+import { matchReply, validateAnswer, parseLatamNumber } from './flow-reply.matcher.js';
+import { durationToMs, DEFAULT_REPLY_TIMEOUT_MS, MAX_WAIT_MS, isTrigger } from './flow-node-types.js';
+
+const AI_RESPONSE_JOB = 'ai.process-response';
+const STEP_BUDGET_PER_RUN = 20;
+const MAX_STEPS = 200;
+const WINDOW_MS = 24 * 60 * 60 * 1000;
+const MAX_REPROMPTS = 2;
+
+type NodeResult =
+  | { kind: 'advance'; handle: string; note?: string; skipped?: boolean; isError?: boolean }
+  | { kind: 'wait'; wait: FlowWaitState; sentAt: Date }
+  | { kind: 'end'; endReason: string; note?: string; delegateToAiAgentId?: string }
+  | { kind: 'error'; message: string };
+
+interface RunCtx {
+  execId: string;
+  tenantId: string;
+  token: string;
+  flow: Flow;
+  version: FlowVersion;
+  conversation: Conversation;
+  contact: Contact;
+  phone: PhoneNumber;
+  variables: Record<string, unknown>;
+}
+
+function freshToken(): string {
+  return randomBytes(16).toString('hex');
+}
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export class FlowEngineService {
+  private readonly logger = new Logger(FlowEngineService.name);
+  private readonly handoffDetection = new HandoffDetectionDomainService();
+
+  constructor(
+    private readonly flowRepo: FlowRepository,
+    private readonly versionRepo: FlowVersionRepository,
+    private readonly execRepo: FlowExecutionRepository,
+    private readonly statRepo: FlowNodeStatRepository,
+    private readonly connectionRepo: FlowConnectionRepository,
+    private readonly conversationRepo: ConversationRepository,
+    private readonly contactRepo: ContactRepository,
+    private readonly phoneRepo: PhoneNumberRepository,
+    private readonly agentRepo: AgentRepository,
+    private readonly aiConfigRepo: AiAgentConfigRepository,
+    private readonly usageRepo: AiUsageRepository,
+    private readonly messageRepo: MessageRepository,
+    private readonly labelRepo: LabelRepository,
+    private readonly convLabelRepo: ConversationLabelRepository,
+    private readonly noteRepo: ConversationNoteRepository,
+    private readonly eventRepo: ConversationEventRepository,
+    private readonly templateRepo: MessageTemplateRepository,
+    private readonly secrets: FlowSecretsPort,
+    private readonly http: FlowHttpPort,
+    private readonly messagingApi: MessagingApiPort,
+    private readonly aiCompletion: AiCompletionPort,
+    private readonly gateway: RealtimeGatewayPort,
+    private readonly jobQueue: JobQueuePort,
+    private readonly autoAssign: AutoAssignConversationUseCase,
+  ) {}
+
+  // ── Entradas desde los jobs ────────────────────────────────────
+
+  /** Handler de flow.execute: reclama la ejecución y corre el loop de pasos */
+  async runExecution(executionId: string, token: string): Promise<void> {
+    const claimed = await this.execRepo.casClaim(executionId, FlowExecutionStatus.RUNNING, token, {
+      resumeToken: freshToken(),
+      runningSince: new Date(),
+    });
+    if (!claimed) return; // job viejo / cancelada / ya reclamada
+
+    const ctx = await this.loadCtx(claimed);
+    if (!ctx) return;
+    await this.runLoop(ctx, claimed);
+  }
+
+  /** Handler de flow.resume: respuesta del cliente o timeout de una espera */
+  async resume(input: FlowResumeJobData): Promise<void> {
+    const exec = await this.execRepo.findById(input.executionId);
+    if (!exec || exec.status !== FlowExecutionStatus.WAITING) return;
+    if (exec.resumeToken !== input.token || !exec.waitState) return;
+    const waitState = exec.waitState;
+
+    // Reentrega del mismo mensaje (retry del job entrante / redelivery de Meta):
+    // el token de la espera actual es válido, pero este mensaje ya reanudó una
+    // espera anterior y no debe contestar la pregunta siguiente.
+    if (input.reason === 'reply' && input.messageId && exec.lastConsumedMessageId === input.messageId) {
+      this.logger.debug(`Resume ignorado en ${exec.id}: mensaje ${input.messageId} ya consumido`);
+      return;
+    }
+
+    const claimed = await this.execRepo.casClaim(exec.id, FlowExecutionStatus.WAITING, input.token, {
+      status: FlowExecutionStatus.RUNNING,
+      resumeToken: freshToken(),
+      waitState: null,
+      runningSince: new Date(),
+      ...(input.reason === 'reply' && input.messageId ? { lastConsumedMessageId: input.messageId } : {}),
+    });
+    if (!claimed) return; // otro camino ganó (respuesta vs timeout): un solo CAS decide
+
+    const ctx = await this.loadCtx(claimed);
+    if (!ctx) return;
+
+    const node = ctx.version.graph.nodes.find((n) => n.id === waitState.nodeId);
+    if (!node) {
+      return this.finish(ctx, FlowExecutionStatus.FAILED, 'missing_node', {
+        nodeId: waitState.nodeId,
+        message: 'El nodo de espera ya no existe en la versión publicada',
+      });
+    }
+
+    const startMs = Date.now();
+    let handle: string;
+    let note: string | null = null;
+
+    if (input.reason === 'timeout') {
+      handle = waitState.kind === 'delay' ? 'out' : 'timeout';
+    } else if (node.type === 'action.ask') {
+      const body = (input.body ?? '').trim();
+      if (validateAnswer(waitState.validation, body)) {
+        handle = 'reply';
+        // Los números se guardan como número: así interpolan como literal JSON
+        // válido en el nodo HTTP (p. ej. el monto de un link de pago).
+        const value = waitState.validation === 'numero' ? (parseLatamNumber(body) ?? body) : body;
+        if (waitState.saveAs) this.setVar(ctx, waitState.saveAs, value);
+        await this.applySaveToContact(ctx, node, body);
+      } else if (waitState.attempts < MAX_REPROMPTS) {
+        return this.reprompt(ctx, node, waitState);
+      } else {
+        handle = 'invalid';
+        note = 'respuesta inválida tras reintentos';
+      }
+    } else {
+      // buttons / list
+      const match = matchReply(waitState, input.interactiveReplyId ?? null, input.body ?? null);
+      if (match) {
+        handle = match.handle;
+        const title = this.optionTitle(node, match.handle) ?? input.body ?? '';
+        if (waitState.saveAs) this.setVar(ctx, waitState.saveAs, title);
+        note = title;
+      } else {
+        const hasOther = ctx.version.graph.edges.some((e) => e.source === node.id && e.sourceHandle === 'other');
+        if (hasOther) {
+          handle = 'other';
+          if (waitState.saveAs) this.setVar(ctx, waitState.saveAs, input.body ?? '');
+        } else if (waitState.attempts < MAX_REPROMPTS) {
+          return this.reprompt(ctx, node, waitState);
+        } else {
+          handle = 'timeout';
+          note = 'sin respuesta válida tras reintentos';
+        }
+      }
+    }
+
+    await this.continueFrom(ctx, node, handle, note, startMs);
+  }
+
+  /** Sweep: ejecuciones colgadas (crash) y esperas con wake perdido */
+  async sweep(): Promise<void> {
+    const cutoff = new Date(Date.now() - 10 * 60 * 1000);
+
+    const stale = await this.execRepo.findStaleRunning(cutoff);
+    for (const exec of stale) {
+      const claimed = await this.execRepo.casClaim(exec.id, FlowExecutionStatus.RUNNING, exec.resumeToken, {
+        status: FlowExecutionStatus.FAILED,
+        endReason: 'stalled',
+        error: { nodeId: exec.currentNodeId ?? '', message: 'La ejecución quedó colgada (posible caída del proceso)' },
+        waitState: null,
+        runningSince: null,
+        endedAt: new Date(),
+        resumeToken: freshToken(),
+      });
+      if (!claimed) continue;
+      await this.afterFinish(claimed, FlowExecutionStatus.FAILED, 'stalled');
+    }
+
+    const expired = await this.execRepo.findExpiredWaiting(cutoff);
+    for (const exec of expired) {
+      // Wake sintetizado con el token vigente: el CAS del resume decide.
+      await this.jobQueue.enqueue(FLOW_RESUME_JOB, {
+        executionId: exec.id,
+        token: exec.resumeToken,
+        reason: 'timeout',
+      } satisfies FlowResumeJobData);
+    }
+  }
+
+  // ── Loop de pasos ──────────────────────────────────────────────
+
+  private async runLoop(ctx: RunCtx, exec: FlowExecution): Promise<void> {
+    let currentNodeId = exec.currentNodeId;
+    let stepCount = exec.stepCount;
+
+    for (let budget = 0; budget < STEP_BUDGET_PER_RUN; budget++) {
+      if (!currentNodeId) {
+        return this.finish(ctx, FlowExecutionStatus.COMPLETED, 'reached_end', null);
+      }
+      if (stepCount >= MAX_STEPS) {
+        return this.finish(ctx, FlowExecutionStatus.FAILED, 'step_limit', {
+          nodeId: currentNodeId,
+          message: 'Límite de pasos alcanzado (posible loop)',
+        });
+      }
+
+      const node = ctx.version.graph.nodes.find((n) => n.id === currentNodeId);
+      if (!node) {
+        return this.finish(ctx, FlowExecutionStatus.FAILED, 'missing_node', {
+          nodeId: currentNodeId,
+          message: 'Nodo inexistente en la versión publicada',
+        });
+      }
+
+      const startMs = Date.now();
+      let result: NodeResult;
+      try {
+        result = await this.executeNode(ctx, node);
+      } catch (error: any) {
+        this.logger.error(`Nodo ${node.type} (${node.id}) falló: ${error?.message}`, error?.stack);
+        result = { kind: 'error', message: error?.message ?? 'Error inesperado' };
+      }
+      this.bumpStat(ctx, node.id, { entered: 1 });
+
+      if (result.kind === 'error') {
+        const hasErrorEdge = ctx.version.graph.edges.some((e) => e.source === node.id && e.sourceHandle === 'error');
+        if (hasErrorEdge) {
+          result = { kind: 'advance', handle: 'error', note: result.message, isError: true };
+        } else {
+          this.bumpStat(ctx, node.id, { errors: 1 });
+          return this.finish(
+            ctx,
+            FlowExecutionStatus.FAILED,
+            'node_error',
+            { nodeId: node.id, message: result.message },
+            this.stepLog(node, 'error', null, result.message, startMs),
+          );
+        }
+      }
+
+      if (result.kind === 'end') {
+        return this.finish(
+          ctx,
+          FlowExecutionStatus.COMPLETED,
+          result.endReason,
+          null,
+          this.stepLog(node, 'ok', null, result.note ?? null, startMs),
+          result.delegateToAiAgentId,
+        );
+      }
+
+      if (result.kind === 'wait') {
+        return this.enterWait(ctx, node, result.wait, result.sentAt, startMs);
+      }
+
+      // advance
+      if (result.isError) this.bumpStat(ctx, node.id, { errors: 1 });
+      else this.bumpStat(ctx, node.id, { outcomeHandle: result.handle });
+
+      const step = this.stepLog(node, result.skipped ? 'skipped' : result.isError ? 'error' : 'ok', result.handle, result.note ?? null, startMs);
+      const edge = ctx.version.graph.edges.find((e) => e.source === node.id && e.sourceHandle === result.handle);
+      if (!edge) {
+        const failed = result.isError === true;
+        return this.finish(
+          ctx,
+          failed ? FlowExecutionStatus.FAILED : FlowExecutionStatus.COMPLETED,
+          failed ? 'node_error' : 'reached_end',
+          failed ? { nodeId: node.id, message: result.note ?? 'Error' } : null,
+          step,
+        );
+      }
+
+      const updated = await this.execRepo.advanceCursor(
+        ctx.execId,
+        ctx.token,
+        { currentNodeId: edge.target, variables: ctx.variables, runningSince: new Date() },
+        step,
+      );
+      if (!updated) return; // cancelada / tomada por otro camino
+      currentNodeId = edge.target;
+      stepCount = updated.stepCount;
+    }
+
+    // Presupuesto agotado: rotar token y encolar continuación (fairness).
+    const contToken = freshToken();
+    const updated = await this.execRepo.casClaim(ctx.execId, FlowExecutionStatus.RUNNING, ctx.token, {
+      resumeToken: contToken,
+    });
+    if (!updated) return;
+    await this.jobQueue.enqueue(FLOW_EXECUTE_JOB, { executionId: ctx.execId, token: contToken });
+  }
+
+  /** Reanudación post-espera: registra el step del nodo de espera y sigue */
+  private async continueFrom(ctx: RunCtx, node: FlowNode, handle: string, note: string | null, startMs: number): Promise<void> {
+    this.bumpStat(ctx, node.id, { outcomeHandle: handle });
+    const step = this.stepLog(node, 'ok', handle, note, startMs);
+    const edge = ctx.version.graph.edges.find((e) => e.source === node.id && e.sourceHandle === handle);
+    if (!edge) {
+      return this.finish(ctx, FlowExecutionStatus.COMPLETED, 'reached_end', null, step);
+    }
+    const updated = await this.execRepo.advanceCursor(
+      ctx.execId,
+      ctx.token,
+      { currentNodeId: edge.target, variables: ctx.variables, runningSince: new Date() },
+      step,
+    );
+    if (!updated) return;
+    await this.runLoop(ctx, updated);
+  }
+
+  private async enterWait(ctx: RunCtx, node: FlowNode, incomingWait: FlowWaitState, sentAt: Date, startMs: number): Promise<void> {
+    const wait: FlowWaitState = { ...incomingWait, nodeId: node.id };
+    const waitToken = freshToken();
+    const updated = await this.execRepo.casClaim(ctx.execId, FlowExecutionStatus.RUNNING, ctx.token, {
+      status: FlowExecutionStatus.WAITING,
+      currentNodeId: node.id,
+      resumeToken: waitToken,
+      waitState: wait,
+      variables: ctx.variables,
+      runningSince: null,
+    });
+    if (!updated) return;
+
+    // El timeout SIEMPRE se agenda y nunca se cancela: si la espera ya se
+    // resolvió cuando dispare, su token está muerto y el CAS lo descarta.
+    await this.jobQueue.schedule(
+      FLOW_RESUME_JOB,
+      { executionId: ctx.execId, token: waitToken, reason: 'timeout' } satisfies FlowResumeJobData,
+      wait.timeoutAt,
+    );
+
+    if (wait.kind === 'reply') await this.rescheduleIfInboundArrived(ctx, waitToken, sentAt);
+    void startMs;
+  }
+
+  /**
+   * Recheck anti-carrera: mientras la ejecución estuvo `running` el router
+   * descarta los mensajes entrantes (el flujo es dueño), así que si entró una
+   * respuesta en esa ventana hay que reanudar a mano. Se compara contra
+   * `conversation.lastInboundAt` —reloj del servidor, milisegundos— y NO
+   * contra `message.timestamp`, que viene de Meta truncado a segundos y
+   * perdería justamente las carreras sub-segundo que esto existe para cubrir.
+   * Un resume duplicado es inofensivo: lo absorben el CAS del token y el
+   * descarte por `lastConsumedMessageId`.
+   */
+  private async rescheduleIfInboundArrived(ctx: RunCtx, waitToken: string, since: Date): Promise<void> {
+    const freshConv = await this.conversationRepo.findById(ctx.conversation.id);
+    if (!freshConv || freshConv.lastInboundAt.getTime() <= since.getTime()) return;
+
+    const { data } = await this.messageRepo.findByConversationId(ctx.conversation.id, 1, 5);
+    const lastInbound = [...data].reverse().find((m) => m.direction === MessageDirection.INBOUND);
+    if (!lastInbound) return;
+
+    await this.jobQueue.enqueue(FLOW_RESUME_JOB, {
+      executionId: ctx.execId,
+      token: waitToken,
+      reason: 'reply',
+      messageId: lastInbound.id,
+      interactiveReplyId: lastInbound.interactiveReplyId,
+      body: lastInbound.body,
+    } satisfies FlowResumeJobData);
+  }
+
+  /** Re-pregunta (respuesta inválida / sin match): re-entra a la espera con attempts+1 */
+  private async reprompt(ctx: RunCtx, node: FlowNode, waitState: FlowWaitState): Promise<void> {
+    // Ancla ANTES del envío: la ventana en que el flujo está `running` (y el
+    // router descarta entrantes) arranca en el claim del resume, no en el send.
+    const since = new Date();
+    const data = node.data as Record<string, any>;
+    const fallbackMessage =
+      node.type === 'action.ask'
+        ? 'Mmm, eso no parece válido. ¿Me lo repetís?'
+        : 'Elegí una opción tocando un botón 🙂';
+    const { text } = renderTemplate(String(data.invalidMessage ?? '') || fallbackMessage, this.varCtx(ctx));
+
+    try {
+      await this.sendSessionMessage(ctx, text.substring(0, 4096));
+    } catch (error: any) {
+      this.logger.warn(`Reprompt falló: ${error?.message}`);
+    }
+
+    const waitToken = freshToken();
+    const updated = await this.execRepo.casClaim(ctx.execId, FlowExecutionStatus.RUNNING, ctx.token, {
+      status: FlowExecutionStatus.WAITING,
+      currentNodeId: node.id,
+      resumeToken: waitToken,
+      waitState: { ...waitState, attempts: waitState.attempts + 1 },
+      variables: ctx.variables,
+      runningSince: null,
+    });
+    if (!updated) return;
+    // Mismo timeoutAt original: el re-prompt no extiende la espera.
+    await this.jobQueue.schedule(
+      FLOW_RESUME_JOB,
+      { executionId: ctx.execId, token: waitToken, reason: 'timeout' } satisfies FlowResumeJobData,
+      waitState.timeoutAt,
+    );
+    // Sin esto, una respuesta llegada mientras se enviaba la re-pregunta queda
+    // huérfana y la ejecución cuelga hasta el timeout.
+    await this.rescheduleIfInboundArrived(ctx, waitToken, since);
+  }
+
+  // ── Ejecución por tipo de nodo ─────────────────────────────────
+
+  private async executeNode(ctx: RunCtx, node: FlowNode): Promise<NodeResult> {
+    const data = node.data as Record<string, any>;
+
+    if (isTrigger(node.type)) return { kind: 'advance', handle: 'out' };
+
+    switch (node.type) {
+      case 'action.send_text':
+        return this.execSendText(ctx, data);
+      case 'action.send_buttons':
+        return this.execSendOptions(ctx, node, data, 'buttons');
+      case 'action.send_list':
+        return this.execSendOptions(ctx, node, data, 'list');
+      case 'action.send_template':
+        return this.execSendTemplate(ctx, data);
+      case 'action.ask':
+        return this.execAsk(ctx, node, data);
+      case 'action.ai_reply':
+        return this.execAiReply(ctx, data);
+      case 'logic.ai_route':
+        return this.execAiRoute(ctx, data);
+      case 'action.handoff_ai':
+        return this.execHandoffAi(ctx, data);
+      case 'action.handoff_human':
+        return this.execHandoffHuman(ctx, data);
+      case 'action.assign_agent':
+        return this.execAssignAgent(ctx, data);
+      case 'action.label':
+        return this.execLabel(ctx, data);
+      case 'action.update_contact':
+        return this.execUpdateContact(ctx, data);
+      case 'action.internal_note':
+        return this.execInternalNote(ctx, data);
+      case 'logic.condition':
+        return this.execCondition(ctx, data);
+      case 'logic.delay':
+        return this.execDelay(data);
+      case 'action.http':
+        return this.execHttp(ctx, data);
+      default:
+        return { kind: 'error', message: `Tipo de nodo desconocido: ${node.type}` };
+    }
+  }
+
+  private async execSendText(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const windowIssue = this.checkWindow(ctx, data.windowPolicy);
+    if (windowIssue) return windowIssue.policy === 'skip' ? { kind: 'advance', handle: 'out', skipped: true, note: 'Ventana de 24 h cerrada — omitido' } : { kind: 'error', message: 'Ventana de 24 h cerrada' };
+
+    const { text, missing } = renderTemplate(String(data.body ?? ''), this.varCtx(ctx));
+    await this.sendSessionMessage(ctx, text.substring(0, 4096));
+    return { kind: 'advance', handle: 'out', note: missing.length ? `variables sin valor: ${missing.join(', ')}` : undefined };
+  }
+
+  private async execSendOptions(ctx: RunCtx, node: FlowNode, data: Record<string, any>, kind: 'buttons' | 'list'): Promise<NodeResult> {
+    const windowIssue = this.checkWindow(ctx, data.windowPolicy);
+    if (windowIssue) return windowIssue.policy === 'skip' ? { kind: 'advance', handle: 'timeout', skipped: true, note: 'Ventana de 24 h cerrada — omitido' } : { kind: 'error', message: 'Ventana de 24 h cerrada' };
+
+    const varCtx = this.varCtx(ctx);
+    const { text: body } = renderTemplate(String(data.body ?? ''), varCtx);
+    // Meta rechaza footers de más de 60 caracteres.
+    const renderedFooter = data.footer ? renderTemplate(String(data.footer), varCtx).text : '';
+    const footer = renderedFooter ? renderedFooter.substring(0, 60) : undefined;
+
+    const options: Array<{ title: string; description?: string }> =
+      kind === 'buttons'
+        ? (Array.isArray(data.buttons) ? data.buttons : []).map((b: any) => ({ title: String(b?.title ?? '') }))
+        : (Array.isArray(data.rows) ? data.rows : []).map((r: any) => ({ title: String(r?.title ?? ''), description: r?.description ? String(r.description) : undefined }));
+
+    const handlePrefix = kind === 'buttons' ? 'btn' : 'row';
+    const optionMap: Record<string, string> = {};
+    const textMap: Record<string, string> = {};
+    options.forEach((option, idx) => {
+      optionMap[`fl:${node.id}:${idx}`] = `${handlePrefix}:${idx}`;
+      // Primer título gana: dos opciones que normalizan igual ("Sí"/"SI") no
+      // deben pisarse, o el texto tipeado iría a la rama equivocada.
+      const key = normalizeText(option.title);
+      if (key && !(key in textMap)) textMap[key] = `${handlePrefix}:${idx}`;
+    });
+
+    const capabilities = getProviderCapabilities(ctx.phone.provider);
+    const sentAt = new Date();
+
+    if (capabilities.interactive) {
+      const interactive: InteractiveSendPayload =
+        kind === 'buttons'
+          ? {
+              kind: 'buttons',
+              body: body.substring(0, 1024),
+              footer,
+              buttons: options.map((option, idx) => ({ id: `fl:${node.id}:${idx}`, title: option.title.substring(0, 20) })),
+            }
+          : {
+              kind: 'list',
+              body: body.substring(0, 4096),
+              footer,
+              buttonText: String(data.buttonText ?? 'Ver opciones').substring(0, 20),
+              rows: options.map((option, idx) => ({
+                id: `fl:${node.id}:${idx}`,
+                title: option.title.substring(0, 24),
+                description: option.description?.substring(0, 72),
+              })),
+            };
+      await this.sendSessionMessage(ctx, body, interactive);
+    } else {
+      // Degradación (Twilio): menú numerado; el matcher resuelve por ordinal/título.
+      const menu = options.map((option, idx) => `${idx + 1}. ${option.title}`).join('\n');
+      await this.sendSessionMessage(ctx, `${body}\n\n${menu}`.substring(0, 4096));
+    }
+
+    const timeoutMs = Math.min(durationToMs(data.timeout) ?? DEFAULT_REPLY_TIMEOUT_MS, MAX_WAIT_MS);
+    return {
+      kind: 'wait',
+      sentAt,
+      wait: {
+        nodeId: node.id,
+        kind: 'reply',
+        timeoutAt: new Date(Date.now() + timeoutMs),
+        waitingSince: new Date(),
+        saveAs: typeof data.saveAs === 'string' && data.saveAs ? data.saveAs : null,
+        // Siempre poblado: en proveedores sin interactivos nunca llega un tap,
+        // pero el mapa define el orden de las opciones para los ordinales.
+        optionMap,
+        textMap,
+        attempts: 0,
+        validation: null,
+      },
+    };
+  }
+
+  private async execSendTemplate(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const template = await this.templateRepo.findById(String(data.templateId ?? ''));
+    if (!template || template.tenantId !== ctx.tenantId) return { kind: 'error', message: 'Plantilla inexistente' };
+    if (template.status !== TemplateStatus.APPROVED) return { kind: 'error', message: 'La plantilla no está aprobada' };
+    // La plantilla vive en una WABA concreta: mandarla por otra línea la rechaza Meta.
+    if (template.phoneNumberId !== ctx.phone.id) {
+      return { kind: 'error', message: 'La plantilla pertenece a otro número de WhatsApp' };
+    }
+    if (!getProviderCapabilities(ctx.phone.provider).templates) {
+      return { kind: 'error', message: 'El proveedor de este número no soporta plantillas' };
+    }
+
+    const varCtx = this.varCtx(ctx);
+    const variables: Record<string, string> = {};
+    const mapping: Record<string, { source?: string; value?: string }> = data.variables ?? {};
+    for (const [placeholder, def] of Object.entries(mapping)) {
+      const source = def?.source ?? 'static';
+      const rawValue = String(def?.value ?? '');
+      if (source === 'contact_field') {
+        variables[placeholder] = String(resolvePath(varCtx as any, `contact.${rawValue}`) ?? '');
+      } else if (source === 'flow_var') {
+        variables[placeholder] = String(resolvePath(varCtx as any, rawValue) ?? '');
+      } else {
+        variables[placeholder] = renderTemplate(rawValue, varCtx).text;
+      }
+    }
+
+    const built = buildTemplatePayload(template.components, variables);
+    const { waMessageId } = await this.messagingApi.sendMessage({
+      provider: ctx.phone.provider,
+      providerConfig: ctx.phone.providerConfig,
+      phoneNumberId: ctx.phone.phoneNumberId,
+      to: ctx.contact.waId,
+      type: 'template',
+      template: {
+        name: template.name,
+        language: template.language,
+        components: built.components,
+      },
+    });
+    await this.persistOutbound(ctx, waMessageId, MessageType.TEMPLATE, built.renderedBody, null);
+    return { kind: 'advance', handle: 'out' };
+  }
+
+  private async execAsk(ctx: RunCtx, node: FlowNode, data: Record<string, any>): Promise<NodeResult> {
+    const windowIssue = this.checkWindow(ctx, data.windowPolicy);
+    if (windowIssue) return windowIssue.policy === 'skip' ? { kind: 'advance', handle: 'timeout', skipped: true, note: 'Ventana de 24 h cerrada — omitido' } : { kind: 'error', message: 'Ventana de 24 h cerrada' };
+
+    const { text } = renderTemplate(String(data.body ?? ''), this.varCtx(ctx));
+    const sentAt = new Date();
+    await this.sendSessionMessage(ctx, text.substring(0, 4096));
+
+    const timeoutMs = Math.min(durationToMs(data.timeout) ?? DEFAULT_REPLY_TIMEOUT_MS, MAX_WAIT_MS);
+    return {
+      kind: 'wait',
+      sentAt,
+      wait: {
+        nodeId: node.id,
+        kind: 'reply',
+        timeoutAt: new Date(Date.now() + timeoutMs),
+        waitingSince: new Date(),
+        saveAs: typeof data.saveAs === 'string' && data.saveAs ? data.saveAs : null,
+        optionMap: null,
+        textMap: null,
+        attempts: 0,
+        validation: typeof data.validation === 'string' ? data.validation : 'texto',
+      },
+    };
+  }
+
+  private async execAiReply(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    if (this.checkWindow(ctx, 'error')) return { kind: 'error', message: 'Ventana de 24 h cerrada' };
+
+    const aiAgentId = String(data.aiAgentId ?? '');
+    const agent = await this.agentRepo.findById(aiAgentId);
+    const config = await this.aiConfigRepo.findByAgentId(aiAgentId);
+    if (!agent || !config || config.tenantId !== ctx.tenantId || !config.isActive) {
+      return { kind: 'error', message: 'El asistente IA no está disponible' };
+    }
+
+    // Límite diario del agente referenciado.
+    if (config.rateLimits.maxMessagesPerDay > 0) {
+      const usage = await this.usageRepo.getUsage(ctx.tenantId, aiAgentId, today());
+      if (usage && usage.messageCount >= config.rateLimits.maxMessagesPerDay) {
+        return { kind: 'error', message: 'El asistente alcanzó su límite diario de mensajes' };
+      }
+    }
+
+    const { data: history } = await this.messageRepo.findByConversationId(
+      ctx.conversation.id,
+      1,
+      config.contextConfig.maxHistoryMessages,
+    );
+
+    // Pre-check de derivación del agente sobre los últimos mensajes entrantes.
+    const recentInbound = history
+      .filter((m) => m.direction === MessageDirection.INBOUND)
+      .slice(-5)
+      .map((m) => m.body ?? '')
+      .join(' ');
+    const preCheck = this.handoffDetection.shouldHandoff(recentInbound, config.handoffRules, 0);
+    if (preCheck.trigger) {
+      return { kind: 'advance', handle: 'handoff', note: preCheck.reason };
+    }
+
+    const tenantLabels = await this.labelRepo.findByTenantId(ctx.tenantId);
+    const instructions = typeof data.instructions === 'string' && data.instructions.trim()
+      ? renderTemplate(data.instructions, this.varCtx(ctx)).text
+      : undefined;
+
+    const systemPrompt = buildAgentSystemPrompt({
+      config,
+      contact: config.contextConfig.includeContactInfo ? ctx.contact : null,
+      conversationSummary: ctx.conversation.summary ?? null,
+      labels: tenantLabels.map((l) => l.name),
+      extraInstructions: instructions,
+    });
+
+    const result = await this.aiCompletion.complete({
+      systemPrompt,
+      messages: buildChatHistory(history),
+    });
+
+    const content = stripTimestampPrefixes(result.content ?? '');
+    if (!content.trim()) return { kind: 'error', message: 'El asistente no produjo respuesta' };
+
+    const bubbles = config.multiMessage?.enabled
+      ? parseMultiMessageResponse(content, config.multiMessage.maxBubbles, this.logger)
+      : [content];
+
+    await this.usageRepo.incrementUsage(ctx.tenantId, aiAgentId, today(), bubbles.length, result.tokensUsed.total);
+
+    await sendBubbles({
+      messagingApi: this.messagingApi,
+      messageRepo: this.messageRepo,
+      gateway: this.gateway,
+      phone: ctx.phone,
+      contactWaId: ctx.contact.waId,
+      conversationId: ctx.conversation.id,
+      senderAgentId: agent.id,
+      senderAgentName: agent.name,
+      bubbles,
+      interBubbleDelayMs: config.multiMessage?.interBubbleDelayMs ?? 1200,
+    });
+
+    await this.conversationRepo.update(ctx.conversation.id, { lastMessageAt: new Date() } as any);
+    this.gateway.emitToTenant(ctx.tenantId, 'conversation.updated', { conversationId: ctx.conversation.id });
+    return { kind: 'advance', handle: 'out' };
+  }
+
+  private async execAiRoute(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const aiAgentId = String(data.aiAgentId ?? '');
+    const config = await this.aiConfigRepo.findByAgentId(aiAgentId);
+    if (!config || config.tenantId !== ctx.tenantId || !config.isActive) {
+      return { kind: 'error', message: 'El asistente IA no está disponible' };
+    }
+
+    const options: Array<{ key: string; label: string }> = Array.isArray(data.options) ? data.options : [];
+    if (options.length < 2) return { kind: 'error', message: 'El clasificador necesita al menos 2 opciones' };
+
+    const { data: history } = await this.messageRepo.findByConversationId(ctx.conversation.id, 1, 5);
+    const question = typeof data.question === 'string' && data.question.trim()
+      ? data.question
+      : 'Classify the intent of the customer based on the recent conversation.';
+
+    const systemPrompt = [
+      'You are an intent classifier for a WhatsApp business conversation.',
+      question,
+      'Reply with EXACTLY one of the following keys (a single word, no punctuation, no explanation):',
+      ...options.map((o) => `- ${o.key}: ${o.label}`),
+    ].join('\n');
+
+    const result = await this.aiCompletion.complete({
+      systemPrompt,
+      messages: buildChatHistory(history),
+      maxTokens: 32,
+    });
+
+    await this.usageRepo.incrementUsage(ctx.tenantId, aiAgentId, today(), 0, result.tokensUsed.total);
+
+    const raw = normalizeText(stripTimestampPrefixes(result.content ?? ''));
+    const exact = options.find((o) => normalizeText(o.key) === raw);
+    const partial = exact ?? options.find((o) => raw.includes(normalizeText(o.key)));
+    if (partial) return { kind: 'advance', handle: `opt:${partial.key}`, note: partial.key };
+    return { kind: 'advance', handle: 'fallback', note: `sin clasificar: "${raw.slice(0, 60)}"` };
+  }
+
+  private async execHandoffAi(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const aiAgentId = String(data.aiAgentId ?? '');
+    const agent = await this.agentRepo.findById(aiAgentId);
+    const config = await this.aiConfigRepo.findByAgentId(aiAgentId);
+    if (!agent || agent.type !== AgentType.AI || !config || config.tenantId !== ctx.tenantId || !config.isActive) {
+      return { kind: 'error', message: 'El asistente IA no está disponible' };
+    }
+
+    if (ctx.conversation.agentId && ctx.conversation.agentId !== aiAgentId) {
+      await this.agentRepo.incrementActiveCount(ctx.conversation.agentId, -1);
+    }
+    if (ctx.conversation.agentId !== aiAgentId) {
+      await this.agentRepo.incrementActiveCount(aiAgentId, 1);
+    }
+    await this.conversationRepo.update(ctx.conversation.id, {
+      agentId: aiAgentId,
+      status: ConversationStatus.ACTIVE,
+      // Latch del debounce: sin esto ProcessAiResponseUseCase descarta el job
+      // por su chequeo de idempotencia (multiMessage viene activo por defecto).
+      pendingAiSince: new Date(),
+    } as any);
+
+    const event = await this.eventRepo.create({
+      conversationId: ctx.conversation.id,
+      tenantId: ctx.tenantId,
+      type: ConversationEventType.ASSIGNED,
+      performedBy: null,
+      data: { agentName: agent.name, via: 'flow', flowName: ctx.flow.name },
+    });
+    this.gateway.emitToConversation(ctx.conversation.id, 'conversation.event', event);
+    this.gateway.emitToTenant(ctx.tenantId, 'conversation.updated', { conversationId: ctx.conversation.id });
+
+    // El job se encola en afterFinish, ya cerrada la ejecución: mientras siga
+    // viva, el guard de ProcessAiResponseUseCase lo descartaría sin reintento.
+    return { kind: 'end', endReason: 'delegated_ai', note: agent.name, delegateToAiAgentId: aiAgentId };
+  }
+
+  private async execHandoffHuman(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    if (typeof data.note === 'string' && data.note.trim()) {
+      const { text } = renderTemplate(data.note, this.varCtx(ctx));
+      await this.createFlowNote(ctx, text);
+    }
+    // Si el flujo dejó la conversación asignada (p. ej. al bot), liberarla primero.
+    if (ctx.conversation.agentId) {
+      await this.agentRepo.incrementActiveCount(ctx.conversation.agentId, -1);
+      await this.conversationRepo.update(ctx.conversation.id, { agentId: null, status: ConversationStatus.UNASSIGNED } as any);
+    }
+    const agent = await this.autoAssign.execute(ctx.conversation.id, { excludeAi: true });
+    return { kind: 'end', endReason: 'handoff', note: agent ? agent.name : 'sin agentes disponibles' };
+  }
+
+  private async execAssignAgent(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    if (data.mode === 'specific') {
+      const agentId = String(data.agentId ?? '');
+      const agent = await this.agentRepo.findById(agentId);
+      if (!agent || agent.tenantId !== ctx.tenantId || agent.type !== AgentType.HUMAN) {
+        return { kind: 'error', message: 'El agente elegido no está disponible' };
+      }
+      if (ctx.conversation.agentId && ctx.conversation.agentId !== agent.id) {
+        await this.agentRepo.incrementActiveCount(ctx.conversation.agentId, -1);
+      }
+      if (ctx.conversation.agentId !== agent.id) {
+        await this.agentRepo.incrementActiveCount(agent.id, 1);
+      }
+      await this.conversationRepo.update(ctx.conversation.id, { agentId: agent.id, status: ConversationStatus.ACTIVE } as any);
+      const event = await this.eventRepo.create({
+        conversationId: ctx.conversation.id,
+        tenantId: ctx.tenantId,
+        type: ConversationEventType.ASSIGNED,
+        performedBy: null,
+        data: { agentName: agent.name, via: 'flow', flowName: ctx.flow.name },
+      });
+      this.gateway.emitToConversation(ctx.conversation.id, 'conversation.event', event);
+      this.gateway.emitToAgent(agent.id, 'conversation.new', { conversationId: ctx.conversation.id });
+      this.gateway.emitToTenant(ctx.tenantId, 'conversation.updated', { conversationId: ctx.conversation.id });
+      ctx.conversation = (await this.conversationRepo.findById(ctx.conversation.id)) ?? ctx.conversation;
+      return { kind: 'advance', handle: 'out', note: agent.name };
+    }
+
+    const agent = await this.autoAssign.execute(ctx.conversation.id, { excludeAi: true });
+    ctx.conversation = (await this.conversationRepo.findById(ctx.conversation.id)) ?? ctx.conversation;
+    if (!agent) return { kind: 'advance', handle: 'unassigned' };
+    return { kind: 'advance', handle: 'out', note: agent.name };
+  }
+
+  private async execLabel(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const label = await this.labelRepo.findById(String(data.labelId ?? ''));
+    if (!label || label.tenantId !== ctx.tenantId) return { kind: 'error', message: 'Etiqueta inexistente' };
+
+    const existing = await this.convLabelRepo.findByConversationId(ctx.conversation.id);
+    const already = existing.some((cl) => cl.labelId === label.id);
+
+    if (data.action === 'remove') {
+      if (already) {
+        await this.convLabelRepo.delete(ctx.conversation.id, label.id);
+        const event = await this.eventRepo.create({
+          conversationId: ctx.conversation.id,
+          tenantId: ctx.tenantId,
+          type: ConversationEventType.LABEL_REMOVED,
+          performedBy: null,
+          data: { agentName: `Flujo: ${ctx.flow.name}`, labelName: label.name, labelColor: label.color },
+        });
+        this.gateway.emitToConversation(ctx.conversation.id, 'conversation.event', event);
+        this.gateway.emitToConversation(ctx.conversation.id, 'label.removed', {
+          conversationId: ctx.conversation.id,
+          labelId: label.id,
+        });
+        this.gateway.emitToTenant(ctx.tenantId, 'conversation.updated', { conversationId: ctx.conversation.id });
+      }
+      return { kind: 'advance', handle: 'out', note: label.name };
+    }
+
+    if (!already) {
+      await this.convLabelRepo.create({
+        conversationId: ctx.conversation.id,
+        tenantId: ctx.tenantId,
+        labelId: label.id,
+        assignedBy: ctx.flow.createdByAgentId,
+      });
+      const event = await this.eventRepo.create({
+        conversationId: ctx.conversation.id,
+        tenantId: ctx.tenantId,
+        type: ConversationEventType.LABEL_ADDED,
+        performedBy: null,
+        data: { agentName: `Flujo: ${ctx.flow.name}`, labelName: label.name, labelColor: label.color },
+      });
+      this.gateway.emitToConversation(ctx.conversation.id, 'conversation.event', event);
+      this.gateway.emitToConversation(ctx.conversation.id, 'label.assigned', {
+        conversationId: ctx.conversation.id,
+        label: { id: label.id, name: label.name, color: label.color },
+      });
+      this.gateway.emitToTenant(ctx.tenantId, 'conversation.updated', { conversationId: ctx.conversation.id });
+    }
+    return { kind: 'advance', handle: 'out', note: label.name };
+  }
+
+  private async execUpdateContact(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const fields: Array<{ field?: string; value?: string }> = Array.isArray(data.fields) ? data.fields : [];
+    const varCtx = this.varCtx(ctx);
+    const patch: Record<string, unknown> = {};
+    let customFields: Record<string, string> | undefined;
+    const applied: Record<string, string> = {};
+
+    for (const entry of fields) {
+      const field = entry?.field ?? '';
+      const value = renderTemplate(String(entry?.value ?? ''), varCtx).text;
+      if (field === 'name' || field === 'email' || field === 'company') {
+        patch[field] = value;
+        applied[field] = value;
+      } else if (field === 'notes') {
+        const current = ctx.contact.notes ? `${ctx.contact.notes}\n` : '';
+        patch.notes = `${current}${value}`;
+        applied.notes = value;
+      } else if (field.startsWith('custom.')) {
+        const key = field.slice('custom.'.length);
+        customFields = customFields ?? { ...(ctx.contact.customFields ?? {}) };
+        customFields[key] = value;
+        applied[field] = value;
+      }
+    }
+    if (customFields) patch.customFields = customFields;
+    if (Object.keys(patch).length === 0) return { kind: 'advance', handle: 'out', skipped: true };
+
+    const updated = await this.contactRepo.update(ctx.contact.id, patch);
+    if (updated) ctx.contact = updated;
+
+    const event = await this.eventRepo.create({
+      conversationId: ctx.conversation.id,
+      tenantId: ctx.tenantId,
+      type: ConversationEventType.CONTACT_UPDATED,
+      performedBy: null,
+      data: { agentName: `Flujo: ${ctx.flow.name}`, fields: applied },
+    });
+    this.gateway.emitToConversation(ctx.conversation.id, 'conversation.event', event);
+    this.gateway.emitToConversation(ctx.conversation.id, 'contact.updated', {
+      contactId: ctx.contact.id,
+      fields: applied,
+    });
+    return { kind: 'advance', handle: 'out' };
+  }
+
+  private async execInternalNote(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const { text } = renderTemplate(String(data.body ?? ''), this.varCtx(ctx));
+    if (text.trim()) await this.createFlowNote(ctx, text);
+    return { kind: 'advance', handle: 'out' };
+  }
+
+  private execCondition(ctx: RunCtx, data: Record<string, any>): NodeResult {
+    const rules: Array<Record<string, any>> = Array.isArray(data.rules) ? data.rules : [];
+    const combinator: 'and' | 'or' = data.logic === 'or' ? 'or' : 'and';
+    const varCtx = this.varCtx(ctx);
+
+    const evaluate = (rule: Record<string, any>): boolean => {
+      const op = String(rule.op ?? 'equals');
+      if (op === 'in_schedule') return this.evalSchedule(rule.schedule);
+
+      const leftRaw = resolvePath(varCtx as any, String(rule.left ?? ''));
+      const left = leftRaw === undefined || leftRaw === null ? '' : String(leftRaw);
+      const right = renderTemplate(String(rule.value ?? ''), varCtx).text;
+      const leftNorm = normalizeText(left);
+      const rightNorm = normalizeText(right);
+
+      switch (op) {
+        case 'equals': return leftNorm === rightNorm;
+        case 'not_equals': return leftNorm !== rightNorm;
+        case 'contains': return leftNorm.includes(rightNorm);
+        case 'not_contains': return !leftNorm.includes(rightNorm);
+        case 'starts_with': return leftNorm.startsWith(rightNorm);
+        case 'gt': return parseFloat(left.replace(',', '.')) > parseFloat(right.replace(',', '.'));
+        case 'lt': return parseFloat(left.replace(',', '.')) < parseFloat(right.replace(',', '.'));
+        case 'exists': return leftRaw !== undefined && leftRaw !== null && left !== '';
+        case 'not_exists': return leftRaw === undefined || leftRaw === null || left === '';
+        default: return false;
+      }
+    };
+
+    const passed = combinator === 'and' ? rules.every(evaluate) : rules.some(evaluate);
+    return { kind: 'advance', handle: passed ? 'yes' : 'no' };
+  }
+
+  private evalSchedule(schedule: Record<string, any> | undefined): boolean {
+    if (!schedule) return false;
+    const timezone = typeof schedule.timezone === 'string' && schedule.timezone ? schedule.timezone : 'America/Montevideo';
+    const days: number[] = Array.isArray(schedule.days) ? schedule.days : [];
+    const from = String(schedule.from ?? '00:00');
+    const to = String(schedule.to ?? '23:59');
+
+    const now = new Date();
+    const fmt = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'short' });
+    const parts = fmt.formatToParts(now);
+    const weekdayShort = parts.find((p) => p.type === 'weekday')?.value ?? '';
+    const hour = parts.find((p) => p.type === 'hour')?.value ?? '00';
+    const minute = parts.find((p) => p.type === 'minute')?.value ?? '00';
+    const dayIndex = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekdayShort);
+    const current = `${hour}:${minute}`;
+
+    if (days.length > 0 && !days.includes(dayIndex)) return false;
+    if (from <= to) return current >= from && current < to;
+    // Franja que cruza la medianoche (22:00–06:00)
+    return current >= from || current < to;
+  }
+
+  private execDelay(data: Record<string, any>): NodeResult {
+    const ms = Math.min(durationToMs(data.duration) ?? 60_000, MAX_WAIT_MS);
+    return {
+      kind: 'wait',
+      sentAt: new Date(),
+      wait: {
+        nodeId: '',
+        kind: 'delay',
+        timeoutAt: new Date(Date.now() + ms),
+        waitingSince: new Date(),
+        saveAs: null,
+        optionMap: null,
+        textMap: null,
+        attempts: 0,
+        validation: null,
+      },
+    };
+  }
+
+  private async execHttp(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const varCtx = this.varCtx(ctx);
+    const url = renderTemplate(String(data.url ?? ''), varCtx).text;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    for (const header of Array.isArray(data.headers) ? data.headers : []) {
+      if (header?.name) headers[String(header.name)] = renderTemplate(String(header.value ?? ''), varCtx).text;
+    }
+
+    if (data.connectionId) {
+      const connection = await this.connectionRepo.findById(String(data.connectionId));
+      if (!connection || connection.tenantId !== ctx.tenantId) {
+        return { kind: 'error', message: 'La conexión configurada no existe' };
+      }
+      headers[connection.headerName] = this.secrets.decrypt(connection.secretEncrypted);
+    }
+
+    let body: string | undefined;
+    if (data.bodyMode === 'json' && typeof data.body === 'string' && data.body.trim()) {
+      body = renderJsonTemplate(data.body, varCtx).text;
+    }
+
+    const method = String(data.method ?? 'GET') as any;
+    const attempts = data.retryOnFailure === true ? 3 : 1;
+    let lastError = '';
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        const response = await this.http.request({ method, url, headers, body, timeoutMs: 10_000 });
+        if (typeof data.saveAs === 'string' && data.saveAs) {
+          this.setVar(ctx, data.saveAs, { status: response.status, body: response.body });
+        }
+        if (response.status >= 200 && response.status < 300) {
+          return { kind: 'advance', handle: 'success', note: `HTTP ${response.status}` };
+        }
+        if (response.status < 500 || attempt === attempts) {
+          return { kind: 'advance', handle: 'error', isError: true, note: `HTTP ${response.status}` };
+        }
+        lastError = `HTTP ${response.status}`;
+      } catch (error: any) {
+        lastError = error?.message ?? 'error de red';
+        if (attempt === attempts) {
+          return { kind: 'advance', handle: 'error', isError: true, note: lastError };
+        }
+      }
+      await new Promise((r) => setTimeout(r, attempt * 2000));
+    }
+    return { kind: 'advance', handle: 'error', isError: true, note: lastError };
+  }
+
+  // ── Helpers de contexto y efectos ──────────────────────────────
+
+  private async loadCtx(exec: FlowExecution): Promise<RunCtx | null> {
+    const [flow, version, conversation, contact, phone] = await Promise.all([
+      this.flowRepo.findById(exec.flowId),
+      this.versionRepo.findById(exec.flowVersionId),
+      this.conversationRepo.findById(exec.conversationId),
+      this.contactRepo.findById(exec.contactId),
+      this.phoneRepo.findById(exec.phoneNumberId),
+    ]);
+
+    if (!flow || !version || !conversation || !contact || !phone || phone.status !== 'active') {
+      const failed = await this.execRepo.casClaim(exec.id, FlowExecutionStatus.RUNNING, exec.resumeToken, {
+        status: FlowExecutionStatus.FAILED,
+        endReason: 'context_missing',
+        error: { nodeId: exec.currentNodeId ?? '', message: 'Contexto incompleto (flujo/conversación/línea inexistente o inactiva)' },
+        runningSince: null,
+        waitState: null,
+        endedAt: new Date(),
+        resumeToken: freshToken(),
+      });
+      if (failed) await this.afterFinish(failed, FlowExecutionStatus.FAILED, 'context_missing');
+      return null;
+    }
+
+    return {
+      execId: exec.id,
+      tenantId: exec.tenantId,
+      token: exec.resumeToken,
+      flow,
+      version,
+      conversation,
+      contact,
+      phone,
+      variables: exec.variables ?? {},
+    };
+  }
+
+  private varCtx(ctx: RunCtx): FlowVariableContext {
+    return {
+      contact: {
+        name: ctx.contact.name,
+        phone: ctx.contact.phone,
+        email: ctx.contact.email,
+        company: ctx.contact.company,
+        notes: ctx.contact.notes,
+        customFields: ctx.contact.customFields ?? {},
+      },
+      message: (ctx.variables.message as Record<string, unknown>) ?? null,
+      vars: (ctx.variables.vars as Record<string, unknown>) ?? {},
+      webhook: (ctx.variables.webhook as Record<string, unknown>) ?? null,
+      flow: { name: ctx.flow.name },
+    };
+  }
+
+  private setVar(ctx: RunCtx, key: string, value: unknown): void {
+    const vars = { ...((ctx.variables.vars as Record<string, unknown>) ?? {}) };
+    vars[key] = value;
+    ctx.variables = { ...ctx.variables, vars };
+    // Cap defensivo de 32 KB sobre el JSON de variables.
+    const serialized = JSON.stringify(ctx.variables);
+    if (serialized.length > 32 * 1024) {
+      vars[key] = typeof value === 'string' ? value.slice(0, 1024) : '[valor truncado]';
+      ctx.variables = { ...ctx.variables, vars };
+    }
+  }
+
+  private checkWindow(ctx: RunCtx, policy: unknown): { policy: 'skip' | 'error' } | null {
+    const open = Date.now() - ctx.conversation.lastInboundAt.getTime() < WINDOW_MS;
+    if (open) return null;
+    return { policy: policy === 'skip' ? 'skip' : 'error' };
+  }
+
+  private async sendSessionMessage(ctx: RunCtx, body: string, interactive?: InteractiveSendPayload): Promise<void> {
+    const { waMessageId } = await this.messagingApi.sendMessage({
+      provider: ctx.phone.provider,
+      providerConfig: ctx.phone.providerConfig,
+      phoneNumberId: ctx.phone.phoneNumberId,
+      to: ctx.contact.waId,
+      type: interactive ? 'interactive' : 'text',
+      body,
+      interactive,
+    });
+    await this.persistOutbound(
+      ctx,
+      waMessageId,
+      interactive ? MessageType.INTERACTIVE : MessageType.TEXT,
+      body,
+      interactive ? ({ ...interactive } as Record<string, unknown>) : null,
+    );
+  }
+
+  private async persistOutbound(
+    ctx: RunCtx,
+    waMessageId: string,
+    messageType: MessageType,
+    body: string,
+    interactivePayload: Record<string, unknown> | null,
+  ): Promise<void> {
+    const message = await this.messageRepo.upsertByWaMessageId({
+      conversationId: ctx.conversation.id,
+      direction: MessageDirection.OUTBOUND,
+      messageType,
+      body,
+      mediaUrl: null,
+      mimeType: null,
+      waMessageId,
+      waStatus: MessageWaStatus.SENT,
+      timestamp: new Date(),
+      senderAgentId: null,
+      senderAgentName: ctx.flow.name,
+      interactivePayload,
+    });
+    this.gateway.emitToConversation(ctx.conversation.id, 'message.new', message);
+    this.gateway.emitToTenant(ctx.tenantId, 'conversation.updated', { conversationId: ctx.conversation.id });
+    await this.conversationRepo.update(ctx.conversation.id, { lastMessageAt: new Date() } as any);
+  }
+
+  private async createFlowNote(ctx: RunCtx, body: string): Promise<void> {
+    const note = await this.noteRepo.create({
+      conversationId: ctx.conversation.id,
+      tenantId: ctx.tenantId,
+      authorId: ctx.flow.createdByAgentId,
+      authorName: `Flujo: ${ctx.flow.name}`,
+      body: body.substring(0, 4096),
+    });
+    this.gateway.emitToConversation(ctx.conversation.id, 'note.new', note);
+    const event = await this.eventRepo.create({
+      conversationId: ctx.conversation.id,
+      tenantId: ctx.tenantId,
+      type: ConversationEventType.NOTE_ADDED,
+      performedBy: null,
+      data: { agentName: `Flujo: ${ctx.flow.name}` },
+    });
+    this.gateway.emitToConversation(ctx.conversation.id, 'conversation.event', event);
+  }
+
+  private async applySaveToContact(ctx: RunCtx, node: FlowNode, value: string): Promise<void> {
+    const saveTo = (node.data as any)?.saveToContact;
+    if (typeof saveTo !== 'string' || !saveTo) return;
+    const patch: Record<string, unknown> = {};
+    if (saveTo === 'name' || saveTo === 'email' || saveTo === 'company') {
+      patch[saveTo] = value;
+    } else if (saveTo.startsWith('custom.')) {
+      patch.customFields = { ...(ctx.contact.customFields ?? {}), [saveTo.slice('custom.'.length)]: value };
+    } else {
+      return;
+    }
+    const updated = await this.contactRepo.update(ctx.contact.id, patch);
+    if (updated) ctx.contact = updated;
+    this.gateway.emitToConversation(ctx.conversation.id, 'contact.updated', {
+      contactId: ctx.contact.id,
+      fields: { [saveTo]: value },
+    });
+  }
+
+  private optionTitle(node: FlowNode, handle: string): string | null {
+    const data = node.data as Record<string, any>;
+    const idx = parseInt(handle.split(':')[1] ?? '', 10);
+    if (Number.isNaN(idx)) return null;
+    if (node.type === 'action.send_buttons') return data.buttons?.[idx]?.title ?? null;
+    if (node.type === 'action.send_list') return data.rows?.[idx]?.title ?? null;
+    return null;
+  }
+
+  private stepLog(node: FlowNode, status: 'ok' | 'error' | 'skipped', handle: string | null, note: string | null, startMs: number): FlowStepLog {
+    return {
+      nodeId: node.id,
+      type: node.type,
+      status,
+      handle,
+      at: new Date(),
+      ms: Date.now() - startMs,
+      note: note ? note.substring(0, 300) : null,
+    };
+  }
+
+  private bumpStat(ctx: RunCtx, nodeId: string, delta: { entered?: number; errors?: number; outcomeHandle?: string }): void {
+    this.statRepo
+      .increment(ctx.tenantId, ctx.flow.id, ctx.version.id, nodeId, today(), delta)
+      .catch((error) => this.logger.warn(`No se pudo registrar stats de nodo: ${error?.message}`));
+  }
+
+  private async finish(
+    ctx: RunCtx,
+    status: FlowExecutionStatus.COMPLETED | FlowExecutionStatus.FAILED,
+    endReason: string,
+    error: { nodeId: string; message: string } | null,
+    finalStep?: FlowStepLog,
+    delegateToAiAgentId?: string,
+  ): Promise<void> {
+    const patch = {
+      status,
+      endReason,
+      error,
+      waitState: null,
+      runningSince: null,
+      endedAt: new Date(),
+      variables: ctx.variables,
+      resumeToken: freshToken(),
+    };
+
+    const updated = finalStep
+      ? await this.execRepo.advanceCursor(ctx.execId, ctx.token, patch, finalStep)
+      : await this.execRepo.casClaim(ctx.execId, FlowExecutionStatus.RUNNING, ctx.token, patch);
+    if (!updated) return;
+
+    await this.afterFinish(updated, status, endReason, delegateToAiAgentId);
+  }
+
+  /** Efectos post-final: stats, evento de timeline, WS y fallback humano */
+  private async afterFinish(
+    exec: FlowExecution,
+    status: FlowExecutionStatus,
+    endReason: string,
+    delegateToAiAgentId?: string,
+  ): Promise<void> {
+    const failed = status === FlowExecutionStatus.FAILED;
+    await this.flowRepo.incrementStats(exec.flowId, failed ? { failed: 1 } : { completed: 1 });
+
+    const flow = await this.flowRepo.findById(exec.flowId);
+    const flowName = flow?.name ?? 'Flujo';
+    try {
+      const event = await this.eventRepo.create({
+        conversationId: exec.conversationId,
+        tenantId: exec.tenantId,
+        type: failed ? ConversationEventType.FLOW_FAILED : ConversationEventType.FLOW_COMPLETED,
+        performedBy: null,
+        data: { flowName, flowId: exec.flowId, reason: endReason, ...(exec.error ? { message: exec.error.message } : {}) },
+      });
+      this.gateway.emitToConversation(exec.conversationId, 'conversation.event', event);
+    } catch (error: any) {
+      this.logger.warn(`No se pudo crear el evento de fin de flujo: ${error?.message}`);
+    }
+    this.gateway.emitToTenant(exec.tenantId, 'flow.execution.finished', {
+      flowId: exec.flowId,
+      executionId: exec.id,
+      conversationId: exec.conversationId,
+      status,
+    });
+    this.gateway.emitToTenant(exec.tenantId, 'conversation.updated', { conversationId: exec.conversationId });
+
+    // Fallback: un flujo fallado no puede dejar al cliente en el limbo.
+    if (failed) {
+      const conversation = await this.conversationRepo.findById(exec.conversationId);
+      if (conversation && !conversation.agentId) {
+        await this.autoAssign.execute(exec.conversationId, { excludeAi: true }).catch(() => null);
+      }
+    }
+
+    // Delegación al bot: recién ahora la ejecución está cerrada, así que el
+    // guard de "un flujo es dueño de la conversación" ya no descarta el job.
+    if (!failed && delegateToAiAgentId) {
+      await this.jobQueue.enqueue(AI_RESPONSE_JOB, { conversationId: exec.conversationId });
+    }
+  }
+}

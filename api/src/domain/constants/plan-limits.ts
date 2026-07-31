@@ -4,6 +4,7 @@ export interface PlanLimits {
   maxPhoneNumbers: number;
   maxHumanAgents: number;
   maxAiBots: number;
+  maxActiveFlows: number;
   maxConversationsPerMonth: number;
   webhooks: boolean;
   apiAccess: boolean;
@@ -18,6 +19,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxPhoneNumbers: 1,
     maxHumanAgents: 2,
     maxAiBots: 1,
+    maxActiveFlows: 1,
     maxConversationsPerMonth: 50,
     webhooks: false,
     apiAccess: false,
@@ -30,6 +32,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxPhoneNumbers: -1,
     maxHumanAgents: -1,
     maxAiBots: 3,
+    maxActiveFlows: 5,
     maxConversationsPerMonth: -1,
     webhooks: true,
     apiAccess: false,
@@ -42,6 +45,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxPhoneNumbers: -1,
     maxHumanAgents: -1,
     maxAiBots: -1,
+    maxActiveFlows: 20,
     maxConversationsPerMonth: -1,
     webhooks: true,
     apiAccess: true,
@@ -54,6 +58,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxPhoneNumbers: -1,
     maxHumanAgents: -1,
     maxAiBots: -1,
+    maxActiveFlows: -1,
     maxConversationsPerMonth: -1,
     webhooks: true,
     apiAccess: true,

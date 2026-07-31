@@ -4,11 +4,12 @@ import { PhoneNumberRepository } from '../../../domain/repositories/phone-number
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { ConversationRepository } from '../../../domain/repositories/conversation.repository.js';
 import { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-config.repository.js';
+import { FlowRepository } from '../../../domain/repositories/flow.repository.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 import { PlanTier } from '../../../domain/enums/plan-tier.enum.js';
 import { PLAN_LIMITS } from '../../../domain/constants/plan-limits.js';
 
-export type PlanResource = 'phone_numbers' | 'human_agents' | 'ai_bots' | 'conversations';
+export type PlanResource = 'phone_numbers' | 'human_agents' | 'ai_bots' | 'conversations' | 'flows';
 
 export interface ResourceUsage {
   current: number;
@@ -31,6 +32,7 @@ export class CheckPlanLimitUseCase {
     private readonly agentRepo: AgentRepository,
     private readonly conversationRepo: ConversationRepository,
     private readonly aiAgentConfigRepo: AiAgentConfigRepository,
+    private readonly flowRepo: FlowRepository,
   ) {}
 
   async checkResource(tenantId: string, resource: PlanResource): Promise<ResourceUsage> {
@@ -59,6 +61,12 @@ export class CheckPlanLimitUseCase {
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         current = await this.conversationRepo.countByTenantIdSince(tenantId, monthStart);
         limit = limits.maxConversationsPerMonth;
+        break;
+      }
+      case 'flows': {
+        const published = await this.flowRepo.findPublishedByTenantId(tenantId);
+        current = published.length;
+        limit = limits.maxActiveFlows;
         break;
       }
     }

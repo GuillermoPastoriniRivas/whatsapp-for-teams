@@ -9,6 +9,7 @@ import { ConversationStatus } from '../../../domain/enums/conversation-status.en
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 import { SendPushToAgentUseCase } from '../notification/send-push-to-agent.use-case.js';
+import { CancelActiveFlowExecutionUseCase } from '../flow/cancel-active-flow-execution.use-case.js';
 
 export interface AssignConversationInput {
   conversationId: string;
@@ -23,6 +24,7 @@ export class AssignConversationUseCase {
     private readonly gateway: RealtimeGatewayPort,
     private readonly eventRepo: ConversationEventRepository,
     private readonly sendPushToAgent: SendPushToAgentUseCase,
+    private readonly cancelActiveFlow: CancelActiveFlowExecutionUseCase,
   ) {}
 
   async execute(input: AssignConversationInput): Promise<Result<Conversation, DomainError>> {
@@ -35,6 +37,9 @@ export class AssignConversationUseCase {
     if (!newAgent || newAgent.tenantId !== input.tenantId) {
       return err(new AgentNotFoundError());
     }
+
+    // Asignación manual = intervención humana: detiene el flujo activo.
+    await this.cancelActiveFlow.execute(conversation.id, 'agent_takeover', input.agentId);
 
     const oldAgentId = conversation.agentId;
     let oldAgentName: string | null = null;

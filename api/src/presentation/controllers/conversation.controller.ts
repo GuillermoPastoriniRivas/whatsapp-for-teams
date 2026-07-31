@@ -5,6 +5,7 @@ import {
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { ListConversationsUseCase } from '../../application/use-cases/conversation/list-conversations.use-case.js';
 import { GetConversationDetailUseCase } from '../../application/use-cases/conversation/get-conversation-detail.use-case.js';
+import { GetActiveFlowForConversationUseCase } from '../../application/use-cases/flow/flow-executions.use-cases.js';
 import { GetConversationMessagesUseCase } from '../../application/use-cases/conversation/get-conversation-messages.use-case.js';
 import { SendMessageUseCase } from '../../application/use-cases/conversation/send-message.use-case.js';
 import { AssignConversationUseCase } from '../../application/use-cases/conversation/assign-conversation.use-case.js';
@@ -65,6 +66,7 @@ export class ConversationController {
     @Inject('LabelRepository') private readonly labelRepo: LabelRepository,
     @Inject('DemoAiReplyUseCase') private readonly demoAiReply: DemoAiReplyUseCase,
     @Inject('ConversationRepository') private readonly conversationRepo: ConversationRepository,
+    @Inject('GetActiveFlowForConversationUseCase') private readonly getActiveFlow: GetActiveFlowForConversationUseCase,
   ) {}
 
   /** Verify conversation belongs to the agent's tenant. Throws if not found or wrong tenant. */
@@ -155,9 +157,11 @@ export class ConversationController {
     const detailLabelIds = [...new Set(convLabels.map((cl) => cl.labelId))];
     const detailLabels = detailLabelIds.length > 0 ? await this.labelRepo.findByIds(detailLabelIds) : [];
     const detailLabelMap = new Map(detailLabels.map((l) => [l.id, l]));
+    const activeFlow = await this.getActiveFlow.execute(id);
 
     return {
       ...result.value,
+      activeFlow,
       contact: contact
         ? {
             id: contact.id,

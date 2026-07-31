@@ -63,6 +63,11 @@ export class AgendaQueueService implements JobQueuePort, OnModuleInit, OnModuleD
     await this.agenda.schedule(when, jobName, data as any);
   }
 
+  async every(interval: string, jobName: string): Promise<void> {
+    // agenda.every hace upsert por nombre: no se duplican cadenas al reiniciar.
+    await this.agenda.every(interval, jobName, {} as any);
+  }
+
   async onModuleInit(): Promise<void> {
     await this.agenda.start();
     this.logger.log(`Agenda started – processing jobs: [${[...this.handlers.keys()].join(', ')}]`);

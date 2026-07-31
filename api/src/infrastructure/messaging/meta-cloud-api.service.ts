@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SendMessageParams, SendMessageResult, TypingIndicatorParams } from '../../application/ports/messaging-api.port.js';
 import { classifyMetaError, MetaErrorBody } from './meta-api-error.js';
+import { buildInteractivePayload } from './interactive-payload.builder.js';
 
 @Injectable()
 export class MetaCloudApiService {
@@ -64,6 +65,8 @@ export class MetaCloudApiService {
         language: { code: params.template.language },
         ...(params.template.components?.length ? { components: params.template.components } : {}),
       };
+    } else if (params.type === 'interactive' && params.interactive) {
+      body.interactive = buildInteractivePayload(params.interactive);
     }
 
     const response = await fetch(url, {

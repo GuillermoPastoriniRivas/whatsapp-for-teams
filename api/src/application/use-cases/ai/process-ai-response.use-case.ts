@@ -9,6 +9,7 @@ import { AiUsageRepository } from '../../../domain/repositories/ai-usage.reposit
 import { LabelRepository } from '../../../domain/repositories/label.repository.js';
 import { ConversationLabelRepository } from '../../../domain/repositories/conversation-label.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
+import { FlowExecutionRepository } from '../../../domain/repositories/flow-execution.repository.js';
 import { AiCompletionPort } from '../../ports/ai-completion.port.js';
 import type { ChatMessage } from '../../ports/ai-completion.port.js';
 import { MessagingApiPort } from '../../ports/messaging-api.port.js';
@@ -20,8 +21,13 @@ import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
-import { buildSystemPrompt } from './prompts/system-prompt.builder.js';
-import { computeBusinessStatus } from './prompts/business-hours.util.js';
+import {
+  buildAgentSystemPrompt,
+  buildChatHistory,
+  parseMultiMessageResponse,
+  sendBubbles,
+  stripTimestampPrefixes,
+} from './ai-run.helpers.js';
 import { ToolRegistry } from './tools/tool-registry.js';
 import type { ToolContext } from './tools/tool-registry.js';
 import { createContactTools } from './tools/contact.tools.js';
@@ -55,6 +61,7 @@ export class ProcessAiResponseUseCase {
     private readonly labelRepo: LabelRepository,
     private readonly convLabelRepo: ConversationLabelRepository,
     private readonly eventRepo: ConversationEventRepository,
+    private readonly flowExecRepo: FlowExecutionRepository,
   ) {
     this.contactHandler = new ContactDirectiveHandler(this.contactRepo, this.eventRepo, this.gateway);
   }
@@ -69,6 +76,14 @@ export class ProcessAiResponseUseCase {
 
     const config = await this.configRepo.findByAgentId(agent.id);
     if (!config || !config.isActive) return;
+
+    // Un flujo activo es el dueño exclusivo de la conversación: un job de IA
+    // encolado por un mensaje anterior no debe hablarle al cliente en paralelo.
+    const activeFlow = await this.flowExecRepo.findActiveByConversationId(input.conversationId);
+    if (activeFlow) {
+      this.logger.debug(`Skipping AI response for ${input.conversationId} — un flujo tiene la conversación`);
+      return;
+    }
 
     // Debounce idempotency check
     if (config.multiMessage?.enabled && !conversation.pendingAiSince) {
@@ -146,40 +161,11 @@ export class ProcessAiResponseUseCase {
     const tenantLabels = await this.labelRepo.findByTenantId(conversation.tenantId);
 
     // ── Build system prompt ─────────────────────────────────────────────
-    const now = new Date();
-    const tz = config.timezone ?? undefined;
-    const dateOpts: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: tz };
-    const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: tz };
-    const weekdayFmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz });
-    const businessStatus = computeBusinessStatus(config.businessHours, config.timezone, now);
-
-    const systemPrompt = buildSystemPrompt({
-      currentDay: weekdayFmt.format(now),
-      currentDate: now.toLocaleDateString('en-US', dateOpts),
-      currentTime: now.toLocaleTimeString('en-US', timeOpts),
-      businessStatus: businessStatus ? {
-        isOpen: businessStatus.isOpen,
-        todayRange: businessStatus.todayRange,
-        nextOpen: businessStatus.nextOpen,
-      } : null,
-      businessProfile: config.businessProfile,
-      behavior: config.behavior,
-      contact: contact ? {
-        name: contact.name,
-        phone: contact.phone ?? undefined,
-        email: contact.email ?? undefined,
-        company: contact.company ?? undefined,
-        notes: contact.notes ?? undefined,
-        customFields: contact.customFields ?? undefined,
-      } : undefined,
-      conversationSummary: conversation.summary ?? undefined,
-      handoffRules: {
-        keywords: config.handoffRules.keywords,
-        urgencyKeywords: config.handoffRules.urgencyKeywords,
-        onCustomerRequest: config.handoffRules.onCustomerRequest,
-      },
+    const systemPrompt = buildAgentSystemPrompt({
+      config,
+      contact,
+      conversationSummary: conversation.summary ?? null,
       labels: tenantLabels.map((l: any) => l.name),
-      multiMessage: config.multiMessage?.enabled ? { enabled: true, maxBubbles: config.multiMessage.maxBubbles } : undefined,
     });
 
     // ── Build tool registry ─────────────────────────────────────────────
@@ -196,10 +182,7 @@ export class ProcessAiResponseUseCase {
     }));
 
     // ── Build chat history ──────────────────────────────────────────────
-    const chatHistory: ChatMessage[] = messages.map((m) => ({
-      role: (m.direction === MessageDirection.INBOUND ? 'user' : 'assistant') as 'user' | 'assistant',
-      content: `[${m.timestamp.toISOString()}] ${m.body ?? ''}`,
-    }));
+    const chatHistory: ChatMessage[] = buildChatHistory(messages);
 
     // ── Send typing indicator ───────────────────────────────────────────
     const sendContact = contact ?? await this.contactRepo.findById(conversation.contactId);
@@ -292,7 +275,7 @@ export class ProcessAiResponseUseCase {
     }
 
     // Strip timestamp prefixes the LLM may have echoed
-    const responseContent = finalContent.replace(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\]\s?/g, '');
+    const responseContent = stripTimestampPrefixes(finalContent);
 
     // Post-check: low-confidence handoff
     if (this.handoffDetection.isLowConfidenceResponse(responseContent)) {
@@ -321,47 +304,35 @@ export class ProcessAiResponseUseCase {
 
     // Parse multi-message bubbles
     const bubbles = config.multiMessage?.enabled
-      ? this.parseMultiMessageResponse(responseContent, config.multiMessage.maxBubbles)
+      ? parseMultiMessageResponse(responseContent, config.multiMessage.maxBubbles, this.logger)
       : [responseContent];
 
     this.logger.log(`Response: ${bubbles.length} bubble(s), ${responseContent.length} chars total`);
 
+    // La llamada al LLM tarda segundos: un flujo pudo tomar la conversación
+    // mientras tanto. Se revalida justo antes de escribirle al cliente.
+    const flowTookOver = await this.flowExecRepo.findActiveByConversationId(input.conversationId);
+    if (flowTookOver) {
+      this.logger.debug(`Descartando respuesta IA de ${input.conversationId} — un flujo tomó la conversación`);
+      await this.conversationRepo.update(input.conversationId, { pendingAiSince: null } as any);
+      return;
+    }
+
     // ── Send & Record ───────────────────────────────────────────────────
     await this.usageRepo.incrementUsage(config.tenantId, agent.id, today, bubbles.length, totalTokens.total);
 
-    for (let i = 0; i < bubbles.length; i++) {
-      if (i > 0) {
-        this.messagingApi.sendTypingIndicator(typingParams).catch(() => {});
-        await new Promise((r) => setTimeout(r, config.multiMessage?.interBubbleDelayMs ?? 1200));
-      }
-
-      const body = bubbles[i].substring(0, 4096);
-
-      const { waMessageId } = await this.messagingApi.sendMessage({
-        provider: phone.provider,
-        providerConfig: phone.providerConfig,
-        phoneNumberId: phone.phoneNumberId,
-        to: sendContact.waId,
-        type: MessageType.TEXT,
-        body,
-      });
-
-      const message = await this.messageRepo.upsertByWaMessageId({
-        conversationId: conversation.id,
-        direction: MessageDirection.OUTBOUND,
-        messageType: MessageType.TEXT,
-        body,
-        mediaUrl: null,
-        mimeType: null,
-        waMessageId,
-        waStatus: MessageWaStatus.SENT,
-        timestamp: new Date(),
-        senderAgentId: agent.id,
-        senderAgentName: agent.name,
-      });
-
-      this.gateway.emitToConversation(conversation.id, 'message.new', message);
-    }
+    await sendBubbles({
+      messagingApi: this.messagingApi,
+      messageRepo: this.messageRepo,
+      gateway: this.gateway,
+      phone,
+      contactWaId: sendContact.waId,
+      conversationId: conversation.id,
+      senderAgentId: agent.id,
+      senderAgentName: agent.name,
+      bubbles,
+      interBubbleDelayMs: config.multiMessage?.interBubbleDelayMs ?? 1200,
+    });
 
     await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date(), pendingAiSince: null } as any);
     this.gateway.emitToTenant(conversation.tenantId, 'conversation.updated', { conversationId: conversation.id });
@@ -379,36 +350,6 @@ export class ProcessAiResponseUseCase {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
-
-  private parseMultiMessageResponse(raw: string, maxBubbles: number): string[] {
-    const tryParse = (str: string): string[] | null => {
-      try {
-        const parsed = JSON.parse(str);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((s: unknown) => typeof s === 'string')) {
-          return parsed;
-        }
-      } catch { /* fall through */ }
-      return null;
-    };
-
-    let result = tryParse(raw);
-    if (result) return result.slice(0, maxBubbles);
-
-    const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (fenceMatch) {
-      result = tryParse(fenceMatch[1].trim());
-      if (result) return result.slice(0, maxBubbles);
-    }
-
-    const arrayMatch = raw.match(/\[[\s\S]*\]/);
-    if (arrayMatch) {
-      result = tryParse(arrayMatch[0]);
-      if (result) return result.slice(0, maxBubbles);
-    }
-
-    this.logger.warn(`Failed to parse multi-message JSON, using single message. Raw: ${raw.substring(0, 200)}`);
-    return [raw];
-  }
 
   private startTypingLoop(params: import('../../ports/messaging-api.port.js').TypingIndicatorParams): { stop: () => void; refresh: () => void } {
     const send = () => { this.messagingApi.sendTypingIndicator(params).catch(() => {}); };

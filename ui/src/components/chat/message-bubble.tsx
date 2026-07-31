@@ -49,6 +49,27 @@ export function MessageBubble({ message }: Props) {
         {message.body && (
           <p className="whitespace-pre-wrap break-words inline">{message.body}</p>
         )}
+        {/* Mensaje interactivo saliente: dibuja sus botones/opciones */}
+        {message.interactivePayload && (
+          <div className="mt-2 space-y-1 clear-both">
+            {(message.interactivePayload.buttons ?? []).map((button) => (
+              <div
+                key={button.id}
+                className="rounded-md bg-white/70 dark:bg-white/10 border border-black/5 py-1 text-center text-[13px] text-sky-600 dark:text-sky-400"
+              >
+                {button.title}
+              </div>
+            ))}
+            {message.interactivePayload.kind === "list" && (
+              <div className="rounded-md bg-white/70 dark:bg-white/10 border border-black/5 py-1 text-center text-[13px] text-sky-600 dark:text-sky-400">
+                ≡ {message.interactivePayload.buttonText ?? "Ver opciones"}
+                <span className="block text-[11px] text-slate-500">
+                  {(message.interactivePayload.rows ?? []).map((row) => row.title).join(" · ")}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
         {/* Inline spacer + timestamp — sits at the end of the last text line */}
         <span className="inline-flex items-center gap-1 align-bottom float-right ml-2 mt-1 translate-y-[2px]">
           <span className={cn(

@@ -6,6 +6,7 @@ import { useTranslations } from "@/lib/i18n/use-translations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SendHorizontal, Smile, Paperclip } from "lucide-react";
+import { FlowComposerNote } from "./flow-chip";
 
 interface Props {
   conversationId: string;
@@ -43,6 +44,8 @@ export function MessageInput({ conversationId }: Props) {
   };
 
   return (
+    <>
+    <FlowComposerNote conversationId={conversationId} />
     <div className="flex shrink-0 items-center gap-2 bg-[var(--asis-surface-header)] px-4 py-3 sm:px-6 w-full shadow-sm z-10 transition-colors duration-200 border-t border-border">
       <Button variant="ghost" size="icon" className="shrink-0 text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:bg-white/5 rounded-full h-10 w-10">
         <Smile className="h-[22px] w-[22px]" />
@@ -73,5 +76,6 @@ export function MessageInput({ conversationId }: Props) {
         <SendHorizontal className="h-[18px] w-[18px]" />
       </Button>
     </div>
+    </>
   );
 }

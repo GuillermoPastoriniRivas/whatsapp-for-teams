@@ -71,6 +71,8 @@ export interface MetaWebhookMessage {
   from: string;
   timestamp: string;
   type: string;
+  /** Present when the message replies to another (button taps always carry it). */
+  context?: { id: string };
   // Each message type adds its own optional payload field.
   // Adding a new type = adding one optional field here + one case in the parser.
   text?: { body: string };
@@ -82,7 +84,14 @@ export interface MetaWebhookMessage {
   location?: { latitude: number; longitude: number; name?: string; address?: string };
   reaction?: { message_id: string; emoji: string };
   contacts?: unknown[];
-  interactive?: unknown;
+  /** Reply to an interactive (non-template) buttons/list message. */
+  interactive?: {
+    type: 'button_reply' | 'list_reply' | string;
+    button_reply?: { id: string; title: string };
+    list_reply?: { id: string; title: string; description?: string };
+  };
+  /** Reply to a template quick-reply button (Meta sends type 'button'). */
+  button?: { payload: string; text: string };
 }
 
 export interface MetaMediaPayload {

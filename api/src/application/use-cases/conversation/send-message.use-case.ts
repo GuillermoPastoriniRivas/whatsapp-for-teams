@@ -12,6 +12,7 @@ import { DomainError, ConversationNotFoundError, AgentNotAssignedError, Conversa
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
+import { CancelActiveFlowExecutionUseCase } from '../flow/cancel-active-flow-execution.use-case.js';
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
@@ -24,6 +25,7 @@ export class SendMessageUseCase {
     private readonly messagingApi: MessagingApiPort,
     private readonly gateway: RealtimeGatewayPort,
     private readonly agentRepo: AgentRepository,
+    private readonly cancelActiveFlow: CancelActiveFlowExecutionUseCase,
   ) {}
 
   async execute(input: SendMessageInput): Promise<Result<Message, DomainError>> {
@@ -67,6 +69,12 @@ export class SendMessageUseCase {
     });
 
     await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date() } as any);
+
+    // El humano siempre gana: si un flujo estaba manejando la conversación,
+    // escribir la detiene (nunca dos escritores hablándole al cliente). Va
+    // DESPUÉS del envío: un intento fallido (ventana vencida, error del
+    // proveedor) no llegó al cliente y no debe matar la automatización.
+    await this.cancelActiveFlow.execute(conversation.id, 'agent_takeover', input.agentId);
 
     this.gateway.emitToConversation(conversation.id, 'message.new', message);
 

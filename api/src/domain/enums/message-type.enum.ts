@@ -6,4 +6,5 @@ export enum MessageType {
   DOCUMENT = 'document',
   LOCATION = 'location',
   TEMPLATE = 'template',
+  INTERACTIVE = 'interactive',
 }
