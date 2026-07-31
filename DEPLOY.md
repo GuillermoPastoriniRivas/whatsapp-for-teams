@@ -219,10 +219,23 @@ En el repo → Settings → Secrets and variables → Actions:
 |---|---|
 | `EC2_HOST` | Dominio o IP del EC2 (`asis.chat`) |
 | `EC2_SSH_KEY` | Clave privada SSH completa (con BEGIN/END lines) |
-| `NEXT_PUBLIC_API_URL` | `https://asis.chat` |
+| `NEXT_PUBLIC_API_URL` | `https://asis.chat/api` — **con el sufijo `/api`**: el cliente arma las URLs como `${base}${path}` (`/flows`, `/conversations`…), y nginx enruta `/api/` al contenedor de la API. Sin el sufijo, todas las llamadas caen en la UI y devuelven 404. El socket deriva el origen quitando `/api`. |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Client ID de Google OAuth |
 
 **Los secretos de la API (MONGODB_URI, JWT_SECRET, etc) NO van acá** — viven en SSM.
+
+### Variables de entorno que NO pueden faltar en SSM
+
+El código tiene defaults de desarrollo (`http://localhost:...`) para varias variables. Si faltan en
+SSM, la app arranca igual pero se comporta como si fuera local — el síntoma aparece recién en el mail
+que le llega a un usuario real:
+
+| Variable | Valor en producción | Qué rompe si falta |
+|---|---|---|
+| `FRONTEND_URL` | `https://asis.chat` | Links de recuperar contraseña, verificación de mail e invitaciones salen apuntando a `http://localhost:3001`; los redirects de billing también |
+| `ALLOWED_ORIGINS` | `https://asis.chat,https://www.asis.chat` | CORS del API y del gateway de WebSocket. Hoy no se nota porque todo es mismo-origen detrás de nginx, pero cualquier cliente cross-origin queda bloqueado |
+| `FLOW_SECRETS_KEY` | 32 bytes hex | Las Conexiones de Flujos (credenciales del nodo HTTP) tiran 500 al crearse. **Si se pierde o se rota, las Conexiones ya guardadas quedan indescifrables** |
+| `API_BASE_URL` | `https://asis.chat/api` | Base pública que la API expone a integradores |
 
 ### 8. Primer deploy
 
