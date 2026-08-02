@@ -20,9 +20,12 @@ GitHub (push a main) ──▶ GitHub Actions
                                                     └─ nginx          :80, :443 (letsencrypt)
 ```
 
-- **Infra**: [infra/terraform/](infra/terraform/) — EC2 + EIP + Route53 + SES + CloudWatch log groups
+- **Infra**: [infra/terraform/](infra/terraform/) — EC2 + EIP + Route53 + SES + CloudWatch log groups + bucket de media
 - **Secretos**: SSM Parameter Store bajo `/asis/api/*`. El EC2 los lee vía su IAM role
-- **Certs SSL**: Let's Encrypt en `/etc/letsencrypt/` (persisten en el disco del EC2)
+- **Certs SSL**: Let's Encrypt en `/etc/letsencrypt/` (persisten en el disco del EC2).
+  Dos certs: `asis.chat` (+ www) y `media.asis.chat`
+- **Media**: bucket S3 privado `asis-chat-media`; se sirve por URLs prefirmadas y,
+  en plan free, por el proxy en `media.asis.chat` ([MEDIA-LIBRARY.md](MEDIA-LIBRARY.md))
 - **DB**: MongoDB Atlas (externo, con IP del EC2 en whitelist)
 - **Deploy**: GitHub Actions en cada push a `main` ([.github/workflows/deploy.yml](.github/workflows/deploy.yml))
 
@@ -236,6 +239,14 @@ que le llega a un usuario real:
 | `ALLOWED_ORIGINS` | `https://asis.chat,https://www.asis.chat` | CORS del API y del gateway de WebSocket. Hoy no se nota porque todo es mismo-origen detrás de nginx, pero cualquier cliente cross-origin queda bloqueado |
 | `FLOW_SECRETS_KEY` | 32 bytes hex | Las Conexiones de Flujos (credenciales del nodo HTTP) tiran 500 al crearse. **Si se pierde o se rota, las Conexiones ya guardadas quedan indescifrables** |
 | `API_BASE_URL` | `https://asis.chat/api` | Base pública que la API expone a integradores |
+| `API_PUBLIC_URL` | `https://asis.chat` | Base con la que se arman las URLs de los archivos. Si falta, las imágenes del chat apuntan a `localhost` y no cargan |
+| `MEDIA_S3_BUCKET` | `asis-chat-media` | **Sin esto la media library queda deshabilitada para todos los tenants**: la app opera en passthrough y los archivos se pierden a los 30 días (ver [MEDIA-LIBRARY.md](MEDIA-LIBRARY.md)) |
+| `MEDIA_S3_REGION` | `us-east-1` | Región del bucket. Cae a `AWS_REGION` si falta |
+| `MEDIA_URL_SECRET` | 32 bytes hex | Firma de las URLs del proxy de media. Si falta usa `JWT_SECRET`; rotarlo invalida las URLs ya emitidas (duran 15 min, así que es inocuo) |
+
+> El bucket lo crea Terraform ([infra/terraform/media.tf](infra/terraform/media.tf)) junto con
+> los permisos del rol IAM del EC2. Es privado: no se accede por URL pública, la lectura sale por
+> URLs prefirmadas de corta vida y lo que se manda a WhatsApp viaja por `media_id`.
 
 ### 8. Primer deploy
 
@@ -258,10 +269,24 @@ cd ~/hivvo
 docker compose stop nginx
 sudo certbot certonly --standalone -d asis.chat -d www.asis.chat \
   --email contact@asis.chat --agree-tos --no-eff-email
+sudo certbot certonly --standalone -d media.asis.chat \
+  --email contact@asis.chat --agree-tos --no-eff-email
 docker compose up -d nginx
 ```
 
 Verificar: abrir https://asis.chat en el navegador.
+
+> **El cert de `media.asis.chat` va ANTES que el config de nginx que lo usa.**
+> El server block referencia `/etc/letsencrypt/live/media.asis.chat/fullchain.pem`;
+> si el archivo no existe, nginx no arranca y se cae el sitio entero, no solo el
+> subdominio. Ante la duda, validar el config sin aplicarlo:
+>
+> ```bash
+> docker run --rm \
+>   -v $PWD/infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro \
+>   -v /etc/letsencrypt:/etc/letsencrypt:ro \
+>   nginx:alpine nginx -t
+> ```
 
 ### 10. MongoDB Atlas — whitelist IP
 

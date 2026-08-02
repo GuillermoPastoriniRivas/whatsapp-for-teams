@@ -139,6 +139,22 @@ resource "aws_s3_bucket_policy" "media_tls_only" {
 }
 
 # ─────────────────────────────────────────────────
+# Subdominio dedicado para el contenido de terceros
+#
+# Sirve solo /api/media/. Que no comparta origen con la app es lo que evita que
+# un archivo subido por un cliente pueda tocar la sesión de nadie — el mismo
+# criterio que githubusercontent.com o googleusercontent.com.
+# ─────────────────────────────────────────────────
+
+resource "aws_route53_record" "media" {
+  zone_id = aws_route53_zone.asis_chat.zone_id
+  name    = "media.asis.chat"
+  type    = "A"
+  ttl     = 300
+  records = [aws_eip.hivvo.public_ip]
+}
+
+# ─────────────────────────────────────────────────
 # Permisos del EC2 sobre el bucket
 # ─────────────────────────────────────────────────
 

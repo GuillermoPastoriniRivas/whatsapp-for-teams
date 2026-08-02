@@ -5,3 +5,6 @@
 !terraform.tfvars.example
 .terraform.lock.hcl
 tfplan
+
+# Planes de Terraform: artefactos binarios de una corrida puntual
+*.tfplan
