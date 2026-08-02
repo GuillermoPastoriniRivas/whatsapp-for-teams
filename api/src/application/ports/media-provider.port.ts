@@ -5,6 +5,12 @@ export interface MediaDownloadParams {
   providerConfig: Record<string, string>;
   /** Id que devolvió el webhook (Meta) o URL completa (Twilio). */
   providerMediaId: string;
+  /**
+   * phone_number_id del proveedor. Meta lo acepta como parámetro opcional y
+   * Kapso lo necesita: sin él no sabe de qué WhatsApp config se trata y
+   * responde "WhatsApp configuration not found".
+   */
+  phoneNumberId?: string;
 }
 
 export interface MediaDownloadResult {

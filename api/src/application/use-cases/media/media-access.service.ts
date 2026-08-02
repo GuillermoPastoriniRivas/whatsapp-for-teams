@@ -241,6 +241,7 @@ export class MediaAccessService {
         provider: phone.provider,
         providerConfig: phone.providerConfig,
         providerMediaId: asset.metaMediaId,
+        phoneNumberId: phone.phoneNumberId,
       });
     } catch (error) {
       if (error instanceof MediaGoneAtSourceError) {
