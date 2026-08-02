@@ -9,13 +9,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "asis.chat",
+  title: "Asis Chat",
   description: "Atención por WhatsApp para equipos, con IA",
   icons: { icon: "/favicon.ico", apple: "/apple-icon.png" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "asis.chat",
+    // iOS toma el nombre del ícono de acá, no del manifest.
+    title: "Asis Chat",
   },
 };
 
