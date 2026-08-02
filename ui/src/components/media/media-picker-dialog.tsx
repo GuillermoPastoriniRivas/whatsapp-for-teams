@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/media";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Overlay } from "@/components/ui/overlay";
 import { FileText, Film, ImageIcon, Loader2, Music, Search, X } from "lucide-react";
 import type { MediaAsset, MediaKind, PaginatedResponse } from "@/types";
 
@@ -56,10 +57,13 @@ export function MediaPickerDialog({ open, onClose, onSelect, kinds, title }: Pro
     };
   }, [open, search, kinds]);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
+    <Overlay
+      open={open}
+      onClose={onClose}
+      label={title ?? "Elegir de la biblioteca"}
+      className="items-end sm:items-center"
+    >
       <div className="flex h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-background sm:h-[70vh] sm:rounded-2xl">
         <header className="flex items-center gap-3 border-b border-border px-4 py-3">
           <h2 className="flex-1 text-[15px] font-semibold">{title ?? "Elegir de la biblioteca"}</h2>
@@ -100,7 +104,7 @@ export function MediaPickerDialog({ open, onClose, onSelect, kinds, title }: Pro
           )}
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }
 

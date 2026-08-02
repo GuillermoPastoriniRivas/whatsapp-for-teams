@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Overlay } from "@/components/ui/overlay";
 import { InlineNotice } from "@/components/shared/inline-notice";
 import { useMediaStore, type MediaScope } from "@/stores/media.store";
 import { ACCEPTED_UPLOAD_TYPES, MEDIA_KIND_LABELS, validateUpload } from "@/lib/media";
@@ -334,32 +335,18 @@ function EmptyState({
 
 function PreviewOverlay({ asset, onClose }: { asset: MediaAsset; onClose: () => void }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
-      onClick={onClose}
-      role="presentation"
-    >
+    <Overlay open onClose={onClose} label={asset.filename ?? "Archivo"} className="bg-black/85 p-4">
       {asset.kind === "image" || asset.kind === "sticker" ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={asset.url ?? ""}
           alt={asset.filename ?? ""}
           className="max-h-full max-w-full object-contain"
-          onClick={(event) => event.stopPropagation()}
         />
       ) : asset.kind === "video" ? (
-        <video
-          src={asset.url ?? undefined}
-          controls
-          autoPlay
-          className="max-h-full max-w-full"
-          onClick={(event) => event.stopPropagation()}
-        />
+        <video src={asset.url ?? undefined} controls autoPlay className="max-h-full max-w-full" />
       ) : (
-        <div
-          className="rounded-xl bg-background p-6 text-center"
-          onClick={(event) => event.stopPropagation()}
-        >
+        <div className="rounded-xl bg-background p-6 text-center">
           <p className="text-[14px] font-medium">{asset.filename ?? "Archivo"}</p>
           {asset.downloadUrl && (
             <Button asChild className="mt-4">
@@ -370,6 +357,6 @@ function PreviewOverlay({ asset, onClose }: { asset: MediaAsset; onClose: () => 
           )}
         </div>
       )}
-    </div>
+    </Overlay>
   );
 }

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Overlay } from "@/components/ui/overlay";
 import { useAuthStore } from "@/stores/auth.store";
 import { useFlowStore } from "@/stores/flow.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
@@ -220,8 +221,8 @@ function TemplateGallery(props: {
 }) {
   const { t } = useTranslations();
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={props.onClose}>
-      <div className="bg-background rounded-xl border max-w-2xl w-full p-5" onClick={(e) => e.stopPropagation()}>
+    <Overlay open onClose={props.onClose} label={t.flows.newFlow} className="p-4">
+      <div className="bg-background rounded-xl border max-w-2xl w-full p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold">{t.flows.newFlow}</h2>
           <button onClick={props.onClose} className="text-muted-foreground hover:text-foreground">
@@ -251,7 +252,7 @@ function TemplateGallery(props: {
           </Button>
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }
 

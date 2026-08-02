@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { Overlay } from "@/components/ui/overlay";
 import { formatBytes, formatDuration } from "@/lib/media";
 import type { MediaAsset } from "@/types";
 import {
@@ -112,11 +113,7 @@ function MediaImage({ media }: { media: MediaAsset }) {
 
 function Lightbox({ media, onClose }: { media: MediaAsset; onClose: () => void }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
-      onClick={onClose}
-      role="presentation"
-    >
+    <Overlay open onClose={onClose} label={media.filename ?? "Imagen"} className="bg-black/85 p-4">
       <button
         type="button"
         onClick={onClose}
@@ -130,20 +127,18 @@ function Lightbox({ media, onClose }: { media: MediaAsset; onClose: () => void }
         src={media.url ?? ""}
         alt={media.filename ?? "Imagen"}
         className="max-h-full max-w-full object-contain"
-        onClick={(event) => event.stopPropagation()}
       />
       {media.downloadUrl && (
         <a
           href={media.downloadUrl}
           download
-          onClick={(event) => event.stopPropagation()}
           className="absolute bottom-6 flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-[13px] text-white hover:bg-white/20"
         >
           <Download className="h-4 w-4" />
           Descargar
         </a>
       )}
-    </div>
+    </Overlay>
   );
 }
 
