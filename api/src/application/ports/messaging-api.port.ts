@@ -42,7 +42,13 @@ export interface SendMessageParams {
   to: string;
   type: string;
   body?: string;
+  /**
+   * URL pública para que Meta descargue el archivo. Solo para URLs externas
+   * que ya tiene el tenant — nuestro propio media siempre viaja por `mediaId`.
+   */
   mediaUrl?: string;
+  /** Id de media del proveedor. Tiene prioridad sobre `mediaUrl`. */
+  mediaId?: string;
   /** Solo documentos: nombre con el que el cliente ve/descarga el archivo */
   filename?: string;
   template?: TemplateSendPayload;

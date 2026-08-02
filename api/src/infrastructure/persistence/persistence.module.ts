@@ -58,6 +58,10 @@ import { MongoFlowVersionRepository } from './mongoose/repositories/mongo-flow-v
 import { MongoFlowExecutionRepository } from './mongoose/repositories/mongo-flow-execution.repository.js';
 import { MongoFlowNodeStatRepository } from './mongoose/repositories/mongo-flow-node-stat.repository.js';
 import { MongoFlowConnectionRepository } from './mongoose/repositories/mongo-flow-connection.repository.js';
+import { MediaAssetModel, MediaAssetSchema } from './mongoose/schemas/media-asset.schema.js';
+import { MediaProviderRefModel, MediaProviderRefSchema } from './mongoose/schemas/media-provider-ref.schema.js';
+import { MongoMediaAssetRepository } from './mongoose/repositories/mongo-media-asset.repository.js';
+import { MongoMediaProviderRefRepository } from './mongoose/repositories/mongo-media-provider-ref.repository.js';
 
 const schemas = MongooseModule.forFeature([
   { name: TenantModel.name, schema: TenantSchema },
@@ -89,6 +93,8 @@ const schemas = MongooseModule.forFeature([
   { name: ApiKeyModel.name, schema: ApiKeySchema },
   { name: WebhookEndpointModel.name, schema: WebhookEndpointSchema },
   { name: WebhookDeliveryModel.name, schema: WebhookDeliverySchema },
+  { name: MediaAssetModel.name, schema: MediaAssetSchema },
+  { name: MediaProviderRefModel.name, schema: MediaProviderRefSchema },
 ]);
 
 const repositories = [
@@ -121,6 +127,8 @@ const repositories = [
   { provide: 'ApiKeyRepository', useClass: MongoApiKeyRepository },
   { provide: 'WebhookEndpointRepository', useClass: MongoWebhookEndpointRepository },
   { provide: 'WebhookDeliveryRepository', useClass: MongoWebhookDeliveryRepository },
+  { provide: 'MediaAssetRepository', useClass: MongoMediaAssetRepository },
+  { provide: 'MediaProviderRefRepository', useClass: MongoMediaProviderRefRepository },
 ];
 
 @Module({

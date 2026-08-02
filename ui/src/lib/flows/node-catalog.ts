@@ -79,7 +79,7 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     description: "Imagen o PDF (catálogo, carta, comprobante)",
     category: "message",
     icon: Paperclip,
-    defaultData: { mediaType: "image", mediaUrl: "", caption: "", filename: "", windowPolicy: "error" },
+    defaultData: { mediaType: "image", mediaAssetId: "", mediaAssetName: "", mediaUrl: "", caption: "", filename: "", windowPolicy: "error" },
   },
   {
     type: "action.send_buttons",

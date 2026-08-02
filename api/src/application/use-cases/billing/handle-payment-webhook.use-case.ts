@@ -6,6 +6,8 @@ import { PaymentProvider } from '../../../domain/enums/payment-provider.enum.js'
 import { SubscriptionStatus } from '../../../domain/enums/subscription-status.enum.js';
 import { BillingEventType } from '../../../domain/enums/billing-event-type.enum.js';
 import { PLAN_LIMITS } from '../../../domain/constants/plan-limits.js';
+import { JobQueuePort } from '../../ports/job-queue.port.js';
+import { MEDIA_BACKFILL_JOB } from '../media/backfill-tenant-media.use-case.js';
 import { EnforcePlanLimitsUseCase } from './enforce-plan-limits.use-case.js';
 
 export class HandlePaymentWebhookUseCase {
@@ -13,7 +15,19 @@ export class HandlePaymentWebhookUseCase {
     private readonly subscriptionRepo: SubscriptionRepository,
     private readonly billingRecordRepo: BillingRecordRepository,
     private readonly enforceLimits: EnforcePlanLimitsUseCase,
+    private readonly jobQueue: JobQueuePort,
   ) {}
+
+  /**
+   * Al pasar a un plan con biblioteca, el media de los últimos 30 días todavía
+   * existe en Meta: se rescata. Es el único momento en que se puede.
+   *
+   * El job verifica el plan por su cuenta, así que dispararlo de más es
+   * inofensivo.
+   */
+  private async triggerMediaBackfill(tenantId: string): Promise<void> {
+    await this.jobQueue.enqueue(MEDIA_BACKFILL_JOB, { tenantId });
+  }
 
   async execute(event: WebhookEvent): Promise<void> {
     switch (event.type) {
@@ -82,6 +96,7 @@ export class HandlePaymentWebhookUseCase {
     });
 
     await this.enforceLimits.execute(event.tenantId);
+    await this.triggerMediaBackfill(event.tenantId);
   }
 
   private async handleSubscriptionUpdated(event: WebhookEvent): Promise<void> {
@@ -131,6 +146,7 @@ export class HandlePaymentWebhookUseCase {
         description: `Plan changed from ${subscription.plan} to ${event.plan}`,
       });
       await this.enforceLimits.execute(subscription.tenantId);
+      await this.triggerMediaBackfill(subscription.tenantId);
     }
   }
 

@@ -7,7 +7,7 @@ import { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-c
 import { FlowRepository } from '../../../domain/repositories/flow.repository.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 import { PlanTier } from '../../../domain/enums/plan-tier.enum.js';
-import { PLAN_LIMITS } from '../../../domain/constants/plan-limits.js';
+import { effectiveLimits, effectivePlan } from './plan-resolution.util.js';
 
 export type PlanResource = 'phone_numbers' | 'human_agents' | 'ai_bots' | 'conversations' | 'flows';
 
@@ -37,8 +37,7 @@ export class CheckPlanLimitUseCase {
 
   async checkResource(tenantId: string, resource: PlanResource): Promise<ResourceUsage> {
     const sub = await this.subscriptionRepo.findByTenantId(tenantId);
-    const plan = sub?.status === SubscriptionStatus.ACTIVE ? sub.plan : PlanTier.FREE;
-    const limits = PLAN_LIMITS[plan];
+    const limits = effectiveLimits(sub);
 
     let current: number;
     let limit: number;
@@ -77,7 +76,9 @@ export class CheckPlanLimitUseCase {
 
   async getFullUsage(tenantId: string): Promise<FullUsage> {
     const sub = await this.subscriptionRepo.findByTenantId(tenantId);
-    const plan = sub?.plan ?? PlanTier.FREE;
+    // Tiene que ser el MISMO plan que usa checkResource: si acá se mira
+    // `sub.plan` a secas, la pantalla muestra "Business" con límites de Free.
+    const plan = effectivePlan(sub);
 
     const [phoneNumbers, humanAgents, aiBots, conversations] = await Promise.all([
       this.checkResource(tenantId, 'phone_numbers'),

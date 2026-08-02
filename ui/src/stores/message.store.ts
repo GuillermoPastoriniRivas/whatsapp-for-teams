@@ -12,8 +12,11 @@ interface MessageState {
   updateStatus: (waMessageId: string, waStatus: string) => void;
   send: (
     conversationId: string,
-    body: string
+    body: string,
+    mediaAssetId?: string
   ) => Promise<Message | undefined>;
+  /** Un archivo terminó de bajarse: se refresca el mensaje que lo lleva. */
+  applyMediaUpdate: (assetId: string) => Promise<void>;
 }
 
 export const useMessageStore = create<MessageState>((set, get) => ({
@@ -66,10 +69,35 @@ export const useMessageStore = create<MessageState>((set, get) => ({
     });
   },
 
-  send: async (conversationId, body) => {
+  applyMediaUpdate: async (assetId) => {
+    const state = get();
+    const target = Object.entries(state.messages).find(([, list]) =>
+      list.some((message) => message.media?.id === assetId || message.mediaAssetId === assetId)
+    );
+    if (!target) return;
+
+    const [conversationId] = target;
+    try {
+      const media = await api.get<Message["media"]>(`/media/${assetId}`);
+      set((current) => ({
+        messages: {
+          ...current.messages,
+          [conversationId]: (current.messages[conversationId] ?? []).map((message) =>
+            message.media?.id === assetId || message.mediaAssetId === assetId
+              ? { ...message, media }
+              : message
+          ),
+        },
+      }));
+    } catch {
+      // si el archivo desapareció, el próximo fetch lo refleja
+    }
+  },
+
+  send: async (conversationId, body, mediaAssetId) => {
     const message = await api.post<Message>(
       `/conversations/${conversationId}/messages`,
-      { body }
+      { body, ...(mediaAssetId ? { mediaAssetId } : {}) }
     );
     get().appendMessage(conversationId, message);
 

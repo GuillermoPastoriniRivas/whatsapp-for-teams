@@ -25,5 +25,7 @@ export class Message {
     public readonly contextWaMessageId: string | null = null,
     /** Solo outbound interactivo: definición de botones/lista para render en el chat */
     public readonly interactivePayload: Record<string, unknown> | null = null,
+    /** MediaAsset asociado. El estado del archivo (listo/expirado) vive ahí, no acá. */
+    public readonly mediaAssetId: string | null = null,
   ) {}
 }

@@ -11,9 +11,10 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 import { CryptoModule } from './crypto/crypto.module.js';
 import { HttpModule } from './http/http.module.js';
 import { DeveloperModule } from './developer/developer.module.js';
+import { StorageModule } from './storage/storage.module.js';
 
 @Module({
-  imports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule, CryptoModule, HttpModule, DeveloperModule],
-  exports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule, CryptoModule, HttpModule, DeveloperModule],
+  imports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule, CryptoModule, HttpModule, DeveloperModule, StorageModule],
+  exports: [PersistenceModule, AuthInfraModule, MessagingModule, WebSocketInfraModule, QueueModule, AiModule, EmailModule, PaymentModule, NotificationsModule, CryptoModule, HttpModule, DeveloperModule, StorageModule],
 })
 export class InfrastructureModule {}

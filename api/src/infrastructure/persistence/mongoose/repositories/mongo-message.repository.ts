@@ -33,11 +33,28 @@ export class MongoMessageRepository implements MessageRepository {
           interactiveReplyId: message.interactiveReplyId ?? null,
           contextWaMessageId: message.contextWaMessageId ?? null,
           interactivePayload: message.interactivePayload ?? null,
+          mediaAssetId: message.mediaAssetId ? new Types.ObjectId(message.mediaAssetId) : null,
         },
       },
       { upsert: true, returnDocument: 'after' },
     );
     return MessageMapper.toDomain(doc!);
+  }
+
+  async findById(id: string): Promise<Message | null> {
+    if (!Types.ObjectId.isValid(id)) return null;
+    const doc = await this.model.findById(id);
+    return doc ? MessageMapper.toDomain(doc) : null;
+  }
+
+  async attachMediaAsset(messageId: string, mediaAssetId: string): Promise<Message | null> {
+    if (!Types.ObjectId.isValid(messageId) || !Types.ObjectId.isValid(mediaAssetId)) return null;
+    const doc = await this.model.findByIdAndUpdate(
+      messageId,
+      { $set: { mediaAssetId: new Types.ObjectId(mediaAssetId) } },
+      { returnDocument: 'after' },
+    );
+    return doc ? MessageMapper.toDomain(doc) : null;
   }
 
   async findByConversationId(conversationId: string, page: number, limit: number): Promise<PaginatedResult<Message>> {

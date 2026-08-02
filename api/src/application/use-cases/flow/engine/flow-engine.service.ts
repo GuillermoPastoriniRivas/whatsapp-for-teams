@@ -26,6 +26,10 @@ import type { ConversationLabelRepository } from '../../../../domain/repositorie
 import type { ConversationNoteRepository } from '../../../../domain/repositories/conversation-note.repository.js';
 import type { ConversationEventRepository } from '../../../../domain/repositories/conversation-event.repository.js';
 import type { MessageTemplateRepository } from '../../../../domain/repositories/message-template.repository.js';
+import type { MediaAssetRepository } from '../../../../domain/repositories/media-asset.repository.js';
+import type { MediaAsset } from '../../../../domain/entities/media-asset.entity.js';
+import { MediaKind } from '../../../../domain/enums/media-kind.enum.js';
+import type { MediaAccessService } from '../../media/media-access.service.js';
 import type { FlowSecretsPort } from '../../../ports/flow-secrets.port.js';
 import type { FlowHttpPort } from '../../../ports/flow-http.port.js';
 import type { MessagingApiPort, InteractiveSendPayload } from '../../../ports/messaging-api.port.js';
@@ -71,6 +75,15 @@ const STEP_BUDGET_PER_RUN = 20;
 const MAX_STEPS = 200;
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_REPROMPTS = 2;
+
+/** El archivo elegido define el tipo de mensaje, no lo que dice el nodo. */
+const FLOW_MEDIA_MESSAGE_TYPES: Record<MediaKind, MessageType> = {
+  [MediaKind.IMAGE]: MessageType.IMAGE,
+  [MediaKind.VIDEO]: MessageType.VIDEO,
+  [MediaKind.AUDIO]: MessageType.AUDIO,
+  [MediaKind.DOCUMENT]: MessageType.DOCUMENT,
+  [MediaKind.STICKER]: MessageType.STICKER,
+};
 
 type NodeResult =
   | { kind: 'advance'; handle: string; note?: string; skipped?: boolean; isError?: boolean }
@@ -129,6 +142,8 @@ export class FlowEngineService {
     private readonly autoAssign: AutoAssignConversationUseCase,
     private readonly devEvents: DeveloperEventsPort,
     private readonly accessRepo: AgentPhoneAccessRepository,
+    private readonly assetRepo: MediaAssetRepository,
+    private readonly mediaAccess: MediaAccessService,
   ) {}
 
   // ── Entradas desde los jobs ────────────────────────────────────
@@ -541,11 +556,29 @@ export class FlowEngineService {
     }
 
     const varCtx = this.varCtx(ctx);
-    const url = renderTemplate(String(data.mediaUrl ?? ''), varCtx).text.trim();
-    if (!/^https:\/\//i.test(url)) return { kind: 'error', message: 'La URL del archivo debe ser https' };
-
     const caption = data.caption ? renderTemplate(String(data.caption), varCtx).text.substring(0, 1024) : undefined;
-    const messageType = data.mediaType === 'document' ? MessageType.DOCUMENT : MessageType.IMAGE;
+
+    // Un archivo de la biblioteca se manda por media_id: lo subimos nosotros y
+    // no hace falta que sea público. La URL queda para casos externos.
+    let mediaId: string | undefined;
+    let url: string | undefined;
+    let asset: MediaAsset | null = null;
+    let messageType = data.mediaType === 'document' ? MessageType.DOCUMENT : MessageType.IMAGE;
+
+    if (data.mediaAssetId) {
+      asset = await this.assetRepo.findById(String(data.mediaAssetId));
+      if (!asset || asset.tenantId !== ctx.tenantId || asset.deletedAt) {
+        return { kind: 'error', message: 'El archivo del nodo ya no existe' };
+      }
+      if (asset.isUnavailable()) {
+        return { kind: 'error', message: 'El archivo del nodo ya no está disponible' };
+      }
+      messageType = FLOW_MEDIA_MESSAGE_TYPES[asset.kind];
+      ({ mediaId } = await this.mediaAccess.resolveSendRef(asset, ctx.phone));
+    } else {
+      url = renderTemplate(String(data.mediaUrl ?? ''), varCtx).text.trim();
+      if (!/^https:\/\//i.test(url)) return { kind: 'error', message: 'La URL del archivo debe ser https' };
+    }
 
     const { waMessageId } = await this.messagingApi.sendMessage({
       provider: ctx.phone.provider,
@@ -554,8 +587,9 @@ export class FlowEngineService {
       to: ctx.contact.waId,
       type: messageType,
       body: caption,
+      mediaId,
       mediaUrl: url,
-      filename: data.filename ? String(data.filename) : undefined,
+      filename: asset?.filename ?? (data.filename ? String(data.filename) : undefined),
     });
 
     const message = await this.messageRepo.upsertByWaMessageId({
@@ -563,13 +597,14 @@ export class FlowEngineService {
       direction: MessageDirection.OUTBOUND,
       messageType,
       body: caption ?? null,
-      mediaUrl: url,
-      mimeType: null,
+      mediaUrl: url ?? null,
+      mimeType: asset?.mimeType ?? null,
       waMessageId,
       waStatus: MessageWaStatus.SENT,
       timestamp: new Date(),
       senderAgentId: null,
       senderAgentName: ctx.flow.name,
+      mediaAssetId: asset?.id ?? null,
     });
     this.gateway.emitToConversation(ctx.conversation.id, 'message.new', message);
     this.gateway.emitToTenant(ctx.tenantId, 'conversation.updated', { conversationId: ctx.conversation.id });

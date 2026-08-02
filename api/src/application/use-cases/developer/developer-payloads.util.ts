@@ -24,6 +24,7 @@ export function serializeMessage(message: Message) {
     senderAgentName: message.senderAgentName,
     interactiveReplyId: message.interactiveReplyId,
     contextWaMessageId: message.contextWaMessageId,
+    mediaId: message.mediaAssetId,
   };
 }
 

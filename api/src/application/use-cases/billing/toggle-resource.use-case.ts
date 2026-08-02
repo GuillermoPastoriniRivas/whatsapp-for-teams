@@ -2,10 +2,8 @@ import { SubscriptionRepository } from '../../../domain/repositories/subscriptio
 import { PhoneNumberRepository } from '../../../domain/repositories/phone-number.repository.js';
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-config.repository.js';
-import { SubscriptionStatus } from '../../../domain/enums/subscription-status.enum.js';
 import { PhoneNumberStatus } from '../../../domain/enums/phone-number-status.enum.js';
-import { PlanTier } from '../../../domain/enums/plan-tier.enum.js';
-import { PLAN_LIMITS } from '../../../domain/constants/plan-limits.js';
+import { effectiveLimits } from './plan-resolution.util.js';
 import { Result, ok, err } from '../../common/result.js';
 import { DomainError } from '../../../domain/errors/domain-errors.js';
 
@@ -28,8 +26,7 @@ export class ToggleResourceUseCase {
 
   async execute(input: ToggleResourceInput): Promise<Result<{ activated: string; deactivated?: string }, DomainError>> {
     const sub = await this.subscriptionRepo.findByTenantId(input.tenantId);
-    const plan = sub?.status === SubscriptionStatus.ACTIVE ? sub.plan : PlanTier.FREE;
-    const limits = PLAN_LIMITS[plan];
+    const limits = effectiveLimits(sub);
 
     switch (input.resourceType) {
       case 'phone_numbers':

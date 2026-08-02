@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { SendMessageParams, SendMessageResult, TypingIndicatorParams } from '../../application/ports/messaging-api.port.js';
 import { classifyMetaError, MetaErrorBody } from './meta-api-error.js';
 import { buildInteractivePayload } from './interactive-payload.builder.js';
+import { buildMediaPayload } from './media-payload.builder.js';
 
 @Injectable()
 export class KapsoWhatsAppService {
@@ -48,21 +49,12 @@ export class KapsoWhatsAppService {
       type: params.type,
     };
 
+    const mediaPayload = buildMediaPayload(params);
+
     if (params.type === 'text' && params.body) {
       body.text = { body: params.body };
-    } else if (params.type === 'image' && params.mediaUrl) {
-      const image: Record<string, string> = { link: params.mediaUrl };
-      if (params.body) image.caption = params.body;
-      body.image = image;
-    } else if (params.type === 'document' && params.mediaUrl) {
-      const document: Record<string, string> = { link: params.mediaUrl };
-      if (params.body) document.caption = params.body;
-      if (params.filename) document.filename = params.filename;
-      body.document = document;
-    } else if ((params.type === 'video' || params.type === 'audio') && params.mediaUrl) {
-      const media: Record<string, string> = { link: params.mediaUrl };
-      if (params.body && params.type === 'video') media.caption = params.body;
-      body[params.type] = media;
+    } else if (mediaPayload) {
+      body[params.type] = mediaPayload;
     } else if (params.type === 'template' && params.template) {
       body.template = {
         name: params.template.name,

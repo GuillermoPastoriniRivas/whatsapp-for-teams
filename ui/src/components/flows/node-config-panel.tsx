@@ -4,10 +4,11 @@
 // tipo, con preview de burbuja de WhatsApp y variables disponibles.
 
 import { useMemo, useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { FileText, FolderOpen, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { MediaPickerDialog } from "@/components/media/media-picker-dialog";
 import { cn } from "@/lib/utils";
 import { NODE_BY_TYPE, CATEGORY_STYLES } from "@/lib/flows/node-catalog";
 import { useTranslations } from "@/lib/i18n/use-translations";
@@ -461,6 +462,8 @@ function TriggerCampaignReplyForm({ data, set, refs, onChangeTriggerType }: { da
 }
 
 function SendMediaForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   return (
     <>
       <SelectField
@@ -472,13 +475,57 @@ function SendMediaForm({ data, set }: { data: Record<string, any>; set: (p: Reco
         ]}
         onChange={(value) => set({ mediaType: value })}
       />
+
       <div>
-        <FieldLabel>URL del archivo (https)</FieldLabel>
-        <Input value={data.mediaUrl ?? ""} placeholder="https://…/catalogo.pdf" onChange={(e) => set({ mediaUrl: e.target.value })} />
-        <p className="text-[11px] text-muted-foreground mt-0.5">
-          Tiene que ser accesible públicamente: WhatsApp la descarga desde sus servidores.
+        <FieldLabel>Archivo</FieldLabel>
+        {data.mediaAssetName ? (
+          <div className="flex items-center gap-2 rounded-md border border-border px-2.5 py-2">
+            <FileText className="h-4 w-4 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1 truncate text-[13px]">{data.mediaAssetName}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[12px]"
+              onClick={() => set({ mediaAssetId: "", mediaAssetName: "" })}
+            >
+              Quitar
+            </Button>
+          </div>
+        ) : (
+          <Button variant="outline" size="sm" className="w-full" onClick={() => setPickerOpen(true)}>
+            <FolderOpen className="mr-2 h-4 w-4" />
+            Elegir de la biblioteca
+          </Button>
+        )}
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          Lo subimos a WhatsApp por vos: no hace falta que el archivo sea público.
         </p>
       </div>
+
+      {!data.mediaAssetId && (
+        <div>
+          <FieldLabel>…o pegá una URL pública (https)</FieldLabel>
+          <Input value={data.mediaUrl ?? ""} placeholder="https://…/catalogo.pdf" onChange={(e) => set({ mediaUrl: e.target.value })} />
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Tiene que ser accesible públicamente: WhatsApp la descarga desde sus servidores.
+          </p>
+        </div>
+      )}
+
+      <MediaPickerDialog
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        kinds={data.mediaType === "document" ? ["document"] : ["image"]}
+        onSelect={(asset) =>
+          set({
+            mediaAssetId: asset.id,
+            mediaAssetName: asset.title ?? asset.filename ?? "Archivo",
+            mediaUrl: "",
+            ...(asset.filename ? { filename: asset.filename } : {}),
+          })
+        }
+      />
+
       {data.mediaType === "document" && (
         <div>
           <FieldLabel>Nombre con el que se descarga</FieldLabel>

@@ -6,6 +6,7 @@ import { PaymentProvider } from '../../../domain/enums/payment-provider.enum.js'
 import { SubscriptionStatus } from '../../../domain/enums/subscription-status.enum.js';
 import { BillingEventType } from '../../../domain/enums/billing-event-type.enum.js';
 import { PLAN_LIMITS, PlanLimits } from '../../../domain/constants/plan-limits.js';
+import { effectivePlan, PAST_DUE_GRACE_DAYS } from './plan-resolution.util.js';
 import { EnforcePlanLimitsUseCase } from './enforce-plan-limits.use-case.js';
 
 export interface SubscriptionInfo {
@@ -30,19 +31,26 @@ export class GetSubscriptionUseCase {
       const now = new Date();
       if (now >= subscription.currentPeriodEnd) {
         if (subscription.paymentProvider !== PaymentProvider.NONE) {
-          // External provider handles renewal via webhooks; if period expired without renewal, mark past due
-          subscription = (await this.subscriptionRepo.update(subscription.id, {
-            status: SubscriptionStatus.PAST_DUE,
-          }))!;
+          // El webhook de renovación no llega en el mismo instante en que vence
+          // el período. Marcarlo PAST_DUE al segundo exacto le mostraba "pago
+          // vencido" a un cliente que sí pagó, solo porque el aviso venía en
+          // camino. Se espera la ventana de gracia antes de tocar el estado.
+          const graceEnds = new Date(
+            subscription.currentPeriodEnd.getTime() + PAST_DUE_GRACE_DAYS * 24 * 60 * 60 * 1000,
+          );
+          if (now >= graceEnds) {
+            subscription = (await this.subscriptionRepo.update(subscription.id, {
+              status: SubscriptionStatus.PAST_DUE,
+            }))!;
+          }
         } else {
           subscription = await this.handlePeriodExpiry(subscription);
         }
       }
     }
 
-    const plan = subscription?.status === SubscriptionStatus.ACTIVE ? subscription.plan : PlanTier.FREE;
-    const limits = PLAN_LIMITS[plan];
-    return { subscription, plan, limits };
+    const plan = effectivePlan(subscription);
+    return { subscription, plan, limits: PLAN_LIMITS[plan] };
   }
 
   private async handlePeriodExpiry(subscription: Subscription): Promise<Subscription> {

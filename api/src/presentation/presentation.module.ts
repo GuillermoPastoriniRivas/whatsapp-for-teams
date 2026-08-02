@@ -1,7 +1,24 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module.js';
+
+// Media library
+import { MediaController } from './controllers/media.controller.js';
+import { MediaAccessService } from '../application/use-cases/media/media-access.service.js';
+import { MediaStorageService } from '../application/use-cases/media/media-storage.service.js';
+import { RegisterInboundMediaUseCase } from '../application/use-cases/media/register-inbound-media.use-case.js';
+import { IngestMediaAssetUseCase } from '../application/use-cases/media/ingest-media-asset.use-case.js';
+import { UploadMediaUseCase } from '../application/use-cases/media/upload-media.use-case.js';
+import { ListMediaUseCase } from '../application/use-cases/media/list-media.use-case.js';
+import { GetMediaUsageUseCase } from '../application/use-cases/media/get-media-usage.use-case.js';
+import { UpdateMediaUseCase } from '../application/use-cases/media/update-media.use-case.js';
+import { DeleteMediaUseCase } from '../application/use-cases/media/delete-media.use-case.js';
+import { BackfillTenantMediaUseCase } from '../application/use-cases/media/backfill-tenant-media.use-case.js';
+import { MediaMaintenanceUseCase } from '../application/use-cases/media/media-maintenance.use-case.js';
+import { MessageMediaEnricher } from '../application/use-cases/media/message-media.enricher.js';
+import { MediaJobProcessor } from '../infrastructure/queue/media-job.processor.js';
 
 // Guards
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
@@ -358,14 +375,15 @@ const useCaseProviders = [
   },
   {
     provide: 'GetConversationMessagesUseCase',
-    useFactory: (msgRepo: any, convRepo: any) => new GetConversationMessagesUseCase(msgRepo, convRepo),
-    inject: ['MessageRepository', 'ConversationRepository'],
+    useFactory: (msgRepo: any, convRepo: any, mediaEnricher: any) =>
+      new GetConversationMessagesUseCase(msgRepo, convRepo, mediaEnricher),
+    inject: ['MessageRepository', 'ConversationRepository', 'MessageMediaEnricher'],
   },
   {
     provide: 'SendMessageUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, messagingApi: any, gateway: any, agentRepo: any, cancelFlow: any, devEvents: any) =>
-      new SendMessageUseCase(convRepo, msgRepo, contactRepo, phoneRepo, messagingApi, gateway, agentRepo, cancelFlow, devEvents),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'AgentRepository', 'CancelActiveFlowExecutionUseCase', 'DeveloperEventsPort'],
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, messagingApi: any, gateway: any, agentRepo: any, cancelFlow: any, devEvents: any, assetRepo: any, mediaAccess: any, mediaEnricher: any) =>
+      new SendMessageUseCase(convRepo, msgRepo, contactRepo, phoneRepo, messagingApi, gateway, agentRepo, cancelFlow, devEvents, assetRepo, mediaAccess, mediaEnricher),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'AgentRepository', 'CancelActiveFlowExecutionUseCase', 'DeveloperEventsPort', 'MediaAssetRepository', 'MediaAccessService', 'MessageMediaEnricher'],
   },
   {
     provide: 'MarkConversationReadUseCase',
@@ -450,7 +468,7 @@ const useCaseProviders = [
       usageRepo: any, msgRepo: any, labelRepo: any, convLabelRepo: any, noteRepo: any,
       eventRepo: any, templateRepo: any, secrets: any, http: any, messagingApi: any,
       aiCompletion: any, gateway: any, jobQueue: any, autoAssign: any,
-      devEvents: any, accessRepo: any,
+      devEvents: any, accessRepo: any, assetRepo: any, mediaAccess: any,
     ) =>
       new FlowEngineService(
         flowRepo, versionRepo, execRepo, statRepo, connectionRepo,
@@ -458,7 +476,7 @@ const useCaseProviders = [
         usageRepo, msgRepo, labelRepo, convLabelRepo, noteRepo,
         eventRepo, templateRepo, secrets, http, messagingApi,
         aiCompletion, gateway, jobQueue, autoAssign,
-        devEvents, accessRepo,
+        devEvents, accessRepo, assetRepo, mediaAccess,
       ),
     inject: [
       'FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'FlowNodeStatRepository', 'FlowConnectionRepository',
@@ -466,7 +484,7 @@ const useCaseProviders = [
       'AiUsageRepository', 'MessageRepository', 'LabelRepository', 'ConversationLabelRepository', 'ConversationNoteRepository',
       'ConversationEventRepository', 'MessageTemplateRepository', 'FlowSecretsPort', 'FlowHttpPort', 'MessagingApiPort',
       'AiCompletionPort', 'RealtimeGatewayPort', 'JobQueuePort', 'AutoAssignConversationUseCase',
-      'DeveloperEventsPort', 'AgentPhoneAccessRepository',
+      'DeveloperEventsPort', 'AgentPhoneAccessRepository', 'MediaAssetRepository', 'MediaAccessService',
     ],
   },
   {
@@ -587,9 +605,9 @@ const useCaseProviders = [
   // Webhook
   {
     provide: 'HandleInboundMessageUseCase',
-    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any, sendPush: any, accessRepo: any, flowRouter: any, devEvents: any) =>
-      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply, sendPush, accessRepo, flowRouter, devEvents),
-    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase', 'AgentPhoneAccessRepository', 'FlowInboundRouterUseCase', 'DeveloperEventsPort'],
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any, sendPush: any, accessRepo: any, flowRouter: any, devEvents: any, registerMedia: any, mediaEnricher: any) =>
+      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply, sendPush, accessRepo, flowRouter, devEvents, registerMedia, mediaEnricher),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase', 'AgentPhoneAccessRepository', 'FlowInboundRouterUseCase', 'DeveloperEventsPort', 'RegisterInboundMediaUseCase', 'MessageMediaEnricher'],
   },
   {
     provide: 'HandleStatusUpdateUseCase',
@@ -859,9 +877,9 @@ const useCaseProviders = [
   },
   {
     provide: 'HandlePaymentWebhookUseCase',
-    useFactory: (subRepo: any, billingRepo: any, enforce: any) =>
-      new HandlePaymentWebhookUseCase(subRepo, billingRepo, enforce),
-    inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase'],
+    useFactory: (subRepo: any, billingRepo: any, enforce: any, jobQueue: any) =>
+      new HandlePaymentWebhookUseCase(subRepo, billingRepo, enforce, jobQueue),
+    inject: ['SubscriptionRepository', 'BillingRecordRepository', 'EnforcePlanLimitsUseCase', 'JobQueuePort'],
   },
 
   // Developer platform
@@ -962,6 +980,75 @@ const useCaseProviders = [
     inject: ['PushSubscriptionRepository', 'WebPushPort'],
   },
 
+  // Media library
+  {
+    provide: 'MediaAccessService',
+    useFactory: (assetRepo: any, refRepo: any, phoneRepo: any, subRepo: any, storage: any, signer: any, mediaProvider: any, config: ConfigService) =>
+      new MediaAccessService(assetRepo, refRepo, phoneRepo, subRepo, storage, signer, mediaProvider, config.get<number>('media.urlTtlSeconds', 900)),
+    inject: ['MediaAssetRepository', 'MediaProviderRefRepository', 'PhoneNumberRepository', 'SubscriptionRepository', 'StoragePort', 'MediaUrlSignerPort', 'MediaProviderPort', ConfigService],
+  },
+  {
+    provide: 'MediaStorageService',
+    useFactory: (storage: any, images: any, assetRepo: any) => new MediaStorageService(storage, images, assetRepo),
+    inject: ['StoragePort', 'ImageProcessorPort', 'MediaAssetRepository'],
+  },
+  {
+    provide: 'MessageMediaEnricher',
+    useFactory: (assetRepo: any, mediaAccess: any) => new MessageMediaEnricher(assetRepo, mediaAccess),
+    inject: ['MediaAssetRepository', 'MediaAccessService'],
+  },
+  {
+    provide: 'RegisterInboundMediaUseCase',
+    useFactory: (assetRepo: any, msgRepo: any, mediaAccess: any, jobQueue: any) =>
+      new RegisterInboundMediaUseCase(assetRepo, msgRepo, mediaAccess, jobQueue),
+    inject: ['MediaAssetRepository', 'MessageRepository', 'MediaAccessService', 'JobQueuePort'],
+  },
+  {
+    provide: 'IngestMediaAssetUseCase',
+    useFactory: (assetRepo: any, mediaAccess: any, mediaStorage: any, gateway: any) =>
+      new IngestMediaAssetUseCase(assetRepo, mediaAccess, mediaStorage, gateway),
+    inject: ['MediaAssetRepository', 'MediaAccessService', 'MediaStorageService', 'RealtimeGatewayPort'],
+  },
+  {
+    provide: 'UploadMediaUseCase',
+    useFactory: (assetRepo: any, refRepo: any, phoneRepo: any, mediaAccess: any, mediaStorage: any, mediaProvider: any, images: any) =>
+      new UploadMediaUseCase(assetRepo, refRepo, phoneRepo, mediaAccess, mediaStorage, mediaProvider, images),
+    inject: ['MediaAssetRepository', 'MediaProviderRefRepository', 'PhoneNumberRepository', 'MediaAccessService', 'MediaStorageService', 'MediaProviderPort', 'ImageProcessorPort'],
+  },
+  {
+    provide: 'ListMediaUseCase',
+    useFactory: (assetRepo: any, accessRepo: any, mediaAccess: any) =>
+      new ListMediaUseCase(assetRepo, accessRepo, mediaAccess),
+    inject: ['MediaAssetRepository', 'AgentPhoneAccessRepository', 'MediaAccessService'],
+  },
+  {
+    provide: 'GetMediaUsageUseCase',
+    useFactory: (assetRepo: any, mediaAccess: any) => new GetMediaUsageUseCase(assetRepo, mediaAccess),
+    inject: ['MediaAssetRepository', 'MediaAccessService'],
+  },
+  {
+    provide: 'UpdateMediaUseCase',
+    useFactory: (assetRepo: any, mediaAccess: any) => new UpdateMediaUseCase(assetRepo, mediaAccess),
+    inject: ['MediaAssetRepository', 'MediaAccessService'],
+  },
+  {
+    provide: 'DeleteMediaUseCase',
+    useFactory: (assetRepo: any, refRepo: any) => new DeleteMediaUseCase(assetRepo, refRepo),
+    inject: ['MediaAssetRepository', 'MediaProviderRefRepository'],
+  },
+  {
+    provide: 'BackfillTenantMediaUseCase',
+    useFactory: (assetRepo: any, mediaAccess: any, jobQueue: any, gateway: any) =>
+      new BackfillTenantMediaUseCase(assetRepo, mediaAccess, jobQueue, gateway),
+    inject: ['MediaAssetRepository', 'MediaAccessService', 'JobQueuePort', 'RealtimeGatewayPort'],
+  },
+  {
+    provide: 'MediaMaintenanceUseCase',
+    useFactory: (assetRepo: any, refRepo: any, mediaStorage: any) =>
+      new MediaMaintenanceUseCase(assetRepo, refRepo, mediaStorage),
+    inject: ['MediaAssetRepository', 'MediaProviderRefRepository', 'MediaStorageService'],
+  },
+
 ];
 
 @Module({
@@ -987,6 +1074,7 @@ const useCaseProviders = [
     FlowWebhookController,
     DeveloperController,
     PublicApiController,
+    MediaController,
   ],
   providers: [
     ...useCaseProviders,
@@ -996,6 +1084,7 @@ const useCaseProviders = [
     CampaignJobProcessor,
     FlowJobProcessor,
     DeveloperWebhookJobProcessor,
+    MediaJobProcessor,
     PlanLimitGuard,
     ApiKeyGuard,
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -1,9 +1,9 @@
-import { Message } from '../../../domain/entities/message.entity.js';
 import { MessageRepository } from '../../../domain/repositories/message.repository.js';
 import { ConversationRepository } from '../../../domain/repositories/conversation.repository.js';
 import { PaginatedResult } from '../../../domain/repositories/conversation.repository.js';
 import { Result, ok, err } from '../../common/result.js';
 import { ConversationNotFoundError } from '../../../domain/errors/domain-errors.js';
+import { MessageMediaEnricher, MessageWithMedia } from '../media/message-media.enricher.js';
 
 export interface GetConversationMessagesInput {
   conversationId: string;
@@ -15,9 +15,12 @@ export class GetConversationMessagesUseCase {
   constructor(
     private readonly messageRepo: MessageRepository,
     private readonly conversationRepo: ConversationRepository,
+    private readonly mediaEnricher: MessageMediaEnricher,
   ) {}
 
-  async execute(input: GetConversationMessagesInput): Promise<Result<PaginatedResult<Message>, ConversationNotFoundError>> {
+  async execute(
+    input: GetConversationMessagesInput,
+  ): Promise<Result<PaginatedResult<MessageWithMedia>, ConversationNotFoundError>> {
     const conv = await this.conversationRepo.findById(input.conversationId);
     if (!conv) return err(new ConversationNotFoundError());
 
@@ -27,6 +30,7 @@ export class GetConversationMessagesUseCase {
       input.limit,
     );
 
-    return ok(result);
+    // Las URLs del archivo se firman por request: son de corta vida a propósito.
+    return ok({ ...result, data: await this.mediaEnricher.many(result.data) });
   }
 }

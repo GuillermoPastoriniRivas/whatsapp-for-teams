@@ -31,6 +31,7 @@ const SUPPORTED_TYPES: Record<string, string> = {
   audio: 'audio',
   video: 'video',
   document: 'document',
+  sticker: 'sticker',
   location: 'location',
   // Respuestas a mensajes interactivos (botones/listas) y a quick-replies de
   // plantillas ('button'). Se persisten como 'interactive'.
@@ -103,12 +104,13 @@ export function parseMetaWebhook(payload: MetaWebhookPayload): {
 export function mapMetaMessageToInbound(
   parsed: ParsedMetaMessage,
   phoneNumberId: string,
-  apiVersion: string,
 ): InboundMessageInput | null {
   const { message: msg, contact } = parsed;
 
   const messageType = SUPPORTED_TYPES[msg.type];
   if (!messageType) return null; // unsupported type — caller should log & skip
+
+  const media = extractMedia(msg);
 
   return {
     phoneNumberId,
@@ -117,8 +119,10 @@ export function mapMetaMessageToInbound(
     contactName: contact?.profile?.name ?? msg.from,
     messageType,
     body: extractBody(msg),
-    mediaUrl: extractMediaUrl(msg, apiVersion),
-    mimeType: extractMimeType(msg),
+    mediaId: media?.id,
+    mimeType: media?.mimeType,
+    mediaFilename: media?.filename,
+    mediaSha256: media?.sha256,
     timestamp: new Date(parseInt(msg.timestamp, 10) * 1000),
     interactiveReplyId: extractInteractiveReplyId(msg),
     contextWaMessageId: msg.context?.id,
@@ -207,19 +211,32 @@ function extractInteractiveReplyId(msg: MetaWebhookMessage): string | undefined 
   return undefined;
 }
 
-function extractMediaUrl(msg: MetaWebhookMessage, apiVersion: string): string | undefined {
-  if (!MEDIA_TYPES.has(msg.type)) return undefined;
-
-  const media = msg[msg.type as keyof typeof msg] as { id?: string } | undefined;
-  const mediaId = media?.id;
-  if (!mediaId) return undefined;
-
-  return `https://graph.facebook.com/${apiVersion}/${mediaId}`;
+interface ExtractedMedia {
+  id: string;
+  mimeType: string | undefined;
+  filename: string | undefined;
+  sha256: string | undefined;
 }
 
-function extractMimeType(msg: MetaWebhookMessage): string | undefined {
+/**
+ * El webhook trae un id, no el archivo. Bajarlo son dos requests más contra
+ * Graph, así que acá solo se extrae la referencia y la ingesta va por su
+ * propio job — el webhook tiene que devolver 200 rápido.
+ */
+function extractMedia(msg: MetaWebhookMessage): ExtractedMedia | undefined {
   if (!MEDIA_TYPES.has(msg.type)) return undefined;
 
-  const media = msg[msg.type as keyof typeof msg] as { mime_type?: string } | undefined;
-  return media?.mime_type;
+  const media = msg[msg.type as keyof typeof msg] as
+    | { id?: string; mime_type?: string; filename?: string; sha256?: string }
+    | undefined;
+
+  if (!media?.id) return undefined;
+
+  return {
+    id: media.id,
+    mimeType: media.mime_type,
+    filename: media.filename,
+    // Meta lo manda en base64; se normaliza a hex, que es como lo guardamos.
+    sha256: media.sha256 ? Buffer.from(media.sha256, 'base64').toString('hex') : undefined,
+  };
 }

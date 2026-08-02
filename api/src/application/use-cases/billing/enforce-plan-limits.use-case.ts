@@ -5,8 +5,7 @@ import { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-c
 import { SubscriptionStatus } from '../../../domain/enums/subscription-status.enum.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 import { PhoneNumberStatus } from '../../../domain/enums/phone-number-status.enum.js';
-import { PlanTier } from '../../../domain/enums/plan-tier.enum.js';
-import { PLAN_LIMITS } from '../../../domain/constants/plan-limits.js';
+import { effectiveLimits } from './plan-resolution.util.js';
 
 export class EnforcePlanLimitsUseCase {
   constructor(
@@ -29,8 +28,7 @@ export class EnforcePlanLimitsUseCase {
       return;
     }
 
-    const plan = sub?.status === SubscriptionStatus.ACTIVE ? sub.plan : PlanTier.FREE;
-    const limits = PLAN_LIMITS[plan];
+    const limits = effectiveLimits(sub);
 
     await Promise.all([
       this.enforcePhones(tenantId, limits.maxPhoneNumbers),

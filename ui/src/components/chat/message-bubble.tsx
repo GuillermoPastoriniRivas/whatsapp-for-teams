@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Check, CheckCheck } from "lucide-react";
 import type { Message } from "@/types";
+import { MessageMedia } from "./message-media";
 
 interface Props {
   message: Message;
@@ -30,22 +31,30 @@ function StatusIcon({ status }: { status: Message["waStatus"] }) {
 
 export function MessageBubble({ message }: Props) {
   const isOutbound = message.direction === "outbound";
+  // Un sticker se dibuja suelto, sin fondo de burbuja, como en WhatsApp.
+  const isBareSticker = message.media?.kind === "sticker" && !message.body;
 
   return (
     <div className={cn("flex w-full mt-2 mb-1", isOutbound ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[85%] sm:max-w-[70%] px-3 pt-2 pb-1.5 text-[15px] leading-relaxed shadow-sm overflow-hidden",
-          isOutbound
-            ? "bg-[var(--asis-bubble-outbound)] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tr-[4px]"
-            : "bg-[var(--asis-bubble-inbound)] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tl-[4px]"
+          "max-w-[85%] sm:max-w-[70%] text-[15px] leading-relaxed overflow-hidden",
+          isBareSticker
+            ? "px-0 py-0"
+            : cn(
+                "px-3 pt-2 pb-1.5 shadow-sm",
+                isOutbound
+                  ? "bg-[var(--asis-bubble-outbound)] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tr-[4px]"
+                  : "bg-[var(--asis-bubble-inbound)] text-slate-900 dark:text-slate-100 rounded-[16px] rounded-tl-[4px]"
+              )
         )}
       >
-        {isOutbound && message.senderAgentName && (
+        {isOutbound && message.senderAgentName && !isBareSticker && (
           <p className="text-[12px] font-semibold text-primary mb-0.5">
             {message.senderAgentName}
           </p>
         )}
+        {message.media && <MessageMedia media={message.media} outbound={isOutbound} />}
         {message.body && (
           <p className="whitespace-pre-wrap break-words inline">{message.body}</p>
         )}

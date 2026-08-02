@@ -12,3 +12,6 @@ export type { BusinessProfile, BotBehavior, BusinessVertical, CatalogItem, FaqEn
 export { AiUsage } from './ai-usage.entity.js';
 export { Subscription } from './subscription.entity.js';
 export { BillingRecord } from './billing-record.entity.js';
+export { MediaAsset } from './media-asset.entity.js';
+export type { MediaDerivative } from './media-asset.entity.js';
+export { MediaProviderRef } from './media-provider-ref.entity.js';

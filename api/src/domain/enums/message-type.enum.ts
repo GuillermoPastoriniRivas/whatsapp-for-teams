@@ -4,6 +4,7 @@ export enum MessageType {
   AUDIO = 'audio',
   VIDEO = 'video',
   DOCUMENT = 'document',
+  STICKER = 'sticker',
   LOCATION = 'location',
   TEMPLATE = 'template',
   INTERACTIVE = 'interactive',

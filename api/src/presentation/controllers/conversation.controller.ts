@@ -248,6 +248,7 @@ export class ConversationController {
       tenantId: agent.tenantId,
       body: body.body,
       messageType: body.messageType,
+      mediaAssetId: body.mediaAssetId,
     });
     if (!result.ok) {
       const error = result.error as DomainError;

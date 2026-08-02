@@ -4,16 +4,19 @@ import { PaginatedResult } from './conversation.repository.js';
 
 export type UpsertMessageInput = Omit<
   Message,
-  'id' | 'campaignId' | 'waErrorCode' | 'waErrorMessage' | 'interactiveReplyId' | 'contextWaMessageId' | 'interactivePayload'
+  'id' | 'campaignId' | 'waErrorCode' | 'waErrorMessage' | 'interactiveReplyId' | 'contextWaMessageId' | 'interactivePayload' | 'mediaAssetId'
 > & {
   campaignId?: string | null;
   interactiveReplyId?: string | null;
   contextWaMessageId?: string | null;
   interactivePayload?: Record<string, unknown> | null;
+  mediaAssetId?: string | null;
 };
 
 export interface MessageRepository {
   upsertByWaMessageId(message: UpsertMessageInput): Promise<Message>;
+  findById(id: string): Promise<Message | null>;
+  attachMediaAsset(messageId: string, mediaAssetId: string): Promise<Message | null>;
   findByConversationId(conversationId: string, page: number, limit: number): Promise<PaginatedResult<Message>>;
   updateStatusByWaMessageId(
     waMessageId: string,

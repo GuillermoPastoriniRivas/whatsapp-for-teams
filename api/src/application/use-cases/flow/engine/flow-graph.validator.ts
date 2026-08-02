@@ -195,8 +195,9 @@ function validateNodeConfig(
       break;
     case 'action.send_media': {
       const url = String(data.mediaUrl ?? '');
-      if (!/^https:\/\//i.test(url) && !url.includes('{{')) {
-        err('bad_media_url', 'La URL del archivo debe empezar con https://', id);
+      // Con un archivo de la biblioteca no hace falta URL: lo subimos nosotros.
+      if (!data.mediaAssetId && !/^https:\/\//i.test(url) && !url.includes('{{')) {
+        err('bad_media_url', 'Elegí un archivo de la biblioteca o pegá una URL https://', id);
       }
       if (data.mediaType === 'document' && data.filename && String(data.filename).length > 240) {
         err('filename_too_long', 'El nombre del archivo es demasiado largo.', id);

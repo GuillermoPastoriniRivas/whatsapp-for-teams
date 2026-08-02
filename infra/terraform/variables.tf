@@ -26,3 +26,15 @@ variable "app_name" {
   type        = string
   default     = "hivvo"
 }
+
+variable "media_bucket_name" {
+  description = "S3 bucket for the media library (globally unique)"
+  type        = string
+  default     = "asis-chat-media"
+}
+
+variable "media_cors_origins" {
+  description = "Origins allowed to upload straight to S3 via presigned PUT"
+  type        = list(string)
+  default     = ["https://asis.chat", "https://www.asis.chat", "http://localhost:3001"]
+}

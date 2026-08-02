@@ -18,3 +18,6 @@ export { TemplateQuality } from './template-quality.enum.js';
 export { CampaignStatus } from './campaign-status.enum.js';
 export { CampaignRecipientStatus } from './campaign-recipient-status.enum.js';
 export { ConversationOrigin } from './conversation-origin.enum.js';
+export { MediaKind } from './media-kind.enum.js';
+export { MediaAssetStatus } from './media-asset-status.enum.js';
+export { MediaSource } from './media-source.enum.js';

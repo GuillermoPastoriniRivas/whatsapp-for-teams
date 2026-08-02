@@ -12,7 +12,20 @@ export interface PlanLimits {
   prioritySupport: boolean | 'dedicated';
   whatsappSupport: boolean;
   priceMonthly: number;
+  /**
+   * Media library. En `false` el tenant opera en passthrough: no guardamos un
+   * solo byte, los archivos viven en Meta y se pierden a los 30 días.
+   */
+  mediaLibrary: boolean;
+  /** Bytes de storage incluidos. 0 = passthrough, -1 = a convenir. */
+  storageBytes: number;
+  /** Días que retenemos un archivo. -1 = para siempre, 0 = no guardamos. */
+  mediaRetentionDays: number;
+  /** Adjuntar media a campañas (necesita bytes propios para poder reenviar). */
+  campaignMedia: boolean;
 }
+
+const GB = 1024 * 1024 * 1024;
 
 export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
   [PlanTier.FREE]: {
@@ -27,6 +40,10 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     prioritySupport: false,
     whatsappSupport: false,
     priceMonthly: 0,
+    mediaLibrary: false,
+    storageBytes: 0,
+    mediaRetentionDays: 0,
+    campaignMedia: false,
   },
   [PlanTier.PRO]: {
     maxPhoneNumbers: -1,
@@ -40,6 +57,10 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     prioritySupport: false,
     whatsappSupport: true,
     priceMonthly: 4900,
+    mediaLibrary: true,
+    storageBytes: 25 * GB,
+    mediaRetentionDays: 365,
+    campaignMedia: true,
   },
   [PlanTier.BUSINESS]: {
     maxPhoneNumbers: -1,
@@ -53,6 +74,10 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     prioritySupport: true,
     whatsappSupport: true,
     priceMonthly: 9900,
+    mediaLibrary: true,
+    storageBytes: 250 * GB,
+    mediaRetentionDays: -1,
+    campaignMedia: true,
   },
   [PlanTier.AGENCIES]: {
     maxPhoneNumbers: -1,
@@ -66,5 +91,9 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     prioritySupport: 'dedicated',
     whatsappSupport: true,
     priceMonthly: 0,
+    mediaLibrary: true,
+    storageBytes: -1,
+    mediaRetentionDays: -1,
+    campaignMedia: true,
   },
 };

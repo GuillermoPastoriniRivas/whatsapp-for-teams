@@ -57,14 +57,85 @@ export interface Contact {
   customFields: Record<string, string>;
 }
 
+export type MediaKind = "image" | "video" | "audio" | "document" | "sticker";
+
+export type MediaAssetStatus =
+  | "meta_only"
+  | "pending"
+  | "ready"
+  | "failed"
+  | "expired_at_source";
+
+export type MediaSource =
+  | "inbound"
+  | "agent_upload"
+  | "library_upload"
+  | "api"
+  | "campaign";
+
+export interface MediaAsset {
+  id: string;
+  kind: MediaKind;
+  mimeType: string;
+  sizeBytes: number;
+  filename: string | null;
+  title: string | null;
+  tags: string[];
+  inLibrary: boolean;
+  source: MediaSource;
+  status: MediaAssetStatus;
+  /** `false` = ni lo guardamos nosotros ni sigue vivo en WhatsApp. */
+  available: boolean;
+  /** Se está bajando a nuestro storage. */
+  processing: boolean;
+  /** Vive solo en WhatsApp: se pierde a los 30 días. */
+  temporary: boolean;
+  expiresAt: string | null;
+  url: string | null;
+  thumbnailUrl: string | null;
+  downloadUrl: string | null;
+  urlExpiresAt: string | null;
+  width: number | null;
+  height: number | null;
+  durationMs: number | null;
+  conversationId: string | null;
+  contactId: string | null;
+  phoneNumberId: string | null;
+  createdAt: string;
+}
+
+export interface MediaUsage {
+  storedBytes: number;
+  storedCount: number;
+  byKind: { kind: MediaKind; count: number; bytes: number }[];
+  metaOnlyCount: number;
+  metaOnlyBytes: number;
+  expiredCount: number;
+  expiredBytes: number;
+  /** `false` = passthrough: los archivos viven 30 días en WhatsApp. */
+  storageEnabled: boolean;
+  plan: string;
+  /** El plan contratado incluye biblioteca. */
+  planIncludesLibrary: boolean;
+  /** Hay storage configurado en este entorno. Si es `false` con plan pago, falta config. */
+  storageConfigured: boolean;
+  quotaBytes: number;
+  usedPercent: number | null;
+  retentionDays: number;
+  atRiskCount: number;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
   direction: "inbound" | "outbound";
-  messageType: "text" | "image" | "audio" | "video" | "document" | "location" | "template" | "interactive";
+  messageType: "text" | "image" | "audio" | "video" | "document" | "sticker" | "location" | "template" | "interactive";
   body: string | null;
   mediaUrl: string | null;
   mimeType: string | null;
+  mediaAssetId?: string | null;
+  /** Archivo adjunto ya resuelto por el backend, listo para renderizar. */
+  media?: MediaAsset | null;
   waMessageId: string;
   waStatus: "sent" | "delivered" | "read" | "failed";
   timestamp: string;

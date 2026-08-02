@@ -190,16 +190,23 @@ export function ChatPanel({ conversationId }: Props) {
     const handleNewEvent = (event: ConversationEvent) => {
       useEventStore.getState().appendEvent(conversationId, event);
     };
+    // El adjunto termina de bajarse después de que el mensaje ya se pintó:
+    // esto reemplaza el placeholder por el archivo real.
+    const handleMediaUpdate = (data: { assetId: string }) => {
+      void useMessageStore.getState().applyMediaUpdate(data.assetId);
+    };
 
     socket.on("message.new", handleNewMessage);
     socket.on("message.status", handleStatusUpdate);
     socket.on("conversation.event", handleNewEvent);
+    socket.on("media.updated", handleMediaUpdate);
 
     return () => {
       socket.emit("leave:conversation", { conversationId });
       socket.off("message.new", handleNewMessage);
       socket.off("message.status", handleStatusUpdate);
       socket.off("conversation.event", handleNewEvent);
+      socket.off("media.updated", handleMediaUpdate);
     };
   }, [conversationId]);
 

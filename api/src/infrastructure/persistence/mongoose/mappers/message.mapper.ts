@@ -25,6 +25,7 @@ export class MessageMapper {
       doc.interactiveReplyId ?? null,
       doc.contextWaMessageId ?? null,
       doc.interactivePayload ?? null,
+      doc.mediaAssetId?.toHexString() ?? null,
     );
   }
 }

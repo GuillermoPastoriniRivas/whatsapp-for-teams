@@ -19,6 +19,8 @@ import { AutoAssignConversationUseCase } from '../conversation/auto-assign-conve
 import { AttributeCampaignReplyUseCase } from '../campaign/attribute-campaign-reply.use-case.js';
 import { FlowInboundRouterUseCase } from '../flow/flow-inbound-router.use-case.js';
 import { SendPushToAgentUseCase } from '../notification/send-push-to-agent.use-case.js';
+import { RegisterInboundMediaUseCase } from '../media/register-inbound-media.use-case.js';
+import { MessageMediaEnricher } from '../media/message-media.enricher.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
@@ -49,6 +51,8 @@ export class HandleInboundMessageUseCase {
     private readonly accessRepo: AgentPhoneAccessRepository,
     private readonly flowRouter: FlowInboundRouterUseCase,
     private readonly devEvents: DeveloperEventsPort,
+    private readonly registerMedia: RegisterInboundMediaUseCase,
+    private readonly mediaEnricher: MessageMediaEnricher,
   ) {}
 
   async execute(input: InboundMessageInput): Promise<void> {
@@ -104,7 +108,7 @@ export class HandleInboundMessageUseCase {
     }
 
     // 4. Upsert Message (idempotent by waMessageId)
-    const message = await this.messageRepo.upsertByWaMessageId({
+    let message = await this.messageRepo.upsertByWaMessageId({
       conversationId: conversation.id,
       direction: MessageDirection.INBOUND,
       messageType: (input.messageType as MessageType) ?? MessageType.TEXT,
@@ -119,6 +123,30 @@ export class HandleInboundMessageUseCase {
       interactiveReplyId: input.interactiveReplyId ?? null,
       contextWaMessageId: input.contextWaMessageId ?? null,
     });
+
+    // 4b. Archivo adjunto: se registra el asset y, si el plan tiene storage, se
+    // encola la bajada. Nunca se descarga acá — el webhook debe responder ya.
+    if (input.mediaId) {
+      try {
+        const asset = await this.registerMedia.execute({
+          tenantId,
+          messageId: message.id,
+          messageType: input.messageType,
+          phoneNumberId: phone.id,
+          conversationId: conversation.id,
+          contactId: contact.id,
+          mediaId: input.mediaId,
+          mimeType: input.mimeType,
+          filename: input.mediaFilename,
+          sha256: input.mediaSha256,
+          receivedAt: input.timestamp,
+        });
+        if (asset) message = (await this.messageRepo.findById(message.id)) ?? message;
+      } catch (error: any) {
+        // Un problema con el adjunto no puede hacer que se pierda el mensaje.
+        this.logger.error(`No se pudo registrar el media de ${input.waMessageId}: ${error?.message}`);
+      }
+    }
 
     // 5. Update conversation timestamps.
     // A reply to a campaign conversation promotes it into the regular inbox.
@@ -168,8 +196,10 @@ export class HandleInboundMessageUseCase {
     // 6b. Contador de no leídos persistido; se resetea al abrir la conversación
     await this.conversationRepo.incrementUnread(conversation.id);
 
-    // 7. Emit WebSocket events
-    this.gateway.emitToConversation(conversation.id, 'message.new', message);
+    // 7. Emit WebSocket events. El mensaje viaja con su archivo ya resuelto
+    // para que la burbuja lo pinte de una, sin un fetch extra.
+    const enriched = await this.mediaEnricher.one(message);
+    this.gateway.emitToConversation(conversation.id, 'message.new', enriched);
     this.gateway.emitToTenant(tenantId, 'conversation.updated', { conversationId: conversation.id });
     // Preview tenant-wide: message.new solo llega a quien tiene abierta la
     // conversación; este evento alimenta el toast in-app del resto
@@ -253,6 +283,7 @@ export class HandleInboundMessageUseCase {
       case MessageType.VIDEO: return '🎬 Video';
       case MessageType.AUDIO: return '🎵 Audio';
       case MessageType.DOCUMENT: return '📄 Documento';
+      case MessageType.STICKER: return '🩷 Sticker';
       default: return 'Nuevo mensaje';
     }
   }

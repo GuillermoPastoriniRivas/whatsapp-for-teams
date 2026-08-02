@@ -58,6 +58,9 @@ export class MessageModel {
 
   @Prop({ type: Object, default: null })
   interactivePayload: Record<string, unknown> | null;
+
+  @Prop({ type: Types.ObjectId, default: null })
+  mediaAssetId: Types.ObjectId | null;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(MessageModel);

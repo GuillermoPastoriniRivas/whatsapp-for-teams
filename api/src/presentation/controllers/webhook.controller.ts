@@ -54,13 +54,12 @@ export class WebhookController {
   @ApiResponse({ status: 200, description: 'Webhook processed' })
   async receiveWhatsApp(@Req() req: Request, @Body() body: MetaWebhookPayload) {
     const phoneNumber = (req as any).phoneNumber as PhoneNumber;
-    const apiVersion = this.configService.get<string>('meta.apiVersion', 'v21.0');
 
     const { messages, statuses, templateEvents } = parseMetaWebhook(body);
 
     // Enqueue inbound messages
     for (const parsed of messages) {
-      const input = mapMetaMessageToInbound(parsed, phoneNumber.phoneNumberId, apiVersion);
+      const input = mapMetaMessageToInbound(parsed, phoneNumber.phoneNumberId);
       if (!input) {
         this.logger.warn(`Unsupported Meta message type: ${parsed.message.type} (id=${parsed.message.id})`);
         continue;
@@ -98,7 +97,7 @@ export class WebhookController {
     const { messages, statuses } = parseMetaWebhook(body);
 
     for (const parsed of messages) {
-      const input = mapMetaMessageToInbound(parsed, phoneNumberId, 'v24.0');
+      const input = mapMetaMessageToInbound(parsed, phoneNumberId);
       if (!input) {
         this.logger.warn(`Unsupported Kapso message type: ${parsed.message.type} (id=${parsed.message.id})`);
         continue;
@@ -145,7 +144,9 @@ export class WebhookController {
       contactName: body.ProfileName || fromNumber,
       messageType: this.mapTwilioMessageType(body),
       body: body.Body || undefined,
-      mediaUrl: body.MediaUrl0 || undefined,
+      // En Twilio el "id" del media es la URL del recurso: se baja con Basic
+      // auth de la cuenta, no es pública.
+      mediaId: body.MediaUrl0 || undefined,
       mimeType: body.MediaContentType0 || undefined,
       timestamp: new Date(),
     });

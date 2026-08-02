@@ -18,6 +18,7 @@ import {
   Megaphone,
   Workflow,
   Code2,
+  Images,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
@@ -63,6 +64,7 @@ export function AppSidebar({ className }: { className?: string }) {
   const topTabs = [
     { href: "/conversations", icon: MessageSquare, label: t.nav.chats },
     { href: "/contacts", icon: Contact, label: t.nav.contacts },
+    { href: "/media", icon: Images, label: t.nav.media },
     { href: "/templates", icon: LayoutTemplate, label: t.nav.templates },
     { href: "/campaigns", icon: Megaphone, label: t.nav.campaigns },
     ...(agent?.role === "admin"
