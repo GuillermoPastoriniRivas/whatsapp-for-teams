@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Agenda } from '@hokify/agenda';
 import type { JobQueuePort } from '../../application/ports/job-queue.port.js';
@@ -6,7 +6,7 @@ import type { JobQueuePort } from '../../application/ports/job-queue.port.js';
 export type JobHandler = (data: unknown) => Promise<void>;
 
 @Injectable()
-export class AgendaQueueService implements JobQueuePort, OnModuleInit, OnModuleDestroy {
+export class AgendaQueueService implements JobQueuePort, OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(AgendaQueueService.name);
   private readonly agenda: Agenda;
   private readonly handlers = new Map<string, JobHandler>();
@@ -68,7 +68,15 @@ export class AgendaQueueService implements JobQueuePort, OnModuleInit, OnModuleD
     await this.agenda.every(interval, jobName, {} as any);
   }
 
-  async onModuleInit(): Promise<void> {
+  /**
+   * Arranca DESPUÉS de que todos los módulos corrieron su onModuleInit, que es
+   * cuando los processors llaman a `define()`.
+   *
+   * Con `onModuleInit` acá, Agenda arrancaba antes de que existiera un solo
+   * handler: el log salía siempre vacío (`processing jobs: []`) y había una
+   * ventana en la que la cola polleaba sin nadie que atendiera.
+   */
+  async onApplicationBootstrap(): Promise<void> {
     await this.agenda.start();
     this.logger.log(`Agenda started – processing jobs: [${[...this.handlers.keys()].join(', ')}]`);
   }
