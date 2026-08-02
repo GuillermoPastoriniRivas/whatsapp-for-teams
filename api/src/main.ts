@@ -7,6 +7,38 @@ import { Connection } from 'mongoose';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
 import { GlobalExceptionFilter } from './presentation/filters/global-exception.filter.js';
+import { SUBSCRIBABLE_DEVELOPER_EVENTS } from './domain/enums/developer-event-type.enum.js';
+
+/** Prefijo de la API pública; todo lo demás es la app interna. */
+const PUBLIC_API_PREFIX = '/api/v1';
+
+/**
+ * Portada de la referencia pública. Va en markdown porque es lo primero que
+ * lee un integrador: autenticación, límites, forma de los errores y firma de
+ * webhooks, sin obligarlo a salir a buscar otra página.
+ */
+function publicApiDescription(): string {
+  return [
+    'API REST para integrar WhatsApp de Asis Chat en tu propia aplicación.',
+    '',
+    '### Autenticación',
+    'Mandá tu clave en el header `X-Api-Key` (también se acepta `Authorization: Bearer ak_live_...`).',
+    'Las claves se crean desde la app, en **Desarrolladores → Claves de API**.',
+    '',
+    '### Límites',
+    'Hasta 120 solicitudes por minuto por clave. Al pasarte, la API responde `429` con el código `RATE_LIMIT_EXCEEDED`.',
+    '',
+    '### Errores',
+    'Los errores devuelven `{ "code": "...", "message": "..." }`. El `code` es estable y es contra lo que conviene programar; el `message` es para humanos y puede cambiar.',
+    '',
+    '### Webhooks',
+    'Registrá las URLs de tu servidor en **Desarrolladores → Webhooks** para que te avisemos con un POST cuando pasa algo en tu cuenta.',
+    'Cada entrega viaja firmada en el header `X-Asis-Signature: t=<unix>,v1=<hmac>`, donde el HMAC es SHA-256 de la cadena `"<t>.<cuerpo crudo>"` usando el secreto del endpoint.',
+    'Si tu servidor no responde 2xx reintentamos con backoff, hasta 6 intentos.',
+    '',
+    `Eventos disponibles: ${SUBSCRIBABLE_DEVELOPER_EVENTS.map((e) => `\`${e}\``).join(', ')}.`,
+  ].join('\n');
+}
 
 /** Migración one-shot (idempotente): el concepto "resuelta" se eliminó del producto. */
 async function migrateResolvedConversations(app: NestExpressApplication) {
@@ -50,9 +82,11 @@ async function bootstrap() {
     maxAge: 86400,
   });
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('WhatsApp Teams API')
-    .setDescription('Multi-tenant WhatsApp routing and team inbox API')
+  // Documento interno: toda la superficie de la app. Es la referencia del
+  // equipo, no la que se le pasa a un integrador.
+  const internalConfig = new DocumentBuilder()
+    .setTitle('Asis Chat — API interna')
+    .setDescription('Superficie completa de la app (sesión JWT). La referencia pública para desarrolladores está en /api/docs.')
     .setVersion('1.0')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
     .addApiKey({ type: 'apiKey', name: 'X-Api-Key', in: 'header' }, 'ApiKey')
@@ -69,8 +103,26 @@ async function bootstrap() {
     .addTag('Billing', 'Subscription management and billing')
     .build();
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document, {
+  const internalDocument = SwaggerModule.createDocument(app, internalConfig);
+  SwaggerModule.setup('api/internal-docs', app, internalDocument, {
+    useGlobalPrefix: false,
+  });
+
+  // Documento público: solo /v1. Mostrarle a un integrador los endpoints
+  // internos es ruido — ninguno le sirve, todos exigen sesión de la app.
+  const publicConfig = new DocumentBuilder()
+    .setTitle('Asis Chat API')
+    .setDescription(publicApiDescription())
+    .setVersion('1.0')
+    .addApiKey({ type: 'apiKey', name: 'X-Api-Key', in: 'header' }, 'ApiKey')
+    .addTag('Public API (v1)', 'Mensajes, conversaciones y contactos')
+    .build();
+
+  const publicDocument = SwaggerModule.createDocument(app, publicConfig);
+  publicDocument.paths = Object.fromEntries(
+    Object.entries(publicDocument.paths).filter(([path]) => path.startsWith(PUBLIC_API_PREFIX)),
+  );
+  SwaggerModule.setup('api/docs', app, publicDocument, {
     useGlobalPrefix: false,
   });
 
@@ -79,7 +131,8 @@ async function bootstrap() {
 
   await app.listen(port);
   console.log(`Server running on http://localhost:${port}`);
-  console.log(`Swagger docs at http://localhost:${port}/api/docs`);
+  console.log(`API pública (desarrolladores) at http://localhost:${port}/api/docs`);
+  console.log(`API interna (equipo) at http://localhost:${port}/api/internal-docs`);
 }
 
 bootstrap();

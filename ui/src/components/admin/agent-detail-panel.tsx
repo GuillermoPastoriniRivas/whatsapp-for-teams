@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
+import { PhoneAccessSection } from "@/components/admin/phone-access-section";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import { User, Save, Trash2, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Agent } from "@/types";
@@ -22,6 +24,7 @@ const statusColors: Record<string, string> = {
 };
 
 export function AgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
+  const { t } = useTranslations();
   const [name, setName] = useState(agent.name);
   const [role, setRole] = useState(agent.role);
   const [saving, setSaving] = useState(false);
@@ -134,6 +137,13 @@ export function AgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
             Active conversations: {agent.activeCount}
           </p>
         </div>
+
+        {/* Los agentes IA no tienen acceso por número: responden donde se publicó su flujo */}
+        {isAi ? (
+          <p className="text-xs text-muted-foreground">{t.access.aiHint}</p>
+        ) : (
+          <PhoneAccessSection mode="agent" agentId={agent.id} />
+        )}
 
         {(error || success) && (
           <div className={`rounded-md px-3 py-2 text-sm ${

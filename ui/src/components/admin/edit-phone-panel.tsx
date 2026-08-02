@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
+import { PhoneAccessSection } from "@/components/admin/phone-access-section";
 import { Phone, Save } from "lucide-react";
 import type { PhoneNumber } from "@/types";
 
@@ -108,6 +109,8 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4">
+        <PhoneAccessSection mode="phone" phoneId={phone.id} />
+
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Provider</label>
           <Input value={provider} disabled className="bg-muted" />

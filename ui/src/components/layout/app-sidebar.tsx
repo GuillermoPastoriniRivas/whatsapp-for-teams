@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Settings,
-  Shield,
+  Phone,
   User,
   Users,
   Bell,
   Contact,
   MessageSquare,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -48,10 +49,46 @@ export function AppSidebar({ className }: { className?: string }) {
 
   const [collapsed, setCollapsed] = useState(false);
 
+  /**
+   * Con la barra de scroll oculta no queda ninguna pista de que hay más ítems.
+   * Se mide el desborde a mano para mostrar el degradado y la flecha del borde.
+   */
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [overflow, setOverflow] = useState({ top: false, bottom: false });
+
+  const updateOverflow = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    setOverflow({
+      top: scrollTop > 4,
+      bottom: scrollTop + clientHeight < scrollHeight - 4,
+    });
+  }, []);
+
+  const scrollToBottom = () => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  };
+
   useEffect(() => {
     const stored = localStorage.getItem(SIDEBAR_KEY);
     if (stored === "true") setCollapsed(true);
   }, []);
+
+  // El desborde cambia al colapsar, al redimensionar y cuando aparecen ítems
+  // de admin, así que se observa el elemento en vez de medirlo una sola vez.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    updateOverflow();
+    const observer = new ResizeObserver(updateOverflow);
+    observer.observe(el);
+    for (const child of Array.from(el.children)) observer.observe(child);
+    return () => observer.disconnect();
+  }, [updateOverflow, collapsed, agent?.role]);
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -61,25 +98,48 @@ export function AppSidebar({ className }: { className?: string }) {
     });
   };
 
-  const topTabs = [
-    { href: "/conversations", icon: MessageSquare, label: t.nav.chats },
-    { href: "/contacts", icon: Contact, label: t.nav.contacts },
-    { href: "/media", icon: Images, label: t.nav.media },
-    { href: "/templates", icon: LayoutTemplate, label: t.nav.templates },
-    { href: "/campaigns", icon: Megaphone, label: t.nav.campaigns },
-    ...(agent?.role === "admin"
+  const isAdmin = agent?.role === "admin";
+
+  /**
+   * Agrupado por intención, no por permiso: "qué estoy haciendo" antes que
+   * "quién puede verlo". Configuración queda al final porque se toca una vez.
+   */
+  const sections = [
+    {
+      title: t.nav.sectionInbox,
+      tabs: [
+        { href: "/conversations", icon: MessageSquare, label: t.nav.chats },
+        { href: "/contacts", icon: Contact, label: t.nav.contacts },
+      ],
+    },
+    {
+      title: t.nav.sectionMarketing,
+      tabs: [
+        { href: "/templates", icon: LayoutTemplate, label: t.nav.templates },
+        { href: "/campaigns", icon: Megaphone, label: t.nav.campaigns },
+        { href: "/media", icon: Images, label: t.nav.media },
+        ...(isAdmin
+          ? [{ href: "/flows", icon: Workflow, label: t.nav.flows }]
+          : []),
+      ],
+    },
+    ...(isAdmin
       ? [
-          { href: "/flows", icon: Workflow, label: t.nav.flows },
-          { href: "/agents", icon: Users, label: t.nav.agents },
-          { href: "/admin", icon: Shield, label: t.nav.admin },
-          { href: "/developers", icon: Code2, label: t.nav.developers },
+          {
+            title: t.nav.sectionSetup,
+            tabs: [
+              { href: "/admin", icon: Phone, label: t.nav.phoneAdmin },
+              { href: "/agents", icon: Users, label: t.nav.team },
+              { href: "/developers", icon: Code2, label: t.nav.developers },
+            ],
+          },
         ]
       : []),
   ];
 
   const bottomTabs = [
     { href: "/notifications", icon: Bell, label: t.nav.notifications },
-    ...(agent?.role === "admin"
+    ...(isAdmin
       ? [{ href: "/settings/billing", icon: CreditCard, label: t.nav.billing }]
       : []),
     { href: "/settings", icon: Settings, label: t.nav.settings },
@@ -150,7 +210,7 @@ export function AppSidebar({ className }: { className?: string }) {
     <div
       className={cn(
         "hidden md:flex relative flex-col border-r bg-background py-4 transition-all duration-200",
-        collapsed ? "w-[68px] items-center" : "w-[220px]",
+        collapsed ? "w-[68px] items-center" : "w-[240px]",
         className
       )}
     >
@@ -174,15 +234,60 @@ export function AppSidebar({ className }: { className?: string }) {
         )}
       </div>
 
-      {/* Nav items */}
-      <div className={cn("flex flex-1 flex-col justify-between w-full", collapsed ? "px-2" : "px-3")}>
-        <div className="flex flex-col gap-1">
-          {topTabs.map((tab) => (
-            <NavItem key={tab.href} tab={tab} />
-          ))}
+      {/* Nav items — el bloque de arriba scrollea, el de abajo queda anclado */}
+      <div className={cn("flex flex-1 flex-col min-h-0 w-full", collapsed ? "px-2" : "px-3")}>
+        <div className="relative flex flex-1 min-h-0">
+          <div
+            ref={scrollRef}
+            onScroll={updateOverflow}
+            className="scrollbar-subtle flex flex-1 flex-col gap-4 min-h-0 overflow-y-auto pb-4"
+          >
+            {sections.map((section, i) => (
+              <div key={section.title} className="flex flex-col gap-1">
+                {collapsed ? (
+                  // Colapsado no hay lugar para el título: separa con una línea,
+                  // salvo antes del primer grupo donde no hay nada que separar.
+                  i > 0 && <div className="mx-auto my-1 h-px w-6 bg-border" />
+                ) : (
+                  <span className="px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {section.title}
+                  </span>
+                )}
+                {section.tabs.map((tab) => (
+                  <NavItem key={tab.href} tab={tab} />
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* Degradado arriba: solo avisa que quedó contenido atrás */}
+          <div
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-background to-transparent transition-opacity duration-150",
+              overflow.top ? "opacity-100" : "opacity-0"
+            )}
+          />
+
+          {/* Abajo el degradado no alcanza: sin barra visible hay que decir que
+              hay más. La flecha desaparece al llegar al final. */}
+          <button
+            type="button"
+            aria-hidden={!overflow.bottom}
+            tabIndex={-1}
+            onClick={scrollToBottom}
+            className={cn(
+              "absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t from-background via-background/90 to-transparent transition-opacity duration-150",
+              overflow.bottom
+                ? "opacity-100"
+                : "pointer-events-none opacity-0"
+            )}
+          >
+            <ChevronDown className="h-4 w-4 animate-nudge-down text-muted-foreground" />
+          </button>
         </div>
 
-        <div className="flex flex-col gap-1 pb-2">
+        <div className="flex shrink-0 flex-col gap-1 border-t pt-2 pb-2">
           {bottomTabs.map((tab) => (
             <NavItem key={tab.href} tab={tab} />
           ))}

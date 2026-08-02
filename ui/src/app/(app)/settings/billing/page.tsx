@@ -16,10 +16,12 @@ import {
   MessageSquare,
   ArrowLeft,
   Loader2,
+  Check,
+  X,
 } from "lucide-react";
 import type { PlanTier } from "@/types";
+import { PLAN_ORDER, PLAN_SPECS, planFeatures, planPrice } from "@/lib/plans";
 
-const PLAN_ORDER: PlanTier[] = ["free", "pro", "business", "agencies"];
 const PLAN_ICONS: Record<PlanTier, typeof MessageSquare> = {
   free: MessageSquare,
   pro: Zap,
@@ -298,12 +300,58 @@ export default function BillingPage() {
                       : "border-slate-200"
                   }`}
                 >
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2">
                     <Icon className="h-4 w-4 text-primary" />
                     <span className="font-semibold text-sm">
                       {planNames[tierKey]}
                     </span>
                   </div>
+
+                  <div className="mt-1 mb-3 flex items-baseline gap-1">
+                    <span className="text-xl font-bold">
+                      {planPrice(tierKey, t.billing)}
+                    </span>
+                    {PLAN_SPECS[tierKey].priceMonthly > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {t.billing.perMonth}
+                      </span>
+                    )}
+                  </div>
+
+                  <ul className="mb-4 space-y-1.5 text-xs">
+                    {planFeatures(tierKey, t.billing).map((feature) => (
+                      <li key={feature.label}>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-muted-foreground">
+                            {feature.label}
+                          </span>
+                          {typeof feature.value === "boolean" ? (
+                            feature.value ? (
+                              <Check
+                                className="h-3.5 w-3.5 shrink-0 text-primary"
+                                aria-label={t.billing.included}
+                              />
+                            ) : (
+                              <X
+                                className="h-3.5 w-3.5 shrink-0 text-slate-300"
+                                aria-label={t.billing.notIncluded}
+                              />
+                            )
+                          ) : (
+                            <span className="text-right font-medium">
+                              {feature.value}
+                            </span>
+                          )}
+                        </div>
+                        {feature.hint && (
+                          <p className="text-[10px] leading-tight text-muted-foreground/70">
+                            {feature.hint}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+
                   {isCurrent ? (
                     <Badge variant="secondary" className="self-start mt-auto">
                       {t.billing.currentBadge}

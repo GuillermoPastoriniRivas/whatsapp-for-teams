@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PhoneNumberList } from "@/components/admin/phone-number-list";
-import { PhoneAccessManager } from "@/components/admin/phone-access-manager";
 import { LabelManager } from "@/components/admin/label-manager";
 import { RightPanel } from "@/components/layout/right-panel";
 import { useAuthStore } from "@/stores/auth.store";
@@ -32,7 +31,8 @@ export default function AdminPage() {
       {/* Left: header + tabs + content */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <div className="px-4 pt-4 md:px-6 md:pt-6">
-          <h1 className="text-xl font-bold mb-4">{t.admin.title}</h1>
+          <h1 className="text-xl font-bold">{t.admin.title}</h1>
+          <p className="mt-1 mb-4 text-sm text-muted-foreground">{t.admin.subtitle}</p>
         </div>
         <Tabs
           defaultValue="phones"
@@ -42,17 +42,13 @@ export default function AdminPage() {
           <div className="px-4 md:px-6">
             <TabsList>
               <TabsTrigger value="phones">{t.admin.phoneNumbers}</TabsTrigger>
-              <TabsTrigger value="access">{t.admin.phoneAccess}</TabsTrigger>
               <TabsTrigger value="labels">{t.admin.labels}</TabsTrigger>
             </TabsList>
           </div>
           <TabsContent value="phones" className="mt-0 flex-1 min-h-0">
             <PhoneNumberList onPanelChange={setPanelContent} onPanelClose={closePanel} />
           </TabsContent>
-          <TabsContent value="access" className="mt-0 flex-1 min-h-0 overflow-y-auto px-4 pb-20 md:px-6 pt-4">
-            <PhoneAccessManager />
-          </TabsContent>
-          <TabsContent value="labels" className="mt-0 flex-1 min-h-0 overflow-y-auto px-4 pb-20 md:px-6 pt-4">
+          <TabsContent value="labels" className="mt-0 flex-1 min-h-0 overflow-auto px-4 pb-20 md:px-6 pt-4">
             <LabelManager />
           </TabsContent>
         </Tabs>

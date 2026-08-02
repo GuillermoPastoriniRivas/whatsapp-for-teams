@@ -46,12 +46,13 @@ export function MobileNav() {
     { href: "/campaigns", icon: Megaphone, label: t.nav.campaigns },
   ];
 
+  // Mismo orden que las secciones del sidebar desktop: marketing y luego configuración
   const moreItems = [
-    { href: "/media", icon: Images, label: t.nav.media, adminOnly: false },
     { href: "/templates", icon: LayoutTemplate, label: t.nav.templates, adminOnly: false },
+    { href: "/media", icon: Images, label: t.nav.media, adminOnly: false },
     { href: "/flows", icon: Workflow, label: t.nav.flows, adminOnly: true },
-    { href: "/agents", icon: Users, label: t.nav.team, adminOnly: true },
     { href: "/admin", icon: Phone, label: t.nav.phoneAdmin, adminOnly: true },
+    { href: "/agents", icon: Users, label: t.nav.team, adminOnly: true },
     { href: "/developers", icon: Code2, label: t.nav.developers, adminOnly: true },
     { href: "/settings", icon: Settings, label: t.nav.settings, adminOnly: false },
   ].filter((item) => !item.adminOnly || isAdmin);

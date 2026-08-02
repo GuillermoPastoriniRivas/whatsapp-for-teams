@@ -26,12 +26,13 @@ import {
   BarChart3,
 } from "lucide-react";
 import { AsisLogo } from "@/components/brand/asis-logo";
+import { PLAN_SPECS, planFeatures, planPrice } from "@/lib/plans";
 
 const PLANS = [
-  { key: "free" as const, price: 0, icon: MessageSquare, popular: false },
-  { key: "pro" as const, price: 49, icon: Zap, popular: true },
-  { key: "business" as const, price: 99, icon: Crown, popular: false },
-  { key: "agencies" as const, price: 299, icon: Building2, popular: false },
+  { key: "free" as const, icon: MessageSquare, popular: false },
+  { key: "pro" as const, icon: Zap, popular: true },
+  { key: "business" as const, icon: Crown, popular: false },
+  { key: "agencies" as const, icon: Building2, popular: false },
 ];
 
 export default function LandingPage() {
@@ -53,17 +54,6 @@ export default function LandingPage() {
     business: t.billing.businessPlan,
     agencies: t.billing.agenciesPlan,
   };
-
-  const planFeatures = [
-    { label: t.billing.phoneNumbers, values: ["1", t.billing.unlimited, t.billing.unlimited, t.billing.unlimited] },
-    { label: t.billing.humanAgents, values: ["2", t.billing.unlimited, t.billing.unlimited, t.billing.unlimited] },
-    { label: t.billing.aiBots, values: ["1", "3", t.billing.unlimited, t.billing.unlimited] },
-    { label: t.billing.conversations, values: ["50", t.billing.unlimited, t.billing.unlimited, t.billing.unlimited] },
-    { label: t.billing.webhooks, values: [false, true, true, true] },
-    { label: t.billing.apiAccess, values: [false, false, true, true] },
-    { label: t.billing.whiteLabel, values: [false, false, false, true] },
-    { label: t.billing.prioritySupport, values: [false, false, true, t.billing.dedicatedSupport] },
-  ];
 
   const features = [
     {
@@ -434,8 +424,10 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {PLANS.map((plan, idx) => {
+            {PLANS.map((plan) => {
               const Icon = plan.icon;
+              const isFree = plan.key === "free";
+              const isAgencies = plan.key === "agencies";
               return (
                 <div
                   key={plan.key}
@@ -466,48 +458,70 @@ export default function LandingPage() {
                         {planNames[plan.key]}
                       </h3>
                     </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold text-slate-900">
+                        {planPrice(plan.key, t.billing)}
+                      </span>
+                      {PLAN_SPECS[plan.key].priceMonthly > 0 && (
+                        <span className="text-sm text-slate-500">
+                          {t.billing.perMonth}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex-1 space-y-3 mb-6">
-                    {planFeatures.map((feature) => {
-                      const val = feature.values[idx];
-                      const isIncluded = val !== false;
-                      return (
-                        <div
-                          key={feature.label}
-                          className="flex items-center gap-2 text-sm"
-                        >
-                          {isIncluded ? (
-                            <Check className="h-4 w-4 text-primary shrink-0" />
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    {t.billing.whatsIncluded}
+                  </p>
+                  <ul className="flex-1 space-y-2 mb-6 text-sm">
+                    {planFeatures(plan.key, t.billing).map((feature) => (
+                      <li key={feature.label}>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-slate-600">{feature.label}</span>
+                          {typeof feature.value === "boolean" ? (
+                            feature.value ? (
+                              <Check
+                                className="h-4 w-4 shrink-0 text-primary"
+                                aria-label={t.billing.included}
+                              />
+                            ) : (
+                              <X
+                                className="h-4 w-4 shrink-0 text-slate-300"
+                                aria-label={t.billing.notIncluded}
+                              />
+                            )
                           ) : (
-                            <X className="h-4 w-4 text-slate-300 shrink-0" />
+                            <span className="text-right font-medium text-slate-900">
+                              {feature.value}
+                            </span>
                           )}
-                          <span
-                            className={
-                              isIncluded ? "text-slate-700" : "text-slate-400"
-                            }
-                          >
-                            {typeof val === "string"
-                              ? `${val} ${feature.label.toLowerCase()}`
-                              : feature.label}
-                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
+                        {feature.hint && (
+                          <p className="text-[11px] leading-tight text-slate-400">
+                            {feature.hint}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
 
                   <Button
                     className={`w-full rounded-xl ${
                       plan.popular
                         ? "bg-primary hover:bg-primary/90"
-                        : plan.price === 0
+                        : isFree
                         ? "bg-slate-900 hover:bg-slate-800"
                         : ""
                     }`}
-                    variant={
-                      plan.popular || plan.price === 0 ? "default" : "outline"
-                    }
+                    variant={plan.popular || isFree ? "default" : "outline"}
                     onClick={() => {
+                      if (isAgencies) {
+                        window.open(
+                          "https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies",
+                          "_blank",
+                        );
+                        return;
+                      }
                       if (agent) {
                         router.push("/settings/billing");
                       } else {
@@ -515,7 +529,9 @@ export default function LandingPage() {
                       }
                     }}
                   >
-                    {plan.price === 0
+                    {isAgencies
+                      ? t.billing.contactUs
+                      : isFree
                       ? t.billing.getStarted
                       : t.billing.subscribe}
                   </Button>
