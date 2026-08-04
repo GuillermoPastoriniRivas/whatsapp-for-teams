@@ -10,23 +10,29 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useNodesState, useEdgesState, type Node, type Edge, type Connection } from "@xyflow/react";
 import {
-  ArrowLeft, Loader2, Rocket, Pause, Play, AlertTriangle, BarChart3, Webhook, Copy, RefreshCw, X, History,
+  ArrowLeft, Rocket, Pause, Play, AlertTriangle, BarChart3, Webhook, Copy, RefreshCw, X, History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Spinner, LoadingState } from "@/components/ui/spinner";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { useAuthStore } from "@/stores/auth.store";
 import { useLabelStore } from "@/stores/label.store";
 import { NODE_BY_TYPE, nodeHandles, isTriggerType } from "@/lib/flows/node-catalog";
 import { computeHandleRemap } from "@/lib/flows/handle-remap";
 import { FlowCanvas } from "./flow-canvas";
+import { FlowStatusPill } from "./flow-status-pill";
 import { NodePalette } from "./node-palette";
 import { NodeConfigPanel, type BuilderRefs } from "./node-config-panel";
 import { ExecutionsPanel } from "./executions-panel";
 import { VersionsPanel } from "./versions-panel";
+import { FlowTester } from "./flow-tester";
 import type {
   FlowDetailResponse, FlowGraph, FlowNode, FlowGraphIssue, FlowNodeStatsSummary,
   AiAgentWithConfig, Agent, PhoneNumber, MessageTemplate, PaginatedResponse,
@@ -73,6 +79,7 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
   const router = useRouter();
   const agent = useAuthStore((s) => s.agent);
   const { t } = useTranslations();
+  const confirm = useConfirm();
   const labelStore = useLabelStore();
 
   const [detail, setDetail] = useState<FlowDetailResponse | null>(null);
@@ -88,6 +95,8 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
   const [view, setView] = useState<"editor" | "executions">("editor");
   const [showVersions, setShowVersions] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showTester, setShowTester] = useState(false);
+  const [testingNodeId, setTestingNodeId] = useState<string | null>(null);
   const [stats, setStats] = useState<FlowNodeStatsSummary[]>([]);
   const [refs, setRefs] = useState<BuilderRefs>({ labels: [], aiAgents: [], agents: [], phones: [], templates: [], connections: [], campaigns: [] });
 
@@ -173,10 +182,10 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
       return true;
     } catch (error: any) {
       setSaveState("dirty");
-      setSaveError(error?.message ?? "No se pudo guardar el borrador");
+      setSaveError(error?.message ?? t.flows.draftSaveError);
       return false;
     }
-  }, [flowId]);
+  }, [flowId, t]);
 
   useEffect(() => {
     if (!loadedRef.current) return;
@@ -300,14 +309,19 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
 
   // ── Publicar / pausar ────────────────────────────────────────
   const publish = async () => {
-    if (!window.confirm(`${t.flows.publishConfirmTitle}\n\n${t.flows.publishConfirmBody}`)) return;
+    const confirmed = await confirm({
+      title: t.flows.publishConfirmTitle,
+      description: t.flows.publishConfirmBody,
+      confirmLabel: t.flows.publish,
+    });
+    if (!confirmed) return;
     setPublishing(true);
     setIssues([]);
     setWarnings([]);
     // Sin esto se publica el último borrador guardado, no lo que está en pantalla.
     if (!(await flushSave())) {
       setPublishing(false);
-      setIssues([{ code: "save_failed", message: "No se pudo guardar el borrador antes de publicar. Reintentá." }]);
+      setIssues([{ code: "save_failed", message: t.flows.saveBeforePublishError }]);
       return;
     }
     try {
@@ -383,11 +397,12 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
           data: {
             ...data,
             hasError: errorNodeIds.has(n.id),
+            testing: n.id === testingNodeId,
             stat: stat ? { entered: stat.entered, errors: stat.errors } : null,
           } satisfies CanvasNodeData,
         };
       }),
-    [nodes, errorNodeIds, showStats, statByNode],
+    [nodes, errorNodeIds, showStats, statByNode, testingNodeId],
   );
 
   const selectedNode: FlowNode | null = useMemo(() => {
@@ -398,11 +413,7 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
   }, [nodes, selectedId]);
 
   if (!detail) {
-    return (
-      <div className="flex items-center justify-center h-full py-24">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <LoadingState className="h-full" />;
   }
 
   const flow = detail.flow;
@@ -416,15 +427,18 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
     <div className="zoom-neutral flex flex-col h-full overflow-hidden">
       {/* ── Barra superior ── */}
       <div className="flex items-center gap-3 border-b px-3 py-2 bg-background shrink-0 flex-wrap">
-        <Link href="/flows" className="text-muted-foreground hover:text-foreground shrink-0">
-          <ArrowLeft className="size-4" />
-        </Link>
+        <Button asChild variant="ghost" size="icon-sm" className="shrink-0">
+          <Link href="/flows" aria-label={t.flows.backToFlows}>
+            <ArrowLeft className="size-4" />
+          </Link>
+        </Button>
         <input
           className="font-medium bg-transparent outline-none border-b border-transparent focus:border-primary text-sm min-w-0 flex-1 max-w-64"
           value={name}
+          aria-label={t.flows.flowName}
           onChange={(e) => setName(e.target.value)}
         />
-        <StatusPill status={flow.status} version={flow.publishedVersion} />
+        <FlowStatusPill status={flow.status} version={flow.publishedVersion} />
         {detail.hasUnpublishedChanges && flow.status !== "draft" && (
           <Badge variant="outline" className="text-accent border-accent/40">{t.flows.unsavedChanges}</Badge>
         )}
@@ -432,7 +446,7 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
           className={cn("text-xs w-20", saveError ? "text-destructive" : "text-muted-foreground")}
           title={saveError ?? undefined}
         >
-          {saveError ? "Sin guardar" : saveState === "saving" ? t.flows.saving : saveState === "saved" ? t.flows.saved : "…"}
+          {saveError ? t.flows.notSaved : saveState === "saving" ? t.flows.saving : saveState === "saved" ? t.flows.saved : "…"}
         </span>
         <div className="flex-1" />
         <Tabs value={view} onValueChange={(v) => setView(v as "editor" | "executions")}>
@@ -445,33 +459,46 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
           variant={showVersions ? "secondary" : "outline"}
           size="sm"
           onClick={() => setShowVersions((v) => !v)}
-          title="Historial de versiones"
+          title={t.flows.versionsHistory}
         >
-          <History className="size-3.5 mr-1" />
-          Versiones
+          <History className="size-3.5" />
+          {t.flows.versions}
           {detail.hasUnpublishedChanges && flow.status !== "draft" && (
-            <span className="ml-1.5 size-1.5 rounded-full bg-accent" aria-hidden />
+            <span className="ml-0.5 size-1.5 rounded-full bg-accent" aria-hidden />
           )}
         </Button>
         <Button
-          variant={showStats ? "secondary" : "ghost"}
+          variant={showTester ? "secondary" : "outline"}
           size="sm"
+          onClick={() => {
+            setShowTester((v) => !v);
+            if (showTester) setTestingNodeId(null);
+          }}
+          title="Probar el flujo sin publicarlo"
+        >
+          <Play className="size-3.5 mr-1" />
+          Probar
+        </Button>
+        <Button
+          variant={showStats ? "secondary" : "ghost"}
+          size="icon-sm"
           onClick={() => setShowStats((s) => !s)}
-          title="Actividad por nodo"
+          aria-label={t.flows.nodeActivity}
+          title={t.flows.nodeActivity}
         >
           <BarChart3 className="size-4" />
         </Button>
         {(flow.status === "published" || flow.status === "paused") && (
           <Button variant="outline" size="sm" onClick={() => void togglePause()}>
             {flow.status === "published" ? (
-              <><Pause className="size-3.5 mr-1" />{t.flows.pause}</>
+              <><Pause className="size-3.5" />{t.flows.pause}</>
             ) : (
-              <><Play className="size-3.5 mr-1" />{t.flows.resume}</>
+              <><Play className="size-3.5" />{t.flows.resume}</>
             )}
           </Button>
         )}
         <Button size="sm" disabled={publishing} onClick={() => void publish()}>
-          {publishing ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <Rocket className="size-3.5 mr-1" />}
+          {publishing ? <Spinner size="sm" className="size-3.5" /> : <Rocket className="size-3.5" />}
           {t.flows.publish}
         </Button>
       </div>
@@ -501,13 +528,18 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
           <code className="truncate">{webhookUrl}</code>
           <button
             className="text-muted-foreground hover:text-foreground shrink-0"
-            onClick={() => void navigator.clipboard.writeText(webhookUrl)}
-            title="Copiar"
+            onClick={() => {
+              void navigator.clipboard.writeText(webhookUrl);
+              toast.success(t.flows.copied);
+            }}
+            aria-label={t.flows.copyWebhookUrl}
+            title={t.flows.copyWebhookUrl}
           >
             <Copy className="size-3.5" />
           </button>
           <button
             className="text-muted-foreground hover:text-foreground shrink-0"
+            aria-label={t.flows.regenerateToken}
             title={t.flows.regenerateToken}
             onClick={async () => {
               await api.post(`/flows/${flowId}/webhook-token`);
@@ -527,7 +559,9 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
             <p className="text-xs font-medium text-destructive flex items-center gap-1">
               <AlertTriangle className="size-3.5" />
               {t.flows.publishErrors}
-              <button className="ml-auto text-muted-foreground" onClick={() => setIssues([])}><X className="size-3.5" /></button>
+              <button className="ml-auto text-muted-foreground" aria-label={t.flows.dismissErrors} onClick={() => setIssues([])}>
+                <X className="size-3.5" />
+              </button>
             </p>
           )}
           {issues.map((issue, index) => (
@@ -565,11 +599,25 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
               onSelectNode={setSelectedId}
               onDropNode={(type, position) => addNode(type, position)}
             />
-            <div className="md:hidden absolute inset-x-0 top-0 text-center text-xs bg-accent/10 text-accent py-1">
-              {t.flows.mobileReadOnly}
+            {/* El builder no se edita en teléfono (paleta y panel son `md:`);
+                el aviso explica por qué el canvas es solo de lectura. */}
+            <div className="md:hidden absolute inset-x-0 top-0 z-(--z-sticky) p-2">
+              <InlineNotice className="bg-background/95 shadow-sm ring-1 ring-foreground/10">
+                {t.flows.mobileReadOnly}
+              </InlineNotice>
             </div>
           </div>
-          {selectedNode && (
+          {showTester && (
+            <FlowTester
+              flowId={flowId}
+              onCurrentNodeChange={setTestingNodeId}
+              onClose={() => {
+                setShowTester(false);
+                setTestingNodeId(null);
+              }}
+            />
+          )}
+          {selectedNode && !showTester && (
             <div className="hidden md:flex w-80 shrink-0 border-l bg-background flex-col h-full min-h-0">
               <NodeConfigPanel
                 key={selectedNode.id}
@@ -590,21 +638,5 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
         </div>
       )}
     </div>
-  );
-}
-
-function StatusPill({ status, version }: { status: string; version: number | null }) {
-  const { t } = useTranslations();
-  const map: Record<string, { label: string; className: string }> = {
-    draft: { label: t.flows.statusDraft, className: "bg-muted text-muted-foreground" },
-    published: { label: t.flows.statusPublished, className: "bg-primary/10 text-primary" },
-    paused: { label: t.flows.statusPaused, className: "bg-accent/10 text-accent" },
-  };
-  const style = map[status] ?? map.draft;
-  return (
-    <Badge variant="secondary" className={style.className}>
-      {style.label}
-      {version != null && status !== "draft" ? ` · v${version}` : ""}
-    </Badge>
   );
 }

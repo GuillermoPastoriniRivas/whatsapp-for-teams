@@ -15,6 +15,7 @@ import {
   FlowExecutionsQuerySchema,
   FlowStatsQuerySchema,
   CreateFlowConnectionRequestSchema,
+  SimulateFlowRequestSchema,
 } from '../request-dtos/flow-request.dto.js';
 import type {
   CreateFlowRequestDto,
@@ -22,6 +23,7 @@ import type {
   FlowExecutionsQueryDto,
   FlowStatsQueryDto,
   CreateFlowConnectionRequestDto,
+  SimulateFlowRequestDto,
 } from '../request-dtos/flow-request.dto.js';
 import { CreateFlowUseCase } from '../../application/use-cases/flow/create-flow.use-case.js';
 import { ListFlowsUseCase } from '../../application/use-cases/flow/list-flows.use-case.js';
@@ -39,6 +41,7 @@ import {
   CreateFlowConnectionUseCase, ListFlowConnectionsUseCase, DeleteFlowConnectionUseCase,
 } from '../../application/use-cases/flow/flow-connections.use-cases.js';
 import { FLOW_TEMPLATES } from '../../application/use-cases/flow/flow-templates.js';
+import { SimulateFlowUseCase } from '../../application/use-cases/flow/simulator/simulate-flow.use-case.js';
 import { FlowInvalidGraphError, DomainError } from '../../domain/errors/domain-errors.js';
 import { FlowExecutionStatus } from '../../domain/enums/flow-execution-status.enum.js';
 
@@ -80,6 +83,7 @@ export class FlowController {
     @Inject('GetFlowStatsUseCase') private readonly getStats: GetFlowStatsUseCase,
     @Inject('GetFlowVersionsUseCase') private readonly getVersions: GetFlowVersionsUseCase,
     @Inject('GetFlowVersionUseCase') private readonly getVersion: GetFlowVersionUseCase,
+    @Inject('SimulateFlowUseCase') private readonly simulateFlow: SimulateFlowUseCase,
   ) {}
 
   @Get('templates')
@@ -200,6 +204,28 @@ export class FlowController {
     const result = await this.getVersions.execute(agent.tenantId, id);
     if (!result.ok) throwMapped(result.error);
     return result.value.map((v) => ({ id: v.id, version: v.version, publishedByAgentId: v.publishedByAgentId, createdAt: v.createdAt }));
+  }
+
+  @Post(':id/simulate')
+  @ApiOperation({
+    summary: 'Run the flow against a simulated customer, without sending real WhatsApp messages',
+  })
+  async simulate(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(SimulateFlowRequestSchema)) body: SimulateFlowRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.simulateFlow.execute({
+      tenantId: agent.tenantId,
+      flowId: id,
+      source: body.source,
+      session: (body.session ?? null) as any,
+      text: body.text,
+      optionId: body.optionId,
+      httpResponse: body.httpResponse,
+    });
+    if (!result.ok) throwMapped(result.error);
+    return result.value;
   }
 
   @Get(':id/versions/:versionId')

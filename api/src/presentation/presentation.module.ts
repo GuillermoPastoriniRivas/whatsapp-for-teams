@@ -203,6 +203,7 @@ import { FlowJobProcessor } from '../infrastructure/queue/flow-job.processor.js'
 import { FlowController, FlowExecutionController, FlowConnectionController } from './controllers/flow.controller.js';
 import { FlowWebhookController } from './controllers/flow-webhook.controller.js';
 import { FlowEngineService } from '../application/use-cases/flow/engine/flow-engine.service.js';
+import { SimulateFlowUseCase } from '../application/use-cases/flow/simulator/simulate-flow.use-case.js';
 import { FlowInboundRouterUseCase } from '../application/use-cases/flow/flow-inbound-router.use-case.js';
 import { CancelActiveFlowExecutionUseCase } from '../application/use-cases/flow/cancel-active-flow-execution.use-case.js';
 import { StartFlowFromWebhookUseCase } from '../application/use-cases/flow/start-flow-from-webhook.use-case.js';
@@ -580,6 +581,24 @@ const useCaseProviders = [
     provide: 'GetFlowVersionsUseCase',
     useFactory: (flowRepo: any, versionRepo: any) => new GetFlowVersionsUseCase(flowRepo, versionRepo),
     inject: ['FlowRepository', 'FlowVersionRepository'],
+  },
+  {
+    provide: 'SimulateFlowUseCase',
+    useFactory: (
+      flowRepo: any, versionRepo: any, connectionRepo: any, phoneRepo: any, agentRepo: any,
+      aiConfigRepo: any, labelRepo: any, templateRepo: any, aiCompletion: any, secrets: any,
+      assetRepo: any, mediaAccess: any,
+    ) =>
+      new SimulateFlowUseCase(
+        flowRepo, versionRepo, connectionRepo, phoneRepo, agentRepo,
+        aiConfigRepo, labelRepo, templateRepo, aiCompletion, secrets,
+        assetRepo, mediaAccess,
+      ),
+    inject: [
+      'FlowRepository', 'FlowVersionRepository', 'FlowConnectionRepository', 'PhoneNumberRepository', 'AgentRepository',
+      'AiAgentConfigRepository', 'LabelRepository', 'MessageTemplateRepository', 'AiCompletionPort', 'FlowSecretsPort',
+      'MediaAssetRepository', 'MediaAccessService',
+    ],
   },
   {
     provide: 'GetFlowVersionUseCase',

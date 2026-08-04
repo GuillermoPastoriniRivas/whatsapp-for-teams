@@ -14,6 +14,8 @@ export interface CanvasNodeData {
   nodeType: string;
   config: Record<string, unknown>;
   hasError?: boolean;
+  /** El probador está parado en este nodo */
+  testing?: boolean;
   stat?: { entered: number; errors: number } | null;
   [key: string]: unknown;
 }
@@ -32,10 +34,11 @@ export function FlowNodeComponent({ id, data, selected }: NodeProps) {
   return (
     <div
       className={cn(
-        "rounded-lg border bg-card text-card-foreground shadow-sm border-l-4 min-w-52 max-w-64",
+        "rounded-xl border bg-card text-card-foreground shadow-sm border-l-4 min-w-52 max-w-64",
         styles.border,
         selected && "ring-2 ring-primary",
         nodeData.hasError && "ring-2 ring-destructive",
+        nodeData.testing && "ring-2 ring-primary shadow-lg shadow-primary/20",
       )}
     >
       {!isTriggerType(nodeData.nodeType) && (
@@ -53,7 +56,7 @@ export function FlowNodeComponent({ id, data, selected }: NodeProps) {
         </div>
         {summary && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{summary}</p>}
         {nodeData.stat && (
-          <p className="text-[10px] text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             {nodeData.stat.entered}× ejecutado
             {nodeData.stat.errors > 0 && <span className="text-destructive"> · {nodeData.stat.errors} errores</span>}
           </p>
@@ -66,8 +69,8 @@ export function FlowNodeComponent({ id, data, selected }: NodeProps) {
             <div key={handle.id} className="relative flex items-center justify-end pr-3" style={{ height: HANDLE_ROW_HEIGHT }}>
               <span
                 className={cn(
-                  "text-[10px] truncate max-w-44",
-                  handle.kind === "error" ? "text-destructive/70" : handle.kind === "alt" ? "text-muted-foreground" : "text-foreground/80",
+                  "text-xs truncate max-w-44",
+                  handle.kind === "error" ? "text-destructive" : handle.kind === "alt" ? "text-muted-foreground" : "text-foreground",
                 )}
               >
                 {handle.label || "→"}

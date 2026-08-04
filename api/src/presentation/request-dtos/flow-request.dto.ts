@@ -60,6 +60,19 @@ export const CreateFlowConnectionRequestSchema = z.object({
 });
 export type CreateFlowConnectionRequestDto = z.infer<typeof CreateFlowConnectionRequestSchema>;
 
+// El estado de la simulación viaja al cliente y vuelve: se valida que sea un
+// objeto, pero la forma la define el motor (no se persiste nada).
+export const SimulateFlowRequestSchema = z.object({
+  source: z.enum(['draft', 'published']).default('draft'),
+  session: z.record(z.string(), z.unknown()).nullable().optional(),
+  text: z.string().max(4096).optional(),
+  optionId: z.string().max(200).optional(),
+  httpResponse: z
+    .object({ status: z.number().int().min(100).max(599), body: z.unknown() })
+    .optional(),
+});
+export type SimulateFlowRequestDto = z.infer<typeof SimulateFlowRequestSchema>;
+
 // Payload del webhook externo: JSON arbitrario acotado.
 export const FlowWebhookBodySchema = z.record(z.string(), z.unknown());
 export type FlowWebhookBodyDto = z.infer<typeof FlowWebhookBodySchema>;
