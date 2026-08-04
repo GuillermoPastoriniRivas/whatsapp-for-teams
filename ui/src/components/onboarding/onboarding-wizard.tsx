@@ -74,11 +74,11 @@ export function OnboardingWizard() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-dvh flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between border-b px-6 py-4">
+      <header className="flex items-center justify-between border-b px-4 py-3 md:px-6">
         <div className="flex items-center gap-2">
-          <AsisLogo size={32} color="#0D9488" />
+          <AsisLogo size={32} className="text-primary" />
           <span className="font-bold">
             asis<span className="text-primary">.chat</span>
           </span>

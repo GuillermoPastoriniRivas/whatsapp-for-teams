@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useConversationStore } from "@/stores/conversation.store";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, User } from "lucide-react";
 import { ChatMenu } from "./chat-menu";
 import { AssignedToControl } from "./assigned-to-control";
@@ -24,12 +25,12 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
 
   return (
     <>
-      <div className="flex h-[60px] shrink-0 items-center justify-between bg-[var(--asis-surface-header)] px-4 py-2 border-b border-border shadow-sm z-10 w-full">
+      <div className="flex h-[60px] shrink-0 items-center justify-between bg-[var(--asis-surface-header)] px-4 py-2 border-b border-border shadow-sm z-(--z-sticky) w-full">
         <div className="flex items-center gap-3 overflow-hidden">
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden shrink-0 -ml-2 text-slate-500"
+            className="md:hidden shrink-0 -ml-2 text-muted-foreground"
             onClick={() => router.push("/conversations")}
           >
             <ArrowLeft className="h-5 w-5" />
@@ -40,31 +41,23 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
             onClick={onToggleContactInfo}
             className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity"
           >
-            {contact?.name?.trim() ? (
-              <div
+            <Avatar size="lg">
+              <AvatarFallback
                 className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
-                  avatarStyle(contact.name.trim())
+                  "font-semibold",
+                  contact?.name?.trim() && avatarStyle(contact.name.trim())
                 )}
               >
-                {initials(contact.name)}
-              </div>
-            ) : (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500">
-                <User className="h-6 w-6 mt-1" />
-              </div>
-            )}
+                {contact?.name?.trim() ? initials(contact.name) : <User className="size-5" />}
+              </AvatarFallback>
+            </Avatar>
             <div className="flex flex-col min-w-0 text-left">
-              <h2 className="truncate font-medium text-[15px] leading-tight text-slate-900 dark:text-slate-100">
+              <h2 className="truncate font-medium text-base leading-tight text-foreground">
                 {contact?.name || "Unknown"}
               </h2>
-              <span className="truncate text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <span className="truncate text-xs text-muted-foreground mt-0.5">
                 +{contact?.waId || contact?.phone || "—"}
-                {conversation?.phoneLabel && (
-                  <span className="ml-1 text-slate-400 dark:text-slate-500">
-                    · {conversation.phoneLabel}
-                  </span>
-                )}
+                {conversation?.phoneLabel && <span className="ml-1">· {conversation.phoneLabel}</span>}
               </span>
             </div>
           </button>

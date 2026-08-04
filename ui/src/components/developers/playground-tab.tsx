@@ -6,6 +6,7 @@ import { useTranslations } from "@/lib/i18n/use-translations";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { SimpleSelect } from "@/components/ui/select";
@@ -153,10 +154,7 @@ export function PlaygroundTab({ overview }: { overview: DeveloperOverview | null
 
       <Card>
         <CardContent className="space-y-4 pt-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              {t.developers.apiKeyLabel}
-            </label>
+          <Field label={t.developers.apiKeyLabel} hint={t.developers.apiKeyHint}>
             <Input
               type="password"
               value={apiKey}
@@ -164,15 +162,11 @@ export function PlaygroundTab({ overview }: { overview: DeveloperOverview | null
               placeholder={t.developers.apiKeyPlaceholder}
               className="font-mono"
             />
-            <p className="mt-1 text-[11px] text-muted-foreground">{t.developers.apiKeyHint}</p>
-          </div>
+          </Field>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              {t.developers.endpointLabel}
-            </label>
+          <Field label={t.developers.endpointLabel}>
             <SimpleSelect value={endpointId} onChange={setEndpointId} options={endpointOptions} />
-          </div>
+          </Field>
 
           <div className="flex items-center gap-2 overflow-x-auto rounded-md border bg-muted/40 px-3 py-2">
             <Badge className={cn("shrink-0 font-mono", methodBadgeClass(endpoint.method))}>{endpoint.method}</Badge>

@@ -10,18 +10,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { StatusDot, type StatusTone } from "@/components/ui/status-pill";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
-import { Bot, Check, ChevronDown, Loader2, UserRound } from "lucide-react";
+import { Bot, Check, ChevronDown,  UserRound} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Agent } from "@/types";
 
-const statusDot: Record<string, string> = {
-  available: "bg-green-500",
-  busy: "bg-yellow-500",
-  offline: "bg-gray-400",
+const STATUS_TONE: Record<string, StatusTone> = {
+  available: "success",
+  busy: "warning",
+  offline: "neutral",
 };
 
 interface Props {
@@ -98,12 +100,12 @@ export function AssignedToControl({
           ) : null}
 
           <span className="flex flex-col items-start min-w-0 leading-none">
-            <span className="text-[10px] font-normal text-muted-foreground">
+            <span className="text-xs font-normal text-muted-foreground">
               {t.chat.assignedTo}
             </span>
             <span
               className={cn(
-                "mt-0.5 max-w-full truncate text-sm font-semibold text-slate-900 dark:text-slate-100",
+                "mt-0.5 max-w-full truncate text-sm font-semibold text-foreground",
                 !assignedAgentId && "font-normal text-muted-foreground"
               )}
             >
@@ -112,7 +114,7 @@ export function AssignedToControl({
           </span>
 
           {assigning ? (
-            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+            <Spinner size="sm" className="shrink-0 text-muted-foreground" />
           ) : (
             <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           )}
@@ -140,7 +142,7 @@ export function AssignedToControl({
             <DropdownMenuSeparator />
             {loading ? (
               <div className="px-2 py-3 text-center">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mx-auto" />
+                <Spinner size="sm" className="text-muted-foreground mx-auto" />
               </div>
             ) : others.length === 0 ? (
               <p className="px-2 py-2 text-xs text-muted-foreground">
@@ -159,11 +161,9 @@ export function AssignedToControl({
                     {a.type === "ai" ? (
                       <Bot className="h-4 w-4 text-violet-500" />
                     ) : (
-                      <span
-                        className={cn(
-                          "h-2 w-2 rounded-full shrink-0 ml-1 mr-1",
-                          statusDot[a.status] ?? statusDot.offline
-                        )}
+                      <StatusDot
+                        tone={STATUS_TONE[a.status] ?? "neutral"}
+                        className="mx-1"
                       />
                     )}
                     <span className="flex-1 truncate">{a.name}</span>

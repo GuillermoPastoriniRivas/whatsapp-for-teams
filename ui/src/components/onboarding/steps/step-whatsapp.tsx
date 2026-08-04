@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, ExternalLink, ChevronLeft, CheckCircle2 } from "lucide-react";
+import { Copy, Check, ExternalLink, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { api, ApiError } from "@/lib/api";
 
@@ -63,70 +65,62 @@ export function StepWhatsapp({ onNext, onSkip }: StepWhatsappProps) {
   };
 
   const credentialsForm = (
-    <div className="w-full space-y-3 mt-4">
+    <div className="mt-4 w-full space-y-4">
       <p className="text-sm font-medium text-foreground">{t.onboarding.credentialsTitle}</p>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2 space-y-1">
-          <label className="text-xs text-muted-foreground">{t.onboarding.accessToken}</label>
+      <div className="grid grid-cols-2 gap-4">
+        <Field label={t.onboarding.accessToken} className="col-span-2">
           <Input
             placeholder="EAAGm..."
             value={form.accessToken}
             onChange={(e) => setForm({ ...form, accessToken: e.target.value })}
           />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">{t.onboarding.wabaId}</label>
+        </Field>
+        <Field label={t.onboarding.wabaId}>
           <Input
             placeholder="123456789"
             value={form.wabaId}
             onChange={(e) => setForm({ ...form, wabaId: e.target.value })}
           />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">{t.onboarding.phoneNumberId}</label>
+        </Field>
+        <Field label={t.onboarding.phoneNumberId}>
           <Input
             placeholder="987654321"
             value={form.phoneNumberId}
             onChange={(e) => setForm({ ...form, phoneNumberId: e.target.value })}
           />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">{t.onboarding.displayPhone}</label>
+        </Field>
+        <Field label={t.onboarding.displayPhone}>
           <Input
             placeholder="+54 11 1234-5678"
             value={form.displayPhone}
             onChange={(e) => setForm({ ...form, displayPhone: e.target.value })}
           />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">{t.onboarding.label}</label>
+        </Field>
+        <Field label={t.onboarding.label}>
           <Input
             placeholder="Ventas"
             value={form.label}
             onChange={(e) => setForm({ ...form, label: e.target.value })}
           />
-        </div>
-        <div className="col-span-2 space-y-1">
-          <label className="text-xs text-muted-foreground">{t.onboarding.webhookSecret}</label>
+        </Field>
+        <Field label={t.onboarding.webhookSecret} className="col-span-2">
           <Input
             placeholder="mi-secreto-seguro"
             value={form.webhookSecret}
             onChange={(e) => setForm({ ...form, webhookSecret: e.target.value })}
           />
-        </div>
+        </Field>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <InlineNotice variant="error">{error}</InlineNotice>}
 
       {connected ? (
-        <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
-          <CheckCircle2 className="h-4 w-4" />
-          {t.onboarding.phoneConnectedSuccess}
-        </div>
+        <InlineNotice variant="success">{t.onboarding.phoneConnectedSuccess}</InlineNotice>
       ) : (
         <Button
-          className="w-full rounded-xl"
+          size="lg"
+          className="w-full"
           onClick={handleConnect}
           disabled={isLoading || !form.accessToken || !form.wabaId || !form.phoneNumberId || !form.displayPhone || !form.label || !form.webhookSecret}
         >
@@ -140,7 +134,7 @@ export function StepWhatsapp({ onNext, onSkip }: StepWhatsappProps) {
     return (
       <div className="flex flex-col gap-6">
         <div className="text-center">
-          <h2 className="text-2xl font-bold">{t.onboarding.whatsappTitle}</h2>
+          <h1 className="text-2xl font-bold tracking-tight">{t.onboarding.whatsappTitle}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{t.onboarding.whatsappSubtitle}</p>
         </div>
 
@@ -182,7 +176,7 @@ export function StepWhatsapp({ onNext, onSkip }: StepWhatsappProps) {
           {t.onboarding.back}
         </button>
         <div>
-          <h2 className="text-2xl font-bold">{t.onboarding.whatsappTitle}</h2>
+          <h1 className="text-2xl font-bold tracking-tight">{t.onboarding.whatsappTitle}</h1>
         </div>
         {credentialsForm}
         <button
@@ -206,7 +200,7 @@ export function StepWhatsapp({ onNext, onSkip }: StepWhatsappProps) {
         {t.onboarding.back}
       </button>
       <div>
-        <h2 className="text-2xl font-bold">{t.onboarding.whatsappTitle}</h2>
+        <h1 className="text-2xl font-bold tracking-tight">{t.onboarding.whatsappTitle}</h1>
       </div>
 
       <ol className="space-y-3">
@@ -245,7 +239,7 @@ export function StepWhatsapp({ onNext, onSkip }: StepWhatsappProps) {
                     className="shrink-0"
                     onClick={handleCopy}
                   >
-                    {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                    {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
                   </Button>
                 </div>
               )}

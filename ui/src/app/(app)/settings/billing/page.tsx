@@ -8,31 +8,30 @@ import { useTranslations } from "@/lib/i18n/use-translations";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingState, Spinner } from "@/components/ui/spinner";
+import { PageShell, PageContent } from "@/components/layout/page-shell";
+import { PageHeader } from "@/components/layout/page-header";
+import { InlineNotice } from "@/components/shared/inline-notice";
+import { PlanCard, PLAN_ICONS, usePlanNames } from "@/components/shared/plan-card";
 import {
-  CreditCard,
-  Zap,
-  Crown,
-  Building2,
-  MessageSquare,
-  ArrowLeft,
-  Loader2,
-  Check,
-  X,
-} from "lucide-react";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Receipt } from "lucide-react";
 import type { PlanTier } from "@/types";
-import { PLAN_ORDER, PLAN_SPECS, planFeatures, planPrice } from "@/lib/plans";
-
-const PLAN_ICONS: Record<PlanTier, typeof MessageSquare> = {
-  free: MessageSquare,
-  pro: Zap,
-  business: Crown,
-  agencies: Building2,
-};
+import { PLAN_ORDER } from "@/lib/plans";
 
 export default function BillingPage() {
   const router = useRouter();
   const agent = useAuthStore((s) => s.agent);
   const { t } = useTranslations();
+  const planNames = usePlanNames();
   const [pendingPlan, setPendingPlan] = useState<PlanTier | null>(null);
   const {
     subscription,
@@ -57,13 +56,6 @@ export default function BillingPage() {
     fetchUsage();
     fetchHistory();
   }, [agent]);
-
-  const planNames: Record<PlanTier, string> = {
-    free: t.billing.freePlan,
-    pro: t.billing.proPlan,
-    business: t.billing.businessPlan,
-    agencies: t.billing.agenciesPlan,
-  };
 
   const eventLabels: Record<string, string> = {
     subscription_created: t.billing.subscriptionCreated,
@@ -103,268 +95,170 @@ export default function BillingPage() {
 
   if (agent?.role !== "admin") return null;
 
+  const CurrentPlanIcon = PLAN_ICONS[plan];
+
   return (
-    <div className="h-full overflow-y-auto p-6 max-w-5xl mx-auto space-y-6 scrollbar-hide">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/settings")}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex items-center gap-2">
-          <CreditCard className="h-5 w-5 text-primary" />
-          <h1 className="text-2xl font-bold">{t.billing.title}</h1>
-        </div>
-      </div>
+    <PageShell>
+      <PageHeader title={t.billing.title} backHref="/settings" />
 
-      {/* Trial Expired Banner */}
-      {subscription?.status === "expired" && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          <p className="font-semibold">{t.billing.trialExpired}</p>
-          <p>{t.billing.trialExpiredMessage}</p>
-        </div>
-      )}
+      <PageContent width="wide">
+        <div className="space-y-4 md:space-y-6">
+          {subscription?.status === "expired" && (
+            <InlineNotice variant="error">
+              <p className="font-semibold">{t.billing.trialExpired}</p>
+              <p>{t.billing.trialExpiredMessage}</p>
+            </InlineNotice>
+          )}
 
-      {/* Current Plan + Usage */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Current Plan Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t.billing.currentPlan}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {(() => {
-                  const Icon = PLAN_ICONS[plan];
-                  return (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <Icon className="h-5 w-5" />
+          {/* Plan actual + uso */}
+          <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t.billing.currentPlan}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <CurrentPlanIcon className="size-5" />
                     </div>
-                  );
-                })()}
-                <div>
-                  <p className="font-bold text-lg">{planNames[plan]}</p>
+                    <p className="truncate text-base font-semibold">{planNames[plan]}</p>
+                  </div>
+                  {subscription && (
+                    <Badge
+                      variant={
+                        subscription.status === "active" ? "default"
+                        : subscription.status === "expired" ? "destructive"
+                        : "secondary"
+                      }
+                    >
+                      {subscription.status === "active"
+                        ? t.billing.active
+                        : subscription.status === "expired"
+                        ? t.billing.trialExpired
+                        : t.billing.canceled}
+                    </Badge>
+                  )}
                 </div>
-              </div>
-              {subscription && (
-                <Badge
-                  variant={
-                    subscription.status === "active" ? "default"
-                    : subscription.status === "expired" ? "destructive"
-                    : "secondary"
-                  }
-                >
-                  {subscription.status === "active"
-                    ? t.billing.active
-                    : subscription.status === "expired"
-                    ? t.billing.trialExpired
-                    : t.billing.canceled}
-                </Badge>
-              )}
-            </div>
-            {subscription && subscription.status === "active" && (
-              <div className="text-xs text-muted-foreground">
-                {t.billing.period}:{" "}
-                {new Date(subscription.currentPeriodStart).toLocaleDateString()}{" "}
-                —{" "}
-                {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-              </div>
-            )}
-            {subscription?.scheduledPlan && (
-              <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-                <span>
-                  {t.billing.scheduledDowngrade}{" "}
-                  <strong>{planNames[subscription.scheduledPlan]}</strong>{" "}
-                  {t.billing.scheduledOn}{" "}
-                  {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs text-amber-800 hover:bg-amber-100"
-                  disabled={isLoading}
-                  onClick={async () => {
-                    // Cancel scheduled downgrade by "changing" to current plan
-                    await changePlan(plan);
-                    fetchSubscription();
-                    fetchHistory();
-                  }}
-                >
-                  {t.billing.cancelDowngrade}
-                </Button>
-              </div>
-            )}
-            {subscription && subscription.status === "active" && plan !== "free" && !subscription.scheduledPlan && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={async () => {
-                    await cancelSubscription();
-                    fetchSubscription();
-                    fetchHistory();
-                  }}
-                  disabled={isLoading}
-                >
-                  {t.billing.cancelSubscription}
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Usage Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t.billing.usage}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {usage && (
-              <>
-                {(
-                  [
-                    { label: t.billing.phoneNumbers, data: usage.phoneNumbers },
-                    { label: t.billing.humanAgents, data: usage.humanAgents },
-                    { label: t.billing.aiBots, data: usage.aiBots },
-                    {
-                      label: t.billing.conversations,
-                      data: usage.conversations,
-                    },
-                  ] as const
-                ).map((item) => (
-                  <div key={item.label} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        {item.label}
-                      </span>
-                      <span className="font-medium">
-                        {formatLimit(item.data.current, item.data.limit)}
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          usagePercent(item.data.current, item.data.limit) >= 100
-                            ? "bg-amber-500"
-                            : usagePercent(item.data.current, item.data.limit) >=
-                              80
-                            ? "bg-amber-400"
-                            : "bg-primary"
-                        }`}
-                        style={{
-                          width: `${usagePercent(item.data.current, item.data.limit)}%`,
-                        }}
-                      />
-                    </div>
-                    {!item.data.allowed && (
-                      <p className="text-xs text-amber-600 font-medium">
-                        {t.billing.limitReached} — {t.billing.upgradeToAdd}
-                      </p>
-                    )}
+                {subscription && subscription.status === "active" && (
+                  <div className="text-xs text-muted-foreground">
+                    {t.billing.period}:{" "}
+                    {new Date(subscription.currentPeriodStart).toLocaleDateString()}{" "}
+                    —{" "}
+                    {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
                   </div>
-                ))}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Plan Selector */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t.billing.changePlan}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {PLAN_ORDER.map((tierKey) => {
-              const isCurrent = tierKey === plan;
-              const isScheduled = subscription?.scheduledPlan === tierKey;
-              const Icon = PLAN_ICONS[tierKey];
-              const tierIdx = PLAN_ORDER.indexOf(tierKey);
-              const currentIdx = PLAN_ORDER.indexOf(plan);
-              const isUpgrade = tierIdx > currentIdx;
-
-              return (
-                <div
-                  key={tierKey}
-                  className={`rounded-xl border p-4 flex flex-col ${
-                    isCurrent
-                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                      : isScheduled
-                      ? "border-amber-300 bg-amber-50/50 ring-1 ring-amber-200"
-                      : "border-slate-200"
-                  }`}
-                >
+                )}
+                {subscription?.scheduledPlan && (
+                  <InlineNotice variant="warning">
+                    <p>
+                      {t.billing.scheduledDowngrade}{" "}
+                      <strong>{planNames[subscription.scheduledPlan]}</strong>{" "}
+                      {t.billing.scheduledOn}{" "}
+                      {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      disabled={isLoading}
+                      onClick={async () => {
+                        // Cancel scheduled downgrade by "changing" to current plan
+                        await changePlan(plan);
+                        fetchSubscription();
+                        fetchHistory();
+                      }}
+                    >
+                      {t.billing.cancelDowngrade}
+                    </Button>
+                  </InlineNotice>
+                )}
+                {subscription && subscription.status === "active" && plan !== "free" && !subscription.scheduledPlan && (
                   <div className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 text-primary" />
-                    <span className="font-semibold text-sm">
-                      {planNames[tierKey]}
-                    </span>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={async () => {
+                        await cancelSubscription();
+                        fetchSubscription();
+                        fetchHistory();
+                      }}
+                      disabled={isLoading}
+                    >
+                      {t.billing.cancelSubscription}
+                    </Button>
                   </div>
+                )}
+              </CardContent>
+            </Card>
 
-                  <div className="mt-1 mb-3 flex items-baseline gap-1">
-                    <span className="text-xl font-bold">
-                      {planPrice(tierKey, t.billing)}
-                    </span>
-                    {PLAN_SPECS[tierKey].priceMonthly > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        {t.billing.perMonth}
-                      </span>
-                    )}
-                  </div>
-
-                  <ul className="mb-4 space-y-1.5 text-xs">
-                    {planFeatures(tierKey, t.billing).map((feature) => (
-                      <li key={feature.label}>
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="text-muted-foreground">
-                            {feature.label}
+            <Card>
+              <CardHeader>
+                <CardTitle>{t.billing.usage}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!usage && isLoading && <LoadingState className="py-6" />}
+                {usage &&
+                  (
+                    [
+                      { label: t.billing.phoneNumbers, data: usage.phoneNumbers },
+                      { label: t.billing.humanAgents, data: usage.humanAgents },
+                      { label: t.billing.aiBots, data: usage.aiBots },
+                      {
+                        label: t.billing.conversations,
+                        data: usage.conversations,
+                      },
+                    ] as const
+                  ).map((item) => {
+                    const pct = usagePercent(item.data.current, item.data.limit);
+                    return (
+                      <div key={item.label} className="space-y-1">
+                        <div className="flex items-center justify-between gap-2 text-sm">
+                          <span className="text-muted-foreground">{item.label}</span>
+                          <span className="font-medium tabular-nums">
+                            {formatLimit(item.data.current, item.data.limit)}
                           </span>
-                          {typeof feature.value === "boolean" ? (
-                            feature.value ? (
-                              <Check
-                                className="h-3.5 w-3.5 shrink-0 text-primary"
-                                aria-label={t.billing.included}
-                              />
-                            ) : (
-                              <X
-                                className="h-3.5 w-3.5 shrink-0 text-slate-300"
-                                aria-label={t.billing.notIncluded}
-                              />
-                            )
-                          ) : (
-                            <span className="text-right font-medium">
-                              {feature.value}
-                            </span>
-                          )}
                         </div>
-                        {feature.hint && (
-                          <p className="text-[10px] leading-tight text-muted-foreground/70">
-                            {feature.hint}
+                        <Progress
+                          value={pct}
+                          indicatorClassName={
+                            pct >= 100 ? "bg-destructive" : pct >= 80 ? "bg-accent" : undefined
+                          }
+                        />
+                        {!item.data.allowed && (
+                          <p className="text-xs font-medium text-destructive">
+                            {t.billing.limitReached} — {t.billing.upgradeToAdd}
                           </p>
                         )}
-                      </li>
-                    ))}
-                  </ul>
+                      </div>
+                    );
+                  })}
+              </CardContent>
+            </Card>
+          </div>
 
-                  {isCurrent ? (
-                    <Badge variant="secondary" className="self-start mt-auto">
-                      {t.billing.currentBadge}
-                    </Badge>
+          {/* Selector de plan */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.billing.changePlan}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {PLAN_ORDER.map((tierKey) => {
+                  const isCurrent = tierKey === plan;
+                  const isScheduled = subscription?.scheduledPlan === tierKey;
+                  const isUpgrade = PLAN_ORDER.indexOf(tierKey) > PLAN_ORDER.indexOf(plan);
+
+                  const action = isCurrent ? (
+                    <Badge variant="secondary">{t.billing.currentBadge}</Badge>
                   ) : isScheduled ? (
-                    <Badge variant="outline" className="self-start mt-auto bg-amber-50 text-amber-700 border-amber-200">
+                    <Badge variant="outline" className="border-accent/30 bg-accent/10 text-accent">
                       {t.billing.scheduled}
                     </Badge>
                   ) : tierKey === "agencies" ? (
                     <Button
                       size="sm"
                       variant="outline"
-                      className="mt-auto"
+                      className="w-full"
                       onClick={() => window.open("https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies", "_blank")}
                     >
                       {t.billing.contactUs}
@@ -373,72 +267,105 @@ export default function BillingPage() {
                     <Button
                       size="sm"
                       variant={isUpgrade ? "default" : "outline"}
-                      className="mt-auto"
+                      className="w-full"
                       disabled={pendingPlan !== null}
                       onClick={() => handlePlanAction(tierKey)}
                     >
                       {pendingPlan === tierKey ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Spinner size="sm" className="text-current" />
                       ) : isUpgrade ? (
                         t.billing.upgrade
                       ) : (
                         t.billing.downgrade
                       )}
                     </Button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+                  );
 
-      {/* Billing History */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {t.billing.billingHistory}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {history.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t.billing.noHistory}
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 pr-4 font-medium">{t.billing.date}</th>
-                    <th className="pb-2 pr-4 font-medium">
-                      {t.billing.event}
-                    </th>
-                    <th className="pb-2 pr-4 font-medium">{t.billing.plan}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map((record) => (
-                    <tr key={record.id} className="border-b last:border-0">
-                      <td className="py-2 pr-4 text-muted-foreground">
-                        {new Date(record.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="py-2 pr-4">
-                        {eventLabels[record.eventType] || record.eventType}
-                      </td>
-                      <td className="py-2 pr-4">
+                  return (
+                    <PlanCard
+                      key={tierKey}
+                      tier={tierKey}
+                      current={isCurrent}
+                      action={action}
+                      className={
+                        isScheduled && !isCurrent
+                          ? "border-accent/40 bg-accent/5 ring-1 ring-accent/20"
+                          : undefined
+                      }
+                    />
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Historial de facturación */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.billing.billingHistory}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {history.length === 0 ? (
+                <EmptyState icon={Receipt} title={t.billing.noHistory} className="py-10" />
+              ) : (
+                <>
+                  {/* Escritorio: tabla */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t.billing.date}</TableHead>
+                          <TableHead>{t.billing.event}</TableHead>
+                          <TableHead>{t.billing.plan}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {history.map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell className="text-muted-foreground">
+                              {new Date(record.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              {eventLabels[record.eventType] || record.eventType}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="capitalize">
+                                {record.plan}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile: cards apiladas */}
+                  <div className="space-y-2 md:hidden">
+                    {history.map((record) => (
+                      <div
+                        key={record.id}
+                        className="flex items-center justify-between gap-2 rounded-xl border p-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {eventLabels[record.eventType] || record.eventType}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {new Date(record.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
                         <Badge variant="outline" className="capitalize">
                           {record.plan}
                         </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </PageContent>
+    </PageShell>
   );
 }

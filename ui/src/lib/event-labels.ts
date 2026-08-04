@@ -72,7 +72,7 @@ export const eventConfig: Record<
   },
   label_removed: {
     icon: Tags,
-    color: "text-slate-400",
+    color: "text-muted-foreground",
     label: (data) => `${data.agentName} removed label "${data.labelName}"`,
   },
   flow_started: {
@@ -92,7 +92,7 @@ export const eventConfig: Record<
   },
   flow_stopped: {
     icon: Workflow,
-    color: "text-slate-400",
+    color: "text-muted-foreground",
     label: (data) => `Flujo «${data.flowName ?? "Flujo"}» detenido${data.reason === "agent_takeover" ? " (intervino un agente)" : ""}`,
   },
 };

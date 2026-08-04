@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LayoutTemplate, Loader2, MoreHorizontal, Plus, RefreshCw, Search } from "lucide-react";
+import { LayoutTemplate,  MoreHorizontal, Plus, RefreshCw, Search} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SimpleSelect } from "@/components/ui/select";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingState, Spinner } from "@/components/ui/spinner";
+import { FilterPill } from "@/components/ui/filter-pill";
+import { Pagination } from "@/components/ui/pagination";
+import { PageShell, PageContent } from "@/components/layout/page-shell";
+import { PageHeader } from "@/components/layout/page-header";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { toast } from "@/lib/toast";
 import {
   Table,
   TableBody,
@@ -24,13 +32,16 @@ import {
 import { RightPanel } from "@/components/layout/right-panel";
 import { InlineNotice } from "@/components/shared/inline-notice";
 import { TemplateEditorPanel } from "./_components/template-editor-panel";
-import { TemplateQualityIndicator, TemplateStatusBadge, TEMPLATE_STATUS_COLORS } from "./_components/template-status-badge";
+import {
+  TemplateQualityIndicator,
+  TemplateStatusBadge,
+  useTemplateStatusLabels,
+} from "./_components/template-status-badge";
 import { useTemplateStore } from "@/stores/template.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { api } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
-import { cn } from "@/lib/utils";
 import type { MessageTemplate, PhoneNumber, TemplateStatus } from "@/types";
 import type { TemplateRealtimeEvent } from "@/stores/template.store";
 
@@ -45,6 +56,8 @@ export default function TemplatesPage() {
     useTemplateStore();
   const agent = useAuthStore((s) => s.agent);
   const { t } = useTranslations();
+  const confirm = useConfirm();
+  const statusLabels = useTemplateStatusLabels();
   const isAdmin = agent?.role === "admin";
 
   const [phones, setPhones] = useState<PhoneNumber[]>([]);
@@ -102,11 +115,11 @@ export default function TemplatesPage() {
   };
 
   const handleDelete = async (template: MessageTemplate) => {
-    if (!confirm(t.templates.confirmDelete)) return;
+    if (!(await confirm({ title: t.templates.confirmDelete, confirmLabel: t.common.delete, destructive: true }))) return;
     try {
       await remove(template.id);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : t.common.genericError);
     }
   };
 
@@ -119,113 +132,74 @@ export default function TemplatesPage() {
 
   return (
     <div className="flex h-full">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {/* Header */}
-        <div className="border-b px-4 py-3 md:px-6">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h1 className="text-xl font-bold">{t.templates.title}</h1>
-              <p className="text-xs text-muted-foreground">{t.templates.subtitle}</p>
-            </div>
-            {isAdmin && (
-              <div className="flex gap-2">
+      <PageShell className="min-w-0 flex-1">
+        <PageHeader
+          title={t.templates.title}
+          subtitle={t.templates.subtitle}
+          actions={
+            isAdmin && (
+              <>
                 <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing || phones.length === 0}>
-                  {syncing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                  {syncing ? <Spinner size="sm" /> : <RefreshCw className="size-4" />}
                   <span className="hidden sm:inline">{syncing ? t.templates.syncing : t.templates.syncWithMeta}</span>
                 </Button>
                 <Button size="sm" onClick={() => setCreating(true)}>
                   <Plus className="size-4" />
                   {t.templates.newTemplate}
                 </Button>
-              </div>
-            )}
-          </div>
+              </>
+            )
+          }
+        >
+          {STATUS_TABS.map((status) => (
+            <FilterPill
+              key={status}
+              active={statusFilter === status}
+              onClick={() => setStatusFilter(status)}
+              count={status ? (countByStatus[status] ?? 0) : templates.length}
+            >
+              {status ? statusLabels[status] : t.templates.filterAll}
+            </FilterPill>
+          ))}
+        </PageHeader>
 
+        <PageContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            {/* Status pills */}
-            <div className="scrollbar-hide -mb-1 flex gap-1.5 overflow-x-auto pb-1">
-              {STATUS_TABS.map((status) => {
-                const label = status
-                  ? {
-                      approved: t.templates.statusApproved,
-                      pending: t.templates.statusPending,
-                      rejected: t.templates.statusRejected,
-                      paused: t.templates.statusPaused,
-                      draft: t.templates.statusDraft,
-                      disabled: t.templates.statusDisabled,
-                    }[status]
-                  : t.templates.filterAll;
-                const isActive = statusFilter === status;
-                const count = status ? (countByStatus[status] ?? 0) : templates.length;
-                return (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => setStatusFilter(status)}
-                    className={cn(
-                      "flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                      isActive && status
-                        ? TEMPLATE_STATUS_COLORS[status]
-                        : isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    )}
-                  >
-                    {label}
-                    <span className={cn("text-[10px] font-normal", isActive ? "opacity-80" : "opacity-60")}>{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2">
-              {phones.length > 1 && (
-                <SimpleSelect
-                  className="h-8 w-36 sm:w-44 text-xs shrink-0"
-                  value={selectedPhone}
-                  onChange={(value) => {
-                    setSelectedPhone(value);
-                    setPhoneNumberId(value);
-                  }}
-                  options={[
-                    { value: "", label: t.templates.filterAll },
-                    ...phones.map((p) => ({ value: p.id, label: p.label || p.displayPhone })),
-                  ]}
-                />
-              )}
-              <div className="relative flex-1 sm:flex-none">
-                <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="h-8 w-full pl-8 text-base sm:text-xs sm:w-44 md:w-56"
-                  placeholder={t.templates.searchPlaceholder}
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                />
-              </div>
+            {phones.length > 1 && (
+              <SimpleSelect
+                className="w-36 shrink-0 sm:w-44"
+                value={selectedPhone}
+                onChange={(value) => {
+                  setSelectedPhone(value);
+                  setPhoneNumberId(value);
+                }}
+                options={[
+                  { value: "", label: t.templates.filterAll },
+                  ...phones.map((p) => ({ value: p.id, label: p.label || p.displayPhone })),
+                ]}
+              />
+            )}
+            <div className="relative min-w-0 flex-1 sm:max-w-56">
+              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="pl-8"
+                placeholder={t.templates.searchPlaceholder}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
             </div>
           </div>
 
-          {notice && (
-            <InlineNotice variant={notice.variant} className="mt-2">
-              {notice.text}
-            </InlineNotice>
-          )}
-        </div>
+          {notice && <InlineNotice variant={notice.variant}>{notice.text}</InlineNotice>}
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
           {isLoading && templates.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="size-6 animate-spin text-muted-foreground" />
-            </div>
+            <LoadingState />
           ) : templates.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <LayoutTemplate className="mb-2 size-12 opacity-40" />
-              <p className="text-sm">{searchInput || statusFilter ? t.templates.noResults : t.templates.noTemplates}</p>
-              {isAdmin && !searchInput && !statusFilter && (
-                <p className="mt-1 text-xs">{t.templates.noTemplatesHint}</p>
-              )}
-            </div>
+            <EmptyState
+              icon={LayoutTemplate}
+              title={searchInput || statusFilter ? t.templates.noResults : t.templates.noTemplates}
+              description={isAdmin && !searchInput && !statusFilter ? t.templates.noTemplatesHint : undefined}
+            />
           ) : (
             <>
               {/* Desktop table */}
@@ -248,14 +222,14 @@ export default function TemplatesPage() {
                         <TableCell>
                           <span className="font-mono text-xs">{template.name}</span>
                           {template.status === "rejected" && template.rejectionReason && (
-                            <p className="mt-0.5 text-[11px] text-destructive">
+                            <p className="mt-0.5 text-xs text-destructive">
                               {t.templates.rejectionReason}: {template.rejectionReason}
                             </p>
                           )}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{template.language}</TableCell>
                         <TableCell>
-                          <Badge variant="secondary" className="text-[11px]">
+                          <Badge variant="secondary">
                             {
                               {
                                 marketing: t.templates.categoryMarketing,
@@ -292,11 +266,11 @@ export default function TemplatesPage() {
               {/* Mobile cards */}
               <div className="space-y-2 md:hidden">
                 {templates.map((template) => (
-                  <div key={template.id} className="rounded-lg border p-3">
+                  <div key={template.id} className="rounded-xl border p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate font-mono text-xs font-medium">{template.name}</p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           {template.language} ·{" "}
                           {
                             {
@@ -320,7 +294,7 @@ export default function TemplatesPage() {
                       <TemplateQualityIndicator quality={template.qualityScore} />
                     </div>
                     {template.status === "rejected" && template.rejectionReason && (
-                      <p className="mt-1.5 text-[11px] text-destructive">
+                      <p className="mt-1.5 text-xs text-destructive">
                         {t.templates.rejectionReason}: {template.rejectionReason}
                       </p>
                     )}
@@ -328,24 +302,11 @@ export default function TemplatesPage() {
                 ))}
               </div>
 
-              {/* Pagination */}
-              {meta.pages > 1 && (
-                <div className="mt-4 flex items-center justify-center gap-2">
-                  <Button variant="outline" size="sm" disabled={meta.page <= 1} onClick={() => fetch(meta.page - 1)}>
-                    {t.contacts.previous}
-                  </Button>
-                  <span className="text-xs text-muted-foreground">
-                    {meta.page} / {meta.pages}
-                  </span>
-                  <Button variant="outline" size="sm" disabled={meta.page >= meta.pages} onClick={() => fetch(meta.page + 1)}>
-                    {t.contacts.next}
-                  </Button>
-                </div>
-              )}
+              <Pagination page={meta.page} pages={meta.pages} onPageChange={(page) => fetch(page)} />
             </>
           )}
-        </div>
-      </div>
+        </PageContent>
+      </PageShell>
 
       <RightPanel open={panelOpen} onClose={closePanel}>
         {panelOpen && (
@@ -376,7 +337,7 @@ function TemplateActions({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-8">
+        <Button variant="ghost" size="icon-sm">
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>

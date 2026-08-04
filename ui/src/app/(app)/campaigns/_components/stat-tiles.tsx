@@ -52,7 +52,7 @@ export function StatTiles({ campaign, stats }: { campaign: Campaign; stats: Camp
       icon: MessageCircleReply,
       value: `${replied}`,
       sub: stats ? pct(stats.responseRate) : undefined,
-      accent: "text-emerald-600 dark:text-emerald-400",
+      accent: "text-primary",
     },
     {
       label: t.campaigns.statFailed,
@@ -65,12 +65,12 @@ export function StatTiles({ campaign, stats }: { campaign: Campaign; stats: Camp
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
       {tiles.map(({ label, icon: Icon, value, sub, accent }) => (
-        <div key={label} className="rounded-lg border p-3">
+        <div key={label} className="rounded-xl border p-3">
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Icon className="size-3.5" />
-            <span className="text-[11px] font-medium">{label}</span>
+            <span className="text-xs font-medium">{label}</span>
           </div>
-          <p className={cn("mt-1 text-xl font-bold", accent)}>
+          <p className={cn("mt-1 text-2xl font-semibold tabular-nums", accent)}>
             {value}
             {sub && <span className="ml-1 text-xs font-normal text-muted-foreground">{sub}</span>}
           </p>

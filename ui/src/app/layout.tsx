@@ -1,6 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/toaster";
+import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
+
+/**
+ * Pinta el tema antes del primer render. Sin esto, quien elige oscuro ve un
+ * destello blanco en cada carga mientras hidrata el store.
+ */
+const THEME_SCRIPT = `try{var t=localStorage.getItem("asis-theme")||"system";if(t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`;
 
 const inter = Inter({
   variable: "--font-inter",
@@ -42,8 +51,17 @@ export default function RootLayout({
     <html
       lang="es"
       className={`${inter.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="h-full">{children}</body>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body className="h-full">
+        <ThemeProvider />
+        {children}
+        <Toaster />
+        <ConfirmDialogHost />
+      </body>
     </html>
   );
 }

@@ -2,8 +2,7 @@
 
 import { useConversationStore } from "@/stores/conversation.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { FilterPill } from "@/components/ui/filter-pill";
 
 export function ConversationFilters() {
   const { statusFilter, setFilter } = useConversationStore();
@@ -20,18 +19,13 @@ export function ConversationFilters() {
     <div className="space-y-1.5">
       <div className="scrollbar-hide flex gap-1.5 overflow-x-auto">
         {filters.map((f) => (
-          <Button
+          <FilterPill
             key={f.value}
-            variant={statusFilter === f.value ? "default" : "outline"}
-            size="sm"
-            className={cn(
-              "h-7 text-xs shrink-0",
-              statusFilter === f.value && "bg-primary hover:bg-primary/90"
-            )}
+            active={statusFilter === f.value}
             onClick={() => setFilter(f.value)}
           >
             {f.label}
-          </Button>
+          </FilterPill>
         ))}
       </div>
     </div>

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { api, ApiError } from "@/lib/api";
 import type { BusinessVertical } from "@/types";
@@ -55,30 +56,30 @@ export function StepAi({ onNext, onSkip }: StepAiProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold">{t.onboarding.aiTitle}</h2>
+        <h1 className="text-2xl font-bold tracking-tight">{t.onboarding.aiTitle}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Contanos lo básico y creamos tu asistente. Después lo completás con tus precios y preguntas frecuentes.
         </p>
       </div>
 
-      <div className="space-y-3">
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">{t.onboarding.aiName}</label>
+      <div className="space-y-4">
+        <Field label={t.onboarding.aiName}>
           <Input
             placeholder={t.onboarding.aiNamePlaceholder}
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
-        </div>
+        </Field>
 
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Tipo de negocio</label>
-          <div className="flex gap-2 flex-wrap">
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium text-foreground">Tipo de negocio</p>
+          <div className="flex flex-wrap gap-2">
             {VERTICALS.map((v) => (
               <button
                 key={v.value}
                 type="button"
                 onClick={() => setForm({ ...form, vertical: v.value })}
+                aria-pressed={form.vertical === v.value}
                 className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
                   form.vertical === v.value
                     ? "border-primary bg-primary text-primary-foreground"
@@ -91,26 +92,23 @@ export function StepAi({ onNext, onSkip }: StepAiProps) {
           </div>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Nombre del negocio</label>
+        <Field label="Nombre del negocio">
           <Input
             placeholder='Ej: "Barbería Don Pedro"'
             value={form.businessName}
             onChange={(e) => setForm({ ...form, businessName: e.target.value })}
           />
-        </div>
+        </Field>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <InlineNotice variant="error">{error}</InlineNotice>}
 
       {created ? (
-        <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
-          <CheckCircle2 className="h-4 w-4" />
-          {t.onboarding.aiCreatedSuccess}
-        </div>
+        <InlineNotice variant="success">{t.onboarding.aiCreatedSuccess}</InlineNotice>
       ) : (
         <Button
-          className="w-full rounded-xl h-11"
+          size="lg"
+          className="w-full"
           onClick={handleCreate}
           disabled={isLoading || !form.name || !form.businessName}
         >

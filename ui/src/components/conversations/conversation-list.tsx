@@ -9,8 +9,10 @@ import { ConversationItem } from "./conversation-item";
 import { ConversationFilters } from "./conversation-filters";
 import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingState } from "@/components/ui/spinner";
 import { getSocket } from "@/lib/socket";
-import { Search } from "lucide-react";
+import { MessageSquare, Search } from "lucide-react";
 
 export function ConversationList() {
   const conversations = useConversationStore((s) => s.conversations);
@@ -81,16 +83,16 @@ export function ConversationList() {
           estira al contenido más ancho, empujando hora/badge fuera de vista */}
       <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">
         {isLoading && conversations.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">
-            {t.common.loading}
-          </div>
+          <LoadingState label={t.common.loading} />
         ) : filteredConversations.length === 0 ? (
           !searchQuery && agent?.requiresOnboarding !== true ? (
             <OnboardingChecklist />
           ) : (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
-              {searchQuery ? t.conversations.noResults : t.conversations.noConversations}
-            </div>
+            <EmptyState
+              icon={MessageSquare}
+              title={searchQuery ? t.conversations.noResults : t.conversations.noConversations}
+              className="py-12"
+            />
           )
         ) : (
           <div className="divide-y">

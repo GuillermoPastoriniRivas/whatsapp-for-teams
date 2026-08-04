@@ -17,23 +17,12 @@ import {
   LayoutDashboard,
   Phone,
   Shield,
-  Check,
-  X,
-  Zap,
-  Crown,
-  Building2,
   Megaphone,
   BarChart3,
 } from "lucide-react";
 import { AsisLogo } from "@/components/brand/asis-logo";
-import { PLAN_SPECS, planFeatures, planPrice } from "@/lib/plans";
-
-const PLANS = [
-  { key: "free" as const, icon: MessageSquare, popular: false },
-  { key: "pro" as const, icon: Zap, popular: true },
-  { key: "business" as const, icon: Crown, popular: false },
-  { key: "agencies" as const, icon: Building2, popular: false },
-];
+import { PlanCard } from "@/components/shared/plan-card";
+import { PLAN_ORDER } from "@/lib/plans";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -46,13 +35,6 @@ export default function LandingPage() {
   const handleDemoLogin = async () => {
     await demoLogin();
     router.push("/conversations");
-  };
-
-  const planNames: Record<string, string> = {
-    free: t.billing.freePlan,
-    pro: t.billing.proPlan,
-    business: t.billing.businessPlan,
-    agencies: t.billing.agenciesPlan,
   };
 
   const features = [
@@ -130,39 +112,43 @@ export default function LandingPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-primary/20 selection:text-primary-foreground font-sans overflow-x-hidden">
+    <div className="min-h-dvh overflow-x-hidden bg-muted/40 font-sans text-foreground selection:bg-primary/20 selection:text-primary-foreground">
       {/* Patrones de fondo */}
-      <div className="fixed inset-0 z-[-1] bg-slate-50">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f080_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f080_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+      <div className="fixed inset-0 -z-10 bg-muted/40">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:32px_32px]"></div>
         <div className="absolute left-[15%] top-[10%] h-[600px] w-[600px] rounded-full bg-primary/5 blur-[120px]"></div>
         <div className="absolute right-[15%] top-[40%] h-[500px] w-[500px] rounded-full bg-accent/5 blur-[120px]"></div>
       </div>
 
       {/* Navbar */}
-      <nav className="fixed top-0 z-50 w-full border-b border-slate-200/60 bg-white/80 backdrop-blur-xl transition-all">
+      <nav className="fixed top-0 z-(--z-nav) w-full border-b border-border/60 bg-background/80 backdrop-blur-xl transition-all">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <AsisLogo size={30} className="text-primary sm:hidden" />
-            <AsisLogo size={36} className="text-primary hidden sm:block" />
-            <span className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 -ml-1">asis<span className="text-primary">.chat</span></span>
+            <AsisLogo size={36} className="hidden text-primary sm:block" />
+            <span className="-ml-1 text-lg font-bold tracking-tight text-foreground sm:text-xl">asis<span className="text-primary">.chat</span></span>
           </div>
 
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-            <button onClick={() => document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" })} className="hover:text-primary transition-colors">
+          <div className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
+            <button onClick={() => document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" })} className="transition-colors hover:text-primary">
               {t.landing.navHowItWorks}
             </button>
-            <button onClick={() => document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" })} className="hover:text-primary transition-colors">
+            <button onClick={() => document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" })} className="transition-colors hover:text-primary">
               {t.landing.navFeatures}
             </button>
-            <button onClick={() => document.getElementById("precios")?.scrollIntoView({ behavior: "smooth" })} className="hover:text-primary transition-colors">
+            <button onClick={() => document.getElementById("precios")?.scrollIntoView({ behavior: "smooth" })} className="transition-colors hover:text-primary">
               {t.landing.navPricing}
             </button>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-4 shrink-0">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-4">
             <LanguageToggle />
             {hydrated && agent ? (
-              <Button onClick={() => router.push("/conversations")} className="rounded-full shadow-md shadow-primary/20">
+              <Button
+                size="lg"
+                className="rounded-full shadow-md shadow-primary/20"
+                onClick={() => router.push("/conversations")}
+              >
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 {t.landing.navWorkspace}
               </Button>
@@ -171,13 +157,14 @@ export default function LandingPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-xs sm:text-sm"
+                  className="min-h-11 text-muted-foreground hover:text-foreground md:min-h-0"
                   onClick={() => router.push("/login")}
                 >
                   {t.landing.navLogin}
                 </Button>
                 <Button
-                  className="hidden sm:inline-flex rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-md transition-transform hover:scale-105"
+                  size="lg"
+                  className="hidden rounded-full bg-foreground text-background shadow-md transition-transform hover:scale-105 hover:bg-foreground/90 sm:inline-flex"
                   disabled={isLoading}
                   onClick={handleDemoLogin}
                 >
@@ -190,33 +177,33 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8 text-center">
+      <section className="relative overflow-hidden pt-32 pb-20 lg:pt-48 lg:pb-32">
+        <div className="mx-auto max-w-7xl px-6 text-center lg:px-8">
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <div className="mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
               <Sparkles className="h-4 w-4" />
               <span>{t.landing.badge}</span>
             </div>
-            <h1 className="mx-auto max-w-4xl text-4xl min-[420px]:text-5xl font-extrabold tracking-tight text-slate-900 sm:text-7xl">
-              {t.landing.heroTitle}<span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">{t.landing.heroTitleHighlight}</span>{t.landing.heroTitleEnd}
+            <h1 className="mx-auto max-w-4xl text-4xl font-extrabold tracking-tight text-foreground min-[420px]:text-5xl sm:text-7xl">
+              {t.landing.heroTitle}<span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t.landing.heroTitleHighlight}</span>{t.landing.heroTitleEnd}
             </h1>
-            <p className="mx-auto mt-8 max-w-2xl text-lg text-slate-600 sm:text-xl">
+            <p className="mx-auto mt-8 max-w-2xl text-lg text-muted-foreground sm:text-xl">
               {t.landing.heroSubtitle}
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button
                 size="lg"
-                className="rounded-full h-14 px-8 text-base bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30 transition-all hover:scale-105"
+                className="h-14 rounded-full px-8 text-base shadow-lg shadow-primary/30 transition-all hover:scale-105 hover:bg-primary/90"
                 disabled={isLoading}
                 onClick={handleDemoLogin}
               >
                 {t.landing.ctaDemo}
-                <ArrowRight className="ml-2 h-5 w-5 text-white" />
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button
                 variant="outline"
                 size="lg"
-                className="rounded-full h-14 px-8 text-base border-slate-300 text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900 shadow-sm"
+                className="h-14 rounded-full px-8 text-base shadow-sm"
                 onClick={() => {
                   document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" });
                 }}
@@ -228,16 +215,17 @@ export default function LandingPage() {
           </div>
 
           {/* Product Mockup */}
-          <div className="relative mx-auto mt-20 max-w-5xl rounded-xl border border-slate-200/80 bg-white/60 shadow-2xl shadow-slate-200/50 backdrop-blur-xl ring-1 ring-slate-900/5 sm:mt-24 lg:rounded-2xl lg:p-2 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200 fill-mode-both">
+          <div className="relative mx-auto mt-20 max-w-5xl rounded-xl border border-border/80 bg-card/60 shadow-2xl shadow-foreground/5 ring-1 ring-foreground/5 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200 fill-mode-both sm:mt-24 lg:p-2">
             <div className="absolute -top-px left-1/2 h-[2px] w-1/3 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary to-transparent" />
-            <div className="rounded-lg bg-white overflow-hidden border border-slate-200 shadow-sm">
-              <div className="flex h-12 items-center gap-2 border-b border-slate-100 px-4 bg-slate-50/50">
+            <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+              <div className="flex h-12 items-center gap-2 border-b border-border bg-muted/50 px-4">
+                {/* Botones de ventana: color de ilustración, no del tema. */}
                 <div className="flex gap-1.5">
                   <div className="h-3 w-3 rounded-full bg-red-400" />
                   <div className="h-3 w-3 rounded-full bg-yellow-400" />
                   <div className="h-3 w-3 rounded-full bg-green-400" />
                 </div>
-                <div className="mx-auto flex h-6 flex-1 max-w-[200px] items-center justify-center rounded-md bg-white border border-slate-200 px-3 text-[11px] text-slate-500 shadow-sm">
+                <div className="mx-auto flex h-6 max-w-[200px] flex-1 items-center justify-center rounded-md border border-border bg-card px-3 text-xs text-muted-foreground shadow-sm">
                   <Lock className="mr-1.5 h-3 w-3" /> app.asis.chat
                 </div>
                 <div className="flex gap-1.5 opacity-0">
@@ -246,96 +234,96 @@ export default function LandingPage() {
                   <div className="h-3 w-3 rounded-full bg-green-400" />
                 </div>
               </div>
-              <div className="flex h-[400px] md:h-[600px] w-full bg-white">
+              <div className="flex h-[400px] w-full bg-card md:h-[600px]">
                 {/* Sidebar mock */}
-                <div className="hidden md:flex w-64 flex-col border-r border-slate-100 bg-slate-50/50">
-                  <div className="p-4 border-b border-slate-100 flex items-center gap-3">
+                <div className="hidden w-64 flex-col border-r border-border bg-muted/50 md:flex">
+                  <div className="flex items-center gap-3 border-b border-border p-4">
                     <AsisLogo size={32} className="text-primary" />
-                    <div className="h-4 w-24 bg-slate-200 rounded" />
+                    <div className="h-4 w-24 rounded bg-muted-foreground/20" />
                   </div>
-                  <div className="p-3 space-y-1">
-                    <div className="h-9 w-full rounded-md bg-white border border-slate-200 shadow-sm flex items-center px-3 gap-3">
+                  <div className="space-y-1 p-3">
+                    <div className="flex h-9 w-full items-center gap-3 rounded-md border border-border bg-card px-3 shadow-sm">
                       <MessageSquare className="h-4 w-4 text-primary" />
-                      <div className="h-3 w-20 bg-slate-800 rounded" />
+                      <div className="h-3 w-20 rounded bg-foreground/70" />
                     </div>
-                    <div className="h-9 w-full rounded-md flex items-center px-3 gap-3">
-                      <Users className="h-4 w-4 text-slate-400" />
-                      <div className="h-3 w-16 bg-slate-300 rounded" />
+                    <div className="flex h-9 w-full items-center gap-3 rounded-md px-3">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <div className="h-3 w-16 rounded bg-muted-foreground/30" />
                     </div>
-                    <div className="h-9 w-full rounded-md flex items-center px-3 gap-3">
-                      <Bot className="h-4 w-4 text-slate-400" />
-                      <div className="h-3 w-24 bg-slate-300 rounded" />
+                    <div className="flex h-9 w-full items-center gap-3 rounded-md px-3">
+                      <Bot className="h-4 w-4 text-muted-foreground" />
+                      <div className="h-3 w-24 rounded bg-muted-foreground/30" />
                     </div>
                   </div>
                 </div>
                 {/* Chat List mock */}
-                <div className="hidden sm:flex w-80 flex-col border-r border-slate-100 bg-white">
-                  <div className="p-4 border-b border-slate-100 bg-slate-50/30">
-                    <div className="h-9 w-full rounded-md bg-white border border-slate-200 shadow-sm flex items-center px-3">
-                      <div className="h-3 w-32 bg-slate-200 rounded" />
+                <div className="hidden w-80 flex-col border-r border-border bg-card sm:flex">
+                  <div className="border-b border-border bg-muted/30 p-4">
+                    <div className="flex h-9 w-full items-center rounded-md border border-border bg-card px-3 shadow-sm">
+                      <div className="h-3 w-32 rounded bg-muted-foreground/20" />
                     </div>
                   </div>
-                  <div className="p-3 space-y-2">
+                  <div className="space-y-2 p-3">
                     {[1, 2, 3, 4, 5].map((i) => (
-                      <div key={i} className={`p-3 rounded-lg flex items-center gap-3 transition-colors ${i === 1 ? 'bg-primary/5 border border-primary/10' : 'hover:bg-slate-50'}`}>
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-slate-100 shrink-0" />
-                        <div className="space-y-2 w-full">
-                          <div className="flex justify-between w-full">
-                            <div className={`h-3 w-24 rounded ${i === 1 ? 'bg-slate-800' : 'bg-slate-400'}`} />
-                            <div className="h-2 w-8 bg-slate-300 rounded" />
+                      <div key={i} className={`flex items-center gap-3 rounded-lg p-3 transition-colors ${i === 1 ? 'border border-primary/10 bg-primary/5' : 'hover:bg-muted/50'}`}>
+                        <div className="h-10 w-10 shrink-0 rounded-full border border-border bg-gradient-to-br from-primary/20 to-accent/20" />
+                        <div className="w-full space-y-2">
+                          <div className="flex w-full justify-between">
+                            <div className={`h-3 w-24 rounded ${i === 1 ? 'bg-foreground/70' : 'bg-muted-foreground/40'}`} />
+                            <div className="h-2 w-8 rounded bg-muted-foreground/30" />
                           </div>
-                          <div className={`h-2 w-32 rounded ${i === 1 ? 'bg-slate-500' : 'bg-slate-300'}`} />
+                          <div className={`h-2 w-32 rounded ${i === 1 ? 'bg-muted-foreground/60' : 'bg-muted-foreground/30'}`} />
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
                 {/* Chat Area mock */}
-                <div className="flex-1 flex flex-col bg-[#F8FAFC] relative overflow-hidden">
-                   <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, slate 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+                <div className="relative flex flex-1 flex-col overflow-hidden bg-muted/40">
+                   <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, var(--foreground) 1px, transparent 0)', backgroundSize: '24px 24px' }} />
 
-                   <div className="h-16 border-b border-slate-200 flex items-center px-6 justify-between bg-white z-10 shadow-[0_4px_20px_-15px_rgba(0,0,0,0.1)]">
+                   <div className="z-10 flex h-16 items-center justify-between border-b border-border bg-card px-6 shadow-[0_4px_20px_-15px_rgba(0,0,0,0.1)]">
                      <div className="flex items-center gap-3">
-                       <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-slate-100" />
+                       <div className="h-10 w-10 rounded-full border border-border bg-gradient-to-br from-primary/20 to-accent/20" />
                        <div className="space-y-1.5">
-                         <div className="h-3 w-32 bg-slate-800 rounded" />
-                         <div className="h-2 w-20 bg-primary/60 rounded" />
+                         <div className="h-3 w-32 rounded bg-foreground/70" />
+                         <div className="h-2 w-20 rounded bg-primary/60" />
                        </div>
                      </div>
                      <div className="flex gap-2">
-                       <div className="h-8 w-8 rounded border border-slate-200 bg-white" />
-                       <div className="h-8 w-8 rounded border border-slate-200 bg-white" />
+                       <div className="h-8 w-8 rounded border border-border bg-card" />
+                       <div className="h-8 w-8 rounded border border-border bg-card" />
                      </div>
                    </div>
 
-                   <div className="flex-1 p-6 space-y-6 z-10">
-                      <div className="flex gap-3 max-w-[80%]">
-                        <div className="h-8 w-8 rounded-full bg-slate-200 border border-slate-300 shrink-0" />
-                        <div className="bg-white p-4 rounded-2xl rounded-tl-sm border border-slate-200 shadow-sm space-y-2">
-                           <div className="h-3 w-48 bg-slate-600 rounded" />
-                           <div className="h-3 w-32 bg-slate-400 rounded" />
+                   <div className="z-10 flex-1 space-y-6 p-6">
+                      <div className="flex max-w-[80%] gap-3">
+                        <div className="h-8 w-8 shrink-0 rounded-full border border-border bg-muted-foreground/20" />
+                        <div className="space-y-2 rounded-xl rounded-tl-sm border border-border bg-card p-4 shadow-sm">
+                           <div className="h-3 w-48 rounded bg-muted-foreground/60" />
+                           <div className="h-3 w-32 rounded bg-muted-foreground/40" />
                         </div>
                       </div>
 
-                      <div className="flex gap-3 max-w-[80%] ml-auto justify-end">
-                        <div className="bg-primary/10 p-4 rounded-2xl rounded-tr-sm border border-primary/20 shadow-sm space-y-2">
-                           <div className="h-3 w-56 bg-primary/70 rounded" />
-                           <div className="h-3 w-40 bg-primary/60 rounded" />
+                      <div className="ml-auto flex max-w-[80%] justify-end gap-3">
+                        <div className="space-y-2 rounded-xl rounded-tr-sm border border-primary/20 bg-primary/10 p-4 shadow-sm">
+                           <div className="h-3 w-56 rounded bg-primary/70" />
+                           <div className="h-3 w-40 rounded bg-primary/60" />
                         </div>
                       </div>
 
-                      <div className="flex gap-3 max-w-[80%] ml-auto justify-end">
-                        <div className="bg-white p-2.5 text-xs text-slate-500 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
+                      <div className="ml-auto flex max-w-[80%] justify-end gap-3">
+                        <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-2.5 text-xs text-muted-foreground shadow-sm">
                            <Bot className="h-3 w-3 text-primary" />
                            <span>{t.landing.aiSuggestion}</span>
                         </div>
                       </div>
                    </div>
 
-                   <div className="p-4 border-t border-slate-200 bg-white z-10">
-                     <div className="h-12 w-full rounded-lg bg-slate-50 border border-slate-200 flex items-center px-4 justify-between shadow-inner">
-                       <div className="h-3 w-40 bg-slate-300 rounded" />
-                       <div className="h-8 w-8 rounded-md bg-primary text-white flex items-center justify-center shadow-sm">
+                   <div className="z-10 border-t border-border bg-card p-4">
+                     <div className="flex h-12 w-full items-center justify-between rounded-lg border border-border bg-muted/50 px-4 shadow-inner">
+                       <div className="h-3 w-40 rounded bg-muted-foreground/30" />
+                       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
                          <Bot className="h-4 w-4" />
                        </div>
                      </div>
@@ -348,24 +336,24 @@ export default function LandingPage() {
       </section>
 
       {/* Cómo funciona */}
-      <section id="como-funciona" className="py-24 sm:py-32 border-y border-slate-200 bg-white">
+      <section id="como-funciona" className="border-y border-border bg-background py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center mb-16">
-            <h2 className="text-primary font-bold tracking-wide uppercase text-sm mb-3">{t.landing.howItWorksLabel}</h2>
-            <p className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <h2 className="mb-3 text-sm font-bold tracking-wide uppercase text-primary">{t.landing.howItWorksLabel}</h2>
+            <p className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
               {t.landing.howItWorksTitle}
             </p>
           </div>
 
           <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((step) => (
-              <div key={step.number} className="relative flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
+              <div key={step.number} className="relative flex flex-col items-center rounded-xl border border-border bg-muted/40 p-6 text-center transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5">
                 <div className="mb-4 text-5xl font-black text-primary/15">{step.number}</div>
                 <div className="mb-4 rounded-xl bg-primary/10 p-3 ring-1 ring-primary/20">
                   <step.icon className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-3">{step.title}</h3>
-                <p className="text-sm text-slate-600 leading-6">{step.description}</p>
+                <h3 className="mb-3 text-lg font-bold text-foreground">{step.title}</h3>
+                <p className="text-sm leading-6 text-muted-foreground">{step.description}</p>
               </div>
             ))}
           </div>
@@ -373,14 +361,14 @@ export default function LandingPage() {
       </section>
 
       {/* Funcionalidades */}
-      <section id="funcionalidades" className="py-24 sm:py-32 relative bg-slate-50">
+      <section id="funcionalidades" className="relative bg-muted/40 py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center mb-16">
-            <h2 className="text-primary font-bold tracking-wide uppercase text-sm mb-3">{t.landing.featuresLabel}</h2>
-            <p className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <h2 className="mb-3 text-sm font-bold tracking-wide uppercase text-primary">{t.landing.featuresLabel}</h2>
+            <p className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
               {t.landing.featuresTitle}
             </p>
-            <p className="mt-4 text-lg text-slate-600">
+            <p className="mt-4 text-lg text-muted-foreground">
               {t.landing.featuresSubtitle}
             </p>
           </div>
@@ -388,19 +376,19 @@ export default function LandingPage() {
           <div className="mx-auto max-w-4xl">
             <dl className="grid grid-cols-1 gap-8 lg:grid-cols-2">
               {features.map((feature) => (
-                <div key={feature.title} className="group flex flex-col items-start p-8 rounded-2xl bg-white border border-slate-200 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 relative overflow-hidden">
+                <div key={feature.title} className="group relative flex flex-col items-start overflow-hidden rounded-xl border border-border bg-card p-8 transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5">
                   {"comingSoon" in feature && feature.comingSoon && (
-                    <span className="absolute top-6 right-6 rounded-full bg-accent/10 text-accent text-xs font-semibold px-3 py-1 ring-1 ring-accent/20">
+                    <span className="absolute top-6 right-6 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent ring-1 ring-accent/20">
                       {t.landing.comingSoon}
                     </span>
                   )}
-                  <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100 group-hover:bg-primary/10 group-hover:ring-primary/20 transition-all">
-                    <feature.icon className="h-6 w-6 text-slate-700 group-hover:text-primary transition-colors" aria-hidden="true" />
+                  <div className="rounded-xl bg-muted p-3 ring-1 ring-border transition-all group-hover:bg-primary/10 group-hover:ring-primary/20">
+                    <feature.icon className="h-6 w-6 text-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
                   </div>
-                  <dt className="mt-6 font-bold text-xl text-slate-900">
+                  <dt className="mt-6 text-xl font-bold text-foreground">
                     {feature.title}
                   </dt>
-                  <dd className="mt-3 flex flex-auto flex-col text-base leading-7 text-slate-600">
+                  <dd className="mt-3 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
                     <p className="flex-auto">{feature.description}</p>
                   </dd>
                 </div>
@@ -411,131 +399,58 @@ export default function LandingPage() {
       </section>
 
       {/* Precios */}
-      <section id="precios" className="py-24 sm:py-32 border-y border-slate-200 bg-white">
+      <section id="precios" className="border-y border-border bg-background py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center mb-16">
-            <h2 className="text-primary font-bold tracking-wide uppercase text-sm mb-3">{t.landing.pricingLabel}</h2>
-            <p className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <h2 className="mb-3 text-sm font-bold tracking-wide uppercase text-primary">{t.landing.pricingLabel}</h2>
+            <p className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
               {t.landing.pricingTitle}
             </p>
-            <p className="mt-4 text-lg text-slate-600">
+            <p className="mt-4 text-lg text-muted-foreground">
               {t.landing.pricingSubtitle}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {PLANS.map((plan) => {
-              const Icon = plan.icon;
-              const isFree = plan.key === "free";
-              const isAgencies = plan.key === "agencies";
+          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {PLAN_ORDER.map((tier) => {
+              const isFree = tier === "free";
+              const isPopular = tier === "pro";
+              const isAgencies = tier === "agencies";
               return (
-                <div
-                  key={plan.key}
-                  className={`relative rounded-2xl border bg-white p-6 flex flex-col transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 ${
-                    plan.popular
-                      ? "border-primary ring-2 ring-primary/20 shadow-lg"
-                      : "border-slate-200 hover:border-primary/30"
-                  }`}
-                >
-                  {plan.popular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary text-white text-xs font-semibold px-3 py-1">
-                      {t.billing.mostPopular}
-                    </span>
-                  )}
-
-                  <div className="mb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                          plan.popular
-                            ? "bg-primary/10 text-primary"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <h3 className="text-lg font-bold text-slate-900">
-                        {planNames[plan.key]}
-                      </h3>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-slate-900">
-                        {planPrice(plan.key, t.billing)}
-                      </span>
-                      {PLAN_SPECS[plan.key].priceMonthly > 0 && (
-                        <span className="text-sm text-slate-500">
-                          {t.billing.perMonth}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    {t.billing.whatsIncluded}
-                  </p>
-                  <ul className="flex-1 space-y-2 mb-6 text-sm">
-                    {planFeatures(plan.key, t.billing).map((feature) => (
-                      <li key={feature.label}>
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="text-slate-600">{feature.label}</span>
-                          {typeof feature.value === "boolean" ? (
-                            feature.value ? (
-                              <Check
-                                className="h-4 w-4 shrink-0 text-primary"
-                                aria-label={t.billing.included}
-                              />
-                            ) : (
-                              <X
-                                className="h-4 w-4 shrink-0 text-slate-300"
-                                aria-label={t.billing.notIncluded}
-                              />
-                            )
-                          ) : (
-                            <span className="text-right font-medium text-slate-900">
-                              {feature.value}
-                            </span>
-                          )}
-                        </div>
-                        {feature.hint && (
-                          <p className="text-[11px] leading-tight text-slate-400">
-                            {feature.hint}
-                          </p>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Button
-                    className={`w-full rounded-xl ${
-                      plan.popular
-                        ? "bg-primary hover:bg-primary/90"
+                <PlanCard
+                  key={tier}
+                  tier={tier}
+                  highlighted={isPopular}
+                  className="hover:shadow-xl hover:shadow-primary/5"
+                  action={
+                    <Button
+                      size="lg"
+                      // El plan gratis va en oscuro para que el CTA pago siga siendo el que resalta.
+                      className={`w-full ${isFree ? "bg-foreground text-background hover:bg-foreground/90" : ""}`}
+                      variant={isPopular || isFree ? "default" : "outline"}
+                      onClick={() => {
+                        if (isAgencies) {
+                          window.open(
+                            "https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies",
+                            "_blank",
+                          );
+                          return;
+                        }
+                        if (agent) {
+                          router.push("/settings/billing");
+                        } else {
+                          router.push("/signup");
+                        }
+                      }}
+                    >
+                      {isAgencies
+                        ? t.billing.contactUs
                         : isFree
-                        ? "bg-slate-900 hover:bg-slate-800"
-                        : ""
-                    }`}
-                    variant={plan.popular || isFree ? "default" : "outline"}
-                    onClick={() => {
-                      if (isAgencies) {
-                        window.open(
-                          "https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies",
-                          "_blank",
-                        );
-                        return;
-                      }
-                      if (agent) {
-                        router.push("/settings/billing");
-                      } else {
-                        router.push("/signup");
-                      }
-                    }}
-                  >
-                    {isAgencies
-                      ? t.billing.contactUs
-                      : isFree
-                      ? t.billing.getStarted
-                      : t.billing.subscribe}
-                  </Button>
-                </div>
+                        ? t.billing.getStarted
+                        : t.billing.subscribe}
+                    </Button>
+                  }
+                />
               );
             })}
           </div>
@@ -543,18 +458,18 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Final */}
-      <section className="relative isolate px-6 py-24 sm:py-32 lg:px-8 border-t border-slate-200">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-primary/5 via-slate-50 to-slate-50" />
+      <section className="relative isolate border-t border-border px-6 py-24 sm:py-32 lg:px-8">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-primary/5 via-muted/40 to-muted/40" />
         <div className="mx-auto max-w-4xl text-center">
-           <AsisLogo size={64} className="text-primary mx-auto mb-6" />
-          <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
+           <AsisLogo size={64} className="mx-auto mb-6 text-primary" />
+          <h2 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">
             {t.landing.ctaTitle}
           </h2>
-          <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-600">
+          <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
             {t.landing.ctaSubtitle}
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Button size="lg" className="rounded-full bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20 h-14 px-8 text-lg font-semibold transition-transform hover:scale-105" disabled={isLoading} onClick={handleDemoLogin}>
+            <Button size="lg" className="h-14 rounded-full px-8 text-lg font-semibold shadow-xl shadow-primary/20 transition-transform hover:scale-105 hover:bg-primary/90" disabled={isLoading} onClick={handleDemoLogin}>
               {t.landing.ctaDemo}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
@@ -563,61 +478,61 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-12">
+      <footer className="border-t border-border bg-background py-12">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="xl:grid xl:grid-cols-3 xl:gap-8">
             <div className="space-y-8">
               <div className="flex items-center gap-2">
                  <AsisLogo size={32} className="text-primary" />
-                 <span className="text-xl font-bold text-slate-900 -ml-1">asis<span className="text-primary">.chat</span></span>
+                 <span className="-ml-1 text-xl font-bold text-foreground">asis<span className="text-primary">.chat</span></span>
               </div>
-              <p className="text-sm leading-6 text-slate-600 max-w-xs">
+              <p className="max-w-xs text-sm leading-6 text-muted-foreground">
                 {t.landing.footerTagline}
               </p>
             </div>
             <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0">
               <div className="md:grid md:grid-cols-2 md:gap-8">
                 <div>
-                  <h3 className="text-sm font-semibold leading-6 text-slate-900">{t.landing.footerProduct}</h3>
+                  <h3 className="text-sm leading-6 font-semibold text-foreground">{t.landing.footerProduct}</h3>
                   <ul role="list" className="mt-6 space-y-4">
-                    <li><button onClick={() => document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.navFeatures}</button></li>
-                    <li><button onClick={() => document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.navHowItWorks}</button></li>
-                    <li><button onClick={() => document.getElementById("precios")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.navPricing}</button></li>
+                    <li><button onClick={() => document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.navFeatures}</button></li>
+                    <li><button onClick={() => document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.navHowItWorks}</button></li>
+                    <li><button onClick={() => document.getElementById("precios")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.navPricing}</button></li>
                   </ul>
                 </div>
                 <div className="mt-10 md:mt-0">
-                  <h3 className="text-sm font-semibold leading-6 text-slate-900">{t.landing.footerCompany}</h3>
+                  <h3 className="text-sm leading-6 font-semibold text-foreground">{t.landing.footerCompany}</h3>
                   <ul role="list" className="mt-6 space-y-4">
-                    <li><a href="#" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.footerContact}</a></li>
+                    <li><a href="#" className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.footerContact}</a></li>
                   </ul>
                 </div>
               </div>
               <div className="md:grid md:grid-cols-2 md:gap-8">
                  <div>
-                  <h3 className="text-sm font-semibold leading-6 text-slate-900">{t.landing.footerLegal}</h3>
+                  <h3 className="text-sm leading-6 font-semibold text-foreground">{t.landing.footerLegal}</h3>
                   <ul role="list" className="mt-6 space-y-4">
-                    <li><a href="/privacy" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.footerPrivacy}</a></li>
-                    <li><a href="/terms" className="text-sm leading-6 text-slate-600 hover:text-slate-900 transition-colors">{t.landing.footerTerms}</a></li>
+                    <li><a href="/privacy" className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.footerPrivacy}</a></li>
+                    <li><a href="/terms" className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.footerTerms}</a></li>
                   </ul>
                 </div>
               </div>
             </div>
           </div>
-          <div className="mt-16 border-t border-slate-200 pt-8 sm:mt-20 lg:mt-24 text-center">
-            <p className="text-sm leading-5 text-slate-500">
+          <div className="mt-16 border-t border-border pt-8 text-center sm:mt-20 lg:mt-24">
+            <p className="text-sm leading-5 text-muted-foreground">
               &copy; {new Date().getFullYear()} asis.chat — {t.landing.footerRights}. Construido por{" "}
-              <a href="https://www.linkedin.com/in/guillermopastorini/" target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:text-primary font-medium transition-colors">Guillermo</a>.
+              <a href="https://www.linkedin.com/in/guillermopastorini/" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground transition-colors hover:text-primary">Guillermo</a>.
             </p>
           </div>
         </div>
       </footer>
 
-      {/* Botón flotante de WhatsApp */}
+      {/* Botón flotante de WhatsApp — el verde es la marca de WhatsApp, no del tema. */}
       <a
         href="https://wa.me/5493442670825"
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] py-3 pl-4 pr-5 text-white shadow-lg shadow-black/20 transition-transform hover:scale-105 animate-bounce [animation-duration:2s] [animation-iteration-count:3]"
+        className="fixed right-6 bottom-6 z-(--z-nav) flex items-center gap-2 rounded-full bg-[#25D366] py-3 pl-4 pr-5 text-white shadow-lg shadow-black/20 transition-transform hover:scale-105 animate-bounce [animation-duration:2s] [animation-iteration-count:3]"
         aria-label={t.landing.whatsappAria}
       >
         <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 shrink-0">

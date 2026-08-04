@@ -1,10 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Plus, Trash2, Variable } from "lucide-react";
+import {  Plus, Trash2, Variable} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SimpleSelect } from "@/components/ui/select";
 import { InlineNotice } from "@/components/shared/inline-notice";
@@ -123,7 +127,7 @@ export function TemplateEditorPanel({ template, phoneNumbers, onSaved, onCancel 
   return (
     <div className="flex h-full flex-col">
       <div className="border-b px-4 py-3">
-        <h2 className="font-semibold">{isEdit ? t.templates.editTitle : t.templates.createTitle}</h2>
+        <h2 className="text-base font-semibold">{isEdit ? t.templates.editTitle : t.templates.createTitle}</h2>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
@@ -133,27 +137,25 @@ export function TemplateEditorPanel({ template, phoneNumbers, onSaved, onCancel 
         <div>
           <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t.templates.preview}</p>
           <TemplatePreview components={components} />
-          <p className="mt-1 text-[11px] text-muted-foreground">{t.templates.previewHint}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t.templates.previewHint}</p>
         </div>
 
         {/* Name */}
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">{t.templates.name}</label>
+        <Field label={t.templates.name} hint={isEdit ? undefined : t.templates.nameHint}>
           <Input
             value={name}
             onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
             placeholder="promo_verano"
             disabled={isEdit}
           />
-          {!isEdit && <p className="text-[11px] text-muted-foreground">{t.templates.nameHint}</p>}
-        </div>
+        </Field>
 
         {/* Phone number + language */}
         {!isEdit && (
           <div className="grid grid-cols-2 gap-3">
             {phoneNumbers.length > 1 && (
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">{t.templates.phoneNumber}</label>
+                <p className="text-sm font-medium">{t.templates.phoneNumber}</p>
                 <SimpleSelect
                   value={phoneNumberId}
                   onChange={setPhoneNumberId}
@@ -162,7 +164,7 @@ export function TemplateEditorPanel({ template, phoneNumbers, onSaved, onCancel 
               </div>
             )}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t.templates.language}</label>
+              <p className="text-sm font-medium">{t.templates.language}</p>
               <SimpleSelect
                 value={language}
                 onChange={setLanguage}
@@ -174,7 +176,7 @@ export function TemplateEditorPanel({ template, phoneNumbers, onSaved, onCancel 
 
         {/* Category */}
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">{t.templates.category}</label>
+          <p className="text-sm font-medium">{t.templates.category}</p>
           <div className="grid grid-cols-3 gap-2">
             {categoryOptions.map((option) => (
               <button
@@ -182,7 +184,7 @@ export function TemplateEditorPanel({ template, phoneNumbers, onSaved, onCancel 
                 type="button"
                 onClick={() => setCategory(option.value)}
                 className={cn(
-                  "rounded-lg border px-2 py-2 text-xs font-medium transition-colors",
+                  "min-h-10 rounded-lg border px-2 py-2 text-xs font-medium transition-colors md:min-h-0",
                   category === option.value
                     ? "border-primary bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-muted"
@@ -196,44 +198,51 @@ export function TemplateEditorPanel({ template, phoneNumbers, onSaved, onCancel 
 
         {/* Header */}
         <div className="space-y-1.5">
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input type="checkbox" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} className="accent-primary" />
-            {t.templates.header}
-          </label>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="template-has-header"
+              checked={hasHeader}
+              onCheckedChange={(checked) => setHasHeader(checked === true)}
+            />
+            <Label htmlFor="template-has-header">{t.templates.header}</Label>
+          </div>
           {hasHeader && <Input value={header} onChange={(e) => setHeader(e.target.value)} maxLength={60} />}
         </div>
 
         {/* Body */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">{t.templates.body}</label>
-            <Button type="button" variant="ghost" size="sm" onClick={insertVariable} className="h-7 gap-1 text-xs">
+            <Label htmlFor="template-body">{t.templates.body}</Label>
+            <Button type="button" variant="ghost" size="sm" onClick={insertVariable}>
               <Variable className="size-3.5" />
               {t.templates.insertVariable}
             </Button>
           </div>
-          <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} maxLength={1024} />
+          <Textarea id="template-body" value={body} onChange={(e) => setBody(e.target.value)} rows={5} maxLength={1024} />
         </div>
 
         {/* Footer */}
         <div className="space-y-1.5">
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input type="checkbox" checked={hasFooter} onChange={(e) => setHasFooter(e.target.checked)} className="accent-primary" />
-            {t.templates.footer}
-          </label>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="template-has-footer"
+              checked={hasFooter}
+              onCheckedChange={(checked) => setHasFooter(checked === true)}
+            />
+            <Label htmlFor="template-has-footer">{t.templates.footer}</Label>
+          </div>
           {hasFooter && <Input value={footer} onChange={(e) => setFooter(e.target.value)} maxLength={60} />}
         </div>
 
         {/* Buttons */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">{t.templates.buttons}</label>
+            <p className="text-sm font-medium">{t.templates.buttons}</p>
             {buttons.length < MAX_BUTTONS && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1 text-xs"
                 onClick={() => setButtons((prev) => [...prev, { type: "QUICK_REPLY", text: "", url: "" }])}
               >
                 <Plus className="size-3.5" />
@@ -242,10 +251,10 @@ export function TemplateEditorPanel({ template, phoneNumbers, onSaved, onCancel 
             )}
           </div>
           {buttons.map((button, i) => (
-            <div key={i} className="space-y-2 rounded-lg border p-2">
+            <div key={i} className="space-y-2 rounded-xl border p-2">
               <div className="flex items-center gap-2">
                 <SimpleSelect
-                  className="h-8 flex-1"
+                  className="flex-1"
                   value={button.type}
                   onChange={(value) =>
                     setButtons((prev) => prev.map((b, j) => (j === i ? { ...b, type: value as EditorButton["type"] } : b)))
@@ -259,7 +268,7 @@ export function TemplateEditorPanel({ template, phoneNumbers, onSaved, onCancel 
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="size-8 text-muted-foreground"
+                  className="text-muted-foreground"
                   onClick={() => setButtons((prev) => prev.filter((_, j) => j !== i))}
                 >
                   <Trash2 className="size-4" />
@@ -301,7 +310,7 @@ export function TemplateEditorPanel({ template, phoneNumbers, onSaved, onCancel 
         <Button className="flex-1" onClick={handleSubmit} disabled={!canSave || saving}>
           {saving ? (
             <>
-              <Loader2 className="size-4 animate-spin" />
+              <Spinner size="sm" />
               {isEdit ? t.templates.saving : t.templates.creating}
             </>
           ) : isEdit ? (

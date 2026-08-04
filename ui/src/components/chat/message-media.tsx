@@ -3,18 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Overlay } from "@/components/ui/overlay";
+import { MediaLightbox } from "@/components/media/media-lightbox";
+import { Spinner } from "@/components/ui/spinner";
 import { formatBytes, formatDuration } from "@/lib/media";
 import type { MediaAsset } from "@/types";
-import {
-  CloudOff,
-  Download,
-  FileText,
-  Film,
-  Loader2,
-  Music,
-  X,
-} from "lucide-react";
+import { CloudOff, Download, FileText, Film, Music } from "lucide-react";
 
 interface Props {
   media: MediaAsset;
@@ -40,7 +33,7 @@ export function MessageMedia({ media, outbound }: Props) {
     case "video":
       return <MediaVideo media={media} />;
     case "audio":
-      return <MediaAudio media={media} outbound={outbound} />;
+      return <MediaAudio media={media} />;
     default:
       return <MediaDocument media={media} outbound={outbound} />;
   }
@@ -49,7 +42,7 @@ export function MessageMedia({ media, outbound }: Props) {
 function MediaProcessing() {
   return (
     <div className="my-1 flex h-32 w-56 items-center justify-center rounded-xl bg-black/5 dark:bg-white/10">
-      <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+      <Spinner />
     </div>
   );
 }
@@ -60,14 +53,14 @@ function MediaProcessing() {
  */
 function MediaExpired({ media }: { media: MediaAsset }) {
   return (
-    <div className="my-1 w-full max-w-xs rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-3 dark:border-slate-600 dark:bg-white/5">
+    <div className="my-1 w-full max-w-xs rounded-xl border border-dashed border-border bg-muted/70 p-3">
       <div className="flex items-start gap-2.5">
-        <CloudOff className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+        <CloudOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0">
-          <p className="text-[13px] font-medium text-slate-600 dark:text-slate-300">
+          <p className="text-sm font-medium text-foreground">
             {media.filename ?? "Archivo no disponible"}
           </p>
-          <p className="mt-0.5 text-[12px] leading-snug text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
             WhatsApp guarda los archivos solo 30 días.{" "}
             <Link href="/settings/billing" className="font-medium text-primary hover:underline">
               Guardalos para siempre
@@ -106,39 +99,15 @@ function MediaImage({ media }: { media: MediaAsset }) {
         />
       </button>
 
-      {zoomed && <Lightbox media={media} onClose={() => setZoomed(false)} />}
-    </>
-  );
-}
-
-function Lightbox({ media, onClose }: { media: MediaAsset; onClose: () => void }) {
-  return (
-    <Overlay open onClose={onClose} label={media.filename ?? "Imagen"} className="bg-black/85 p-4">
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Cerrar"
-        className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
-      >
-        <X className="h-5 w-5" />
-      </button>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={media.url ?? ""}
+      <MediaLightbox
+        open={zoomed}
+        onOpenChange={setZoomed}
+        title={media.filename ?? "Imagen"}
+        src={media.url}
         alt={media.filename ?? "Imagen"}
-        className="max-h-full max-w-full object-contain"
+        downloadUrl={media.downloadUrl}
       />
-      {media.downloadUrl && (
-        <a
-          href={media.downloadUrl}
-          download
-          className="absolute bottom-6 flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-[13px] text-white hover:bg-white/20"
-        >
-          <Download className="h-4 w-4" />
-          Descargar
-        </a>
-      )}
-    </Overlay>
+    </>
   );
 }
 
@@ -158,16 +127,16 @@ function MediaVideo({ media }: { media: MediaAsset }) {
   );
 }
 
-function MediaAudio({ media, outbound }: { media: MediaAsset; outbound?: boolean }) {
+function MediaAudio({ media }: { media: MediaAsset }) {
   const duration = formatDuration(media.durationMs);
 
   return (
     <div className="my-1 w-full min-w-[220px] max-w-xs">
       <div className="flex items-center gap-2">
-        <Music className={cn("h-4 w-4 shrink-0", outbound ? "text-slate-600" : "text-slate-500")} />
+        <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
         <audio src={media.url ?? undefined} controls preload="metadata" className="h-9 w-full" />
       </div>
-      {duration && <p className="mt-0.5 pl-6 text-[11px] text-slate-500">{duration}</p>}
+      {duration && <p className="mt-0.5 pl-6 text-xs text-muted-foreground">{duration}</p>}
     </div>
   );
 }
@@ -190,14 +159,14 @@ function MediaDocument({ media, outbound }: { media: MediaAsset; outbound?: bool
         <FileText className="h-4.5 w-4.5 text-primary" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-medium text-slate-800 dark:text-slate-100">
+        <span className="block truncate text-sm font-medium text-foreground">
           {media.filename ?? "Documento"}
         </span>
-        <span className="block text-[11px] text-slate-500 dark:text-slate-400">
+        <span className="block text-xs text-muted-foreground">
           {media.sizeBytes ? formatBytes(media.sizeBytes) : media.mimeType}
         </span>
       </span>
-      <Download className="h-4 w-4 shrink-0 text-slate-400" />
+      <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
     </a>
   );
 }

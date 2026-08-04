@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { formatBytes, MEDIA_KIND_LABELS } from "@/lib/media";
+import { formatBytes } from "@/lib/media";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
 import { CloudOff, HardDrive, ShieldCheck, TriangleAlert } from "lucide-react";
 import type { MediaUsage } from "@/types";
+import { useMediaKindLabels } from "./media-kind-labels";
 
 interface Props {
   usage: MediaUsage | null;
@@ -35,24 +37,23 @@ export function MediaUsagePanel({ usage }: Props) {
 }
 
 function StorageMisconfigured() {
+  const { t } = useTranslations();
+
   return (
     <section className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
       <header className="mb-2 flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
-          <TriangleAlert className="h-4.5 w-4.5 text-amber-600" />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+          <TriangleAlert className="size-4.5 text-amber-600" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[14px] font-semibold">Almacenamiento sin configurar</h3>
-          <p className="text-[13px] text-muted-foreground">
-            Tu plan incluye la biblioteca, pero este entorno no tiene dónde guardar los archivos.
-            Mientras tanto funciona en modo WhatsApp: se pierden a los 30 días.
-          </p>
+          <h3 className="text-base font-semibold">{t.media.storageMisconfiguredTitle}</h3>
+          <p className="text-sm text-muted-foreground">{t.media.storageMisconfiguredBody}</p>
         </div>
       </header>
-      <p className="rounded-lg bg-background/60 px-3 py-2 font-mono text-[12px] text-muted-foreground">
-        MEDIA_S3_BUCKET=… <span className="font-sans">(producción)</span>
+      <p className="rounded-lg bg-background/60 px-3 py-2 font-mono text-xs text-muted-foreground">
+        MEDIA_S3_BUCKET=… <span className="font-sans">{t.media.envProduction}</span>
         <br />
-        MEDIA_LOCAL_PATH=./.media-storage <span className="font-sans">(desarrollo)</span>
+        MEDIA_LOCAL_PATH=./.media-storage <span className="font-sans">{t.media.envDevelopment}</span>
       </p>
     </section>
   );
@@ -60,22 +61,28 @@ function StorageMisconfigured() {
 
 /** Plan pago: cuánto ocupa y cuánto queda. */
 function StoredSummary({ usage }: { usage: MediaUsage }) {
+  const { t } = useTranslations();
   const unlimited = usage.quotaBytes <= 0;
   const percent = usage.usedPercent ?? 0;
   const nearLimit = percent >= 80;
 
+  const consumed = unlimited
+    ? t.media.storageUsedUnlimited.replace("{used}", formatBytes(usage.storedBytes))
+    : t.media.storageUsedOf
+        .replace("{used}", formatBytes(usage.storedBytes))
+        .replace("{quota}", formatBytes(usage.quotaBytes));
+
   return (
-    <section className="rounded-xl border border-border p-4">
+    <section className="rounded-xl border p-4">
       <header className="mb-3 flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-          <HardDrive className="h-4.5 w-4.5 text-primary" />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+          <HardDrive className="size-4.5 text-primary" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[14px] font-semibold">Almacenamiento</h3>
-          <p className="text-[13px] text-muted-foreground">
-            {formatBytes(usage.storedBytes)}
-            {unlimited ? " usados · sin límite" : ` de ${formatBytes(usage.quotaBytes)}`} ·{" "}
-            {usage.storedCount.toLocaleString("es-AR")} archivos
+          <h3 className="text-base font-semibold">{t.media.storageTitle}</h3>
+          <p className="text-sm text-muted-foreground">
+            {consumed} ·{" "}
+            {t.media.filesCount.replace("{count}", usage.storedCount.toLocaleString("es-AR"))}
           </p>
         </div>
       </header>
@@ -87,20 +94,20 @@ function StoredSummary({ usage }: { usage: MediaUsage }) {
         />
       )}
 
-      <p className="mt-3 flex items-center gap-1.5 text-[13px] text-muted-foreground">
-        <ShieldCheck className="h-4 w-4 text-emerald-600" />
+      <p className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground">
+        <ShieldCheck className="size-4 text-emerald-600" />
         {usage.retentionDays < 0
-          ? "Tus archivos se guardan para siempre."
-          : `Tus archivos se guardan ${usage.retentionDays} días.`}
+          ? t.media.retentionForever
+          : t.media.retentionDays.replace("{days}", String(usage.retentionDays))}
       </p>
 
       {nearLimit && !unlimited && (
-        <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-[13px] text-amber-800 dark:text-amber-300">
-          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" />
           <p>
-            Estás usando el {percent}% de tu espacio. Liberá archivos o{" "}
+            {t.media.nearLimit.replace("{percent}", String(percent))}{" "}
             <Link href="/settings/billing" className="font-medium underline">
-              ampliá tu plan
+              {t.media.upgradePlan}
             </Link>
             .
           </p>
@@ -117,47 +124,48 @@ function StoredSummary({ usage }: { usage: MediaUsage }) {
  * beneficio abstracto. La copy deja claro que el límite es de WhatsApp.
  */
 function PassthroughSummary({ usage }: { usage: MediaUsage }) {
+  const { t } = useTranslations();
+
   return (
-    <section className="rounded-xl border border-border p-4">
+    <section className="rounded-xl border p-4">
       <header className="mb-3 flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
-          <CloudOff className="h-4.5 w-4.5 text-amber-600" />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+          <CloudOff className="size-4.5 text-amber-600" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[14px] font-semibold">Tus archivos viven en WhatsApp</h3>
-          <p className="text-[13px] text-muted-foreground">
-            WhatsApp los guarda 30 días y después los descarta. Nosotros todavía no los estamos
-            guardando.
-          </p>
+          <h3 className="text-base font-semibold">{t.media.passthroughTitle}</h3>
+          <p className="text-sm text-muted-foreground">{t.media.passthroughBody}</p>
         </div>
       </header>
 
       <dl className="grid grid-cols-2 gap-3">
         <div className="rounded-lg bg-muted/60 p-3">
-          <dt className="text-[12px] text-muted-foreground">Disponibles ahora</dt>
-          <dd className="text-[20px] font-semibold tabular-nums">
+          <dt className="text-xs text-muted-foreground">{t.media.availableNow}</dt>
+          <dd className="text-2xl font-semibold tabular-nums">
             {usage.metaOnlyCount.toLocaleString("es-AR")}
           </dd>
-          <dd className="text-[12px] text-muted-foreground">{formatBytes(usage.metaOnlyBytes)}</dd>
+          <dd className="text-xs text-muted-foreground">{formatBytes(usage.metaOnlyBytes)}</dd>
         </div>
         <div className="rounded-lg bg-destructive/10 p-3">
-          <dt className="text-[12px] text-destructive/80">Ya se perdieron</dt>
-          <dd className="text-[20px] font-semibold tabular-nums text-destructive">
+          <dt className="text-xs text-destructive/80">{t.media.alreadyLost}</dt>
+          <dd className="text-2xl font-semibold tabular-nums text-destructive">
             {usage.expiredCount.toLocaleString("es-AR")}
           </dd>
-          <dd className="text-[12px] text-destructive/80">{formatBytes(usage.expiredBytes)}</dd>
+          <dd className="text-xs text-destructive/80">{formatBytes(usage.expiredBytes)}</dd>
         </div>
       </dl>
 
       {usage.atRiskCount > 0 && (
         <div className="mt-3 rounded-lg bg-primary/5 p-3">
-          <p className="text-[13px] text-foreground">
-            Si activás la biblioteca ahora, rescatamos{" "}
-            <strong>{usage.atRiskCount.toLocaleString("es-AR")} archivos</strong> de los últimos 30
-            días. Después de ese plazo ya no se pueden recuperar.
+          <p className="text-sm text-foreground">
+            {t.media.rescueBefore}{" "}
+            <strong>
+              {t.media.filesCount.replace("{count}", usage.atRiskCount.toLocaleString("es-AR"))}
+            </strong>{" "}
+            {t.media.rescueAfter}
           </p>
           <Button asChild size="sm" className="mt-3">
-            <Link href="/settings/billing">Guardar mis archivos</Link>
+            <Link href="/settings/billing">{t.media.rescueCta}</Link>
           </Button>
         </div>
       )}
@@ -166,20 +174,23 @@ function PassthroughSummary({ usage }: { usage: MediaUsage }) {
 }
 
 function KindBreakdown({ usage }: { usage: MediaUsage }) {
+  const { t } = useTranslations();
+  const kindLabels = useMediaKindLabels();
+
   if (!usage.byKind.length) return null;
 
   const total = usage.byKind.reduce((sum, row) => sum + row.bytes, 0) || 1;
 
   return (
-    <section className="rounded-xl border border-border p-4">
-      <h3 className="mb-3 text-[14px] font-semibold">Por tipo</h3>
+    <section className="rounded-xl border p-4">
+      <h3 className="mb-3 text-base font-semibold">{t.media.byKind}</h3>
       <ul className="space-y-2.5">
         {[...usage.byKind]
           .sort((a, b) => b.bytes - a.bytes)
           .map((row) => (
             <li key={row.kind}>
-              <div className="mb-1 flex items-baseline justify-between text-[13px]">
-                <span>{MEDIA_KIND_LABELS[row.kind].es}</span>
+              <div className="mb-1 flex items-baseline justify-between text-sm">
+                <span>{kindLabels[row.kind]}</span>
                 <span className="text-muted-foreground tabular-nums">
                   {row.count.toLocaleString("es-AR")} · {formatBytes(row.bytes)}
                 </span>

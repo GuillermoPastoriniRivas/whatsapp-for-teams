@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { StickyNote, Send, Loader2 } from "lucide-react";
+import { StickyNote, Send} from "lucide-react";
 import { api } from "@/lib/api";
 import type { ConversationNote } from "@/types";
 
@@ -115,7 +116,7 @@ export function ConversationNotes({ conversationId, open }: Props) {
           className="shrink-0 self-end"
         >
           {sending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Spinner size="sm" />
           ) : (
             <Send className="h-4 w-4" />
           )}

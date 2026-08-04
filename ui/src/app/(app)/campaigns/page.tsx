@@ -3,10 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LayoutTemplate, Loader2, Megaphone, MoreHorizontal, Plus } from "lucide-react";
+import { LayoutTemplate, Megaphone, MoreHorizontal, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingState } from "@/components/ui/spinner";
+import { FilterPill } from "@/components/ui/filter-pill";
+import { Pagination } from "@/components/ui/pagination";
+import { PageShell, PageContent } from "@/components/layout/page-shell";
+import { PageHeader } from "@/components/layout/page-header";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { toast } from "@/lib/toast";
 import {
   Table,
   TableBody,
@@ -22,14 +30,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { RightPanel } from "@/components/layout/right-panel";
-import { CampaignStatusPill, CAMPAIGN_STATUS_COLORS, useCampaignStatusLabels } from "./_components/campaign-status-pill";
+import { CampaignStatusPill, useCampaignStatusLabels } from "./_components/campaign-status-pill";
 import { CampaignWizard } from "./_components/campaign-wizard";
 import { useCampaignStore } from "@/stores/campaign.store";
 import type { CampaignProgressEvent } from "@/stores/campaign.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { getSocket } from "@/lib/socket";
-import { cn } from "@/lib/utils";
 import type { Campaign, CampaignStatus } from "@/types";
 
 const STATUS_TABS: (CampaignStatus | "")[] = ["", "draft", "scheduled", "running", "paused", "completed", "cancelled", "failed"];
@@ -83,7 +90,7 @@ export default function CampaignsPage() {
     try {
       await action();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : t.common.genericError);
     }
   };
 
@@ -94,15 +101,12 @@ export default function CampaignsPage() {
 
   return (
     <div className="flex h-full">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {/* Header */}
-        <div className="border-b px-4 py-3 md:px-6">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h1 className="text-xl font-bold">{t.campaigns.title}</h1>
-              <p className="text-xs text-muted-foreground">{t.campaigns.subtitle}</p>
-            </div>
-            <div className="flex gap-2">
+      <PageShell className="min-w-0 flex-1">
+        <PageHeader
+          title={t.campaigns.title}
+          subtitle={t.campaigns.subtitle}
+          actions={
+            <>
               <Button asChild variant="outline" size="sm" className="md:hidden">
                 <Link href="/templates">
                   <LayoutTemplate className="size-4" />
@@ -115,48 +119,30 @@ export default function CampaignsPage() {
                   {t.campaigns.newCampaign}
                 </Button>
               )}
-            </div>
-          </div>
+            </>
+          }
+        >
+          {STATUS_TABS.map((status) => (
+            <FilterPill
+              key={status}
+              active={statusFilter === status}
+              onClick={() => setStatusFilter(status)}
+              count={status ? (countByStatus[status] ?? 0) : campaigns.length}
+            >
+              {status ? statusLabels[status] : t.campaigns.filterAll}
+            </FilterPill>
+          ))}
+        </PageHeader>
 
-          {/* Status pills */}
-          <div className="scrollbar-hide -mb-1 flex gap-1.5 overflow-x-auto pb-1">
-            {STATUS_TABS.map((status) => {
-              const isActive = statusFilter === status;
-              const count = status ? (countByStatus[status] ?? 0) : campaigns.length;
-              return (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => setStatusFilter(status)}
-                  className={cn(
-                    "flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                    isActive && status
-                      ? CAMPAIGN_STATUS_COLORS[status]
-                      : isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  )}
-                >
-                  {status ? statusLabels[status] : t.campaigns.filterAll}
-                  <span className={cn("text-[10px] font-normal", isActive ? "opacity-80" : "opacity-60")}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 pb-20 md:p-6 md:pb-6">
+        <PageContent>
           {isLoading && campaigns.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="size-6 animate-spin text-muted-foreground" />
-            </div>
+            <LoadingState />
           ) : campaigns.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Megaphone className="mb-2 size-12 opacity-40" />
-              <p className="text-sm">{t.campaigns.noCampaigns}</p>
-              {isAdmin && <p className="mt-1 text-xs">{t.campaigns.noCampaignsHint}</p>}
-            </div>
+            <EmptyState
+              icon={Megaphone}
+              title={t.campaigns.noCampaigns}
+              description={isAdmin ? t.campaigns.noCampaignsHint : undefined}
+            />
           ) : (
             <>
               {/* Desktop table */}
@@ -186,7 +172,7 @@ export default function CampaignsPage() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Progress value={campaignProgressPct(campaign)} className="h-1.5 flex-1" />
-                            <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+                            <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
                               {campaignProcessed(campaign)}/{campaign.counts.total}
                             </span>
                           </div>
@@ -224,11 +210,11 @@ export default function CampaignsPage() {
               {/* Mobile cards */}
               <div className="space-y-2 md:hidden">
                 {campaigns.map((campaign) => (
-                  <div key={campaign.id} className="rounded-lg border p-3">
+                  <div key={campaign.id} className="rounded-xl border p-3 transition-colors hover:bg-muted/50">
                     <div className="flex items-start justify-between gap-2">
                       <Link href={`/campaigns/${campaign.id}`} className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{campaign.name}</p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           {new Date(campaign.scheduledAt ?? campaign.createdAt).toLocaleDateString()}
                         </p>
                       </Link>
@@ -246,13 +232,13 @@ export default function CampaignsPage() {
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       <CampaignStatusPill status={campaign.status} />
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {t.campaigns.replied}: {campaign.counts.replied}
                       </span>
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       <Progress value={campaignProgressPct(campaign)} className="h-1.5 flex-1" />
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground tabular-nums">
                         {campaignProcessed(campaign)}/{campaign.counts.total}
                       </span>
                     </div>
@@ -260,24 +246,11 @@ export default function CampaignsPage() {
                 ))}
               </div>
 
-              {/* Pagination */}
-              {meta.pages > 1 && (
-                <div className="mt-4 flex items-center justify-center gap-2">
-                  <Button variant="outline" size="sm" disabled={meta.page <= 1} onClick={() => fetch(meta.page - 1)}>
-                    {t.contacts.previous}
-                  </Button>
-                  <span className="text-xs text-muted-foreground">
-                    {meta.page} / {meta.pages}
-                  </span>
-                  <Button variant="outline" size="sm" disabled={meta.page >= meta.pages} onClick={() => fetch(meta.page + 1)}>
-                    {t.contacts.next}
-                  </Button>
-                </div>
-              )}
+              <Pagination page={meta.page} pages={meta.pages} onPageChange={(page) => fetch(page)} />
             </>
           )}
-        </div>
-      </div>
+        </PageContent>
+      </PageShell>
 
       <RightPanel open={wizardOpen} onClose={closeWizard}>
         {wizardOpen && (
@@ -311,6 +284,7 @@ interface CampaignActionsProps {
 
 function CampaignActions({ campaign, onEdit, onAction, actions }: CampaignActionsProps) {
   const { t } = useTranslations();
+  const confirm = useConfirm();
   const { status, id } = campaign;
 
   const items: Array<{ label: string; destructive?: boolean; onSelect: () => void }> = [];
@@ -324,8 +298,10 @@ function CampaignActions({ campaign, onEdit, onAction, actions }: CampaignAction
     items.push({
       label: t.campaigns.cancel,
       destructive: true,
-      onSelect: () => {
-        if (confirm(t.campaigns.confirmCancel)) onAction(() => actions.cancel(id));
+      onSelect: async () => {
+        if (await confirm({ title: t.campaigns.confirmCancel, confirmLabel: t.campaigns.cancel, destructive: true })) {
+          onAction(() => actions.cancel(id));
+        }
       },
     });
   }
@@ -333,8 +309,10 @@ function CampaignActions({ campaign, onEdit, onAction, actions }: CampaignAction
     items.push({
       label: t.campaigns.delete,
       destructive: true,
-      onSelect: () => {
-        if (confirm(t.campaigns.confirmDelete)) onAction(() => actions.remove(id));
+      onSelect: async () => {
+        if (await confirm({ title: t.campaigns.confirmDelete, confirmLabel: t.common.delete, destructive: true })) {
+          onAction(() => actions.remove(id));
+        }
       },
     });
   }
@@ -344,7 +322,7 @@ function CampaignActions({ campaign, onEdit, onAction, actions }: CampaignAction
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-8">
+        <Button variant="ghost" size="icon-sm">
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>

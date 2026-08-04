@@ -6,6 +6,15 @@ export function onUnauthorized(cb: () => void) {
   onUnauthorizedCallback = cb;
 }
 
+/**
+ * Endpoints donde un 401 significa "las credenciales están mal", no "se te
+ * venció la sesión". Nunca hay que intentar refrescar acá: si quedó un
+ * refreshToken viejo en el dispositivo (por ejemplo el de la cuenta demo),
+ * refrescarlo dejaría al usuario adentro de ESA cuenta después de errarle a
+ * la contraseña de la suya.
+ */
+const NO_REFRESH_PATHS = ["/auth/login", "/auth/signup", "/auth/demo-login", "/auth/google", "/auth/refresh"];
+
 let refreshPromise: Promise<string | null> | null = null;
 
 /**
@@ -73,7 +82,7 @@ class ApiClient {
       headers,
     });
 
-    if (res.status === 401 && !isRetry) {
+    if (res.status === 401 && !isRetry && !NO_REFRESH_PATHS.some((p) => path.startsWith(p))) {
       let newToken: string | null = null;
       let refreshNetworkError = false;
       try {

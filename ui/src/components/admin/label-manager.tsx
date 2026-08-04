@@ -1,18 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import { useEffect, useState, type RefObject } from "react";
+import { Check, Pencil, Tag, Trash2, X } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingState } from "@/components/ui/spinner";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { useLabelStore } from "@/stores/label.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { LABEL_COLORS, LABEL_COLOR_KEYS } from "@/lib/label-colors";
 import { LabelBadge } from "@/components/chat/label-badge";
+import { cn } from "@/lib/utils";
 
-export function LabelManager() {
+interface Props {
+  /** Ver `AgentList`: la cabecera de la página abre el alta desde acá. */
+  createRef?: RefObject<(() => void) | null>;
+}
+
+export function LabelManager({ createRef }: Props) {
   const { labels, isLoading, fetch, createLabel, updateLabel, deleteLabel } =
     useLabelStore();
   const { t } = useTranslations();
+  const confirm = useConfirm();
 
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -25,6 +37,10 @@ export function LabelManager() {
   useEffect(() => {
     fetch(true);
   }, []);
+
+  useEffect(() => {
+    if (createRef) createRef.current = () => setCreating(true);
+  });
 
   async function handleCreate() {
     if (!newName.trim()) return;
@@ -51,7 +67,13 @@ export function LabelManager() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm(t.admin.deleteLabelConfirm)) return;
+    const ok = await confirm({
+      title: t.admin.deleteLabel,
+      description: t.admin.deleteLabelConfirm,
+      confirmLabel: t.common.delete,
+      destructive: true,
+    });
+    if (!ok) return;
     await deleteLabel(id);
   }
 
@@ -64,23 +86,11 @@ export function LabelManager() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{t.admin.labels}</h2>
-        {!creating && (
-          <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            {t.admin.createLabel}
-          </Button>
-        )}
-      </div>
-
-      {error && (
-        <p className="text-xs text-destructive">{error}</p>
-      )}
+      {error && <InlineNotice variant="error">{error}</InlineNotice>}
 
       {/* Create form */}
       {creating && (
-        <div className="border rounded-lg p-3 space-y-3">
+        <div className="space-y-3 rounded-xl border p-3">
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -89,38 +99,37 @@ export function LabelManager() {
             autoFocus
           />
           <div className="space-y-1.5">
-            <span className="text-xs text-muted-foreground">{t.admin.labelColor}</span>
+            <p className="text-xs text-muted-foreground">{t.admin.labelColor}</p>
             <div className="flex flex-wrap gap-1.5">
-              {LABEL_COLOR_KEYS.map((key) => {
-                const c = LABEL_COLORS[key];
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setNewColor(key)}
-                    className={`h-6 w-6 rounded-full border-2 transition-all ${
-                      newColor === key
-                        ? "border-foreground scale-110"
-                        : "border-transparent hover:scale-105"
-                    }`}
-                    style={{ backgroundColor: c.fg }}
-                  />
-                );
-              })}
+              {LABEL_COLOR_KEYS.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-label={key}
+                  aria-pressed={newColor === key}
+                  onClick={() => setNewColor(key)}
+                  className={cn(
+                    "size-6 rounded-full border-2 transition-all",
+                    newColor === key ? "scale-110 border-foreground" : "border-transparent hover:scale-105"
+                  )}
+                  style={{ backgroundColor: LABEL_COLORS[key].fg }}
+                />
+              ))}
             </div>
           </div>
           {newName && (
-            <div>
-              <span className="text-xs text-muted-foreground mr-2">Preview:</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{t.admin.labelPreview}</span>
               <LabelBadge name={newName} color={newColor} />
             </div>
           )}
           <div className="flex gap-2">
             <Button size="sm" onClick={handleCreate}>
-              <Check className="h-3.5 w-3.5 mr-1" />
+              <Check className="size-4" />
               {t.admin.createLabel}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => { setCreating(false); setError(""); }}>
-              <X className="h-3.5 w-3.5 mr-1" />
+              <X className="size-4" />
               {t.common.cancel}
             </Button>
           </div>
@@ -129,47 +138,46 @@ export function LabelManager() {
 
       {/* Label list */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">{t.contactPanel.loading}</p>
+        <LoadingState />
       ) : labels.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t.contactPanel.noLabels}</p>
+        <EmptyState icon={Tag} title={t.contactPanel.noLabels} />
       ) : (
         <div className="space-y-1">
           {labels.map((label) => (
             <div
               key={label.id}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted transition-colors group"
+              className="group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted"
             >
               {editId === label.id ? (
                 <>
                   <Input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="h-7 text-sm flex-1"
+                    className="flex-1"
                     onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
                     autoFocus
                   />
                   <div className="flex gap-1">
-                    {LABEL_COLOR_KEYS.map((key) => {
-                      const c = LABEL_COLORS[key];
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => setEditColor(key)}
-                          className={`h-4 w-4 rounded-full border transition-all ${
-                            editColor === key
-                              ? "border-foreground scale-110"
-                              : "border-transparent"
-                          }`}
-                          style={{ backgroundColor: c.fg }}
-                        />
-                      );
-                    })}
+                    {LABEL_COLOR_KEYS.map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        aria-label={key}
+                        aria-pressed={editColor === key}
+                        onClick={() => setEditColor(key)}
+                        className={cn(
+                          "size-4 rounded-full border transition-all",
+                          editColor === key ? "scale-110 border-foreground" : "border-transparent"
+                        )}
+                        style={{ backgroundColor: LABEL_COLORS[key].fg }}
+                      />
+                    ))}
                   </div>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={handleUpdate}>
-                    <Check className="h-3.5 w-3.5" />
+                  <Button size="icon-sm" variant="ghost" onClick={handleUpdate} aria-label={t.common.save}>
+                    <Check className="size-4" />
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditId(null)}>
-                    <X className="h-3.5 w-3.5" />
+                  <Button size="icon-sm" variant="ghost" onClick={() => setEditId(null)} aria-label={t.common.cancel}>
+                    <X className="size-4" />
                   </Button>
                 </>
               ) : (
@@ -177,20 +185,22 @@ export function LabelManager() {
                   <LabelBadge name={label.name} color={label.color} />
                   <div className="flex-1" />
                   <Button
-                    size="sm"
+                    size="icon-sm"
                     variant="ghost"
-                    className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label={t.admin.editLabel}
+                    className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                     onClick={() => startEdit(label)}
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Pencil className="size-4" />
                   </Button>
                   <Button
-                    size="sm"
+                    size="icon-sm"
                     variant="ghost"
-                    className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
+                    aria-label={t.admin.deleteLabel}
+                    className="text-destructive opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                     onClick={() => handleDelete(label.id)}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="size-4" />
                   </Button>
                 </>
               )}

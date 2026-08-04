@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, BellOff, Loader2 } from "lucide-react";
+import { Bell, BellOff} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import {
@@ -79,7 +80,7 @@ export function PushSettingsCard() {
         <p className="text-muted-foreground">{t.settings.pushDescription}</p>
 
         {state === "loading" && (
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <Spinner size="sm" className="text-muted-foreground" />
         )}
 
         {state === "unsupported" && (
@@ -104,7 +105,7 @@ export function PushSettingsCard() {
               {t.settings.pushEnabled}
             </span>
             <Button variant="outline" size="sm" onClick={handleToggle} disabled={busy}>
-              {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {busy && <Spinner size="sm" className="mr-1.5" />}
               {t.settings.pushDisable}
             </Button>
           </div>
@@ -113,7 +114,7 @@ export function PushSettingsCard() {
         {state === "disabled" && (
           <Button onClick={handleToggle} disabled={busy} className="w-full sm:w-auto">
             {busy ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Spinner size="sm" className="mr-2" />
             ) : (
               <Bell className="mr-2 h-4 w-4" />
             )}

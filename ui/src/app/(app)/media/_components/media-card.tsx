@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { daysUntilExpiry, formatBytes, MEDIA_KIND_LABELS } from "@/lib/media";
+import { daysUntilExpiry, formatBytes } from "@/lib/media";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import {
   BookmarkPlus,
   BookmarkX,
@@ -17,12 +19,12 @@ import {
   Download,
   FileText,
   Film,
-  Loader2,
   MoreVertical,
   Music,
   Trash2,
 } from "lucide-react";
 import type { MediaAsset } from "@/types";
+import { useMediaKindLabels } from "./media-kind-labels";
 
 interface Props {
   asset: MediaAsset;
@@ -33,20 +35,22 @@ interface Props {
 }
 
 export function MediaCard({ asset, storageEnabled, onOpen, onToggleLibrary, onDelete }: Props) {
+  const { t } = useTranslations();
+  const kindLabels = useMediaKindLabels();
   const expiresIn = daysUntilExpiry(asset);
   const isVisual = asset.kind === "image" || asset.kind === "sticker";
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-xl border border-border transition-colors hover:border-primary/50">
+    <div className="group relative flex flex-col overflow-hidden rounded-xl border transition-colors hover:border-primary/50">
       <button
         type="button"
         onClick={() => onOpen(asset)}
         className="flex aspect-square w-full items-center justify-center bg-muted/60"
       >
         {asset.processing ? (
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Spinner size="lg" />
         ) : !asset.available ? (
-          <CloudOff className="h-7 w-7 text-muted-foreground/60" />
+          <CloudOff className="size-7 text-muted-foreground/60" />
         ) : isVisual && asset.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -62,11 +66,11 @@ export function MediaCard({ asset, storageEnabled, onOpen, onToggleLibrary, onDe
 
       <div className="flex min-w-0 items-start gap-1 px-2.5 py-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium">
-            {asset.title ?? asset.filename ?? MEDIA_KIND_LABELS[asset.kind].es}
+          <p className="truncate text-sm font-medium">
+            {asset.title ?? asset.filename ?? kindLabels[asset.kind]}
           </p>
-          <p className="truncate text-[11.5px] text-muted-foreground">
-            {asset.sizeBytes ? formatBytes(asset.sizeBytes) : MEDIA_KIND_LABELS[asset.kind].es}
+          <p className="truncate text-xs text-muted-foreground">
+            {asset.sizeBytes ? formatBytes(asset.sizeBytes) : kindLabels[asset.kind]}
             {" · "}
             {new Date(asset.createdAt).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
           </p>
@@ -76,19 +80,20 @@ export function MediaCard({ asset, storageEnabled, onOpen, onToggleLibrary, onDe
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              size="icon"
-              aria-label="Acciones"
-              className="h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+              size="icon-sm"
+              aria-label={t.media.cardActions}
+              // En mobile no hay hover: si se esconde, el menú es inalcanzable.
+              className="shrink-0 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 md:aria-expanded:opacity-100"
             >
-              <MoreVertical className="h-4 w-4" />
+              <MoreVertical />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
             {asset.downloadUrl && asset.available && (
               <DropdownMenuItem asChild>
                 <a href={asset.downloadUrl} download={asset.filename ?? undefined}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Descargar
+                  <Download className="mr-2 size-4" />
+                  {t.media.download}
                 </a>
               </DropdownMenuItem>
             )}
@@ -96,21 +101,21 @@ export function MediaCard({ asset, storageEnabled, onOpen, onToggleLibrary, onDe
               <DropdownMenuItem onSelect={() => onToggleLibrary(asset)}>
                 {asset.inLibrary ? (
                   <>
-                    <BookmarkX className="mr-2 h-4 w-4" />
-                    Quitar de la biblioteca
+                    <BookmarkX className="mr-2 size-4" />
+                    {t.media.removeFromLibrary}
                   </>
                 ) : (
                   <>
-                    <BookmarkPlus className="mr-2 h-4 w-4" />
-                    Guardar en la biblioteca
+                    <BookmarkPlus className="mr-2 size-4" />
+                    {t.media.saveToLibrary}
                   </>
                 )}
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onSelect={() => onDelete(asset)}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Eliminar
+              <Trash2 className="mr-2 size-4" />
+              {t.common.delete}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -120,19 +125,19 @@ export function MediaCard({ asset, storageEnabled, onOpen, onToggleLibrary, onDe
       {expiresIn !== null && (
         <span
           className={cn(
-            "absolute left-2 top-2 rounded-full px-2 py-0.5 text-[11px] font-medium backdrop-blur",
-            expiresIn <= 3
-              ? "bg-destructive/90 text-white"
-              : "bg-black/55 text-white"
+            "absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-medium text-white backdrop-blur",
+            expiresIn <= 3 ? "bg-destructive/90" : "bg-black/55"
           )}
         >
-          {expiresIn === 0 ? "Vence hoy" : `${expiresIn} d`}
+          {expiresIn === 0
+            ? t.media.expiresToday
+            : t.media.expiresInDays.replace("{days}", String(expiresIn))}
         </span>
       )}
 
       {asset.inLibrary && (
         <span className="absolute right-2 top-2 rounded-full bg-primary/90 p-1 text-white">
-          <BookmarkPlus className="h-3 w-3" />
+          <BookmarkPlus className="size-3" />
         </span>
       )}
     </div>
@@ -140,7 +145,7 @@ export function MediaCard({ asset, storageEnabled, onOpen, onToggleLibrary, onDe
 }
 
 function KindIcon({ kind }: { kind: MediaAsset["kind"] }) {
-  const className = "h-8 w-8 text-muted-foreground/60";
+  const className = "size-8 text-muted-foreground/60";
   if (kind === "video") return <Film className={className} />;
   if (kind === "audio") return <Music className={className} />;
   return <FileText className={className} />;

@@ -1,5 +1,9 @@
 # WhatsApp for Teams — UI Specification
 
+> **Documento histórico — no es la referencia vigente.** Describe la app como se
+> planeó originalmente (Next.js 15, bottom-nav de 3 tabs) y quedó atrás respecto
+> del código. Para las reglas de UI vigentes ver [`DESIGN.md`](./DESIGN.md).
+
 ## Overview
 
 Multi-Agent and Multi-Number dashboard for the WhatsApp multi-tenant messaging system. Mobile-first design — agents should be able to handle all conversations from their mobile phone without needing a computer.

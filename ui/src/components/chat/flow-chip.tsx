@@ -6,8 +6,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Workflow, StopCircle } from "lucide-react";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { api } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
+import { toast } from "@/lib/toast";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import type { ActiveFlowInfo } from "@/types";
 
@@ -39,26 +41,30 @@ export function useActiveFlow(conversationId: string): { activeFlow: ActiveFlowI
 
 export function FlowChip({ conversationId }: { conversationId: string }) {
   const { t } = useTranslations();
+  const confirm = useConfirm();
   const { activeFlow, refresh } = useActiveFlow(conversationId);
 
   if (!activeFlow) return null;
+
+  const stop = async () => {
+    if (!(await confirm({ title: t.flows.stopFlowConfirm, confirmLabel: t.flows.stopFlow, destructive: true }))) return;
+    try {
+      await api.post(`/flow-executions/${activeFlow.executionId}/cancel`);
+      refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t.flows.stopFlowError);
+    }
+  };
 
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary text-xs px-2.5 py-1 max-w-56">
       <Workflow className="size-3.5 shrink-0" />
       <span className="truncate">{activeFlow.flowName}</span>
       <button
-        className="text-primary/70 hover:text-destructive shrink-0"
+        className="text-primary hover:text-destructive shrink-0"
+        aria-label={t.flows.stopFlow}
         title={t.flows.stopFlow}
-        onClick={() => {
-          if (!window.confirm(t.flows.stopFlowConfirm)) return;
-          void api
-            .post(`/flow-executions/${activeFlow.executionId}/cancel`)
-            .then(refresh)
-            .catch((error: { message?: string }) =>
-              window.alert(error?.message ?? "No se pudo detener el flujo"),
-            );
-        }}
+        onClick={() => void stop()}
       >
         <StopCircle className="size-3.5" />
       </button>
@@ -71,7 +77,7 @@ export function FlowComposerNote({ conversationId }: { conversationId: string })
   const { activeFlow } = useActiveFlow(conversationId);
   if (!activeFlow) return null;
   return (
-    <div className="text-[11px] text-accent bg-accent/10 px-4 py-1 text-center">
+    <div className="text-xs text-accent bg-accent/10 px-4 py-1 text-center">
       {t.flows.composerFlowNote}
     </div>
   );

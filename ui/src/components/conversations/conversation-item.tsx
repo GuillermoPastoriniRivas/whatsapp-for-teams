@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { User } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { LabelBadge } from "@/components/chat/label-badge";
@@ -57,70 +58,60 @@ export function ConversationItem({ conversation, onSelect }: Props) {
       )}
     >
       <div className="relative shrink-0">
-        {conversation.contact?.profilePicUrl ? (
-          <img
-            src={conversation.contact.profilePicUrl}
-            alt=""
-            className="h-12 w-12 rounded-full object-cover"
-          />
-        ) : contactName ? (
-          <div
-            className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-full text-[15px] font-semibold",
-              avatarStyle(contactName)
-            )}
+        <Avatar className="size-12">
+          {conversation.contact?.profilePicUrl && (
+            <AvatarImage src={conversation.contact.profilePicUrl} alt="" />
+          )}
+          <AvatarFallback
+            className={cn("text-base font-semibold", contactName && avatarStyle(contactName))}
           >
-            {initials(contactName)}
-          </div>
-        ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 overflow-hidden">
-            <User className="h-7 w-7 mt-1.5" />
-          </div>
-        )}
+            {contactName ? initials(contactName) : <User className="size-6" />}
+          </AvatarFallback>
+        </Avatar>
         <span
           className={cn(
-            "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-slate-950",
+            "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background",
             statusColors[conversation.status]
           )}
         />
       </div>
-      
-      <div className="flex-1 min-w-0 border-b border-slate-100 dark:border-slate-800/60 pb-1 group-last:border-transparent h-full flex flex-col justify-center">
+
+      <div className="flex-1 min-w-0 border-b border-border pb-1 group-last:border-transparent h-full flex flex-col justify-center">
         <div className="flex items-center gap-1.5 mb-0.5">
           <span
             className={cn(
-              "truncate text-[15px] text-slate-900 dark:text-slate-100",
+              "truncate text-base text-foreground",
               unreadCount > 0 ? "font-semibold" : "font-medium"
             )}
           >
             {contactName || `+${conversation.contact?.waId || t.chat.unknown}`}
           </span>
           {conversation.phoneLabel && (
-            <Badge variant="outline" className="h-4 max-w-[90px] min-w-0 shrink px-1.5 text-[9px] font-normal text-muted-foreground">
+            <Badge variant="outline" className="max-w-[90px] min-w-0 shrink px-1.5 font-normal text-muted-foreground">
               <span className="truncate">{conversation.phoneLabel}</span>
             </Badge>
           )}
           <span className={cn(
             "text-xs whitespace-nowrap ml-auto shrink-0",
-            conversation.status === "unassigned" ? "text-accent font-medium" : "text-slate-500 dark:text-slate-400"
+            conversation.status === "unassigned" ? "text-accent font-medium" : "text-muted-foreground"
           )}>
             {timeAgo(conversation.lastMessageAt, t.chat.yesterday)}
           </span>
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="truncate text-sm text-slate-500 dark:text-slate-400">
+          <span className="truncate text-sm text-muted-foreground">
             {conversation.agentName
               ? `${t.conversations.agentPrefix}: ${conversation.agentName}`
               : t.chat.unassigned}
           </span>
           {conversation.status === "unassigned" && (
-            <div className="ml-2 flex h-5 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-bold text-white">
+            <div className="ml-2 flex h-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-bold text-accent-foreground">
               {t.conversations.newBadge}
             </div>
           )}
           {unreadCount > 0 && (
-            <div className="ml-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white">
+            <div className="ml-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">
               {unreadCount > 99 ? "99+" : unreadCount}
             </div>
           )}
@@ -131,7 +122,7 @@ export function ConversationItem({ conversation, onSelect }: Props) {
               <LabelBadge key={l.id} name={l.name} color={l.color} size="sm" />
             ))}
             {conversation.labels.length > 3 && (
-              <span className="text-[9px] text-muted-foreground leading-4">
+              <span className="text-xs text-muted-foreground leading-4">
                 +{conversation.labels.length - 3}
               </span>
             )}

@@ -23,7 +23,7 @@ export function ChatMenu({ onViewContact }: Props) {
         <Button
           variant="ghost"
           size="icon"
-          className="text-slate-500 hover:bg-black/5 dark:hover:bg-white/10 rounded-full h-10 w-10"
+          className="text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full h-10 w-10"
         >
           <MoreVertical className="h-5 w-5" />
         </Button>

@@ -4,6 +4,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Padding inferior de las pantallas que conviven con la bottom-nav: alto de la
+ * nav + el notch. Única fórmula; antes vivía copiada con `3.5rem` a mano en el
+ * layout, el panel derecho y el provider de PWA, y se desincronizaba.
+ */
+@utility pb-nav-safe {
+  padding-bottom: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom));
+}
+
 /* Scrollable, but the bar itself never shows — Chromium/Safari + Firefox. */
 .scrollbar-hide {
   scrollbar-width: none;
@@ -150,6 +159,21 @@
   --asis-bubble-inbound: #FFFFFF;
   --asis-surface-header: #F1F5F9;
   --asis-surface-panel: #F8FAFB;
+
+  /*
+   * Escala de apilado. Única fuente de verdad: quien necesite un z-index usa
+   * `z-(--z-*)` y nunca un número suelto, así el orden entre capas se lee acá
+   * en vez de deducirse comparando archivos.
+   */
+  --z-sticky: 10; /* cabeceras pegadas dentro de una página */
+  --z-panel: 40; /* RightPanel en mobile, header de la app */
+  --z-nav: 50; /* bottom-nav, flyouts del sidebar */
+  --z-overlay: 60; /* sheets, dialogs, lightbox */
+  --z-popover: 65; /* dropdowns y tooltips: tienen que poder abrirse DENTRO de un diálogo */
+  --z-toast: 70; /* toasts, siempre por encima de todo */
+
+  /* Alto de la bottom-nav; lo consumen la nav y `pb-nav-safe`. */
+  --mobile-nav-h: 3.5rem;
 }
 
 .dark {

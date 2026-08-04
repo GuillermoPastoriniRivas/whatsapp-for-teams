@@ -3,11 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Megaphone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingState } from "@/components/ui/spinner";
+import { PageShell, PageContent } from "@/components/layout/page-shell";
+import { PageHeader } from "@/components/layout/page-header";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { InlineNotice } from "@/components/shared/inline-notice";
+import { toast } from "@/lib/toast";
 import { CampaignStatusPill } from "../_components/campaign-status-pill";
 import { StatTiles } from "../_components/stat-tiles";
 import { RecipientsTable } from "../_components/recipients-table";
@@ -25,6 +31,7 @@ export default function CampaignDetailPage() {
   const campaignId = params.id;
   const agent = useAuthStore((s) => s.agent);
   const { t } = useTranslations();
+  const confirm = useConfirm();
   const isAdmin = agent?.role === "admin";
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
@@ -86,31 +93,36 @@ export default function CampaignDetailPage() {
   }, [campaignId]);
 
   const runAction = async (action: "start" | "pause" | "resume" | "cancel") => {
-    if (action === "cancel" && !confirm(t.campaigns.confirmCancel)) return;
+    if (
+      action === "cancel" &&
+      !(await confirm({ title: t.campaigns.confirmCancel, confirmLabel: t.campaigns.cancel, destructive: true }))
+    ) {
+      return;
+    }
     try {
       const updated = await api.post<Campaign>(`/campaigns/${campaignId}/${action}`);
       setCampaign(updated);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : t.common.genericError);
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <LoadingState className="h-full" />;
   }
 
   if (notFound || !campaign) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
-        <p className="text-sm">{t.campaigns.notFound}</p>
-        <Link href="/campaigns" className="text-sm font-medium text-primary hover:underline">
-          {t.campaigns.backToList}
-        </Link>
-      </div>
+      <EmptyState
+        className="h-full"
+        icon={Megaphone}
+        title={t.campaigns.notFound}
+        action={
+          <Button asChild variant="outline">
+            <Link href="/campaigns">{t.campaigns.backToList}</Link>
+          </Button>
+        }
+      />
     );
   }
 
@@ -124,26 +136,13 @@ export default function CampaignDetailPage() {
   const progressPct = totalCount ? Math.min(100, (processed / totalCount) * 100) : 0;
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="border-b px-4 py-3 md:px-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href="/campaigns" className="text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="size-5" />
-          </Link>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate text-lg font-bold">{campaign.name}</h1>
-              <CampaignStatusPill status={campaign.status} />
-            </div>
-            {campaign.scheduledAt && campaign.status === "scheduled" && (
-              <p className="text-xs text-muted-foreground">
-                {t.campaigns.scheduleFor}: {new Date(campaign.scheduledAt).toLocaleString()}
-              </p>
-            )}
-          </div>
-          {isAdmin && (
-            <div className="flex gap-2">
+    <PageShell>
+      <PageHeader
+        title={campaign.name}
+        backHref="/campaigns"
+        actions={
+          isAdmin && (
+            <>
               {campaign.status === "draft" && (
                 <Button size="sm" onClick={() => runAction("start")}>
                   {t.campaigns.start}
@@ -160,22 +159,31 @@ export default function CampaignDetailPage() {
                 </Button>
               )}
               {["scheduled", "running", "paused"].includes(campaign.status) && (
-                <Button size="sm" variant="outline" className="text-destructive" onClick={() => runAction("cancel")}>
+                <Button size="sm" variant="destructive" onClick={() => runAction("cancel")}>
                   {t.campaigns.cancel}
                 </Button>
               )}
-            </div>
+            </>
+          )
+        }
+      >
+        <div className="flex items-center gap-2">
+          <CampaignStatusPill status={campaign.status} />
+          {campaign.scheduledAt && campaign.status === "scheduled" && (
+            <span className="text-xs text-muted-foreground">
+              {t.campaigns.scheduleFor}: {new Date(campaign.scheduledAt).toLocaleString()}
+            </span>
           )}
         </div>
+      </PageHeader>
+
+      <PageContent className="space-y-6">
         {campaign.failureReason && ["failed", "paused"].includes(campaign.status) && (
-          <InlineNotice variant="error" className="mt-2">
+          <InlineNotice variant="error">
             {t.campaigns.failureBanner}: {campaign.failureReason}
           </InlineNotice>
         )}
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 space-y-6 overflow-y-auto p-4 pb-20 md:p-6 md:pb-6">
         <StatTiles campaign={campaign} stats={stats} />
 
         {/* Overall progress */}
@@ -192,8 +200,8 @@ export default function CampaignDetailPage() {
         {/* Failure breakdown */}
         {stats && stats.failureBreakdown.length > 0 && (
           <div className="space-y-1.5">
-            <h2 className="text-sm font-semibold">{t.campaigns.failureBreakdown}</h2>
-            <div className="divide-y rounded-lg border">
+            <h2 className="text-base font-semibold">{t.campaigns.failureBreakdown}</h2>
+            <div className="divide-y rounded-xl border">
               {stats.failureBreakdown.map((failure) => (
                 <div key={failure.code} className="flex items-center justify-between px-3 py-2 text-xs">
                   <span className="min-w-0 flex-1 truncate">
@@ -207,7 +215,7 @@ export default function CampaignDetailPage() {
         )}
 
         <RecipientsTable campaignId={campaignId} refreshKey={recipientsRefreshKey} />
-      </div>
-    </div>
+      </PageContent>
+    </PageShell>
   );
 }

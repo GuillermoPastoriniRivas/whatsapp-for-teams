@@ -102,7 +102,7 @@ export function OnboardingChecklist() {
       )}
 
       {allDone && (
-        <p className="text-xs text-green-600 font-medium">✓ Todo listo para recibir mensajes</p>
+        <p className="text-xs font-medium text-primary">✓ Todo listo para recibir mensajes</p>
       )}
     </div>
   );

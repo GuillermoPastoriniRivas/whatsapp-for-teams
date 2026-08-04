@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { LoadingState } from "@/components/ui/spinner";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { UpgradeCard } from "./upgrade-card";
 import { EVENT_CATALOG } from "./catalogs";
@@ -144,7 +146,7 @@ export function WebhooksTab({ overview }: { overview: DeveloperOverview | null }
                     />
                     <span className="min-w-0">
                       <span className="block text-sm font-medium">{t.developers[event.labelKey]}</span>
-                      <code className="block truncate font-mono text-[11px] text-muted-foreground">{event.value}</code>
+                      <code className="block truncate font-mono text-xs text-muted-foreground">{event.value}</code>
                       <span className="block text-xs text-muted-foreground">{t.developers[event.descKey]}</span>
                     </span>
                   </label>
@@ -165,7 +167,7 @@ export function WebhooksTab({ overview }: { overview: DeveloperOverview | null }
       )}
 
       {loading ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">…</p>
+        <LoadingState />
       ) : endpoints.length === 0 && !formOpen ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -191,6 +193,7 @@ function EndpointCard({
   onChanged: () => void;
 }) {
   const { t } = useTranslations();
+  const confirm = useConfirm();
   const [secretCopied, setSecretCopied] = useState(false);
   const [testFeedback, setTestFeedback] = useState(false);
   const [showDeliveries, setShowDeliveries] = useState(false);
@@ -227,13 +230,13 @@ function EndpointCard({
   };
 
   const handleRotate = async () => {
-    if (!confirm(t.developers.rotateConfirm)) return;
+    if (!(await confirm({ title: t.developers.rotateConfirm, destructive: true }))) return;
     await api.post(`/developer/webhooks/${endpoint.id}/rotate-secret`);
     onChanged();
   };
 
   const handleDelete = async () => {
-    if (!confirm(t.developers.deleteEndpointConfirm)) return;
+    if (!(await confirm({ title: t.developers.deleteEndpointConfirm, destructive: true }))) return;
     await api.delete(`/developer/webhooks/${endpoint.id}`);
     onChanged();
   };
@@ -291,7 +294,7 @@ function EndpointCard({
               {secretCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             </Button>
           </div>
-          <p className="text-[11px] text-muted-foreground">{t.developers.signingSecretHint}</p>
+          <p className="text-xs text-muted-foreground">{t.developers.signingSecretHint}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 border-t pt-3">

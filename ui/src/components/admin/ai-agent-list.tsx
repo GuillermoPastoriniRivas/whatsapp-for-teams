@@ -1,41 +1,38 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, type RefObject } from "react";
+import { Bot, Snowflake } from "lucide-react";
+
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bot, Plus, AlertTriangle, Snowflake } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingState } from "@/components/ui/spinner";
+import { StatusPill } from "@/components/ui/status-pill";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { cn } from "@/lib/utils";
 import { useBillingStore } from "@/stores/billing.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
+import { AgentStatus } from "./agent-status";
+import { useVerticalLabels } from "./verticals";
 import { CreateAiAgentPanel } from "./create-ai-agent-panel";
 import { AiAgentDetailPanel } from "./ai-agent-detail-panel";
 import type { AiAgentWithConfig } from "@/types";
 
-const verticalLabels: Record<string, string> = {
-  beauty: "Estética y belleza",
-  food: "Gastronomía",
-  retail: "Tienda",
-  generic: "Negocio",
-};
-
-const statusColors: Record<string, string> = {
-  available: "bg-green-500",
-  busy: "bg-yellow-500",
-  offline: "bg-gray-400",
-};
-
 interface Props {
   onPanelChange: (content: ReactNode) => void;
   onPanelClose: () => void;
+  /** Ver `AgentList`: la cabecera de la página dispara el alta desde acá. */
+  createRef?: RefObject<(() => void) | null>;
 }
 
-export function AiAgentList({ onPanelChange, onPanelClose }: Props) {
+export function AiAgentList({ onPanelChange, onPanelClose, createRef }: Props) {
   const [agents, setAgents] = useState<AiAgentWithConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { usage, fetchUsage, toggleResource } = useBillingStore();
   const { t } = useTranslations();
+  const verticalLabels = useVerticalLabels();
   const aiUsage = usage?.aiBots;
   const atLimit = aiUsage ? !aiUsage.allowed : false;
 
@@ -94,107 +91,81 @@ export function AiAgentList({ onPanelChange, onPanelClose }: Props) {
     );
   };
 
-  return (
-    <div className="h-full flex flex-col">
-      <div className="px-4 py-3 md:px-6 border-b">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">AI Agents</h2>
-          <Button
-            size="sm"
-            onClick={openCreate}
-            disabled={atLimit}
-            className="gap-1.5 bg-primary hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Add AI Agent
-          </Button>
-        </div>
-      </div>
+  useEffect(() => {
+    if (createRef) createRef.current = openCreate;
+  });
 
-      {atLimit && (
-        <div className="mx-4 mt-2 md:mx-6 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          <span>Plan limit reached ({aiUsage!.current}/{aiUsage!.limit}). Upgrade to add more.</span>
-        </div>
+  if (loading) return <LoadingState />;
+
+  return (
+    <div className="space-y-3">
+      {atLimit && aiUsage && (
+        <InlineNotice variant="warning">
+          {t.billing.limitReached} ({aiUsage.current}/{aiUsage.limit}). {t.billing.upgradeToAdd}
+        </InlineNotice>
       )}
-      <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
-        {loading ? (
-          <p className="text-sm text-muted-foreground p-4 md:p-6">Loading...</p>
-        ) : agents.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-8 text-center m-4 md:m-6">
-            <Bot className="mx-auto h-10 w-10 text-muted-foreground/50" />
-            <p className="mt-2 text-sm text-muted-foreground">
-              No AI agents yet. Create one to automate conversations.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {agents.map((agent) => (
-              <button
+
+      {agents.length === 0 ? (
+        <EmptyState icon={Bot} title={t.agents.noAiAgents} description={t.agents.noAiAgentsHint} />
+      ) : (
+        <div className="divide-y overflow-hidden rounded-xl border">
+          {agents.map((agent) => {
+            const profile = agent.config.businessProfile;
+            return (
+              // Fila con rol de botón: adentro hay otro botón real ("Activar").
+              <div
                 key={agent.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => openDetail(agent)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openDetail(agent);
+                  }
+                }}
                 className={cn(
-                  "flex w-full items-center gap-3 px-4 py-3 md:px-6 text-left hover:bg-muted/50 transition-colors",
+                  "flex min-h-11 w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none",
                   selectedId === agent.id && "bg-primary/5",
                   !agent.config.isActive && "opacity-50"
                 )}
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-                  <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Bot className="size-5" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium text-sm truncate">{agent.name}</p>
-                    <Badge variant="outline" className="text-[10px] h-5 bg-violet-50 text-violet-700 border-violet-200">
-                      AI
-                    </Badge>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-medium">{agent.name}</p>
+                    <StatusPill tone="scheduled">{t.agents.aiBadge}</StatusPill>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {verticalLabels[agent.config.businessProfile?.vertical] || "Negocio"}{agent.config.businessProfile?.businessName ? ` · ${agent.config.businessProfile.businessName}` : ""}
+                  <p className="truncate text-xs text-muted-foreground">
+                    {verticalLabels[profile?.vertical ?? "generic"] ?? t.agents.verticalGeneric}
+                    {profile?.businessName ? ` · ${profile.businessName}` : ""}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   {!agent.config.isActive ? (
                     <>
-                      <Badge variant="outline" className="text-[10px] h-5 bg-amber-50 text-amber-700 border-amber-200 gap-1">
-                        <Snowflake className="h-3 w-3" />
+                      <StatusPill tone="warning">
+                        <Snowflake className="size-3" />
                         {t.billing.frozen}
-                      </Badge>
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        className="inline-flex shrink-0 items-center justify-center h-6 px-2 text-[10px] text-primary rounded-md hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                        onClick={(e) => handleActivate(agent, e)}
-                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleActivate(agent, e as unknown as React.MouseEvent); } }}
-                      >
+                      </StatusPill>
+                      <Button size="sm" variant="ghost" onClick={(e) => handleActivate(agent, e)}>
                         {t.billing.activate}
-                      </span>
+                      </Button>
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={cn(
-                            "h-2.5 w-2.5 rounded-full",
-                            statusColors[agent.status] || "bg-gray-400"
-                          )}
-                        />
-                        <span className="text-xs text-muted-foreground capitalize hidden sm:inline">
-                          {agent.status}
-                        </span>
-                      </div>
-                      <Badge variant="secondary" className="text-[10px] h-5">
-                        {agent.activeCount}
-                      </Badge>
+                      <AgentStatus status={agent.status} labelClassName="hidden sm:inline" />
+                      <Badge variant="secondary">{agent.activeCount}</Badge>
                     </>
                   )}
                 </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

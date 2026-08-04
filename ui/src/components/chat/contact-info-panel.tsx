@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { User, Phone, Clock, StickyNote, Tag } from "lucide-react";
@@ -36,9 +37,11 @@ export function ContactInfoPanel({ conversation }: Props) {
   return (
     <>
       <div className="bg-[var(--asis-surface-header)] pt-8 pb-6 flex flex-col items-center">
-        <div className="h-20 w-20 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 mb-3">
-          <User className="h-10 w-10" />
-        </div>
+        <Avatar className="mb-3 size-20">
+          <AvatarFallback>
+            <User className="size-10" />
+          </AvatarFallback>
+        </Avatar>
         <h2 className="text-lg font-semibold text-center px-4">
           {contact?.name || t.chat.unknown}
         </h2>

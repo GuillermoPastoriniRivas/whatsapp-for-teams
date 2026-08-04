@@ -1,26 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Phone } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Field } from "@/components/ui/field";
+import { Spinner } from "@/components/ui/spinner";
+import { StatusPill } from "@/components/ui/status-pill";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { PhoneAccessSection } from "@/components/admin/phone-access-section";
-import { Phone, Save } from "lucide-react";
+import { useTranslations } from "@/lib/i18n/use-translations";
+import { PROVIDER_CONFIG_FIELDS, type Provider } from "./providers";
 import type { PhoneNumber } from "@/types";
-
-type Provider = "meta" | "twilio" | "360dialog" | "kapso";
-
-const providerConfigFields: Record<Provider, { key: string; label: string }[]> = {
-  meta: [{ key: "accessToken", label: "Access Token" }],
-  twilio: [
-    { key: "accountSid", label: "Account SID" },
-    { key: "authToken", label: "Auth Token" },
-    { key: "fromNumber", label: "From Number" },
-  ],
-  "360dialog": [{ key: "apiKey", label: "API Key" }],
-  kapso: [{ key: "apiKey", label: "API Key" }],
-};
 
 interface Props {
   phone: PhoneNumber;
@@ -28,8 +22,9 @@ interface Props {
 }
 
 export function EditPhonePanel({ phone, onUpdated }: Props) {
+  const { t } = useTranslations();
   const provider = phone.provider as Provider;
-  const fields = providerConfigFields[provider] ?? [];
+  const fields = PROVIDER_CONFIG_FIELDS[provider] ?? [];
 
   const [providerConfig, setProviderConfig] = useState<Record<string, string>>(phone.providerConfig ?? {});
   const [wabaId, setWabaId] = useState(phone.wabaId ?? "");
@@ -73,114 +68,112 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
       if (webhookSecret) body.webhookSecret = webhookSecret;
 
       await api.patch(`/phone-numbers/${phone.id}`, body);
-      setSuccess("Saved successfully");
+      setSuccess(t.admin.saved);
       onUpdated();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to update";
+      const message = err instanceof Error ? err.message : t.admin.saveError;
       setError(message);
     } finally {
       setLoading(false);
     }
   };
 
+  const webhookHint =
+    provider === "meta"
+      ? t.admin.webhookHintMeta
+      : provider === "kapso"
+        ? t.admin.webhookHintKapso
+        : t.admin.webhookHintDefault;
+
   return (
     <>
       {/* Header */}
-      <div className="px-4 pt-6 pb-4 border-b">
+      <div className="border-b px-4 pt-6 pb-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-            <Phone className="h-6 w-6 text-muted-foreground" />
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Phone className="size-6" />
           </div>
-          <div>
-            <h2 className="text-base font-semibold">{phone.label}</h2>
-            <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold">{phone.label}</h2>
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-muted-foreground">{phone.displayPhone}</span>
-              <Badge variant="outline" className="capitalize text-[10px] h-5">{phone.provider}</Badge>
-              <Badge
-                variant={phone.status === "active" ? "default" : "secondary"}
-                className="capitalize text-[10px] h-5"
-              >
-                {phone.status}
+              <Badge variant="outline" className="capitalize">
+                {phone.provider}
               </Badge>
+              <StatusPill tone={phone.status === "active" ? "success" : "neutral"}>
+                {phone.status === "active" ? t.admin.statusActive : t.admin.statusInactive}
+              </StatusPill>
             </div>
           </div>
         </div>
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 px-4 py-4">
         <PhoneAccessSection mode="phone" phoneId={phone.id} />
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Provider</label>
-          <Input value={provider} disabled className="bg-muted" />
-        </div>
+        <Field label={t.admin.provider}>
+          <Input value={provider} disabled />
+        </Field>
 
-        <div className="space-y-3 rounded-lg border p-3">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Provider Config
+        <div className="space-y-3 rounded-xl border p-3">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {t.admin.providerConfig}
           </p>
           {fields.map((field) => (
-            <div key={field.key} className="space-y-1.5">
-              <label className="text-sm font-medium">{field.label}</label>
+            <Field key={field.key} label={field.label}>
               <Input
                 value={providerConfig[field.key] || ""}
                 onChange={(e) => handleConfigChange(field.key, e.target.value)}
                 placeholder={field.label}
               />
-            </div>
+            </Field>
           ))}
         </div>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">WABA ID</label>
+        <Field label="WABA ID">
           <Input value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="WABA ID" />
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Phone Number ID</label>
-          <Input value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} placeholder="Phone Number ID" />
-        </div>
+        <Field label="Phone Number ID">
+          <Input
+            value={phoneNumberId}
+            onChange={(e) => setPhoneNumberId(e.target.value)}
+            placeholder="Phone Number ID"
+          />
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Display Phone</label>
-          <Input value={displayPhone} onChange={(e) => setDisplayPhone(e.target.value)} placeholder="+1 234 567 8900" />
-        </div>
+        <Field label={t.admin.displayPhone}>
+          <Input
+            value={displayPhone}
+            onChange={(e) => setDisplayPhone(e.target.value)}
+            placeholder={t.admin.displayPhonePlaceholder}
+          />
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Label</label>
-          <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Business Phone" />
-        </div>
+        <Field label={t.admin.phoneLabel}>
+          <Input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder={t.admin.phoneLabelPlaceholder}
+          />
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Webhook Secret</label>
+        <Field label={t.admin.webhookSecret} hint={webhookHint}>
           <Input
             value={webhookSecret}
             onChange={(e) => setWebhookSecret(e.target.value)}
-            placeholder="Leave empty to keep current"
+            placeholder={t.admin.webhookSecretKeep}
           />
-          <p className="text-xs text-muted-foreground">
-            {provider === "meta" ? "Meta App Secret — found in Meta Developers > App Settings > Basic" : provider === "kapso" ? "Not required for Kapso Meta webhook forwarding" : "Webhook secret for signature validation"}
-          </p>
-        </div>
+        </Field>
 
-        {(error || success) && (
-          <div className={`rounded-md px-3 py-2 text-sm ${
-            error ? "bg-destructive/10 text-destructive" : "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
-          }`}>
-            {error || success}
-          </div>
-        )}
+        {error && <InlineNotice variant="error">{error}</InlineNotice>}
+        {!error && success && <InlineNotice variant="success">{success}</InlineNotice>}
 
         <div className="flex justify-end pt-2">
-          <Button
-            type="submit"
-            size="sm"
-            disabled={loading}
-            className="gap-1 bg-primary hover:bg-primary/90"
-          >
-            <Save className="h-4 w-4" />
-            {loading ? "Saving..." : "Save"}
+          <Button type="submit" size="sm" disabled={loading}>
+            {loading && <Spinner size="sm" />}
+            {loading ? t.common.saving : t.common.save}
           </Button>
         </div>
       </form>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -12,7 +13,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { ChevronRight, Loader2 } from "lucide-react";
+import { ChevronRight} from "lucide-react";
 import type { Conversation, MessageTemplate, PaginatedResponse, TemplateComponent } from "@/types";
 
 const PLACEHOLDER_REGEX = /\{\{([a-z0-9_]+)\}\}/gi;
@@ -140,7 +141,7 @@ export function SendTemplateDialog({ conversation, open, onClose }: Props) {
         <div className="px-4 pb-2 space-y-3">
           {loading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <Spinner className="text-muted-foreground" />
             </div>
           ) : templates.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
@@ -215,7 +216,7 @@ export function SendTemplateDialog({ conversation, open, onClose }: Props) {
                   {t.common.cancel}
                 </Button>
                 <Button onClick={handleSend} disabled={sending || !allFilled}>
-                  {sending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                  {sending && <Spinner size="sm" className="mr-1.5" />}
                   {sending ? t.chat.templateSending : t.chat.templateSend}
                 </Button>
               </div>

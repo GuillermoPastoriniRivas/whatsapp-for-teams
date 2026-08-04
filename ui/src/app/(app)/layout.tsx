@@ -44,16 +44,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <DemoBanner />
         <div className="flex flex-1 overflow-hidden">
           <AppSidebar />
-          <div className="flex flex-1 flex-col overflow-hidden relative shadow-xl shadow-slate-200/50 dark:shadow-none">
+          <div className="flex flex-1 flex-col overflow-hidden relative shadow-xl shadow-foreground/5 dark:shadow-none">
             <div className="md:hidden">
               <AppHeader />
             </div>
             <main
               className={cn(
                 "content-zoom flex-1 overflow-hidden relative md:pb-0",
-                navVisible
-                  ? "pb-[calc(3.5rem+env(safe-area-inset-bottom))]"
-                  : "pb-[env(safe-area-inset-bottom)]"
+                navVisible ? "pb-nav-safe" : "pb-[env(safe-area-inset-bottom)]"
               )}
             >
               {children}

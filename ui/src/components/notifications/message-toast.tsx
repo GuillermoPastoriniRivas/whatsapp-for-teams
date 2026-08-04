@@ -62,7 +62,7 @@ export function MessageToast() {
   return (
     <div
       key={toast.key}
-      className="fixed z-[70] left-3 right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] md:left-auto md:right-4 md:w-96 animate-in slide-in-from-top-2 fade-in duration-200"
+      className="fixed z-(--z-toast) left-3 right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] md:left-auto md:right-4 md:w-96 animate-in slide-in-from-top-2 fade-in duration-200"
     >
       <div className="flex items-start gap-3 rounded-xl border bg-card text-card-foreground p-3 shadow-lg">
         <button

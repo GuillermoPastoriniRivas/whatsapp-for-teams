@@ -3,29 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  MessageSquare,
-  Settings,
-  Contact,
-  Megaphone,
-  MoreHorizontal,
-  LayoutTemplate,
-  Users,
-  Phone,
-  ChevronRight,
-  Workflow,
-  Code2,
-  Images,
-} from "lucide-react";
+import { MoreHorizontal, ChevronRight } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { useMobileNavVisible } from "@/lib/use-mobile-nav-visible";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { NavBadge } from "@/components/layout/nav-badge";
+import { MOBILE_TABS, isNavActive, mobileMoreItems } from "@/lib/nav-config";
 import { cn } from "@/lib/utils";
-
-// Rutas que viven dentro de "Más": el tab se marca activo en cualquiera de ellas
-const MORE_ROUTES = ["/media", "/templates", "/flows", "/agents", "/admin", "/settings", "/notifications", "/developers"];
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -39,27 +25,13 @@ export function MobileNav() {
   const [moreOpen, setMoreOpen] = useState(false);
 
   const isAdmin = agent?.role === "admin";
-
-  const tabs = [
-    { href: "/conversations", icon: MessageSquare, label: t.nav.chats },
-    { href: "/contacts", icon: Contact, label: t.nav.contacts },
-    { href: "/campaigns", icon: Megaphone, label: t.nav.campaigns },
-  ];
-
-  // Mismo orden que las secciones del sidebar desktop: marketing y luego configuración
-  const moreItems = [
-    { href: "/templates", icon: LayoutTemplate, label: t.nav.templates, adminOnly: false },
-    { href: "/media", icon: Images, label: t.nav.media, adminOnly: false },
-    { href: "/flows", icon: Workflow, label: t.nav.flows, adminOnly: true },
-    { href: "/admin", icon: Phone, label: t.nav.phoneAdmin, adminOnly: true },
-    { href: "/agents", icon: Users, label: t.nav.team, adminOnly: true },
-    { href: "/developers", icon: Code2, label: t.nav.developers, adminOnly: true },
-    { href: "/settings", icon: Settings, label: t.nav.settings, adminOnly: false },
-  ].filter((item) => !item.adminOnly || isAdmin);
+  const moreItems = mobileMoreItems(isAdmin);
 
   if (!visible) return null;
 
-  const moreActive = MORE_ROUTES.some((r) => pathname.startsWith(r));
+  // Todo lo que no es tab vive en "Más": el botón se marca activo si estamos en
+  // cualquiera de esas rutas.
+  const moreActive = moreItems.some((item) => isNavActive(pathname, item.href));
 
   const handleMoreNavigate = (href: string) => {
     setMoreOpen(false);
@@ -68,28 +40,30 @@ export function MobileNav() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden pb-[env(safe-area-inset-bottom)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-(--z-nav) border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex items-center justify-around">
-          {tabs.map((tab) => {
-            const isActive = pathname.startsWith(tab.href) && !moreActive;
+          {MOBILE_TABS.map((tab) => {
+            const isActive = isNavActive(pathname, tab.href) && !moreActive;
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex flex-1 flex-col items-center gap-1 py-3 text-xs",
+                  "flex min-h-11 flex-1 flex-col items-center gap-1 py-3 text-xs",
                   isActive ? "text-primary" : "text-muted-foreground"
                 )}
               >
                 <span className="relative">
                   <tab.icon className="h-5 w-5" />
-                  {tab.href === "/conversations" && totalUnread > 0 && (
-                    <span className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white">
-                      {totalUnread > 99 ? "99+" : totalUnread}
-                    </span>
+                  {tab.href === "/conversations" && (
+                    <NavBadge
+                      count={totalUnread}
+                      className="absolute -top-2 -right-3"
+                    />
                   )}
                 </span>
-                <span>{tab.label}</span>
+                <span>{t.nav[tab.labelKey]}</span>
               </Link>
             );
           })}
@@ -97,8 +71,9 @@ export function MobileNav() {
           <button
             type="button"
             onClick={() => setMoreOpen(true)}
+            aria-expanded={moreOpen}
             className={cn(
-              "flex flex-1 flex-col items-center gap-1 py-3 text-xs",
+              "flex min-h-11 flex-1 flex-col items-center gap-1 py-3 text-xs",
               moreActive ? "text-primary" : "text-muted-foreground"
             )}
           >
@@ -111,26 +86,29 @@ export function MobileNav() {
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent
           side="bottom"
-          className="rounded-t-2xl pb-[calc(1rem+env(safe-area-inset-bottom))]"
+          className="max-h-[85dvh] rounded-t-2xl pb-[calc(1rem+env(safe-area-inset-bottom))]"
         >
-          <SheetHeader>
+          <SheetHeader className="shrink-0">
             <SheetTitle>{t.nav.more}</SheetTitle>
           </SheetHeader>
-          <ul className="px-4 pb-2 divide-y">
+          {/* La lista scrollea sola: con la barra del navegador o en teléfonos
+              cortos, los últimos ítems quedaban fuera de pantalla sin salida. */}
+          <ul className="min-h-0 flex-1 divide-y overflow-y-auto px-4 pb-2">
             {moreItems.map((item) => {
-              const isActive = pathname.startsWith(item.href);
+              const isActive = isNavActive(pathname, item.href);
               return (
                 <li key={item.href}>
                   <button
                     type="button"
                     onClick={() => handleMoreNavigate(item.href)}
+                    aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "flex w-full items-center gap-3 py-3.5 text-left text-sm transition-colors",
-                      isActive ? "text-primary font-medium" : "hover:text-foreground"
+                      "flex min-h-11 w-full items-center gap-3 py-3.5 text-left text-sm transition-colors",
+                      isActive ? "font-medium text-primary" : "hover:text-foreground"
                     )}
                   >
                     <item.icon className="h-5 w-5 shrink-0" />
-                    <span className="flex-1">{item.label}</span>
+                    <span className="flex-1">{t.nav[item.labelKey]}</span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </button>
                 </li>

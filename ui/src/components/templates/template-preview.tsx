@@ -40,7 +40,7 @@ function TokenizedText({
           <span
             key={i}
             className={cn(
-              "mx-0.5 rounded px-1 py-px font-mono text-[11px]",
+              "mx-0.5 rounded px-1 py-px font-mono text-xs",
               missing
                 ? "bg-destructive/15 text-destructive"
                 : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
@@ -65,40 +65,40 @@ export function TemplatePreview({ components, values = {}, missingKeys = [], cla
   return (
     <div
       className={cn(
-        "rounded-lg bg-[#e5ddd5] p-4 dark:bg-muted/60",
+        "rounded-lg bg-[var(--asis-surface-panel)] p-4",
         className
       )}
     >
-      <div className="relative max-w-[290px] rounded-lg rounded-tl-none bg-white px-2.5 py-2 shadow-sm dark:bg-zinc-800">
+      <div className="relative max-w-[290px] rounded-lg rounded-tl-none bg-[var(--asis-bubble-inbound)] px-2.5 py-2 shadow-sm">
         {header && (header.format ?? "TEXT") === "TEXT" && header.text && (
-          <p className="mb-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <p className="mb-1 text-sm font-semibold text-foreground">
             <TokenizedText text={header.text} prefix="header" values={values} missingKeys={missing} />
           </p>
         )}
         {header && header.format && header.format !== "TEXT" && (
-          <div className="mb-1.5 flex h-24 items-center justify-center rounded-md bg-zinc-100 text-zinc-400 dark:bg-zinc-700">
+          <div className="mb-1.5 flex h-24 items-center justify-center rounded-md bg-muted text-muted-foreground">
             <ImageIcon className="size-8" />
           </div>
         )}
-        <p className="whitespace-pre-wrap text-sm text-zinc-900 dark:text-zinc-100">
+        <p className="whitespace-pre-wrap text-sm text-foreground">
           {body?.text ? (
             <TokenizedText text={body.text} prefix="body" values={values} missingKeys={missing} />
           ) : (
-            <span className="text-zinc-400">…</span>
+            <span className="text-muted-foreground">…</span>
           )}
         </p>
         {footer?.text && (
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{footer.text}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{footer.text}</p>
         )}
-        <p className="mt-0.5 text-right text-[10px] text-zinc-400">{time}</p>
+        <p className="mt-0.5 text-right text-xs text-muted-foreground">{time}</p>
         {buttons.length > 0 && (
-          <div className="-mx-2.5 mt-1.5 border-t border-zinc-100 dark:border-zinc-700">
+          <div className="-mx-2.5 mt-1.5 border-t border-border">
             {buttons.map((button, i) => (
               <div
                 key={i}
                 className={cn(
                   "flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-sky-600 dark:text-sky-400",
-                  i > 0 && "border-t border-zinc-100 dark:border-zinc-700"
+                  i > 0 && "border-t border-border"
                 )}
               >
                 {button.type === "URL" ? <ExternalLink className="size-3.5" /> : <Reply className="size-3.5" />}

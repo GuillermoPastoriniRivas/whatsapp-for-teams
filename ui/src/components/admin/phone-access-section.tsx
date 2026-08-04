@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { LoadingState } from "@/components/ui/spinner";
 import { Check, Phone, User } from "lucide-react";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
@@ -158,21 +159,21 @@ export function PhoneAccessSection(props: Props) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <label className="text-sm font-medium">{title}</label>
+        <p className="text-sm font-medium">{title}</p>
         {!loading && rows.length > 0 && (
-          <span className="text-xs text-muted-foreground shrink-0">
+          <span className="shrink-0 text-xs text-muted-foreground">
             {selected.size}/{rows.length} {t.access.countOf}
           </span>
         )}
       </div>
 
       {loading ? (
-        <p className="text-xs text-muted-foreground">{t.access.loading}</p>
+        <LoadingState className="py-6" />
       ) : rows.length === 0 ? (
         <p className="text-xs text-muted-foreground">{emptyText}</p>
       ) : (
         <>
-          <div className="divide-y rounded-lg border">
+          <div className="divide-y overflow-hidden rounded-xl border">
             {rows.map((row) => {
               const granted = selected.has(row.id);
               return (
@@ -181,10 +182,10 @@ export function PhoneAccessSection(props: Props) {
                   type="button"
                   onClick={() => toggle(row.id)}
                   disabled={busy !== null}
-                  className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/40 disabled:opacity-60"
+                  className="flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 disabled:opacity-60"
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
-                    <RowIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <RowIcon className="size-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0">
                       <p className="truncate text-sm">{row.title}</p>
                       <p className="truncate text-xs text-muted-foreground">
@@ -194,13 +195,13 @@ export function PhoneAccessSection(props: Props) {
                   </div>
                   <span
                     className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-all",
+                      "flex size-5 shrink-0 items-center justify-center rounded-md border-2 transition-all",
                       granted
-                        ? "border-primary bg-primary text-white"
-                        : "border-slate-300 dark:border-slate-600"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border"
                     )}
                   >
-                    {granted && <Check className="h-3.5 w-3.5" />}
+                    {granted && <Check className="size-3.5" />}
                   </span>
                 </button>
               );
@@ -213,7 +214,6 @@ export function PhoneAccessSection(props: Props) {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 px-2.5 text-xs"
                 onClick={() => setAll(true)}
                 disabled={busy !== null || selected.size === rows.length}
               >
@@ -223,7 +223,6 @@ export function PhoneAccessSection(props: Props) {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 px-2.5 text-xs"
                 onClick={() => setAll(false)}
                 disabled={busy !== null || selected.size === 0}
               >

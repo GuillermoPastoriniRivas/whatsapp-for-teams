@@ -27,7 +27,7 @@ export function StepDone({ phoneConnected, agentsInvited, aiConfigured, onFinish
       </div>
 
       <div>
-        <h2 className="text-3xl font-bold">{t.onboarding.doneTitle}</h2>
+        <h1 className="text-3xl font-bold tracking-tight">{t.onboarding.doneTitle}</h1>
         <p className="mt-2 text-muted-foreground">{t.onboarding.doneSubtitle}</p>
       </div>
 
@@ -35,17 +35,14 @@ export function StepDone({ phoneConnected, agentsInvited, aiConfigured, onFinish
         <ul className="w-full max-w-xs space-y-2 text-left">
           {items.map((item) => (
             <li key={item.label} className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+              <CheckCircle2 className="size-4 shrink-0 text-primary" />
               <span>{item.label}</span>
             </li>
           ))}
         </ul>
       )}
 
-      <Button
-        className="w-full max-w-xs h-12 text-base font-semibold rounded-xl"
-        onClick={onFinish}
-      >
+      <Button size="lg" className="w-full max-w-xs" onClick={onFinish}>
         {t.onboarding.goToInbox}
       </Button>
     </div>

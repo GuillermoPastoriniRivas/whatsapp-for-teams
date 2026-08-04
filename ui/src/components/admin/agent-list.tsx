@@ -1,29 +1,35 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, type RefObject } from "react";
+import { Bot, Snowflake, User } from "lucide-react";
+
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Plus, Bot, AlertTriangle, Snowflake } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingState } from "@/components/ui/spinner";
+import { StatusPill } from "@/components/ui/status-pill";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { cn } from "@/lib/utils";
 import { useBillingStore } from "@/stores/billing.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
+import { AgentStatus } from "./agent-status";
 import { CreateAgentPanel } from "./create-agent-panel";
 import { AgentDetailPanel } from "./agent-detail-panel";
 import type { Agent } from "@/types";
 
-const statusColors: Record<string, string> = {
-  available: "bg-green-500",
-  busy: "bg-yellow-500",
-  offline: "bg-gray-400",
-};
-
 interface Props {
   onPanelChange: (content: ReactNode) => void;
   onPanelClose: () => void;
+  /**
+   * La cabecera de la página es la única que muestra acciones, pero el alta
+   * vive acá porque tiene que refrescar la lista: se publica en este ref y la
+   * página lo dispara desde su botón.
+   */
+  createRef?: RefObject<(() => void) | null>;
 }
 
-export function AgentList({ onPanelChange, onPanelClose }: Props) {
+export function AgentList({ onPanelChange, onPanelClose, createRef }: Props) {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -90,109 +96,87 @@ export function AgentList({ onPanelChange, onPanelClose }: Props) {
     );
   };
 
-  return (
-    <div className="h-full flex flex-col">
-      <div className="px-4 py-3 md:px-6 border-b">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Agents</h2>
-          <Button
-            size="sm"
-            onClick={openCreate}
-            disabled={atLimit}
-            className="gap-1.5 bg-primary hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Add Agent
-          </Button>
-        </div>
-      </div>
+  useEffect(() => {
+    if (createRef) createRef.current = openCreate;
+  });
 
-      {atLimit && (
-        <div className="mx-4 mt-2 md:mx-6 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          <span>Plan limit reached ({agentUsage!.current}/{agentUsage!.limit}). Upgrade to add more.</span>
-        </div>
+  if (loading) return <LoadingState />;
+
+  return (
+    <div className="space-y-3">
+      {atLimit && agentUsage && (
+        <InlineNotice variant="warning">
+          {t.billing.limitReached} ({agentUsage.current}/{agentUsage.limit}). {t.billing.upgradeToAdd}
+        </InlineNotice>
       )}
-      <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
-        {loading ? (
-          <p className="text-sm text-muted-foreground p-4 md:p-6">Loading...</p>
-        ) : agents.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-8 text-center m-4 md:m-6">
-            <User className="mx-auto h-10 w-10 text-muted-foreground/50" />
-            <p className="mt-2 text-sm text-muted-foreground">
-              No agents yet. Add a team member to get started.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {agents.map((agent) => (
-              <button
-                key={agent.id}
-                type="button"
-                onClick={() => openDetail(agent)}
+
+      {agents.length === 0 ? (
+        <EmptyState icon={User} title={t.agents.noAgents} description={t.agents.noAgentsHint} />
+      ) : (
+        <div className="divide-y overflow-hidden rounded-xl border">
+          {agents.map((agent) => (
+            // Fila con rol de botón (no `<button>`): adentro hay otro botón
+            // real —"Activar"— y anidar botones no es HTML válido.
+            <div
+              key={agent.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => openDetail(agent)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openDetail(agent);
+                }
+              }}
+              className={cn(
+                "flex min-h-11 w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none",
+                selectedId === agent.id && "bg-primary/5",
+                agent.frozen && "opacity-50"
+              )}
+            >
+              <div
                 className={cn(
-                  "flex w-full items-center gap-3 px-4 py-3 md:px-6 text-left hover:bg-muted/50 transition-colors",
-                  selectedId === agent.id && "bg-primary/5",
-                  agent.frozen && "opacity-50"
+                  "flex size-10 shrink-0 items-center justify-center rounded-full",
+                  agent.type === "ai" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                 )}
               >
-                <div className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                  agent.type === "ai" ? "bg-violet-100 dark:bg-violet-900/30" : "bg-slate-100 dark:bg-slate-800"
-                )}>
-                  {agent.type === "ai"
-                    ? <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                    : <User className="h-5 w-5 text-muted-foreground" />
-                  }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium text-sm truncate">{agent.name}</p>
-                    {agent.type === "ai" ? (
-                      <Badge variant="outline" className="text-[10px] h-5 bg-violet-50 text-violet-700 border-violet-200">AI</Badge>
-                    ) : (
-                      <Badge variant="outline" className="capitalize text-[10px] h-5">{agent.role}</Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {agent.email}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {agent.frozen ? (
-                    <>
-                      <Badge variant="outline" className="text-[10px] h-5 bg-amber-50 text-amber-700 border-amber-200 gap-1">
-                        <Snowflake className="h-3 w-3" />
-                        {t.billing.frozen}
-                      </Badge>
-                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-primary" onClick={(e) => handleActivate(agent, e)}>
-                        {t.billing.activate}
-                      </Button>
-                    </>
+                {agent.type === "ai" ? <Bot className="size-5" /> : <User className="size-5" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="truncate text-sm font-medium">{agent.name}</p>
+                  {agent.type === "ai" ? (
+                    <StatusPill tone="scheduled">{t.agents.aiBadge}</StatusPill>
                   ) : (
-                    <>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={cn(
-                            "h-2.5 w-2.5 rounded-full",
-                            statusColors[agent.status]
-                          )}
-                        />
-                        <span className="text-xs text-muted-foreground capitalize hidden sm:inline">
-                          {agent.status}
-                        </span>
-                      </div>
-                      <Badge variant="secondary" className="text-[10px] h-5">
-                        {agent.activeCount}
-                      </Badge>
-                    </>
+                    <Badge variant="outline">
+                      {agent.role === "admin" ? t.agents.roleAdmin : t.agents.roleAgent}
+                    </Badge>
                   )}
                 </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+                <p className="truncate text-xs text-muted-foreground">{agent.email}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {agent.frozen ? (
+                  <>
+                    <StatusPill tone="warning">
+                      <Snowflake className="size-3" />
+                      {t.billing.frozen}
+                    </StatusPill>
+                    <Button size="sm" variant="ghost" onClick={(e) => handleActivate(agent, e)}>
+                      {t.billing.activate}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <AgentStatus status={agent.status} labelClassName="hidden sm:inline" />
+                    <Badge variant="secondary">{agent.activeCount}</Badge>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

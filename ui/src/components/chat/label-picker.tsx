@@ -140,7 +140,7 @@ export function LabelPicker({ conversationId }: Props) {
         ))}
         <button
           onClick={() => setOpen(!open)}
-          className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-muted-foreground/30 px-2 py-0.5 text-[11px] text-muted-foreground hover:border-muted-foreground/60 hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-muted-foreground/30 px-2 py-0.5 text-xs text-muted-foreground hover:border-muted-foreground/60 hover:text-foreground transition-colors"
         >
           <Plus className="h-3 w-3" />
           {t.contactPanel.addLabel}

@@ -122,7 +122,7 @@ export function PwaProvider() {
   const isPush = banner === "push";
 
   return (
-    <div className="fixed left-4 right-4 z-50 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-4 md:left-auto md:right-4 md:max-w-sm rounded-xl border bg-card text-card-foreground p-4 shadow-lg">
+    <div className="fixed left-4 right-4 z-(--z-nav) bottom-[calc(var(--mobile-nav-h)+1rem+env(safe-area-inset-bottom))] md:bottom-4 md:left-auto md:right-4 md:max-w-sm rounded-xl border bg-card text-card-foreground p-4 shadow-lg">
       <button
         onClick={dismiss}
         className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground hover:text-foreground"

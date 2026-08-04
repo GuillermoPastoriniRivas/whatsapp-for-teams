@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, CheckCircle2, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { api, ApiError } from "@/lib/api";
 
@@ -56,7 +57,7 @@ export function StepInvite({ onNext, onSkip }: StepInviteProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold">{t.onboarding.inviteTitle}</h2>
+        <h1 className="text-2xl font-bold tracking-tight">{t.onboarding.inviteTitle}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{t.onboarding.inviteSubtitle}</p>
       </div>
 
@@ -77,7 +78,7 @@ export function StepInvite({ onNext, onSkip }: StepInviteProps) {
                 onClick={() => removeEmail(i)}
                 className="shrink-0"
               >
-                <X className="h-4 w-4" />
+                <X className="size-4" />
               </Button>
             )}
           </div>
@@ -86,23 +87,21 @@ export function StepInvite({ onNext, onSkip }: StepInviteProps) {
         <button
           type="button"
           onClick={addEmail}
-          className="flex items-center gap-1 text-sm text-primary hover:underline"
+          className="flex min-h-11 items-center gap-1 text-sm text-primary hover:underline"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="size-4" />
           {t.onboarding.addAnother}
         </button>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <InlineNotice variant="error">{error}</InlineNotice>}
 
       {sent ? (
-        <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
-          <CheckCircle2 className="h-4 w-4" />
-          {t.onboarding.inviteSuccess}
-        </div>
+        <InlineNotice variant="success">{t.onboarding.inviteSuccess}</InlineNotice>
       ) : (
         <Button
-          className="w-full rounded-xl h-11"
+          size="lg"
+          className="w-full"
           onClick={handleSend}
           disabled={isLoading}
         >

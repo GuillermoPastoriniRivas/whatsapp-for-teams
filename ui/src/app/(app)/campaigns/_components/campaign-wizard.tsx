@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Loader2, Megaphone, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight,  Megaphone, Search} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { SimpleSelect } from "@/components/ui/select";
+import { LoadingState, Spinner } from "@/components/ui/spinner";
 import { InlineNotice } from "@/components/shared/inline-notice";
 import { CsvImportPanel } from "@/components/contacts/csv-import-panel";
 import { TemplatePreview } from "@/components/templates/template-preview";
@@ -15,6 +17,7 @@ import { ContactPicker } from "./contact-picker";
 import { useCampaignStore } from "@/stores/campaign.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { api } from "@/lib/api";
+import { toast } from "@/lib/toast";
 import { extractPlaceholders, resolveMappingSample, variableKey } from "@/lib/template-utils";
 import { extractPhones, parseCsv } from "@/lib/csv";
 import { cn } from "@/lib/utils";
@@ -346,14 +349,13 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
         {/* ── Step 1: template ── */}
         {step === 1 && (
           <>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t.campaigns.campaignName}</label>
+            <Field label={t.campaigns.campaignName}>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.campaigns.campaignNamePlaceholder} />
-            </div>
+            </Field>
 
             {phones.length > 1 && (
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">{t.templates.phoneNumber}</label>
+                <p className="text-sm font-medium">{t.templates.phoneNumber}</p>
                 <SimpleSelect
                   value={phoneNumberId}
                   onChange={(value) => {
@@ -366,12 +368,12 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
             )}
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t.campaigns.selectTemplate}</label>
+              <p className="text-sm font-medium">{t.campaigns.selectTemplate}</p>
               {templates.length > 5 && (
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    className="h-8 pl-8 text-base sm:text-xs"
+                    className="pl-8"
                     placeholder={t.campaigns.searchTemplates}
                     value={templateFilter}
                     onChange={(e) => setTemplateFilter(e.target.value)}
@@ -379,13 +381,11 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                 </div>
               )}
               {templatesLoading ? (
-                <div className="flex justify-center py-6">
-                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                </div>
+                <LoadingState className="py-6" />
               ) : filteredTemplates.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-4 text-center">
-                  <p className="text-xs text-muted-foreground">{t.campaigns.noApprovedTemplates}</p>
-                  <Link href="/templates" className="mt-1 inline-block text-xs font-medium text-primary hover:underline">
+                <div className="rounded-xl border border-dashed p-4 text-center">
+                  <p className="text-sm text-muted-foreground">{t.campaigns.noApprovedTemplates}</p>
+                  <Link href="/templates" className="mt-1 inline-block text-sm font-medium text-primary hover:underline">
                     {t.campaigns.goToTemplates}
                   </Link>
                 </div>
@@ -400,15 +400,15 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                         type="button"
                         onClick={() => setTemplate(tpl)}
                         className={cn(
-                          "w-full rounded-lg border p-3 text-left transition-colors",
+                          "w-full rounded-xl border p-3 text-left transition-colors",
                           isSelected ? "border-primary bg-primary/5" : "hover:bg-muted/50"
                         )}
                       >
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs font-medium">{tpl.name}</span>
-                          <span className="text-[11px] text-muted-foreground">{tpl.language}</span>
+                          <span className="text-xs text-muted-foreground">{tpl.language}</span>
                         </div>
-                        <p className="mt-1 truncate text-[11px] text-muted-foreground">{body}</p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">{body}</p>
                       </button>
                     );
                   })}
@@ -435,12 +435,12 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                   type="button"
                   onClick={() => setAudienceMode(mode)}
                   className={cn(
-                    "rounded-lg border p-2 text-left transition-colors",
+                    "rounded-xl border p-2 text-left transition-colors",
                     audienceMode === mode ? "border-primary bg-primary/5" : "hover:bg-muted/50"
                   )}
                 >
                   <p className="text-xs font-medium">{label}</p>
-                  <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">{hint}</p>
+                  <p className="mt-0.5 text-xs leading-tight text-muted-foreground">{hint}</p>
                 </button>
               ))}
             </div>
@@ -451,7 +451,7 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Input
-                    className="h-9 flex-1"
+                    className="flex-1"
                     placeholder={t.contacts.searchPlaceholder}
                     value={searchQuery}
                     onChange={(e) => {
@@ -460,19 +460,19 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                     }}
                   />
                   <Button type="button" variant="outline" onClick={checkReach} disabled={reachLoading || !searchQuery.trim()}>
-                    {reachLoading ? <Loader2 className="size-4 animate-spin" /> : t.campaigns.checkReach}
+                    {reachLoading ? <Spinner size="sm" /> : t.campaigns.checkReach}
                   </Button>
                 </div>
                 {reach && (
-                  <div className="space-y-1.5 rounded-lg border p-3">
+                  <div className="space-y-1.5 rounded-xl border p-3">
                     <p className="text-sm font-medium">
                       ~{reach.total} {t.campaigns.reachResult}
                     </p>
                     {reach.preview.length > 0 && (
                       <>
-                        <p className="text-[11px] text-muted-foreground">{t.campaigns.reachPreview}</p>
+                        <p className="text-xs text-muted-foreground">{t.campaigns.reachPreview}</p>
                         {reach.preview.map((contact) => (
-                          <p key={contact.id} className="text-[11px] text-muted-foreground">
+                          <p key={contact.id} className="text-xs text-muted-foreground">
                             {contact.name} · +{contact.waId}
                           </p>
                         ))}
@@ -492,7 +492,7 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                     // phones back to contact records to build the audience.
                     const parsed = parseCsv(await file.text());
                     const phones = extractPhones(parsed);
-                    if (phones.length > CSV_MAX_ROWS) alert(t.campaigns.csvTooBig);
+                    if (phones.length > CSV_MAX_ROWS) toast.error(t.campaigns.csvTooBig);
                     await resolveCsvContacts({ phones });
                   }}
                 />
@@ -521,10 +521,10 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                         ? `${t.templates.header} — ${ref.position === "link" ? "link" : `{{${ref.position}}}`}`
                         : `${t.templates.buttonUrl} — {{${ref.position}}}`;
                   return (
-                    <div key={key} className="space-y-2 rounded-lg border p-3">
+                    <div key={key} className="space-y-2 rounded-xl border p-3">
                       <div>
-                        <p className="text-xs font-medium">{label}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">{ref.context}</p>
+                        <p className="text-sm font-medium">{label}</p>
+                        <p className="truncate text-xs text-muted-foreground">{ref.context}</p>
                       </div>
                       <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-0.5">
                         {(
@@ -547,7 +547,7 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                               }))
                             }
                             className={cn(
-                              "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                              "rounded-md px-2 py-1 text-xs font-medium transition-colors",
                               mapping.source === source ? "bg-background shadow-sm" : "text-muted-foreground"
                             )}
                           >
@@ -558,7 +558,6 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                       {mapping.source === "contact_field" ? (
                         <div className="space-y-1.5">
                           <SimpleSelect
-                            className="h-8 text-xs"
                             value={mapping.customField ? "__custom__" : mapping.value}
                             onChange={(value) => {
                               if (value === "__custom__") {
@@ -587,7 +586,6 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                           />
                           {mapping.customField && (
                             <Input
-                              className="h-8 text-base sm:text-xs"
                               placeholder={t.campaigns.customFieldPlaceholder}
                               value={mapping.value.replace(/^customFields\./, "")}
                               onChange={(e) =>
@@ -601,7 +599,6 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                         </div>
                       ) : (
                         <Input
-                          className="h-8 text-base sm:text-xs"
                           placeholder={t.campaigns.staticPlaceholder}
                           value={mapping.value}
                           onChange={(e) => setMappings((prev) => ({ ...prev, [key]: { ...mapping, value: e.target.value } }))}
@@ -620,29 +617,31 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                   <p className="text-xs font-medium text-muted-foreground">{t.templates.preview}</p>
                   {sampleContacts.length > 1 && (
                     <div className="flex items-center gap-1">
-                      <button
+                      <Button
                         type="button"
-                        className="rounded p-0.5 text-muted-foreground hover:bg-muted"
+                        variant="ghost"
+                        size="icon-xs"
                         onClick={() => setPreviewIndex((i) => (i - 1 + sampleContacts.length) % sampleContacts.length)}
                       >
-                        <ChevronLeft className="size-3.5" />
-                      </button>
-                      <span className="text-[11px] text-muted-foreground">
+                        <ChevronLeft />
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
                         {t.campaigns.previewingContact} {previewValues.contact?.name ?? "—"}
                       </span>
-                      <button
+                      <Button
                         type="button"
-                        className="rounded p-0.5 text-muted-foreground hover:bg-muted"
+                        variant="ghost"
+                        size="icon-xs"
                         onClick={() => setPreviewIndex((i) => (i + 1) % sampleContacts.length)}
                       >
-                        <ChevronRight className="size-3.5" />
-                      </button>
+                        <ChevronRight />
+                      </Button>
                     </div>
                   )}
                 </div>
                 <TemplatePreview components={template.components} values={previewValues.values} missingKeys={previewValues.missing} />
                 {previewValues.missing.length > 0 && previewValues.contact && (
-                  <p className="mt-1 text-[11px] text-destructive">
+                  <p className="mt-1 text-xs text-destructive">
                     {previewValues.missing.length} {t.campaigns.missingValue}
                   </p>
                 )}
@@ -667,7 +666,7 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                   type="button"
                   onClick={() => setSendMode(mode)}
                   className={cn(
-                    "w-full rounded-lg border p-2.5 text-left text-xs font-medium transition-colors",
+                    "w-full rounded-xl border p-2.5 text-left text-sm font-medium transition-colors",
                     sendMode === mode ? "border-primary bg-primary/5" : "hover:bg-muted/50"
                   )}
                 >
@@ -675,24 +674,23 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                 </button>
               ))}
               {sendMode === "schedule" && (
-                <>
-                  <input
+                <Field
+                  label={t.campaigns.scheduleDateLabel}
+                  error={scheduledAt && new Date(scheduledAt).getTime() <= Date.now() ? t.campaigns.scheduleInvalid : undefined}
+                >
+                  <Input
                     type="datetime-local"
                     value={scheduledAt}
                     min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
                     onChange={(e) => setScheduledAt(e.target.value)}
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   />
-                  {scheduledAt && new Date(scheduledAt).getTime() <= Date.now() && (
-                    <p className="text-[11px] text-destructive">{t.campaigns.scheduleInvalid}</p>
-                  )}
-                </>
+                </Field>
               )}
             </div>
 
             {/* Summary */}
-            <div className="space-y-2 rounded-lg border p-3 text-xs">
-              <p className="font-semibold">{t.campaigns.summary}</p>
+            <div className="space-y-2 rounded-xl border p-3 text-xs">
+              <p className="text-sm font-semibold">{t.campaigns.summary}</p>
               <SummaryRow label={t.campaigns.name} value={name} />
               <SummaryRow label={t.campaigns.summaryTemplate} value={`${template?.name} (${template?.language})`} />
               <SummaryRow
@@ -710,7 +708,7 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                     const key = variableKey(ref);
                     const mapping = mappings[key];
                     return (
-                      <p key={key} className="font-mono text-[11px]">
+                      <p key={key} className="font-mono text-xs">
                         {key} → {mapping?.source === "static" ? `"${mapping.value}"` : mapping?.value}
                       </p>
                     );
@@ -747,7 +745,7 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
           <Button className="flex-1" onClick={handleSubmit} disabled={!canNext() || submitting}>
             {submitting ? (
               <>
-                <Loader2 className="size-4 animate-spin" />
+                <Spinner size="sm" />
                 {t.campaigns.creating}
               </>
             ) : sendMode === "now" ? (
@@ -787,22 +785,22 @@ function CsvResolutionStatus({
       {progress && (
         <div className="space-y-1">
           <Progress value={(progress.done / Math.max(1, progress.total)) * 100} className="h-1.5" />
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {t.campaigns.verifyingContacts} {progress.done}/{progress.total}
           </p>
         </div>
       )}
 
       {!progress && resolved > 0 && (
-        <p className="text-xs font-medium">
+        <p className="text-sm font-medium">
           {resolved} {t.campaigns.reachResult}
         </p>
       )}
 
       {!progress && notFound.length > 0 && (
-        <div className="max-h-24 overflow-y-auto rounded-lg border border-amber-200 bg-amber-50 p-2 dark:border-amber-900/50 dark:bg-amber-900/10">
-          <p className="mb-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">{t.campaigns.phonesNotFound}</p>
-          <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80">{notFound.join(", ")}</p>
+        <div className="max-h-24 overflow-y-auto rounded-xl border p-2">
+          <p className="mb-1 text-xs font-medium">{t.campaigns.phonesNotFound}</p>
+          <p className="text-xs text-muted-foreground">{notFound.join(", ")}</p>
         </div>
       )}
     </div>

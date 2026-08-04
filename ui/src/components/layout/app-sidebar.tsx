@@ -4,22 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Settings,
-  Phone,
   User,
-  Users,
-  Bell,
-  Contact,
   MessageSquare,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CreditCard,
-  LayoutTemplate,
-  Megaphone,
-  Workflow,
-  Code2,
-  Images,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useConversationStore } from "@/stores/conversation.store";
@@ -28,6 +17,15 @@ import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
 import { AsisLogo } from "@/components/brand/asis-logo";
 import { LanguageToggle } from "@/components/layout/language-toggle";
+import { AgentStatusToggle } from "@/components/agent/agent-status-toggle";
+import { NavBadge } from "@/components/layout/nav-badge";
+import {
+  NAV_BOTTOM,
+  NAV_SECTIONS,
+  isNavActive,
+  visibleItems,
+  type NavItem,
+} from "@/lib/nav-config";
 import {
   Tooltip,
   TooltipContent,
@@ -100,60 +98,21 @@ export function AppSidebar({ className }: { className?: string }) {
 
   const isAdmin = agent?.role === "admin";
 
-  /**
-   * Agrupado por intención, no por permiso: "qué estoy haciendo" antes que
-   * "quién puede verlo". Configuración queda al final porque se toca una vez.
-   */
-  const sections = [
-    {
-      title: t.nav.sectionInbox,
-      tabs: [
-        { href: "/conversations", icon: MessageSquare, label: t.nav.chats },
-        { href: "/contacts", icon: Contact, label: t.nav.contacts },
-      ],
-    },
-    {
-      title: t.nav.sectionMarketing,
-      tabs: [
-        { href: "/templates", icon: LayoutTemplate, label: t.nav.templates },
-        { href: "/campaigns", icon: Megaphone, label: t.nav.campaigns },
-        { href: "/media", icon: Images, label: t.nav.media },
-        ...(isAdmin
-          ? [{ href: "/flows", icon: Workflow, label: t.nav.flows }]
-          : []),
-      ],
-    },
-    ...(isAdmin
-      ? [
-          {
-            title: t.nav.sectionSetup,
-            tabs: [
-              { href: "/admin", icon: Phone, label: t.nav.phoneAdmin },
-              { href: "/agents", icon: Users, label: t.nav.team },
-              { href: "/developers", icon: Code2, label: t.nav.developers },
-            ],
-          },
-        ]
-      : []),
-  ];
+  const sections = NAV_SECTIONS.map((section) => ({
+    title: t.nav[section.titleKey],
+    items: visibleItems(section.items, isAdmin),
+  })).filter((section) => section.items.length > 0);
 
-  const bottomTabs = [
-    { href: "/notifications", icon: Bell, label: t.nav.notifications },
-    ...(isAdmin
-      ? [{ href: "/settings/billing", icon: CreditCard, label: t.nav.billing }]
-      : []),
-    { href: "/settings", icon: Settings, label: t.nav.settings },
-  ];
+  const bottomItems = visibleItems(NAV_BOTTOM, isAdmin);
 
-  const NavItem = ({ tab }: { tab: { href: string; icon: any; label: string } }) => {
-    const isActive =
-      tab.href === "/settings"
-        ? pathname === "/settings"
-        : pathname.startsWith(tab.href);
+  const SidebarNavItem = ({ item }: { item: NavItem }) => {
+    const label = t.nav[item.labelKey];
+    const isActive = isNavActive(pathname, item.href);
 
     const linkContent = (
       <Link
-        href={tab.href}
+        href={item.href}
+        aria-current={isActive ? "page" : undefined}
         className={cn(
           "relative flex items-center gap-3 rounded-xl transition-all",
           collapsed ? "h-11 w-11 justify-center" : "h-11 w-full px-3",
@@ -162,7 +121,7 @@ export function AppSidebar({ className }: { className?: string }) {
             : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
       >
-        <tab.icon
+        <item.icon
           className={cn("h-5 w-5 shrink-0", isActive && "stroke-[2.5px]")}
         />
         {!collapsed && (
@@ -172,20 +131,11 @@ export function AppSidebar({ className }: { className?: string }) {
               isActive && "font-semibold"
             )}
           >
-            {tab.label}
+            {label}
           </span>
         )}
-        {tab.href === "/conversations" && totalUnread > 0 && (
-          <span
-            className={cn(
-              "flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white",
-              collapsed
-                ? "absolute -top-1 -right-1"
-                : "ml-auto"
-            )}
-          >
-            {totalUnread > 99 ? "99+" : totalUnread}
-          </span>
+        {item.href === "/conversations" && totalUnread > 0 && (
+          <NavBadge count={totalUnread} className={collapsed ? "absolute -top-1 -right-1" : "ml-auto"} />
         )}
       </Link>
     );
@@ -196,7 +146,7 @@ export function AppSidebar({ className }: { className?: string }) {
           <Tooltip>
             <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
             <TooltipContent side="right" className="font-semibold">
-              {tab.label}
+              {label}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -217,7 +167,7 @@ export function AppSidebar({ className }: { className?: string }) {
       {/* Collapse toggle */}
       <button
         onClick={toggleCollapsed}
-        className="absolute -right-2 top-2 z-50 flex h-4 w-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground transition-colors"
+        className="absolute -right-2 top-2 z-(--z-nav) flex h-4 w-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground transition-colors"
       >
         {collapsed ? (
           <ChevronRight className="h-3.5 w-3.5" />
@@ -249,12 +199,12 @@ export function AppSidebar({ className }: { className?: string }) {
                   // salvo antes del primer grupo donde no hay nada que separar.
                   i > 0 && <div className="mx-auto my-1 h-px w-6 bg-border" />
                 ) : (
-                  <span className="px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  <span className="px-3 pb-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {section.title}
                   </span>
                 )}
-                {section.tabs.map((tab) => (
-                  <NavItem key={tab.href} tab={tab} />
+                {section.items.map((item) => (
+                  <SidebarNavItem key={item.href} item={item} />
                 ))}
               </div>
             ))}
@@ -288,8 +238,8 @@ export function AppSidebar({ className }: { className?: string }) {
         </div>
 
         <div className="flex shrink-0 flex-col gap-1 border-t pt-2 pb-2">
-          {bottomTabs.map((tab) => (
-            <NavItem key={tab.href} tab={tab} />
+          {bottomItems.map((item) => (
+            <SidebarNavItem key={item.href} item={item} />
           ))}
 
           {/* WhatsApp support */}
@@ -302,7 +252,7 @@ export function AppSidebar({ className }: { className?: string }) {
                       href="https://wa.me/5493442670825"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex h-11 w-11 items-center justify-center rounded-xl transition-all text-green-600 hover:bg-green-50"
+                      className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
                     >
                       <MessageSquare className="h-5 w-5 shrink-0" />
                     </a>
@@ -317,7 +267,7 @@ export function AppSidebar({ className }: { className?: string }) {
                 href="https://wa.me/5493442670825"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-11 w-full items-center gap-3 rounded-xl px-3 transition-all text-green-600 hover:bg-green-50"
+                className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
               >
                 <MessageSquare className="h-5 w-5 shrink-0" />
                 <span className="text-sm font-medium">{t.billing.whatsappSupport}</span>
@@ -330,6 +280,12 @@ export function AppSidebar({ className }: { className?: string }) {
             <LanguageToggle collapsed={collapsed} />
           </div>
 
+          {/* Disponibilidad: vivía solo en el header de mobile, así que en
+              escritorio no había forma de cambiarla. */}
+          <div className={cn("mt-1", collapsed ? "flex justify-center" : "px-1")}>
+            <AgentStatusToggle collapsed={collapsed} />
+          </div>
+
           {/* User avatar */}
           <Link
             href="/settings"
@@ -338,8 +294,8 @@ export function AppSidebar({ className }: { className?: string }) {
               collapsed ? "justify-center" : "px-3"
             )}
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 border">
-              <User className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-muted text-muted-foreground">
+              <User className="h-4 w-4" />
             </div>
             {!collapsed && agent && (
               <div className="flex flex-col min-w-0">

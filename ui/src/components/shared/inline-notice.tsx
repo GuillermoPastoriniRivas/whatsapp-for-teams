@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircleIcon, CheckCircle2Icon, InfoIcon } from "lucide-react"
+import { AlertCircleIcon, AlertTriangleIcon, CheckCircle2Icon, InfoIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -12,6 +12,11 @@ const VARIANTS = {
   error: {
     icon: AlertCircleIcon,
     className: "bg-destructive/10 text-destructive",
+  },
+  /** Algo que conviene mirar pero todavía no rompió nada: límite cerca, baja programada. */
+  warning: {
+    icon: AlertTriangleIcon,
+    className: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
   },
   info: {
     icon: InfoIcon,

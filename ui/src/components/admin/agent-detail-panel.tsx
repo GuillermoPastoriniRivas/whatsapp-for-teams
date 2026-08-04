@@ -1,14 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Bot, Trash2, User } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Field } from "@/components/ui/field";
+import { Spinner } from "@/components/ui/spinner";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { PhoneAccessSection } from "@/components/admin/phone-access-section";
 import { useTranslations } from "@/lib/i18n/use-translations";
-import { User, Save, Trash2, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AgentStatus } from "./agent-status";
 import type { Agent } from "@/types";
 
 interface Props {
@@ -17,14 +23,9 @@ interface Props {
   onDeleted: () => void;
 }
 
-const statusColors: Record<string, string> = {
-  available: "bg-green-500",
-  busy: "bg-yellow-500",
-  offline: "bg-gray-400",
-};
-
 export function AgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
   const { t } = useTranslations();
+  const confirm = useConfirm();
   const [name, setName] = useState(agent.name);
   const [role, setRole] = useState(agent.role);
   const [saving, setSaving] = useState(false);
@@ -38,6 +39,9 @@ export function AgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
     setSuccess(null);
   }, [agent.id]);
 
+  const roleLabel = (value: Agent["role"]) =>
+    value === "admin" ? t.agents.roleAdmin : t.agents.roleAgent;
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
@@ -45,23 +49,23 @@ export function AgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
 
     try {
       const updated = await api.patch<Agent>(`/agents/${agent.id}`, { name, role });
-      setSuccess("Saved successfully");
+      setSuccess(t.agents.saved);
       onUpdated(updated);
     } catch (err: any) {
-      setError(err.message || "Failed to save");
+      setError(err.message || t.agents.saveError);
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this agent?")) return;
+    if (!(await confirm({ title: t.agents.confirmDelete, confirmLabel: t.common.delete, destructive: true }))) return;
 
     try {
       await api.delete(`/agents/${agent.id}`);
       onDeleted();
     } catch (err: any) {
-      setError(err.message || "Failed to delete");
+      setError(err.message || t.agents.deleteError);
     }
   };
 
@@ -70,71 +74,61 @@ export function AgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
   return (
     <>
       {/* Header */}
-      <div className="px-4 pt-6 pb-4 border-b">
+      <div className="border-b px-4 pt-6 pb-4">
         <div className="flex items-center gap-3">
-          <div className={cn(
-            "flex h-12 w-12 items-center justify-center rounded-full",
-            isAi ? "bg-violet-100 dark:bg-violet-900/30" : "bg-slate-100 dark:bg-slate-800"
-          )}>
-            {isAi
-              ? <Bot className="h-6 w-6 text-violet-600 dark:text-violet-400" />
-              : <User className="h-6 w-6 text-muted-foreground" />
-            }
+          <div
+            className={cn(
+              "flex size-12 shrink-0 items-center justify-center rounded-full",
+              isAi ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+            )}
+          >
+            {isAi ? <Bot className="size-6" /> : <User className="size-6" />}
           </div>
-          <div>
-            <h2 className="text-base font-semibold">{agent.name}</h2>
-            <div className="flex items-center gap-2 mt-0.5">
-              <div className="flex items-center gap-1.5">
-                <span className={cn("h-2 w-2 rounded-full", statusColors[agent.status])} />
-                <span className="text-xs text-muted-foreground capitalize">{agent.status}</span>
-              </div>
-              <Badge variant="outline" className="capitalize text-[10px] h-5">{agent.role}</Badge>
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold">{agent.name}</h2>
+            <div className="mt-0.5 flex items-center gap-2">
+              <AgentStatus status={agent.status} />
+              <Badge variant="outline">{roleLabel(agent.role)}</Badge>
             </div>
           </div>
         </div>
       </div>
 
       {/* Form */}
-      <div className="px-4 py-4 space-y-4">
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Name</label>
+      <div className="space-y-4 px-4 py-4">
+        <Field label={t.agents.name}>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Email</label>
-          <Input value={agent.email} disabled className="bg-muted" />
-          <p className="text-xs text-muted-foreground">Email cannot be changed</p>
-        </div>
+        <Field label={t.agents.email} hint={t.agents.emailLocked}>
+          <Input value={agent.email} disabled />
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Role</label>
-          <div className="flex gap-2">
+        <Field label={t.agents.role}>
+          <div role="radiogroup" className="flex gap-2">
             {(["agent", "admin"] as const).map((r) => (
               <button
                 key={r}
                 type="button"
+                role="radio"
+                aria-checked={role === r}
                 onClick={() => setRole(r)}
-                className={`rounded-md border px-3 py-1.5 text-xs capitalize transition-colors ${
-                  role === r
-                    ? "border-primary bg-primary/10"
-                    : "hover:bg-muted/50"
-                }`}
+                className={cn(
+                  "rounded-md border px-3 py-1.5 text-xs transition-colors",
+                  role === r ? "border-primary bg-primary/10" : "hover:bg-muted/50"
+                )}
               >
-                {r}
+                {roleLabel(r)}
               </button>
             ))}
           </div>
-        </div>
+        </Field>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">Status</label>
-          <div className="flex items-center gap-1.5">
-            <span className={cn("h-2.5 w-2.5 rounded-full", statusColors[agent.status])} />
-            <span className="text-sm capitalize">{agent.status}</span>
-          </div>
+          <p className="text-sm font-medium">{t.agents.status}</p>
+          <AgentStatus status={agent.status} labelClassName="text-sm text-foreground" />
           <p className="text-xs text-muted-foreground">
-            Active conversations: {agent.activeCount}
+            {t.agents.activeConversations}: {agent.activeCount}
           </p>
         </div>
 
@@ -145,33 +139,18 @@ export function AgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
           <PhoneAccessSection mode="agent" agentId={agent.id} />
         )}
 
-        {(error || success) && (
-          <div className={`rounded-md px-3 py-2 text-sm ${
-            error ? "bg-destructive/10 text-destructive" : "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
-          }`}>
-            {error || success}
-          </div>
-        )}
+        {error && <InlineNotice variant="error">{error}</InlineNotice>}
+        {!error && success && <InlineNotice variant="success">{success}</InlineNotice>}
 
         <div className="flex gap-2 pt-2">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleDelete}
-            className="gap-1"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
+          <Button variant="destructive" size="sm" onClick={handleDelete}>
+            <Trash2 className="size-4" />
+            {t.common.delete}
           </Button>
           <div className="flex-1" />
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            size="sm"
-            className="gap-1 bg-primary hover:bg-primary/90"
-          >
-            <Save className="h-4 w-4" />
-            {saving ? "Saving..." : "Save"}
+          <Button onClick={handleSave} disabled={saving} size="sm">
+            {saving && <Spinner size="sm" />}
+            {saving ? t.common.saving : t.common.save}
           </Button>
         </div>
       </div>

@@ -1,23 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { api } from "@/lib/api";
 import { Phone } from "lucide-react";
 
-type Provider = "meta" | "twilio" | "360dialog" | "kapso";
-
-const providerConfigFields: Record<Provider, { key: string; label: string }[]> = {
-  meta: [{ key: "accessToken", label: "Access Token" }],
-  twilio: [
-    { key: "accountSid", label: "Account SID" },
-    { key: "authToken", label: "Auth Token" },
-    { key: "fromNumber", label: "From Number" },
-  ],
-  "360dialog": [{ key: "apiKey", label: "API Key" }],
-  kapso: [{ key: "apiKey", label: "API Key" }],
-};
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
+import { Spinner } from "@/components/ui/spinner";
+import { InlineNotice } from "@/components/shared/inline-notice";
+import { api } from "@/lib/api";
+import { useTranslations } from "@/lib/i18n/use-translations";
+import { cn } from "@/lib/utils";
+import { PROVIDER_CONFIG_FIELDS, PROVIDER_LABELS, PROVIDERS, type Provider } from "./providers";
 
 interface Props {
   onCreated: () => void;
@@ -25,6 +19,7 @@ interface Props {
 }
 
 export function RegisterPhonePanel({ onCreated, onCancel }: Props) {
+  const { t } = useTranslations();
   const [provider, setProvider] = useState<Provider>("meta");
   const [providerConfig, setProviderConfig] = useState<Record<string, string>>({});
   const [wabaId, setWabaId] = useState("");
@@ -61,7 +56,7 @@ export function RegisterPhonePanel({ onCreated, onCancel }: Props) {
       });
       onCreated();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to register phone number";
+      const message = err instanceof Error ? err.message : t.admin.registerError;
       setError(message);
     } finally {
       setLoading(false);
@@ -70,99 +65,104 @@ export function RegisterPhonePanel({ onCreated, onCancel }: Props) {
 
   return (
     <>
-      <div className="px-4 pt-6 pb-4 border-b">
+      <div className="border-b px-4 pt-6 pb-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-            <Phone className="h-5 w-5 text-primary" />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Phone className="size-5" />
           </div>
-          <div>
-            <h2 className="text-base font-semibold">Register Phone Number</h2>
-            <p className="text-xs text-muted-foreground">Add a new phone number</p>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold">{t.admin.registerPhone}</h2>
+            <p className="text-xs text-muted-foreground">{t.admin.registerPhoneSubtitle}</p>
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4">
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Provider</label>
-          <div className="flex gap-2">
-            {(["meta", "twilio", "360dialog", "kapso"] as const).map((p) => (
+      <form onSubmit={handleSubmit} className="space-y-4 px-4 py-4">
+        <Field label={t.admin.provider}>
+          <div role="radiogroup" className="flex flex-wrap gap-2">
+            {PROVIDERS.map((p) => (
               <button
                 key={p}
                 type="button"
+                role="radio"
+                aria-checked={provider === p}
                 onClick={() => handleProviderChange(p)}
-                className={`rounded-md border px-3 py-1.5 text-xs capitalize transition-colors ${
-                  provider === p
-                    ? "border-primary bg-primary/10"
-                    : "hover:bg-muted/50"
-                }`}
+                className={cn(
+                  "rounded-md border px-3 py-1.5 text-xs transition-colors",
+                  provider === p ? "border-primary bg-primary/10" : "hover:bg-muted/50"
+                )}
               >
-                {p === "360dialog" ? "360dialog" : p === "kapso" ? "Kapso" : p.charAt(0).toUpperCase() + p.slice(1)}
+                {PROVIDER_LABELS[p]}
               </button>
             ))}
           </div>
-        </div>
+        </Field>
 
-        <div className="space-y-3 rounded-lg border p-3">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Provider Config
+        <div className="space-y-3 rounded-xl border p-3">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {t.admin.providerConfig}
           </p>
-          {providerConfigFields[provider].map((field) => (
-            <div key={field.key} className="space-y-1.5">
-              <label className="text-sm font-medium">{field.label}</label>
+          {PROVIDER_CONFIG_FIELDS[provider].map((field) => (
+            <Field key={field.key} label={field.label} required>
               <Input
                 value={providerConfig[field.key] || ""}
                 onChange={(e) => handleConfigChange(field.key, e.target.value)}
                 placeholder={field.label}
                 required
               />
-            </div>
+            </Field>
           ))}
         </div>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">WABA ID</label>
+        <Field label="WABA ID" required>
           <Input value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="WABA ID" required />
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Phone Number ID</label>
-          <Input value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} placeholder="Phone Number ID" required />
-        </div>
+        <Field label="Phone Number ID" required>
+          <Input
+            value={phoneNumberId}
+            onChange={(e) => setPhoneNumberId(e.target.value)}
+            placeholder="Phone Number ID"
+            required
+          />
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Display Phone</label>
-          <Input value={displayPhone} onChange={(e) => setDisplayPhone(e.target.value)} placeholder="+1 234 567 8900" required />
-        </div>
+        <Field label={t.admin.displayPhone} required>
+          <Input
+            value={displayPhone}
+            onChange={(e) => setDisplayPhone(e.target.value)}
+            placeholder={t.admin.displayPhonePlaceholder}
+            required
+          />
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Label</label>
-          <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Business Phone" required />
-        </div>
+        <Field label={t.admin.phoneLabel} required>
+          <Input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder={t.admin.phoneLabelPlaceholder}
+            required
+          />
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Webhook Secret</label>
-          <Input value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} placeholder="Webhook Secret" />
-        </div>
+        <Field label={t.admin.webhookSecret}>
+          <Input
+            value={webhookSecret}
+            onChange={(e) => setWebhookSecret(e.target.value)}
+            placeholder={t.admin.webhookSecret}
+          />
+        </Field>
 
-        {error && (
-          <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </div>
-        )}
+        {error && <InlineNotice variant="error">{error}</InlineNotice>}
 
         <div className="flex gap-2 pt-2">
           <Button type="button" variant="outline" size="sm" onClick={onCancel}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <div className="flex-1" />
-          <Button
-            type="submit"
-            size="sm"
-            className="bg-primary hover:bg-primary/90"
-            disabled={loading}
-          >
-            {loading ? "Registering..." : "Register"}
+          <Button type="submit" size="sm" disabled={loading}>
+            {loading && <Spinner size="sm" />}
+            {loading ? t.admin.registering : t.admin.register}
           </Button>
         </div>
       </form>

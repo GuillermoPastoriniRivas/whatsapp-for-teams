@@ -8,8 +8,11 @@ import { FileText, FolderOpen, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Field } from "@/components/ui/field";
+import { SimpleSelect } from "@/components/ui/select";
 import { MediaPickerDialog } from "@/components/media/media-picker-dialog";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 import { NODE_BY_TYPE, CATEGORY_STYLES } from "@/lib/flows/node-catalog";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import type { FlowNode, FlowEdge, Label, AiAgentWithConfig, Agent, PhoneNumber, MessageTemplate } from "@/types";
@@ -60,13 +63,27 @@ export function NodeConfigPanel(props: PanelProps) {
         )}
         <span className="font-medium text-sm flex-1 truncate">{def?.label}</span>
         {!node.type.startsWith("trigger.") && (
-          <button className="text-muted-foreground hover:text-destructive" title={t.flows.deleteNode} onClick={props.onDelete}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground hover:text-destructive"
+            aria-label={t.flows.deleteNode}
+            title={t.flows.deleteNode}
+            onClick={props.onDelete}
+          >
             <Trash2 className="size-4" />
-          </button>
+          </Button>
         )}
-        <button className="text-muted-foreground hover:text-foreground" onClick={props.onClose}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground"
+          aria-label={t.flows.closePanel}
+          title={t.flows.closePanel}
+          onClick={props.onClose}
+        >
           <X className="size-4" />
-        </button>
+        </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-4 text-sm">
@@ -74,20 +91,23 @@ export function NodeConfigPanel(props: PanelProps) {
 
         {availableVariables.length > 0 && usesVariables(node.type) && (
           <div>
-            <FieldLabel>Variables disponibles</FieldLabel>
+            <FieldLabel>{t.flows.availableVariables}</FieldLabel>
             <div className="flex flex-wrap gap-1">
               {availableVariables.map((variable) => (
                 <button
                   key={variable}
-                  className="text-[11px] bg-muted rounded px-1.5 py-0.5 font-mono hover:bg-primary/10"
-                  title="Copiar"
-                  onClick={() => void navigator.clipboard.writeText(`{{${variable}}}`)}
+                  className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs hover:bg-primary/10"
+                  title={t.flows.copyVariable}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(`{{${variable}}}`);
+                    toast.success(t.flows.copied);
+                  }}
                 >
                   {`{{${variable}}}`}
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Tocá para copiar y pegala en el texto.</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t.flows.copyVariableHint}</p>
           </div>
         )}
 
@@ -178,8 +198,26 @@ function renderForm(
 
 // ── Campos compartidos ───────────────────────────────────────────
 
+/** Encabezado de un grupo de controles (no de un control único: para eso va `Field`). */
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs font-medium text-muted-foreground mb-1">{children}</p>;
+  return <p className="mb-1.5 text-sm font-medium">{children}</p>;
+}
+
+/** Quitar una fila de una lista (botones, opciones, headers…). */
+function RemoveButton({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslations();
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      className="shrink-0 text-muted-foreground"
+      aria-label={t.flows.removeItem}
+      title={t.flows.removeItem}
+      onClick={onClick}
+    >
+      <Trash2 className="size-3.5" />
+    </Button>
+  );
 }
 
 function BodyField({
@@ -200,7 +238,7 @@ function BodyField({
     <div>
       <FieldLabel>{label}</FieldLabel>
       <Textarea rows={4} value={body} onChange={(e) => set({ body: e.target.value })} />
-      <p className={cn("text-[11px] mt-0.5 text-right", over ? "text-destructive" : "text-muted-foreground")}>
+      <p className={cn("mt-0.5 text-right text-xs", over ? "text-destructive" : "text-muted-foreground")}>
         {body.length}/{max}
       </p>
     </div>
@@ -212,35 +250,50 @@ function SelectField(props: {
   value: string;
   options: Array<{ value: string; label: string }>;
   onChange: (value: string) => void;
+  /** Además del texto en vacío, agrega la opción que vuelve al valor sin elegir. */
   placeholder?: string;
 }) {
+  const options =
+    props.placeholder !== undefined ? [{ value: "", label: props.placeholder }, ...props.options] : props.options;
   return (
-    <div>
-      <FieldLabel>{props.label}</FieldLabel>
-      <select
-        className="w-full h-9 rounded-md border bg-background px-2 text-sm"
+    <Field label={props.label}>
+      <SimpleSelect
         value={props.value}
-        onChange={(e) => props.onChange(e.target.value)}
-      >
-        {props.placeholder !== undefined && <option value="">{props.placeholder}</option>}
-        {props.options.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </select>
-    </div>
+        onChange={props.onChange}
+        options={options}
+        placeholder={props.placeholder}
+      />
+    </Field>
   );
 }
 
 function ToggleField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button className="flex items-center justify-between w-full py-1" onClick={() => onChange(!checked)} type="button">
-      <span className="text-xs">{label}</span>
-      <span className={cn("w-8 h-4.5 rounded-full p-0.5 transition-colors", checked ? "bg-primary" : "bg-muted")}>
-        <span className={cn("block size-3.5 rounded-full bg-white transition-transform", checked && "translate-x-3.5")} />
+    <button
+      className="flex min-h-9 w-full items-center justify-between gap-2 py-1 text-left"
+      onClick={() => onChange(!checked)}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+    >
+      <span className="text-sm">{label}</span>
+      <span className={cn("w-8 h-4.5 shrink-0 rounded-full p-0.5 transition-colors", checked ? "bg-primary" : "bg-muted")}>
+        <span
+          className={cn(
+            "block size-3.5 rounded-full bg-background shadow-sm ring-1 ring-foreground/10 transition-transform",
+            checked && "translate-x-3.5"
+          )}
+        />
       </span>
     </button>
   );
 }
+
+const DURATION_UNITS = [
+  { value: "minutes", label: "minutos" },
+  { value: "hours", label: "horas" },
+  { value: "days", label: "días (máx 7)" },
+];
 
 function DurationField({ data, set, field, label }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; field: string; label: string }) {
   const duration = data[field] ?? { amount: 1, unit: "days" };
@@ -255,15 +308,12 @@ function DurationField({ data, set, field, label }: { data: Record<string, any>;
           value={duration.amount ?? 1}
           onChange={(e) => set({ [field]: { ...duration, amount: Number(e.target.value) } })}
         />
-        <select
-          className="flex-1 h-9 rounded-md border bg-background px-2 text-sm"
+        <SimpleSelect
+          className="flex-1"
           value={duration.unit ?? "days"}
-          onChange={(e) => set({ [field]: { ...duration, unit: e.target.value } })}
-        >
-          <option value="minutes">minutos</option>
-          <option value="hours">horas</option>
-          <option value="days">días (máx 7)</option>
-        </select>
+          options={DURATION_UNITS}
+          onChange={(value) => set({ [field]: { ...duration, unit: value } })}
+        />
       </div>
     </div>
   );
@@ -292,7 +342,7 @@ function SaveAsField({ data, set, label = "Guardar respuesta como variable" }: {
         placeholder="ej: interes"
         onChange={(e) => set({ saveAs: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_") })}
       />
-      {data.saveAs ? <p className="text-[11px] text-muted-foreground mt-0.5">Usala como {`{{vars.${data.saveAs}}}`}</p> : null}
+      {data.saveAs ? <p className="text-xs text-muted-foreground mt-0.5">Usala como {`{{vars.${data.saveAs}}}`}</p> : null}
     </div>
   );
 }
@@ -406,7 +456,7 @@ function TriggerWebhookForm({ data, set, refs, onChangeTriggerType }: { data: Re
         <FieldLabel>Campo del nombre (opcional)</FieldLabel>
         <Input value={data.contactNameField ?? ""} placeholder="name" onChange={(e) => set({ contactNameField: e.target.value })} />
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         La URL del webhook aparece arriba después de publicar. El payload queda disponible como {"{{webhook.*}}"}.
         Como suele llegar fuera de la ventana de 24 h, empezá con una plantilla.
       </p>
@@ -439,7 +489,7 @@ function TriggerCampaignReplyForm({ data, set, refs, onChangeTriggerType }: { da
         <FieldLabel>Campañas (ninguna = todas)</FieldLabel>
         <div className="space-y-1 max-h-48 overflow-y-auto">
           {refs.campaigns.length === 0 && (
-            <p className="text-[11px] text-muted-foreground">Todavía no tenés campañas.</p>
+            <p className="text-xs text-muted-foreground">Todavía no tenés campañas.</p>
           )}
           {refs.campaigns.map((campaign) => (
             <ToggleField
@@ -453,7 +503,7 @@ function TriggerCampaignReplyForm({ data, set, refs, onChangeTriggerType }: { da
           ))}
         </div>
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         Dispara con la <strong>primera</strong> respuesta del contacto a una campaña. La ventana de 24 h
         queda abierta por esa respuesta, así que podés seguir con mensajes normales.
       </p>
@@ -479,25 +529,20 @@ function SendMediaForm({ data, set }: { data: Record<string, any>; set: (p: Reco
       <div>
         <FieldLabel>Archivo</FieldLabel>
         {data.mediaAssetName ? (
-          <div className="flex items-center gap-2 rounded-md border border-border px-2.5 py-2">
-            <FileText className="h-4 w-4 shrink-0 text-primary" />
-            <span className="min-w-0 flex-1 truncate text-[13px]">{data.mediaAssetName}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-[12px]"
-              onClick={() => set({ mediaAssetId: "", mediaAssetName: "" })}
-            >
+          <div className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-2">
+            <FileText className="size-4 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1 truncate text-sm">{data.mediaAssetName}</span>
+            <Button variant="ghost" size="sm" onClick={() => set({ mediaAssetId: "", mediaAssetName: "" })}>
               Quitar
             </Button>
           </div>
         ) : (
           <Button variant="outline" size="sm" className="w-full" onClick={() => setPickerOpen(true)}>
-            <FolderOpen className="mr-2 h-4 w-4" />
+            <FolderOpen className="size-4" />
             Elegir de la biblioteca
           </Button>
         )}
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           Lo subimos a WhatsApp por vos: no hace falta que el archivo sea público.
         </p>
       </div>
@@ -506,7 +551,7 @@ function SendMediaForm({ data, set }: { data: Record<string, any>; set: (p: Reco
         <div>
           <FieldLabel>…o pegá una URL pública (https)</FieldLabel>
           <Input value={data.mediaUrl ?? ""} placeholder="https://…/catalogo.pdf" onChange={(e) => set({ mediaUrl: e.target.value })} />
-          <p className="text-[11px] text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Tiene que ser accesible públicamente: WhatsApp la descarga desde sus servidores.
           </p>
         </div>
@@ -552,7 +597,7 @@ function SetVariableForm({ data, set }: { data: Record<string, any>; set: (p: Re
           placeholder="ej: codigo"
           onChange={(e) => set({ saveAs: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_") })}
         />
-        {data.saveAs ? <p className="text-[11px] text-muted-foreground mt-0.5">La usás como {`{{vars.${data.saveAs}}}`}</p> : null}
+        {data.saveAs ? <p className="text-xs text-muted-foreground mt-0.5">La usás como {`{{vars.${data.saveAs}}}`}</p> : null}
       </div>
       <SelectField
         label="Qué guardar"
@@ -575,7 +620,7 @@ function SetVariableForm({ data, set }: { data: Record<string, any>; set: (p: Re
             value={data.length ?? 6}
             onChange={(e) => set({ length: Number(e.target.value) })}
           />
-          <p className="text-[11px] text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Se genera con aleatoriedad criptográfica. Para enviarlo por WhatsApp como código de acceso,
             Meta exige una plantilla de categoría <strong>autenticación</strong>.
           </p>
@@ -613,18 +658,16 @@ function EmitEventForm({ data, set }: { data: Record<string, any>; set: (p: Reco
         <div className="space-y-1.5">
           {fields.map((field, index) => (
             <div key={index} className="flex gap-1.5">
-              <Input className="w-28 text-xs" value={field.key} placeholder="clave" onChange={(e) => set({ fields: fields.map((f, i) => (i === index ? { ...f, key: e.target.value } : f)) })} />
-              <Input className="flex-1 text-xs" value={field.value} placeholder="{{vars.x}}" onChange={(e) => set({ fields: fields.map((f, i) => (i === index ? { ...f, value: e.target.value } : f)) })} />
-              <Button variant="ghost" size="sm" onClick={() => set({ fields: fields.filter((_, i) => i !== index) })}>
-                <Trash2 className="size-3.5" />
-              </Button>
+              <Input className="w-28" value={field.key} placeholder="clave" onChange={(e) => set({ fields: fields.map((f, i) => (i === index ? { ...f, key: e.target.value } : f)) })} />
+              <Input className="flex-1" value={field.value} placeholder="{{vars.x}}" onChange={(e) => set({ fields: fields.map((f, i) => (i === index ? { ...f, value: e.target.value } : f)) })} />
+              <RemoveButton onClick={() => set({ fields: fields.filter((_, i) => i !== index) })} />
             </div>
           ))}
           <Button variant="outline" size="sm" className="w-full" onClick={() => set({ fields: [...fields, { key: "", value: "" }] })}>
             <Plus className="size-3.5 mr-1" /> Agregar dato
           </Button>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           Llega como evento <code>flow.custom</code> a los webhooks configurados en Desarrolladores.
         </p>
       </div>
@@ -649,9 +692,7 @@ function ButtonsForm({ data, set }: { data: Record<string, any>; set: (p: Record
                 maxLength={20}
                 onChange={(e) => set({ buttons: buttons.map((b, i) => (i === index ? { title: e.target.value } : b)) })}
               />
-              <Button variant="ghost" size="sm" onClick={() => set({ buttons: buttons.filter((_, i) => i !== index) })}>
-                <Trash2 className="size-3.5" />
-              </Button>
+              <RemoveButton onClick={() => set({ buttons: buttons.filter((_, i) => i !== index) })} />
             </div>
           ))}
           {buttons.length < 3 && (
@@ -681,7 +722,7 @@ function ListForm({ data, set }: { data: Record<string, any>; set: (p: Record<st
         <FieldLabel>Opciones (máx 10)</FieldLabel>
         <div className="space-y-2">
           {rows.map((row, index) => (
-            <div key={index} className="border rounded-md p-2 space-y-1">
+            <div key={index} className="rounded-xl border p-2 space-y-1">
               <div className="flex gap-1.5">
                 <Input
                   value={row.title}
@@ -689,9 +730,7 @@ function ListForm({ data, set }: { data: Record<string, any>; set: (p: Record<st
                   placeholder="Título (24)"
                   onChange={(e) => set({ rows: rows.map((r, i) => (i === index ? { ...r, title: e.target.value } : r)) })}
                 />
-                <Button variant="ghost" size="sm" onClick={() => set({ rows: rows.filter((_, i) => i !== index) })}>
-                  <Trash2 className="size-3.5" />
-                </Button>
+                <RemoveButton onClick={() => set({ rows: rows.filter((_, i) => i !== index) })} />
               </div>
               <Input
                 value={row.description ?? ""}
@@ -715,6 +754,12 @@ function ListForm({ data, set }: { data: Record<string, any>; set: (p: Record<st
   );
 }
 
+const TEMPLATE_VARIABLE_SOURCES = [
+  { value: "static", label: "Texto fijo" },
+  { value: "contact_field", label: "Campo del contacto" },
+  { value: "flow_var", label: "Variable del flujo" },
+];
+
 function TemplateForm({ data, set, refs }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs }) {
   const approved = refs.templates.filter((t) => t.status === "approved");
   const selected = approved.find((t) => t.id === data.templateId);
@@ -733,18 +778,15 @@ function TemplateForm({ data, set, refs }: { data: Record<string, any>; set: (p:
       {placeholders.map((placeholder) => {
         const entry = variables[placeholder] ?? { source: "static", value: "" };
         return (
-          <div key={placeholder} className="border rounded-md p-2 space-y-1">
+          <div key={placeholder} className="rounded-xl border p-2 space-y-1">
             <FieldLabel>{placeholder}</FieldLabel>
             <div className="flex gap-1.5">
-              <select
-                className="h-9 rounded-md border bg-background px-2 text-xs"
+              <SimpleSelect
+                className="w-36"
                 value={entry.source ?? "static"}
-                onChange={(e) => set({ variables: { ...variables, [placeholder]: { ...entry, source: e.target.value } } })}
-              >
-                <option value="static">Texto fijo</option>
-                <option value="contact_field">Campo del contacto</option>
-                <option value="flow_var">Variable del flujo</option>
-              </select>
+                options={TEMPLATE_VARIABLE_SOURCES}
+                onChange={(value) => set({ variables: { ...variables, [placeholder]: { ...entry, source: value } } })}
+              />
               <Input
                 className="flex-1"
                 value={entry.value ?? ""}
@@ -755,7 +797,7 @@ function TemplateForm({ data, set, refs }: { data: Record<string, any>; set: (p:
           </div>
         );
       })}
-      <p className="text-[11px] text-muted-foreground">Es el único nodo que reabre la ventana de 24 h.</p>
+      <p className="text-xs text-muted-foreground">Es el único nodo que reabre la ventana de 24 h.</p>
     </>
   );
 }
@@ -829,9 +871,7 @@ function AiRouteForm({ data, set, refs }: { data: Record<string, any>; set: (p: 
                 placeholder="Descripción"
                 onChange={(e) => set({ options: options.map((o, i) => (i === index ? { ...o, label: e.target.value } : o)) })}
               />
-              <Button variant="ghost" size="sm" onClick={() => set({ options: options.filter((_, i) => i !== index) })}>
-                <Trash2 className="size-3.5" />
-              </Button>
+              <RemoveButton onClick={() => set({ options: options.filter((_, i) => i !== index) })} />
             </div>
           ))}
           {options.length < 6 && (
@@ -840,7 +880,7 @@ function AiRouteForm({ data, set, refs }: { data: Record<string, any>; set: (p: 
             </Button>
           )}
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1">Conectá siempre la salida "No se pudo clasificar".</p>
+        <p className="text-xs text-muted-foreground mt-1">Conectá siempre la salida "No se pudo clasificar".</p>
       </div>
     </>
   );
@@ -860,7 +900,7 @@ function AssignForm({ data, set, refs }: { data: Record<string, any>; set: (p: R
         onChange={(value) => set({ mode: value })}
       />
       {data.mode === "round_robin" && (
-        <p className="text-[11px] text-muted-foreground -mt-2">
+        <p className="text-xs text-muted-foreground -mt-2">
           Reparte parejo entre los agentes disponibles con acceso al número, en orden rotativo.
           A diferencia de "menos ocupado", no depende de cuántas conversaciones tenga abiertas cada uno.
         </p>
@@ -901,6 +941,14 @@ function LabelForm({ data, set, refs }: { data: Record<string, any>; set: (p: Re
   );
 }
 
+const CONTACT_FIELDS = [
+  { value: "name", label: "Nombre" },
+  { value: "email", label: "Email" },
+  { value: "company", label: "Empresa" },
+  { value: "notes", label: "Notas (agrega)" },
+  { value: "custom", label: "Personalizado" },
+];
+
 function UpdateContactForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
   const fields: Array<{ field: string; value: string }> = Array.isArray(data.fields) ? data.fields : [];
   return (
@@ -909,20 +957,15 @@ function UpdateContactForm({ data, set }: { data: Record<string, any>; set: (p: 
       <div className="space-y-1.5">
         {fields.map((entry, index) => (
           <div key={index} className="flex gap-1.5">
-            <select
-              className="h-9 rounded-md border bg-background px-2 text-xs w-32"
+            <SimpleSelect
+              className="w-32"
               value={entry.field?.startsWith("custom.") ? "custom" : entry.field}
-              onChange={(e) => {
-                const value = e.target.value === "custom" ? "custom." : e.target.value;
+              options={CONTACT_FIELDS}
+              onChange={(selected) => {
+                const value = selected === "custom" ? "custom." : selected;
                 set({ fields: fields.map((f, i) => (i === index ? { ...f, field: value } : f)) });
               }}
-            >
-              <option value="name">Nombre</option>
-              <option value="email">Email</option>
-              <option value="company">Empresa</option>
-              <option value="notes">Notas (agrega)</option>
-              <option value="custom">Personalizado</option>
-            </select>
+            />
             {entry.field?.startsWith("custom.") && (
               <Input
                 className="w-24"
@@ -937,9 +980,7 @@ function UpdateContactForm({ data, set }: { data: Record<string, any>; set: (p: 
               placeholder="{{vars.x}}"
               onChange={(e) => set({ fields: fields.map((f, i) => (i === index ? { ...f, value: e.target.value } : f)) })}
             />
-            <Button variant="ghost" size="sm" onClick={() => set({ fields: fields.filter((_, i) => i !== index) })}>
-              <Trash2 className="size-3.5" />
-            </Button>
+            <RemoveButton onClick={() => set({ fields: fields.filter((_, i) => i !== index) })} />
           </div>
         ))}
         <Button variant="outline" size="sm" className="w-full" onClick={() => set({ fields: [...fields, { field: "name", value: "" }] })}>
@@ -957,6 +998,18 @@ const CONDITION_SOURCES = [
   { value: "contact.company", label: "Empresa del contacto" },
   { value: "__schedule__", label: "Horario / día" },
   { value: "__custom__", label: "Variable (escribir path)" },
+];
+
+const CONDITION_OPERATORS = [
+  { value: "equals", label: "es" },
+  { value: "not_equals", label: "no es" },
+  { value: "contains", label: "contiene" },
+  { value: "not_contains", label: "no contiene" },
+  { value: "starts_with", label: "empieza con" },
+  { value: "gt", label: "mayor que" },
+  { value: "lt", label: "menor que" },
+  { value: "exists", label: "existe" },
+  { value: "not_exists", label: "no existe" },
 ];
 
 function ConditionForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
@@ -980,13 +1033,13 @@ function ConditionForm({ data, set }: { data: Record<string, any>; set: (p: Reco
           const isSchedule = rule.op === "in_schedule";
           const sourceKind = isSchedule ? "__schedule__" : CONDITION_SOURCES.some((s) => s.value === rule.left) ? rule.left : "__custom__";
           return (
-            <div key={index} className="border rounded-md p-2 space-y-1.5">
+            <div key={index} className="rounded-xl border p-2 space-y-1.5">
               <div className="flex gap-1.5">
-                <select
-                  className="flex-1 h-8 rounded-md border bg-background px-2 text-xs"
+                <SimpleSelect
+                  className="flex-1"
                   value={sourceKind}
-                  onChange={(e) => {
-                    const value = e.target.value;
+                  options={CONDITION_SOURCES}
+                  onChange={(value) => {
                     if (value === "__schedule__") {
                       setRule(index, { op: "in_schedule", schedule: rule.schedule ?? { days: [1, 2, 3, 4, 5], from: "09:00", to: "18:00", timezone: "America/Montevideo" } });
                     } else if (value === "__custom__") {
@@ -995,14 +1048,8 @@ function ConditionForm({ data, set }: { data: Record<string, any>; set: (p: Reco
                       setRule(index, { op: rule.op === "in_schedule" ? "contains" : rule.op, left: value });
                     }
                   }}
-                >
-                  {CONDITION_SOURCES.map((source) => (
-                    <option key={source.value} value={source.value}>{source.label}</option>
-                  ))}
-                </select>
-                <Button variant="ghost" size="sm" onClick={() => set({ rules: rules.filter((_, i) => i !== index) })}>
-                  <Trash2 className="size-3.5" />
-                </Button>
+                />
+                <RemoveButton onClick={() => set({ rules: rules.filter((_, i) => i !== index) })} />
               </div>
 
               {isSchedule ? (
@@ -1010,26 +1057,17 @@ function ConditionForm({ data, set }: { data: Record<string, any>; set: (p: Reco
               ) : (
                 <>
                   {sourceKind === "__custom__" && (
-                    <Input className="h-8 text-xs" value={rule.left ?? ""} placeholder="vars.monto / webhook.total" onChange={(e) => setRule(index, { left: e.target.value })} />
+                    <Input value={rule.left ?? ""} placeholder="vars.monto / webhook.total" onChange={(e) => setRule(index, { left: e.target.value })} />
                   )}
                   <div className="flex gap-1.5">
-                    <select
-                      className="h-8 rounded-md border bg-background px-2 text-xs w-32"
+                    <SimpleSelect
+                      className="w-32"
                       value={rule.op ?? "equals"}
-                      onChange={(e) => setRule(index, { op: e.target.value })}
-                    >
-                      <option value="equals">es</option>
-                      <option value="not_equals">no es</option>
-                      <option value="contains">contiene</option>
-                      <option value="not_contains">no contiene</option>
-                      <option value="starts_with">empieza con</option>
-                      <option value="gt">mayor que</option>
-                      <option value="lt">menor que</option>
-                      <option value="exists">existe</option>
-                      <option value="not_exists">no existe</option>
-                    </select>
+                      options={CONDITION_OPERATORS}
+                      onChange={(value) => setRule(index, { op: value })}
+                    />
                     {!["exists", "not_exists"].includes(rule.op) && (
-                      <Input className="h-8 text-xs flex-1" value={rule.value ?? ""} onChange={(e) => setRule(index, { value: e.target.value })} />
+                      <Input className="flex-1" value={rule.value ?? ""} onChange={(e) => setRule(index, { value: e.target.value })} />
                     )}
                   </div>
                 </>
@@ -1058,7 +1096,7 @@ function ScheduleEditor({ rule, onChange }: { rule: Record<string, any>; onChang
             key={day}
             type="button"
             className={cn(
-              "size-6 rounded text-[11px] font-medium",
+              "size-8 rounded-md text-xs font-medium md:size-7",
               days.includes(day) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
             )}
             onClick={() =>
@@ -1070,29 +1108,28 @@ function ScheduleEditor({ rule, onChange }: { rule: Record<string, any>; onChang
         ))}
       </div>
       <div className="flex items-center gap-1.5">
-        <Input type="time" className="h-8 text-xs" value={schedule.from} onChange={(e) => onChange({ schedule: { ...schedule, from: e.target.value } })} />
+        <Input type="time" value={schedule.from} onChange={(e) => onChange({ schedule: { ...schedule, from: e.target.value } })} />
         <span className="text-xs text-muted-foreground">a</span>
-        <Input type="time" className="h-8 text-xs" value={schedule.to} onChange={(e) => onChange({ schedule: { ...schedule, to: e.target.value } })} />
+        <Input type="time" value={schedule.to} onChange={(e) => onChange({ schedule: { ...schedule, to: e.target.value } })} />
       </div>
-      <Input className="h-8 text-xs" value={schedule.timezone} placeholder="America/Montevideo" onChange={(e) => onChange({ schedule: { ...schedule, timezone: e.target.value } })} />
+      <Input value={schedule.timezone} placeholder="America/Montevideo" onChange={(e) => onChange({ schedule: { ...schedule, timezone: e.target.value } })} />
     </div>
   );
 }
+
+const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"].map((method) => ({ value: method, label: method }));
 
 function HttpForm({ data, set, refs }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs }) {
   const headers: Array<{ name: string; value: string }> = Array.isArray(data.headers) ? data.headers : [];
   return (
     <>
       <div className="flex gap-1.5">
-        <select
-          className="h-9 rounded-md border bg-background px-2 text-sm w-24"
+        <SimpleSelect
+          className="w-24"
           value={data.method ?? "GET"}
-          onChange={(e) => set({ method: e.target.value })}
-        >
-          {["GET", "POST", "PUT", "PATCH", "DELETE"].map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
+          options={HTTP_METHODS}
+          onChange={(value) => set({ method: value })}
+        />
         <Input className="flex-1" value={data.url ?? ""} placeholder="https://api…" onChange={(e) => set({ url: e.target.value })} />
       </div>
       <SelectField
@@ -1107,18 +1144,16 @@ function HttpForm({ data, set, refs }: { data: Record<string, any>; set: (p: Rec
         <div className="space-y-1.5">
           {headers.map((header, index) => (
             <div key={index} className="flex gap-1.5">
-              <Input className="w-32 text-xs" value={header.name} placeholder="Header" onChange={(e) => set({ headers: headers.map((h, i) => (i === index ? { ...h, name: e.target.value } : h)) })} />
-              <Input className="flex-1 text-xs" value={header.value} placeholder="Valor" onChange={(e) => set({ headers: headers.map((h, i) => (i === index ? { ...h, value: e.target.value } : h)) })} />
-              <Button variant="ghost" size="sm" onClick={() => set({ headers: headers.filter((_, i) => i !== index) })}>
-                <Trash2 className="size-3.5" />
-              </Button>
+              <Input className="w-32" value={header.name} placeholder="Header" onChange={(e) => set({ headers: headers.map((h, i) => (i === index ? { ...h, name: e.target.value } : h)) })} />
+              <Input className="flex-1" value={header.value} placeholder="Valor" onChange={(e) => set({ headers: headers.map((h, i) => (i === index ? { ...h, value: e.target.value } : h)) })} />
+              <RemoveButton onClick={() => set({ headers: headers.filter((_, i) => i !== index) })} />
             </div>
           ))}
           <Button variant="outline" size="sm" className="w-full" onClick={() => set({ headers: [...headers, { name: "", value: "" }] })}>
             <Plus className="size-3.5 mr-1" /> Agregar header
           </Button>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1">No pegues tokens acá: usá una Conexión.</p>
+        <p className="text-xs text-muted-foreground mt-1">No pegues tokens acá: usá una Conexión.</p>
       </div>
       <SelectField
         label="Body"
@@ -1134,7 +1169,7 @@ function HttpForm({ data, set, refs }: { data: Record<string, any>; set: (p: Rec
       )}
       <SaveAsField data={data} set={set} label="Guardar respuesta como variable" />
       {data.saveAs ? (
-        <p className="text-[11px] text-muted-foreground -mt-2">
+        <p className="text-xs text-muted-foreground -mt-2">
           Después usá {`{{vars.${data.saveAs}.status}}`} y {`{{vars.${data.saveAs}.body.<campo>}}`}
         </p>
       ) : null}
@@ -1154,6 +1189,7 @@ function usesVariables(type: string): boolean {
 }
 
 function WhatsAppPreview({ node }: { node: FlowNode }) {
+  const { t } = useTranslations();
   const data = node.data as Record<string, any>;
   const body = String(data.body ?? "");
   const buttons: Array<{ title: string }> =
@@ -1162,34 +1198,33 @@ function WhatsAppPreview({ node }: { node: FlowNode }) {
 
   return (
     <div>
-      <FieldLabel>Vista previa</FieldLabel>
-      <div className="rounded-lg p-3" style={{ background: "#e5ddd5" }}>
-        <div
-          className="rounded-lg px-3 py-2 text-[13px] leading-snug max-w-full text-neutral-900 shadow-sm"
-          style={{ background: "var(--asis-bubble-outbound, #DBEAFE)" }}
-        >
+      <FieldLabel>{t.flows.nodePreview}</FieldLabel>
+      {/* Reproduce la burbuja del chat: usa los tokens `--asis-*`, la excepción
+          de paleta que el sistema reserva para el lenguaje de WhatsApp. */}
+      <div className="rounded-xl bg-[var(--asis-surface-panel)] p-3 ring-1 ring-foreground/10">
+        <div className="max-w-full rounded-xl bg-[var(--asis-bubble-outbound)] px-3 py-2 text-sm leading-snug text-foreground shadow-sm">
           <p className="whitespace-pre-wrap break-words">
             {body.split(/(\{\{[^}]+\}\})/g).map((part, index) =>
               part.startsWith("{{") ? (
-                <span key={index} className="text-teal-700 font-medium">{part}</span>
+                <span key={index} className="font-medium text-primary">{part}</span>
               ) : (
                 <span key={index}>{part}</span>
               ),
             ) || "…"}
           </p>
-          {data.footer ? <p className="text-[11px] text-neutral-500 mt-1">{String(data.footer)}</p> : null}
+          {data.footer ? <p className="mt-1 text-xs text-muted-foreground">{String(data.footer)}</p> : null}
         </div>
         {buttons.length > 0 && (
           <div className="mt-1.5 space-y-1">
             {buttons.map((button, index) => (
-              <div key={index} className="bg-white rounded-lg py-1.5 text-center text-[13px] text-sky-600 shadow-sm">
+              <div key={index} className="rounded-xl bg-[var(--asis-bubble-inbound)] py-1.5 text-center text-sm text-primary shadow-sm">
                 {button.title || `Botón ${index + 1}`}
               </div>
             ))}
           </div>
         )}
         {isList && (
-          <div className="mt-1.5 bg-white rounded-lg py-1.5 text-center text-[13px] text-sky-600 shadow-sm">
+          <div className="mt-1.5 rounded-xl bg-[var(--asis-bubble-inbound)] py-1.5 text-center text-sm text-primary shadow-sm">
             ≡ {String(data.buttonText || "Ver opciones")}
           </div>
         )}

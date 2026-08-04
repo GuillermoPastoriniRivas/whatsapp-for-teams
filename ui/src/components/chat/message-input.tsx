@@ -5,6 +5,7 @@ import { useMessageStore } from "@/stores/message.store";
 import { uploadMedia } from "@/stores/media.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { ApiError } from "@/lib/api";
+import { toast } from "@/lib/toast";
 import { ACCEPTED_UPLOAD_TYPES, validateUpload } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -79,7 +80,7 @@ export function MessageInput({ conversationId }: Props) {
       const message =
         error instanceof ApiError ? error.message : (error as Error)?.message || t.chat.sendError;
       if (attachment) setAttachmentError(message);
-      else alert(message);
+      else toast.error(message);
     } finally {
       setSending(false);
       // Mantener el teclado abierto para seguir escribiendo
@@ -137,7 +138,7 @@ export function MessageInput({ conversationId }: Props) {
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         className={cn(
-          "flex shrink-0 items-center gap-2 bg-[var(--asis-surface-header)] px-4 py-3 sm:px-6 w-full shadow-sm z-10 transition-colors duration-200 border-t border-border",
+          "flex shrink-0 items-center gap-2 bg-[var(--asis-surface-header)] px-4 py-3 sm:px-6 w-full shadow-sm z-(--z-sticky) transition-colors duration-200 border-t border-border",
           dragging && "bg-primary/10 ring-2 ring-inset ring-primary/40"
         )}
       >
@@ -152,7 +153,7 @@ export function MessageInput({ conversationId }: Props) {
           }}
         />
 
-        <Button variant="ghost" size="icon" className="shrink-0 text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:bg-white/5 rounded-full h-10 w-10">
+        <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-full h-10 w-10">
           <Smile className="h-[22px] w-[22px]" />
         </Button>
 
@@ -162,7 +163,7 @@ export function MessageInput({ conversationId }: Props) {
               variant="ghost"
               size="icon"
               aria-label="Adjuntar archivo"
-              className="shrink-0 text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:bg-white/5 rounded-full h-10 w-10 mr-1"
+              className="shrink-0 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-full h-10 w-10 mr-1"
             >
               <Paperclip className="h-[22px] w-[22px]" />
             </Button>
@@ -179,7 +180,7 @@ export function MessageInput({ conversationId }: Props) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="flex-1 bg-white dark:bg-secondary flex items-center rounded-[24px] px-4 py-1 border border-transparent focus-within:border-primary/30 shadow-sm transition-all">
+        <div className="flex-1 bg-background dark:bg-secondary flex items-center rounded-full px-4 py-1 border border-transparent focus-within:border-primary/30 shadow-sm transition-all">
           <Input
             ref={inputRef}
             value={text}
@@ -187,13 +188,13 @@ export function MessageInput({ conversationId }: Props) {
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder={attachment ? "Agregá un texto (opcional)" : t.chat.typePlaceholder}
-            className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 shadow-none bg-transparent h-[38px] text-base md:text-[15px]"
+            className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 shadow-none bg-transparent h-[38px] text-base"
           />
         </div>
 
         <Button
           size="icon"
-          className="shrink-0 bg-primary hover:bg-primary/90 text-white rounded-full h-10 w-10 ml-1 shadow-sm transition-transform active:scale-95"
+          className="shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-10 w-10 ml-1 shadow-sm transition-transform active:scale-95"
           onClick={handleSend}
           // Que tocar el botón no le robe el focus al input (cerraría el teclado)
           onMouseDown={(e) => e.preventDefault()}

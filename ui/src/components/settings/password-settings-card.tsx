@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Loader2 } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
+import { Spinner } from "@/components/ui/spinner";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
@@ -93,13 +96,7 @@ export function PasswordSettingsCard() {
         {open && (
           <form onSubmit={handleSubmit} className="space-y-3">
             {hasPassword && (
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="currentPassword"
-                  className="text-sm font-medium text-foreground"
-                >
-                  {t.settings.passwordCurrent}
-                </label>
+              <Field label={t.settings.passwordCurrent}>
                 <Input
                   id="currentPassword"
                   name="currentPassword"
@@ -108,13 +105,10 @@ export function PasswordSettingsCard() {
                   placeholder="••••••••"
                   required
                 />
-              </div>
+              </Field>
             )}
 
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="text-sm font-medium text-foreground">
-                {t.settings.passwordNew}
-              </label>
+            <Field label={t.settings.passwordNew} hint={t.settings.passwordRules}>
               <Input
                 id="password"
                 name="password"
@@ -125,16 +119,9 @@ export function PasswordSettingsCard() {
                 required
                 autoFocus
               />
-              <p className="text-xs text-muted-foreground">{t.settings.passwordRules}</p>
-            </div>
+            </Field>
 
-            <div className="space-y-1.5">
-              <label
-                htmlFor="repeatPassword"
-                className="text-sm font-medium text-foreground"
-              >
-                {t.settings.passwordRepeat}
-              </label>
+            <Field label={t.settings.passwordRepeat}>
               <Input
                 id="repeatPassword"
                 name="repeatPassword"
@@ -144,13 +131,13 @@ export function PasswordSettingsCard() {
                 minLength={8}
                 required
               />
-            </div>
+            </Field>
 
-            {error && <p className="text-destructive text-xs">{error}</p>}
+            {error && <InlineNotice variant="error">{error}</InlineNotice>}
 
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={busy}>
-                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {busy && <Spinner size="sm" className="mr-2" />}
                 {busy
                   ? t.settings.passwordSaving
                   : hasPassword

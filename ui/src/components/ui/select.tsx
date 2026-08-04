@@ -24,13 +24,29 @@ interface SimpleSelectProps {
   placeholder?: string
   disabled?: boolean
   className?: string
+  /** Reenviados al disparador para que `Field` pueda etiquetarlo y marcarle el error. */
+  id?: string
+  "aria-invalid"?: boolean
+  "aria-describedby"?: string
+  "aria-label"?: string
 }
 
 /**
  * Lightweight select built on the existing DropdownMenu — enough for
  * short option lists (phone numbers, languages, contact fields).
  */
-function SimpleSelect({ value, onChange, options, placeholder, disabled, className }: SimpleSelectProps) {
+function SimpleSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled,
+  className,
+  id,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
+  "aria-label": ariaLabel,
+}: SimpleSelectProps) {
   const selected = options.find((o) => o.value === value)
   return (
     <DropdownMenu>
@@ -39,6 +55,10 @@ function SimpleSelect({ value, onChange, options, placeholder, disabled, classNa
           type="button"
           variant="outline"
           data-slot="simple-select"
+          id={id}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedBy}
+          aria-label={ariaLabel}
           className={cn("w-full justify-between font-normal", !selected && "text-muted-foreground", className)}
         >
           <span className="truncate">{selected?.label ?? placeholder ?? ""}</span>

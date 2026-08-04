@@ -1,16 +1,22 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, User, Phone, Mail, Building2, Loader2, Upload } from "lucide-react";
+import { Search, User, Phone, Building2, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingState } from "@/components/ui/spinner";
+import { Pagination } from "@/components/ui/pagination";
+import { PageShell, PageContent } from "@/components/layout/page-shell";
+import { PageHeader } from "@/components/layout/page-header";
 import { ContactFields } from "@/components/chat/contact-fields";
 import { RightPanel } from "@/components/layout/right-panel";
 import { CsvImportPanel } from "@/components/contacts/csv-import-panel";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { useAuthStore } from "@/stores/auth.store";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import type { Contact, PaginatedResponse } from "@/types";
 
 export default function ContactsPage() {
@@ -66,14 +72,13 @@ export default function ContactsPage() {
   };
 
   return (
-    <div className="h-full flex">
+    <div className="flex h-full">
       {/* Contact list column */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <div className="border-b px-4 py-3 md:px-6">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h1 className="text-xl font-bold">{t.contacts.title}</h1>
-            {agent?.role === "admin" && (
+      <PageShell className="min-w-0 flex-1">
+        <PageHeader
+          title={t.contacts.title}
+          actions={
+            agent?.role === "admin" && (
               <Button
                 variant="outline"
                 size="sm"
@@ -85,10 +90,11 @@ export default function ContactsPage() {
                 <Upload className="size-4" />
                 {t.contacts.import}
               </Button>
-            )}
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            )
+          }
+        >
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={t.contacts.searchPlaceholder}
               value={search}
@@ -96,21 +102,17 @@ export default function ContactsPage() {
               className="pl-9"
             />
           </div>
-        </div>
+        </PageHeader>
 
-        {/* Contact List */}
-        <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        {/* Contact list — full-bleed rows, so the shell padding is dropped */}
+        <PageContent className="p-0 pb-20 md:p-0 md:pb-0">
           {loading && contacts.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            <LoadingState />
           ) : contacts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <User className="h-12 w-12 mb-2 opacity-40" />
-              <p className="text-sm">
-                {search ? t.contacts.noResults : t.contacts.noContacts}
-              </p>
-            </div>
+            <EmptyState
+              icon={User}
+              title={search ? t.contacts.noResults : t.contacts.noContacts}
+            />
           ) : (
             <>
               <ul className="divide-y">
@@ -124,32 +126,31 @@ export default function ContactsPage() {
                           selected?.id === contact.id ? null : contact
                         );
                       }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 md:px-6 hover:bg-muted/50 transition-colors text-left ${
-                        selected?.id === contact.id
-                          ? "bg-primary/5"
-                          : ""
-                      }`}
+                      className={cn(
+                        "flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 md:px-6",
+                        selected?.id === contact.id && "bg-primary/5"
+                      )}
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-                        <User className="h-5 w-5 text-slate-500" />
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
+                        <User className="size-5 text-muted-foreground" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
                           {contact.name}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="truncate text-xs text-muted-foreground">
                           +{contact.waId || contact.phone}
                         </p>
                       </div>
-                      <div className="hidden sm:flex items-center gap-2 shrink-0">
+                      <div className="hidden shrink-0 items-center gap-2 sm:flex">
                         {contact.company && (
-                          <Badge variant="secondary" className="text-xs gap-1">
-                            <Building2 className="h-3 w-3" />
+                          <Badge variant="secondary" className="gap-1">
+                            <Building2 className="size-3" />
                             {contact.company}
                           </Badge>
                         )}
                         {contact.email && (
-                          <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                          <span className="max-w-[180px] truncate text-xs text-muted-foreground">
                             {contact.email}
                           </span>
                         )}
@@ -159,36 +160,16 @@ export default function ContactsPage() {
                 ))}
               </ul>
 
-              {/* Pagination */}
-              {meta.pages > 1 && (
-                <div className="flex items-center justify-center gap-2 py-4 border-t">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page <= 1}
-                    className="px-4 py-2.5 md:py-1.5 text-sm rounded-md border disabled:opacity-40 hover:bg-muted transition-colors"
-                  >
-                    {t.contacts.previous}
-                  </button>
-                  <span className="text-sm text-muted-foreground">
-                    {meta.page} / {meta.pages}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPage((p) => Math.min(meta.pages, p + 1))
-                    }
-                    disabled={page >= meta.pages}
-                    className="px-4 py-2.5 md:py-1.5 text-sm rounded-md border disabled:opacity-40 hover:bg-muted transition-colors"
-                  >
-                    {t.contacts.next}
-                  </button>
-                </div>
-              )}
+              <Pagination
+                page={meta.page}
+                pages={meta.pages}
+                onPageChange={setPage}
+                className="border-t pb-4"
+              />
             </>
           )}
-        </div>
-      </div>
+        </PageContent>
+      </PageShell>
 
       {/* Contact detail / import side panel */}
       <RightPanel
@@ -203,25 +184,25 @@ export default function ContactsPage() {
         )}
         {selected && (
           <>
-            <div className="bg-[var(--asis-surface-header)] pt-8 pb-6 flex flex-col items-center">
-              <div className="h-20 w-20 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 mb-3">
-                <User className="h-10 w-10" />
+            <div className="flex flex-col items-center bg-[var(--asis-surface-header)] pb-6 pt-8">
+              <div className="mb-3 flex size-20 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <User className="size-10" />
               </div>
-              <h2 className="text-lg font-semibold text-center px-4">
+              <h2 className="px-4 text-center text-base font-semibold">
                 {selected.name}
               </h2>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="mt-1 text-sm text-muted-foreground">
                 +{selected.waId || selected.phone}
               </p>
             </div>
 
-            <div className="p-4 space-y-4">
+            <div className="space-y-4 p-4">
               <div className="space-y-3">
-                <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {t.contacts.contactInfo}
                 </h3>
                 <div className="flex items-center gap-3 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Phone className="size-4 shrink-0 text-muted-foreground" />
                   <span>+{selected.waId || selected.phone}</span>
                 </div>
                 <ContactFields
@@ -242,10 +223,10 @@ export default function ContactsPage() {
                 <>
                   <div className="border-t" />
                   <div className="space-y-2">
-                    <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {t.contacts.notes}
                     </h3>
-                    <p className="text-sm whitespace-pre-wrap">
+                    <p className="whitespace-pre-wrap text-sm">
                       {selected.notes}
                     </p>
                   </div>
@@ -253,7 +234,7 @@ export default function ContactsPage() {
               )}
 
               {selected.lastSeenAt && (
-                <p className="text-xs text-muted-foreground pt-2">
+                <p className="pt-2 text-xs text-muted-foreground">
                   {t.contacts.lastSeen}:{" "}
                   {new Date(selected.lastSeenAt).toLocaleString()}
                 </p>

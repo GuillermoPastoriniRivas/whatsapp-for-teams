@@ -16,7 +16,7 @@ export function NodePalette({ onAdd }: { onAdd: (nodeType: string) => void }) {
     <div className="w-56 shrink-0 border-r bg-background h-full min-h-0 overflow-y-auto p-3 space-y-4">
       {CATEGORY_ORDER.map((category) => (
         <div key={category}>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5">
             {CATEGORY_LABELS[category]}
           </p>
           <div className="space-y-1">

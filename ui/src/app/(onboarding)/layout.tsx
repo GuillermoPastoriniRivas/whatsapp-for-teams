@@ -7,7 +7,7 @@ export default function OnboardingLayout({
 }) {
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-background">{children}</div>
+      <div className="min-h-dvh bg-background">{children}</div>
     </AuthProvider>
   );
 }

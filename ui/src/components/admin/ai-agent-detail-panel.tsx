@@ -1,13 +1,22 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { Bot, Plus, Send, Trash2 } from "lucide-react";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Field } from "@/components/ui/field";
+import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
-import { Bot, Save, Trash2, Send, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useTranslations } from "@/lib/i18n/use-translations";
+import { AI_LANGUAGES, useVerticals } from "./verticals";
 import type {
   AiAgentWithConfig, BusinessHours, BusinessHoursRange, WeekDay,
   BusinessVertical, CatalogItem, FaqEntry,
@@ -19,27 +28,8 @@ interface Props {
   onDeleted: () => void;
 }
 
-const verticals: { value: BusinessVertical; label: string; catalogLabel: string }[] = [
-  { value: "beauty", label: "Estética y belleza", catalogLabel: "Servicios y precios" },
-  { value: "food", label: "Gastronomía", catalogLabel: "Menú y precios" },
-  { value: "retail", label: "Tienda", catalogLabel: "Productos y precios" },
-  { value: "generic", label: "Otro negocio", catalogLabel: "Productos / servicios y precios" },
-];
-
-const languages = [
-  { value: "es", label: "Español" },
-  { value: "en", label: "English" },
-  { value: "pt", label: "Português" },
-];
-
-const WEEK_DAYS: { key: WeekDay; label: string }[] = [
-  { key: "monday", label: "Lunes" },
-  { key: "tuesday", label: "Martes" },
-  { key: "wednesday", label: "Miércoles" },
-  { key: "thursday", label: "Jueves" },
-  { key: "friday", label: "Viernes" },
-  { key: "saturday", label: "Sábado" },
-  { key: "sunday", label: "Domingo" },
+const WEEK_DAYS: WeekDay[] = [
+  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
 ];
 
 const COMMON_TIMEZONES = [
@@ -66,17 +56,17 @@ function emptyBusinessHours(): Record<WeekDay, BusinessHoursRange | null> {
 function hydrateBusinessHours(bh: BusinessHours | null | undefined): Record<WeekDay, BusinessHoursRange | null> {
   const base = emptyBusinessHours();
   if (!bh) return base;
-  for (const d of WEEK_DAYS) {
-    const v = bh[d.key];
+  for (const day of WEEK_DAYS) {
+    const v = bh[day];
     if (v && typeof v.open === "string" && typeof v.close === "string") {
-      base[d.key] = { open: v.open, close: v.close };
+      base[day] = { open: v.open, close: v.close };
     }
   }
   return base;
 }
 
 function hasAnyHours(bh: Record<WeekDay, BusinessHoursRange | null>): boolean {
-  return WEEK_DAYS.some((d) => bh[d.key] !== null);
+  return WEEK_DAYS.some((day) => bh[day] !== null);
 }
 
 interface PlaygroundMessage {
@@ -84,7 +74,61 @@ interface PlaygroundMessage {
   content: string;
 }
 
+/** Interruptor de la app: no hay `Switch` en el sistema todavía. */
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onChange}
+      className={cn(
+        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+        checked ? "bg-primary" : "bg-muted"
+      )}
+    >
+      <span
+        className={cn(
+          "pointer-events-none inline-block size-4 rounded-full bg-background shadow-sm transition-transform",
+          checked ? "translate-x-4" : "translate-x-0"
+        )}
+      />
+    </button>
+  );
+}
+
+/** Chip seleccionable: idioma, trato, emojis. */
+function ChoiceChip({
+  selected,
+  onClick,
+  children,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onClick}
+      className={cn(
+        "rounded-md border px-3 py-1.5 text-xs transition-colors",
+        selected ? "border-primary bg-primary/10" : "hover:bg-muted/50"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
+  const { t } = useTranslations();
+  const confirm = useConfirm();
+  const verticals = useVerticals();
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -126,6 +170,16 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const selectedVertical = verticals.find((v) => v.value === vertical) ?? verticals[3];
+
+  const dayLabels: Record<WeekDay, string> = {
+    monday: t.agents.monday,
+    tuesday: t.agents.tuesday,
+    wednesday: t.agents.wednesday,
+    thursday: t.agents.thursday,
+    friday: t.agents.friday,
+    saturday: t.agents.saturday,
+    sunday: t.agents.sunday,
+  };
 
   // Reset state when agent changes
   useEffect(() => {
@@ -198,8 +252,8 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
       payload.timezone = timezone.trim() ? timezone.trim() : null;
       if (hoursEnabled && hasAnyHours(hours)) {
         const bh: BusinessHours = {};
-        for (const d of WEEK_DAYS) {
-          bh[d.key] = hours[d.key];
+        for (const day of WEEK_DAYS) {
+          bh[day] = hours[day];
         }
         payload.businessHours = bh;
       } else {
@@ -207,23 +261,28 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
       }
 
       await api.patch(`/ai-agents/${agent.id}`, payload);
-      setSuccess("Guardado");
+      setSuccess(t.agents.aiSaved);
       onUpdated();
     } catch (err: any) {
-      setError(err.message || "No se pudo guardar");
+      setError(err.message || t.agents.saveError);
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm("¿Seguro que querés eliminar este asistente?")) return;
+    const ok = await confirm({
+      title: t.agents.confirmDeleteAi,
+      confirmLabel: t.common.delete,
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       await api.delete(`/ai-agents/${agent.id}`);
       onDeleted();
     } catch (err: any) {
-      setError(err.message || "No se pudo eliminar");
+      setError(err.message || t.agents.deleteError);
     }
   };
 
@@ -246,7 +305,7 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
         .map((b) => ({ role: "assistant" as const, content: b }));
       setChat((prev) => [...prev, ...replies]);
     } catch (err: any) {
-      setChat((prev) => [...prev, { role: "assistant", content: `⚠️ Error: ${err.message}` }]);
+      setChat((prev) => [...prev, { role: "assistant", content: `⚠️ ${err.message}` }]);
     } finally {
       setChatting(false);
     }
@@ -263,22 +322,16 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
   return (
     <>
       {/* Header */}
-      <div className="px-4 pt-6 pb-4 border-b">
+      <div className="border-b px-4 pt-6 pb-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-            <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Bot className="size-5" />
           </div>
-          <div>
-            <h2 className="text-base font-semibold">{agent.name}</h2>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <Badge variant="outline" className="text-[10px] h-5">
-                {selectedVertical.label}
-              </Badge>
-              {businessName && (
-                <Badge variant="secondary" className="text-[10px] h-5">
-                  {businessName}
-                </Badge>
-              )}
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold">{agent.name}</h2>
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+              <Badge variant="outline">{selectedVertical.label}</Badge>
+              {businessName && <Badge variant="secondary">{businessName}</Badge>}
             </div>
           </div>
         </div>
@@ -286,176 +339,160 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
 
       {/* Tabs */}
       <div className="px-4 py-4">
-        <Tabs defaultValue="business" className="w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="business" className="flex-1 text-xs">Negocio</TabsTrigger>
-            <TabsTrigger value="catalog" className="flex-1 text-xs">Catálogo</TabsTrigger>
-            <TabsTrigger value="faqs" className="flex-1 text-xs">Preguntas</TabsTrigger>
-            <TabsTrigger value="behavior" className="flex-1 text-xs">Ajustes</TabsTrigger>
-            <TabsTrigger value="playground" className="flex-1 text-xs">Probar</TabsTrigger>
+        <Tabs defaultValue="business" className="w-full gap-0">
+          <TabsList className="scrollbar-hide w-full justify-start overflow-x-auto">
+            <TabsTrigger value="business">{t.agents.tabBusiness}</TabsTrigger>
+            <TabsTrigger value="catalog">{t.agents.tabCatalog}</TabsTrigger>
+            <TabsTrigger value="faqs">{t.agents.tabFaqs}</TabsTrigger>
+            <TabsTrigger value="behavior">{t.agents.tabBehavior}</TabsTrigger>
+            <TabsTrigger value="playground">{t.agents.tabPlayground}</TabsTrigger>
           </TabsList>
 
           {/* ── Negocio ─────────────────────────────────────────── */}
-          <TabsContent value="business" className="mt-4 space-y-3">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Nombre del asistente</label>
+          <TabsContent value="business" className="mt-4 space-y-4">
+            <Field label={t.agents.aiName}>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Tipo de negocio</label>
-              <div className="grid grid-cols-2 gap-2">
+            </Field>
+            <Field label={t.agents.businessType}>
+              <div role="radiogroup" className="grid grid-cols-2 gap-2">
                 {verticals.map((v) => (
                   <button
                     key={v.value}
                     type="button"
+                    role="radio"
+                    aria-checked={vertical === v.value}
                     onClick={() => setVertical(v.value)}
-                    className={`rounded-lg border p-2 text-left text-xs transition-colors ${
-                      vertical === v.value
-                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
-                        : "hover:bg-muted/50"
-                    }`}
+                    className={cn(
+                      "rounded-xl border p-2 text-left text-xs transition-colors",
+                      vertical === v.value ? "border-primary/40 bg-primary/5" : "hover:bg-muted/50"
+                    )}
                   >
                     {v.label}
                   </button>
                 ))}
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Nombre del negocio</label>
+            </Field>
+            <Field label={t.agents.businessName}>
               <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">¿Qué hace tu negocio?</label>
+            </Field>
+            <Field label={t.agents.businessDescriptionShort}>
               <Input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder='Una frase: "Barbería clásica con cortes y afeitado"'
+                placeholder={t.agents.businessDescriptionShortPlaceholder}
               />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Dirección</label>
+            </Field>
+            <Field label={t.agents.address}>
               <Input value={address} onChange={(e) => setAddress(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Medios de pago</label>
+            </Field>
+            <Field label={t.agents.paymentMethods}>
               <Input
                 value={paymentMethods}
                 onChange={(e) => setPaymentMethods(e.target.value)}
-                placeholder='"Efectivo, débito, Mercado Pago"'
+                placeholder={t.agents.paymentMethodsShortPlaceholder}
               />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Otra información importante (opcional)</label>
+            </Field>
+            <Field label={t.agents.extraNotes}>
               <Textarea
                 value={extraNotes}
                 onChange={(e) => setExtraNotes(e.target.value)}
                 rows={4}
-                placeholder="Cualquier dato extra que el asistente deba saber: promos, políticas de devolución, zonas de envío..."
+                placeholder={t.agents.extraNotesPlaceholder}
               />
-            </div>
+            </Field>
 
-            <hr className="my-1" />
+            <Separator />
 
             {/* Business hours */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-sm font-medium">Horario de atención</label>
-                  <p className="text-xs text-muted-foreground">
-                    Cuando está cerrado, el asistente avisa al cliente el horario de atención.
-                  </p>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{t.agents.businessHours}</p>
+                  <p className="text-xs text-muted-foreground">{t.agents.businessHoursHint}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setHoursEnabled(!hoursEnabled)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                    hoursEnabled ? "bg-violet-600" : "bg-muted"
-                  }`}
-                >
-                  <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                    hoursEnabled ? "translate-x-4" : "translate-x-0"
-                  }`} />
-                </button>
+                <Toggle
+                  checked={hoursEnabled}
+                  onChange={() => setHoursEnabled(!hoursEnabled)}
+                  label={t.agents.businessHours}
+                />
               </div>
 
               {hoursEnabled && (
-                <div className="space-y-3 rounded-lg border p-3 bg-muted/30">
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Zona horaria (IANA)</label>
+                <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
+                  <Field label={t.agents.timezone}>
                     <Input
                       value={timezone}
                       onChange={(e) => setTimezone(e.target.value)}
                       placeholder="America/Montevideo"
                       list="tz-suggestions"
-                      className="text-sm"
                     />
-                    <datalist id="tz-suggestions">
-                      {COMMON_TIMEZONES.map((z) => (
-                        <option key={z} value={z} />
-                      ))}
-                    </datalist>
-                  </div>
+                  </Field>
+                  <datalist id="tz-suggestions">
+                    {COMMON_TIMEZONES.map((z) => (
+                      <option key={z} value={z} />
+                    ))}
+                  </datalist>
 
                   <div className="space-y-1.5">
-                    {WEEK_DAYS.map((d) => {
-                      const range = hours[d.key];
+                    {WEEK_DAYS.map((day) => {
+                      const range = hours[day];
                       const isOpen = range !== null;
                       return (
-                        <div key={d.key} className="flex items-center gap-2">
+                        <div key={day} className="flex items-center gap-2">
                           <button
                             type="button"
+                            aria-pressed={isOpen}
                             onClick={() => {
                               setHours((prev) => ({
                                 ...prev,
-                                [d.key]: isOpen ? null : { open: "09:00", close: "18:00" },
+                                [day]: isOpen ? null : { open: "09:00", close: "18:00" },
                               }));
                             }}
-                            className={`w-20 shrink-0 rounded-md border px-2 py-1 text-xs text-left transition-colors ${
+                            className={cn(
+                              "w-20 shrink-0 rounded-md border px-2 py-1 text-left text-xs transition-colors",
                               isOpen
-                                ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
+                                ? "border-primary bg-primary/10"
                                 : "text-muted-foreground hover:bg-muted/50"
-                            }`}
+                            )}
                           >
-                            {d.label}
+                            {dayLabels[day]}
                           </button>
                           {isOpen ? (
                             <>
                               <Input
                                 type="time"
-                                value={range!.open}
+                                aria-label={dayLabels[day]}
+                                value={range.open}
                                 onChange={(e) => {
                                   const v = e.target.value;
                                   setHours((prev) => ({
                                     ...prev,
-                                    [d.key]: { open: v, close: prev[d.key]?.close ?? "18:00" },
+                                    [day]: { open: v, close: prev[day]?.close ?? "18:00" },
                                   }));
                                 }}
-                                className="text-sm"
                               />
-                              <span className="text-xs text-muted-foreground">a</span>
+                              <span className="text-xs text-muted-foreground">{t.agents.hoursTo}</span>
                               <Input
                                 type="time"
-                                value={range!.close}
+                                aria-label={dayLabels[day]}
+                                value={range.close}
                                 onChange={(e) => {
                                   const v = e.target.value;
                                   setHours((prev) => ({
                                     ...prev,
-                                    [d.key]: { open: prev[d.key]?.open ?? "09:00", close: v },
+                                    [day]: { open: prev[day]?.open ?? "09:00", close: v },
                                   }));
                                 }}
-                                className="text-sm"
                               />
                             </>
                           ) : (
-                            <span className="text-xs text-muted-foreground">Cerrado</span>
+                            <span className="text-xs text-muted-foreground">{t.agents.closed}</span>
                           )}
                         </div>
                       );
                     })}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Si el cierre es anterior a la apertura (p. ej. 22:00 a 02:00), se interpreta como cruce de medianoche.
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t.agents.businessHoursOvernight}</p>
                 </div>
               )}
             </div>
@@ -464,37 +501,38 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
           {/* ── Catálogo ────────────────────────────────────────── */}
           <TabsContent value="catalog" className="mt-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              {selectedVertical.catalogLabel}. El asistente solo informa lo que esté cargado acá — nunca inventa precios.
+              {selectedVertical.catalogLabel}. {t.agents.catalogDetailHint}
             </p>
             <div className="space-y-2">
               {catalog.map((item, i) => (
-                <div key={i} className="rounded-lg border p-2 space-y-2">
+                <div key={i} className="space-y-2 rounded-xl border p-2">
                   <div className="flex gap-2">
                     <Input
                       value={item.name}
                       onChange={(e) => updateCatalogItem(i, { name: e.target.value })}
-                      placeholder="Nombre"
+                      placeholder={t.agents.itemName}
                       className="flex-1"
                     />
                     <Input
                       value={item.price}
                       onChange={(e) => updateCatalogItem(i, { price: e.target.value })}
-                      placeholder="$500"
+                      placeholder={t.agents.itemPricePlaceholder}
                       className="w-28"
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
+                      aria-label={t.common.delete}
                       onClick={() => setCatalog((prev) => prev.filter((_, idx) => idx !== i))}
                     >
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      <Trash2 className="size-4 text-muted-foreground" />
                     </Button>
                   </div>
                   <Input
                     value={item.description}
                     onChange={(e) => updateCatalogItem(i, { description: e.target.value })}
-                    placeholder="Detalle opcional (duración, qué incluye...)"
+                    placeholder={t.agents.itemDetailPlaceholder}
                   />
                 </div>
               ))}
@@ -504,41 +542,39 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
               variant="outline"
               size="sm"
               onClick={() => setCatalog((prev) => [...prev, { name: "", price: "", description: "" }])}
-              className="gap-1"
             >
-              <Plus className="h-4 w-4" />
-              Agregar
+              <Plus className="size-4" />
+              {t.agents.add}
             </Button>
           </TabsContent>
 
           {/* ── Preguntas frecuentes ────────────────────────────── */}
           <TabsContent value="faqs" className="mt-4 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Lo que te preguntan siempre, con la respuesta exacta que querés que dé. Es la mejor forma de mejorar al asistente.
-            </p>
+            <p className="text-sm text-muted-foreground">{t.agents.faqsDetailHint}</p>
             <div className="space-y-2">
               {faqs.map((faq, i) => (
-                <div key={i} className="rounded-lg border p-2 space-y-2">
+                <div key={i} className="space-y-2 rounded-xl border p-2">
                   <div className="flex gap-2">
                     <Input
                       value={faq.question}
                       onChange={(e) => updateFaq(i, { question: e.target.value })}
-                      placeholder='"¿Hacen envíos?"'
+                      placeholder={t.agents.faqQuestionShortPlaceholder}
                       className="flex-1"
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
+                      aria-label={t.common.delete}
                       onClick={() => setFaqs((prev) => prev.filter((_, idx) => idx !== i))}
                     >
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      <Trash2 className="size-4 text-muted-foreground" />
                     </Button>
                   </div>
                   <Textarea
                     value={faq.answer}
                     onChange={(e) => updateFaq(i, { answer: e.target.value })}
-                    placeholder='"Sí, hacemos envíos a todo el país."'
+                    placeholder={t.agents.faqAnswerShortPlaceholder}
                     rows={2}
                   />
                 </div>
@@ -549,172 +585,125 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
               variant="outline"
               size="sm"
               onClick={() => setFaqs((prev) => [...prev, { question: "", answer: "" }])}
-              className="gap-1"
             >
-              <Plus className="h-4 w-4" />
-              Agregar
+              <Plus className="size-4" />
+              {t.agents.add}
             </Button>
           </TabsContent>
 
           {/* ── Ajustes (comportamiento) ────────────────────────── */}
-          <TabsContent value="behavior" className="mt-4 space-y-3">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Idioma</label>
-              <div className="flex flex-wrap gap-2">
-                {languages.map((l) => (
-                  <button
-                    key={l.value}
-                    type="button"
-                    onClick={() => setLanguage(l.value)}
-                    className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
-                      language === l.value
-                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
-                        : "hover:bg-muted/50"
-                    }`}
-                  >
+          <TabsContent value="behavior" className="mt-4 space-y-4">
+            <Field label={t.agents.language}>
+              <div role="radiogroup" className="flex flex-wrap gap-2">
+                {AI_LANGUAGES.map((l) => (
+                  <ChoiceChip key={l.value} selected={language === l.value} onClick={() => setLanguage(l.value)}>
                     {l.label}
-                  </button>
+                  </ChoiceChip>
                 ))}
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Trato</label>
-              <div className="flex flex-wrap gap-2">
+            </Field>
+            <Field label={t.agents.formality}>
+              <div role="radiogroup" className="flex flex-wrap gap-2">
                 {[
-                  { value: "informal" as const, label: "Cercano (vos / tú)" },
-                  { value: "formal" as const, label: "Formal (usted)" },
+                  { value: "informal" as const, label: t.agents.formalityInformal },
+                  { value: "formal" as const, label: t.agents.formalityFormal },
                 ].map((f) => (
-                  <button
-                    key={f.value}
-                    type="button"
-                    onClick={() => setFormality(f.value)}
-                    className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
-                      formality === f.value
-                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
-                        : "hover:bg-muted/50"
-                    }`}
-                  >
+                  <ChoiceChip key={f.value} selected={formality === f.value} onClick={() => setFormality(f.value)}>
                     {f.label}
-                  </button>
+                  </ChoiceChip>
                 ))}
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Emojis</label>
-              <div className="flex flex-wrap gap-2">
+            </Field>
+            <Field label={t.agents.emojis}>
+              <div role="radiogroup" className="flex flex-wrap gap-2">
                 {[
-                  { value: true, label: "Puede usar alguno" },
-                  { value: false, label: "Sin emojis" },
+                  { value: true, label: t.agents.emojisOn },
+                  { value: false, label: t.agents.emojisOff },
                 ].map((opt) => (
-                  <button
+                  <ChoiceChip
                     key={String(opt.value)}
-                    type="button"
+                    selected={useEmojis === opt.value}
                     onClick={() => setUseEmojis(opt.value)}
-                    className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
-                      useEmojis === opt.value
-                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
-                        : "hover:bg-muted/50"
-                    }`}
                   >
                     {opt.label}
-                  </button>
+                  </ChoiceChip>
                 ))}
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Objetivo de la conversación</label>
+            </Field>
+            <Field label={t.agents.goal}>
               <Textarea
                 value={goal}
                 onChange={(e) => setGoal(e.target.value)}
                 rows={3}
-                placeholder="Ej: que junte los datos del pedido y avise que lo confirmamos enseguida."
+                placeholder={t.agents.goalPlaceholder}
               />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Instrucciones extra (avanzado, opcional)</label>
+            </Field>
+            <Field label={t.agents.customInstructions}>
               <Textarea
                 value={customInstructions}
                 onChange={(e) => setCustomInstructions(e.target.value)}
                 rows={3}
-                placeholder="Reglas adicionales de comportamiento para el asistente."
+                placeholder={t.agents.customInstructionsPlaceholder}
               />
-            </div>
+            </Field>
 
-            <hr className="my-1" />
+            <Separator />
 
             {/* Multi-Message / Natural Conversation */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-sm font-medium">Conversación natural</label>
-                  <p className="text-xs text-muted-foreground">Responde en varios mensajes cortos, como una persona</p>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{t.agents.multiMessage}</p>
+                  <p className="text-xs text-muted-foreground">{t.agents.multiMessageHint}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setMultiMessageEnabled(!multiMessageEnabled)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                    multiMessageEnabled ? "bg-violet-600" : "bg-muted"
-                  }`}
-                >
-                  <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                    multiMessageEnabled ? "translate-x-4" : "translate-x-0"
-                  }`} />
-                </button>
+                <Toggle
+                  checked={multiMessageEnabled}
+                  onChange={() => setMultiMessageEnabled(!multiMessageEnabled)}
+                  label={t.agents.multiMessage}
+                />
               </div>
 
               {multiMessageEnabled && (
-                <div className="space-y-2.5 rounded-lg border p-3 bg-muted/30">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Máx. mensajes por respuesta</label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={maxBubbles}
-                        onChange={(e) => setMaxBubbles(Number(e.target.value))}
-                        className="text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Pausa entre mensajes (ms)</label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={5000}
-                        step={100}
-                        value={interBubbleDelay}
-                        onChange={(e) => setInterBubbleDelay(Number(e.target.value))}
-                        className="text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Espera por más mensajes (ms)</label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={10000}
-                        step={500}
-                        value={debounceWindow}
-                        onChange={(e) => setDebounceWindow(Number(e.target.value))}
-                        className="text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Espera máxima (ms)</label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={60000}
-                        step={1000}
-                        value={debounceMaxWait}
-                        onChange={(e) => setDebounceMaxWait(Number(e.target.value))}
-                        className="text-sm"
-                      />
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 gap-3 rounded-xl border bg-muted/30 p-3 sm:grid-cols-2">
+                  <Field label={t.agents.maxBubbles}>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={maxBubbles}
+                      onChange={(e) => setMaxBubbles(Number(e.target.value))}
+                    />
+                  </Field>
+                  <Field label={t.agents.interBubbleDelay}>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={5000}
+                      step={100}
+                      value={interBubbleDelay}
+                      onChange={(e) => setInterBubbleDelay(Number(e.target.value))}
+                    />
+                  </Field>
+                  <Field label={t.agents.debounceWindow}>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10000}
+                      step={500}
+                      value={debounceWindow}
+                      onChange={(e) => setDebounceWindow(Number(e.target.value))}
+                    />
+                  </Field>
+                  <Field label={t.agents.debounceMaxWait}>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={60000}
+                      step={1000}
+                      value={debounceMaxWait}
+                      onChange={(e) => setDebounceMaxWait(Number(e.target.value))}
+                    />
+                  </Field>
                 </div>
               )}
             </div>
@@ -722,24 +711,22 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
 
           {/* ── Playground ──────────────────────────────────────── */}
           <TabsContent value="playground" className="mt-4 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Hablá con tu asistente como si fueras un cliente. Usa exactamente la misma configuración que en WhatsApp.
-              Guardá los cambios antes de probar.
-            </p>
-            <div className="rounded-lg border bg-muted/20 p-3 h-80 overflow-y-auto space-y-2">
+            <p className="text-sm text-muted-foreground">{t.agents.playgroundHint}</p>
+            <div className="h-80 space-y-2 overflow-y-auto rounded-xl border bg-muted/20 p-3">
               {chat.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center pt-28">
-                  Escribí un mensaje para empezar la prueba.
+                <p className="pt-28 text-center text-xs text-muted-foreground">
+                  {t.agents.playgroundEmpty}
                 </p>
               )}
               {chat.map((m, i) => (
-                <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
                   <div
-                    className={`max-w-[80%] rounded-lg px-3 py-1.5 text-sm whitespace-pre-wrap ${
+                    className={cn(
+                      "max-w-[80%] rounded-lg px-3 py-1.5 text-sm whitespace-pre-wrap",
                       m.role === "user"
-                        ? "bg-violet-600 text-white"
-                        : "bg-background border"
-                    }`}
+                        ? "bg-primary text-primary-foreground"
+                        : "border bg-background"
+                    )}
                   >
                     {m.content}
                   </div>
@@ -748,7 +735,7 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
               {chatting && (
                 <div className="flex justify-start">
                   <div className="rounded-lg border bg-background px-3 py-1.5 text-sm text-muted-foreground">
-                    escribiendo...
+                    {t.agents.playgroundTyping}
                   </div>
                 </div>
               )}
@@ -758,54 +745,34 @@ export function AiAgentDetailPanel({ agent, onUpdated, onDeleted }: Props) {
               <Input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Escribí como un cliente..."
+                placeholder={t.agents.playgroundPlaceholder}
                 onKeyDown={(e) => e.key === "Enter" && handleChatSend()}
               />
-              <Button onClick={handleChatSend} disabled={chatting || !chatInput.trim()} size="sm" className="gap-1 shrink-0">
-                <Send className="h-4 w-4" />
-                Enviar
+              <Button onClick={handleChatSend} disabled={chatting || !chatInput.trim()} size="sm" className="shrink-0">
+                <Send className="size-4" />
+                {t.agents.playgroundSend}
               </Button>
             </div>
             {chat.length > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setChat([])}
-              >
-                Reiniciar conversación
+              <Button type="button" variant="outline" size="sm" onClick={() => setChat([])}>
+                {t.agents.playgroundReset}
               </Button>
             )}
           </TabsContent>
         </Tabs>
 
-        {(error || success) && (
-          <div className={`mt-3 rounded-md px-3 py-2 text-sm ${
-            error ? "bg-destructive/10 text-destructive" : "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
-          }`}>
-            {error || success}
-          </div>
-        )}
+        {error && <InlineNotice variant="error" className="mt-3">{error}</InlineNotice>}
+        {!error && success && <InlineNotice variant="success" className="mt-3">{success}</InlineNotice>}
 
         <div className="mt-4 flex gap-2">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleDelete}
-            className="gap-1"
-          >
-            <Trash2 className="h-4 w-4" />
-            Eliminar
+          <Button variant="destructive" size="sm" onClick={handleDelete}>
+            <Trash2 className="size-4" />
+            {t.common.delete}
           </Button>
           <div className="flex-1" />
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            size="sm"
-            className="gap-1 bg-primary hover:bg-primary/90"
-          >
-            <Save className="h-4 w-4" />
-            {saving ? "Guardando..." : "Guardar"}
+          <Button onClick={handleSave} disabled={saving} size="sm">
+            {saving && <Spinner size="sm" />}
+            {saving ? t.common.saving : t.common.save}
           </Button>
         </div>
       </div>

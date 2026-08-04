@@ -1,20 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageShell, PageContent } from "@/components/layout/page-shell";
+import { PageHeader } from "@/components/layout/page-header";
+import { RightPanel } from "@/components/layout/right-panel";
 import { PhoneNumberList } from "@/components/admin/phone-number-list";
 import { LabelManager } from "@/components/admin/label-manager";
-import { RightPanel } from "@/components/layout/right-panel";
 import { useAuthStore } from "@/stores/auth.store";
+import { useBillingStore } from "@/stores/billing.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
-import { useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
 
 export default function AdminPage() {
   const agent = useAuthStore((s) => s.agent);
+  const usage = useBillingStore((s) => s.usage);
   const router = useRouter();
   const { t } = useTranslations();
   const [panelContent, setPanelContent] = useState<ReactNode>(null);
+  const [tab, setTab] = useState("phones");
+
+  // Cada pestaña publica acá su "crear": la cabecera es la única que muestra
+  // acciones, pero el alta vive adentro porque tiene que refrescar la lista.
+  const createPhone = useRef<(() => void) | null>(null);
+  const createLabel = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (agent && agent.role !== "admin") {
@@ -26,36 +38,59 @@ export default function AdminPage() {
 
   const closePanel = () => setPanelContent(null);
 
+  const isPhones = tab === "phones";
+  const phoneUsage = usage?.phoneNumbers;
+  const atLimit = isPhones && phoneUsage ? !phoneUsage.allowed : false;
+
   return (
-    <div className="h-full flex">
-      {/* Left: header + tabs + content */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-0">
-        <div className="px-4 pt-4 md:px-6 md:pt-6">
-          <h1 className="text-xl font-bold">{t.admin.title}</h1>
-          <p className="mt-1 mb-4 text-sm text-muted-foreground">{t.admin.subtitle}</p>
-        </div>
+    <div className="flex h-full">
+      <PageShell className="min-w-0 flex-1">
         <Tabs
-          defaultValue="phones"
-          className="flex-1 flex flex-col min-h-0"
-          onValueChange={() => closePanel()}
+          value={tab}
+          onValueChange={(value) => {
+            setTab(value);
+            closePanel();
+          }}
+          className="flex min-h-0 flex-1 flex-col gap-0"
         >
-          <div className="px-4 md:px-6">
+          <PageHeader
+            title={t.admin.title}
+            subtitle={t.admin.subtitle}
+            actions={
+              <Button
+                size="sm"
+                disabled={atLimit}
+                onClick={() => (isPhones ? createPhone : createLabel).current?.()}
+              >
+                <Plus className="size-4" />
+                {isPhones ? t.admin.newPhone : t.admin.createLabel}
+              </Button>
+            }
+          >
             <TabsList>
               <TabsTrigger value="phones">{t.admin.phoneNumbers}</TabsTrigger>
               <TabsTrigger value="labels">{t.admin.labels}</TabsTrigger>
             </TabsList>
-          </div>
-          <TabsContent value="phones" className="mt-0 flex-1 min-h-0">
-            <PhoneNumberList onPanelChange={setPanelContent} onPanelClose={closePanel} />
+          </PageHeader>
+
+          <TabsContent value="phones" className="flex min-h-0 flex-1 flex-col">
+            <PageContent>
+              <PhoneNumberList
+                onPanelChange={setPanelContent}
+                onPanelClose={closePanel}
+                createRef={createPhone}
+              />
+            </PageContent>
           </TabsContent>
-          <TabsContent value="labels" className="mt-0 flex-1 min-h-0 overflow-auto px-4 pb-20 md:px-6 pt-4">
-            <LabelManager />
+          <TabsContent value="labels" className="flex min-h-0 flex-1 flex-col">
+            <PageContent>
+              <LabelManager createRef={createLabel} />
+            </PageContent>
           </TabsContent>
         </Tabs>
-      </div>
+      </PageShell>
 
-      {/* Right panel at page level - full height */}
-      <RightPanel open={!!panelContent} onClose={closePanel}>
+      <RightPanel open={!!panelContent} onClose={closePanel} label={t.admin.title}>
         {panelContent}
       </RightPanel>
     </div>

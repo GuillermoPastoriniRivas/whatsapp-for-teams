@@ -48,7 +48,7 @@ export function StepWelcome({ onNext }: StepWelcomeProps) {
         </li>
       </ul>
 
-      <Button className="w-full max-w-sm h-12 text-base font-semibold rounded-xl" onClick={onNext}>
+      <Button size="lg" className="w-full max-w-sm" onClick={onNext}>
         {t.onboarding.welcomeStart}
       </Button>
     </div>

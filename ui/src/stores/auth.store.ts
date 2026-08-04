@@ -21,6 +21,19 @@ interface AuthState {
   setPassword: (password: string, currentPassword?: string) => Promise<void>;
 }
 
+/**
+ * Borra la sesión guardada en el dispositivo antes de intentar entrar con otra
+ * cuenta. Si no, un intento fallido deja vivos los tokens del usuario anterior
+ * (típicamente los de la cuenta demo) y la app termina entrando con esos.
+ */
+function clearStoredSession(): void {
+  api.setToken(null);
+  disconnectSocket();
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("agent");
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   agent: null,
   accessToken: null,
@@ -28,7 +41,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
 
   login: async (email, password) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, agent: null, accessToken: null });
+    clearStoredSession();
     try {
       const data = await api.post<LoginResponse>("/auth/login", {
         email,

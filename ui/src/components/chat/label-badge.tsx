@@ -17,8 +17,8 @@ export function LabelBadge({ name, color, size = "md", onRemove }: Props) {
     <span
       className={
         size === "sm"
-          ? "label-badge inline-flex items-center gap-0.5 rounded-full px-1.5 py-0 text-[9px] font-medium leading-4 whitespace-nowrap"
-          : "label-badge inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium leading-4 whitespace-nowrap"
+          ? "label-badge inline-flex items-center gap-0.5 rounded-full px-1.5 py-0 text-xs font-medium leading-4 whitespace-nowrap"
+          : "label-badge inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium leading-4 whitespace-nowrap"
       }
       style={
         {

@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { api } from "@/lib/api";
-import { AsisLogo } from "@/components/brand/asis-logo";
-import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { AuthShell, AuthStatusIcon } from "@/components/auth/auth-shell";
+import { Spinner } from "@/components/ui/spinner";
+import { CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function VerifyEmailPage() {
@@ -37,49 +38,47 @@ function VerifyEmailContent() {
       .catch(() => setStatus("error"));
   }, [token]);
 
+  if (status === "loading") {
+    return (
+      <AuthShell
+        brandPanel={false}
+        backHref={null}
+        icon={<Spinner className="mx-auto size-10 text-primary" />}
+        title={t.verifyEmail.title}
+        subtitle={t.verifyEmail.loading}
+      >
+        {null}
+      </AuthShell>
+    );
+  }
+
+  if (status === "success") {
+    return (
+      <AuthShell
+        brandPanel={false}
+        backHref={null}
+        icon={<AuthStatusIcon icon={CheckCircle} />}
+        title={t.verifyEmail.successTitle}
+        subtitle={t.verifyEmail.successDescription}
+      >
+        <Button size="lg" className="w-full" onClick={() => router.push("/conversations")}>
+          {t.verifyEmail.goToApp}
+        </Button>
+      </AuthShell>
+    );
+  }
+
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm text-center">
-        <div className="flex justify-center mb-6">
-          <AsisLogo size={56} color="#0D9488" />
-        </div>
-
-        {status === "loading" && (
-          <>
-            <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">{t.verifyEmail.loading}</p>
-          </>
-        )}
-
-        {status === "success" && (
-          <>
-            <CheckCircle className="mx-auto h-12 w-12 text-primary mb-4" />
-            <h1 className="text-2xl font-bold mb-2">{t.verifyEmail.successTitle}</h1>
-            <p className="text-muted-foreground mb-6">
-              {t.verifyEmail.successDescription}
-            </p>
-            <Button
-              className="w-full h-12 text-base font-semibold rounded-xl"
-              onClick={() => router.push("/conversations")}
-            >
-              {t.verifyEmail.goToApp}
-            </Button>
-          </>
-        )}
-
-        {status === "error" && (
-          <>
-            <XCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
-            <h1 className="text-2xl font-bold mb-2">{t.verifyEmail.errorTitle}</h1>
-            <p className="text-muted-foreground mb-6">
-              {t.verifyEmail.errorDescription}
-            </p>
-            <Link href="/login" className="text-primary font-medium hover:underline text-sm">
-              {t.verifyEmail.backToLogin}
-            </Link>
-          </>
-        )}
-      </div>
-    </div>
+    <AuthShell
+      brandPanel={false}
+      backHref={null}
+      icon={<AuthStatusIcon icon={XCircle} tone="destructive" />}
+      title={t.verifyEmail.errorTitle}
+      subtitle={t.verifyEmail.errorDescription}
+    >
+      <Link href="/login" className="text-sm font-medium text-primary hover:underline">
+        {t.verifyEmail.backToLogin}
+      </Link>
+    </AuthShell>
   );
 }

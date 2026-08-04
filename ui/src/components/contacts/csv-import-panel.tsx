@@ -1,13 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileUp, Loader2, Upload } from "lucide-react";
+import { FileUp,  Upload} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { InlineNotice } from "@/components/shared/inline-notice";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { api } from "@/lib/api";
 import { parseCsv } from "@/lib/csv";
+import { cn } from "@/lib/utils";
 import type { ImportContactsResult } from "@/types";
 
 interface CsvImportPanelProps {
@@ -69,11 +71,11 @@ export function CsvImportPanel({ onImported, embedded }: CsvImportPanelProps) {
 
   return (
     <div className={embedded ? "space-y-3" : "space-y-4 p-4"}>
-      {!embedded && <h2 className="font-semibold">{t.contacts.importTitle}</h2>}
+      {!embedded && <h2 className="text-base font-semibold">{t.contacts.importTitle}</h2>}
 
-      <div className="space-y-1.5 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+      <div className="space-y-1.5 rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
         <p>{t.contacts.importHint}</p>
-        <p className="font-mono text-[11px]">{t.contacts.importExample}</p>
+        <p className="font-mono text-xs">{t.contacts.importExample}</p>
       </div>
 
       <input
@@ -104,7 +106,7 @@ export function CsvImportPanel({ onImported, embedded }: CsvImportPanelProps) {
         <Button onClick={handleImport} disabled={importing} className="w-full">
           {importing ? (
             <>
-              <Loader2 className="size-4 animate-spin" />
+              <Spinner size="sm" />
               {t.contacts.importing}
             </>
           ) : (
@@ -122,20 +124,20 @@ export function CsvImportPanel({ onImported, embedded }: CsvImportPanelProps) {
         <div className="space-y-2">
           <div className="grid grid-cols-3 gap-2">
             {[
-              { label: t.contacts.imported, value: result.imported, accent: "text-emerald-600 dark:text-emerald-400" },
+              { label: t.contacts.imported, value: result.imported, accent: "text-primary" },
               { label: t.contacts.updatedCount, value: result.updated, accent: "" },
-              { label: t.contacts.skipped, value: result.skipped.length, accent: result.skipped.length ? "text-amber-600 dark:text-amber-400" : "" },
+              { label: t.contacts.skipped, value: result.skipped.length, accent: result.skipped.length ? "text-destructive" : "" },
             ].map(({ label, value, accent }) => (
-              <div key={label} className="rounded-lg border p-2 text-center">
-                <p className={`text-lg font-semibold ${accent}`}>{value}</p>
-                <p className="text-[11px] text-muted-foreground">{label}</p>
+              <div key={label} className="rounded-xl border p-2 text-center">
+                <p className={cn("text-2xl font-semibold tabular-nums", accent)}>{value}</p>
+                <p className="text-xs text-muted-foreground">{label}</p>
               </div>
             ))}
           </div>
           {result.skipped.length > 0 && (
-            <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border p-2">
+            <div className="max-h-40 space-y-1 overflow-y-auto rounded-xl border p-2">
               {result.skipped.map((skip) => (
-                <p key={skip.row} className="text-[11px] text-muted-foreground">
+                <p key={skip.row} className="text-xs text-muted-foreground">
                   {t.contacts.skippedRow} {skip.row}: {skip.reason}
                 </p>
               ))}

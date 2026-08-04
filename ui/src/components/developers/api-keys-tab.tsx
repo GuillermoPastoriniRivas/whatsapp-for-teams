@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { LoadingState } from "@/components/ui/spinner";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { UpgradeCard } from "./upgrade-card";
 import type { ApiKeyView, CreatedApiKey, DeveloperOverview } from "./types";
 
@@ -22,6 +24,7 @@ function formatDate(value: string | null): string | null {
 
 export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null }) {
   const { t } = useTranslations();
+  const confirm = useConfirm();
   const [keys, setKeys] = useState<ApiKeyView[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
@@ -63,7 +66,7 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
   };
 
   const handleRevoke = async (key: ApiKeyView) => {
-    if (!confirm(t.developers.revokeConfirm)) return;
+    if (!(await confirm({ title: t.developers.revokeConfirm, destructive: true }))) return;
     try {
       await api.delete(`/developer/api-keys/${key.id}`);
       load();
@@ -144,7 +147,7 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
       )}
 
       {loading ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">…</p>
+        <LoadingState />
       ) : keys.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
