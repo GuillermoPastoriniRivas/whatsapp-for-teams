@@ -1,8 +1,23 @@
 export interface InboundMessageInput {
   phoneNumberId: string;
   waMessageId: string;
-  from: string;
-  contactName: string;
+  /**
+   * Teléfono del remitente, en dígitos. **Opcional**: Meta lo omite para los
+   * usuarios que solo comparten su username. Al menos uno entre `from` y
+   * `bsuid` siempre viene.
+   */
+  from?: string;
+  /** Business-Scoped User ID del remitente. */
+  bsuid?: string;
+  parentBsuid?: string;
+  /** Username público del remitente, sin '@'. */
+  username?: string;
+  /**
+   * Teléfono que el usuario acaba de compartir al tocar `REQUEST_CONTACT_INFO`.
+   * Es la vía para recuperar el número de un contacto solo-BSUID.
+   */
+  sharedPhone?: string;
+  contactName?: string;
   profilePicUrl?: string;
   messageType: string;
   body?: string;
@@ -20,4 +35,12 @@ export interface InboundMessageInput {
   interactiveReplyId?: string;
   /** waMessageId del mensaje al que responde (context.id) */
   contextWaMessageId?: string;
+}
+
+/** Meta regeneró el BSUID de un usuario (cambió de teléfono). */
+export interface UserIdUpdateInput {
+  wabaId: string;
+  previousBsuid: string;
+  newBsuid: string;
+  phone: string | null;
 }

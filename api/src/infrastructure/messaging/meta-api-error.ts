@@ -40,8 +40,16 @@ const RECIPIENT_CODES = new Set([
   131047, // re-engagement message (outside 24h window without template)
   131049, // marketing message limit per user (Meta healthy-ecosystem cap)
   130472, // user's number is part of a Meta experiment
+  131062, // auth template (one-tap/zero-tap/copy-code) addressed to a BSUID
   132000, // template parameter count mismatch
 ]);
+
+/**
+ * Plantilla de autenticación dirigida a un BSUID. Meta exige el teléfono para
+ * one-tap, zero-tap y copy-code: hay que pedirle el número al contacto con un
+ * `REQUEST_CONTACT_INFO` antes de poder mandarle el código.
+ */
+export const AUTH_TEMPLATE_NEEDS_PHONE_CODE = 131062;
 
 const CAMPAIGN_CODES = new Set([
   0, // auth exception

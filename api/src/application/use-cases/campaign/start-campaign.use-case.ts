@@ -18,6 +18,7 @@ import { CampaignStatus } from '../../../domain/enums/campaign-status.enum.js';
 import { CampaignRecipientStatus } from '../../../domain/enums/campaign-recipient-status.enum.js';
 import { TemplateStatus } from '../../../domain/enums/template-status.enum.js';
 import { resolveVariables } from './helpers/template-variable.resolver.js';
+import { templateRequiresPhone } from '../../../domain/value-objects/recipient-identity.js';
 
 export const CAMPAIGN_DISPATCH_JOB = 'campaign.dispatch';
 
@@ -100,18 +101,33 @@ export class StartCampaignUseCase {
     };
 
     for await (const contact of this.iterateAudience(campaign)) {
-      if (!contact.waId) continue;
-
       const resolved = resolveVariables(template.components, campaign.variableMappings, contact);
+
+      // Un contacto sin ningún eje de identidad no es enviable. Antes se
+      // descartaba en silencio; ahora queda como SKIPPED con su motivo, para
+      // que el total de la campaña cierre con lo que el usuario seleccionó.
+      // Los contactos solo-BSUID no reciben plantillas de autenticación: Meta
+      // las rechaza con 131062. Se saltean al armar la audiencia en vez de
+      // quemar un intento por cada uno contra la API.
+      const needsPhone = !contact.phone && templateRequiresPhone(template.category);
+
+      const skipReason = !contact.phone && !contact.bsuid
+        ? 'Contact has no phone number or business-scoped user ID'
+        : needsPhone
+          ? 'Authentication templates require a phone number; this contact only shared a WhatsApp username'
+          : resolved.ok
+            ? null
+            : `Missing variables: ${resolved.missing.join(', ')}`;
+
       batch.push({
         campaignId: campaign.id,
         tenantId: campaign.tenantId,
         contactId: contact.id,
-        waId: contact.waId,
         phone: contact.phone,
+        bsuid: contact.bsuid,
         resolvedVariables: resolved.ok ? resolved.variables : {},
-        status: resolved.ok ? CampaignRecipientStatus.PENDING : CampaignRecipientStatus.SKIPPED,
-        failureReason: resolved.ok ? null : `Missing variables: ${resolved.missing.join(', ')}`,
+        status: skipReason ? CampaignRecipientStatus.SKIPPED : CampaignRecipientStatus.PENDING,
+        failureReason: skipReason,
       });
 
       if (batch.length >= BULK_INSERT_CHUNK) await flush();

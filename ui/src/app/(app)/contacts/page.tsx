@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, User, Phone, Building2, Upload } from "lucide-react";
+import { Search, User, Phone, AtSign, Building2, Upload } from "lucide-react";
+import { displayIdentity, identityHandle, identitySubtitle, formatPhone } from "@/lib/identity";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -136,10 +137,10 @@ export default function ContactsPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">
-                          {contact.name}
+                          {displayIdentity(contact)}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">
-                          +{contact.waId || contact.phone}
+                          {identitySubtitle(contact)}
                         </p>
                       </div>
                       <div className="hidden shrink-0 items-center gap-2 sm:flex">
@@ -189,10 +190,10 @@ export default function ContactsPage() {
                 <User className="size-10" />
               </div>
               <h2 className="px-4 text-center text-base font-semibold">
-                {selected.name}
+                {displayIdentity(selected)}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                +{selected.waId || selected.phone}
+                {identitySubtitle(selected)}
               </p>
             </div>
 
@@ -202,8 +203,17 @@ export default function ContactsPage() {
                   {t.contacts.contactInfo}
                 </h3>
                 <div className="flex items-center gap-3 text-sm">
-                  <Phone className="size-4 shrink-0 text-muted-foreground" />
-                  <span>+{selected.waId || selected.phone}</span>
+                  {selected.phone ? (
+                    <>
+                      <Phone className="size-4 shrink-0 text-muted-foreground" />
+                      <span>{formatPhone(selected.phone)}</span>
+                    </>
+                  ) : (
+                    <>
+                      <AtSign className="size-4 shrink-0 text-muted-foreground" />
+                      <span>{identityHandle(selected) ?? "—"}</span>
+                    </>
+                  )}
                 </div>
                 <ContactFields
                   contact={{

@@ -9,4 +9,6 @@ export interface RegisterPhoneNumberInput {
   displayPhone: string;
   label: string;
   webhookSecret: string;
+  /** Portfolio que scopea los BSUID. Sin esto se usa `wabaId`. */
+  portfolioId?: string | null;
 }

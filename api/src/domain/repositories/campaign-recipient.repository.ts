@@ -6,8 +6,8 @@ export interface CreateCampaignRecipientInput {
   campaignId: string;
   tenantId: string;
   contactId: string;
-  waId: string;
-  phone: string;
+  phone: string | null;
+  bsuid: string | null;
   resolvedVariables: Record<string, string>;
   status: CampaignRecipientStatus;
   failureReason?: string | null;

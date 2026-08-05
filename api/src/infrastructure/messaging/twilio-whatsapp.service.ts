@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SendMessageParams, SendMessageResult } from '../../application/ports/messaging-api.port.js';
+import { BsuidNotSupportedByProviderError } from '../../domain/errors/domain-errors.js';
+import { MessagingProvider } from '../../domain/enums/messaging-provider.enum.js';
 
 @Injectable()
 export class TwilioWhatsAppService {
@@ -10,6 +12,12 @@ export class TwilioWhatsAppService {
 
     if (!accountSid || !authToken || !fromNumber) {
       throw new Error('Twilio: missing accountSid, authToken, or fromNumber in providerConfig');
+    }
+
+    // Twilio no direcciona por BSUID. Sin este corte se armaría un
+    // `whatsapp:+undefined` y la API lo rechazaría con un error opaco.
+    if (!params.to) {
+      throw new BsuidNotSupportedByProviderError(MessagingProvider.TWILIO);
     }
 
     const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;

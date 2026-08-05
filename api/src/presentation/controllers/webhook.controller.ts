@@ -4,11 +4,11 @@ import { ApiTags, ApiOperation, ApiQuery, ApiResponse, ApiExcludeEndpoint } from
 import type { Request, Response } from 'express';
 import { Public } from '../decorators/public.decorator.js';
 import { WebhookSignatureGuard } from '../guards/webhook-signature.guard.js';
-import { parseMetaWebhook, mapMetaMessageToInbound, mapMetaStatusToUpdate, mapTemplateEventToInput } from '../webhooks/meta-webhook.parser.js';
+import { parseMetaWebhook, mapMetaMessageToInbound, mapMetaStatusToUpdate, mapTemplateEventToInput, mapUserIdUpdateToInput } from '../webhooks/meta-webhook.parser.js';
 import type { MetaWebhookPayload } from '../webhooks/meta-webhook.types.js';
 import type { PhoneNumber } from '../../domain/entities/phone-number.entity.js';
 import type { JobQueuePort } from '../../application/ports/job-queue.port.js';
-import { INBOUND_MESSAGE_JOB, STATUS_UPDATE_JOB, TEMPLATE_EVENT_JOB } from '../../infrastructure/queue/webhook-job.processor.js';
+import { INBOUND_MESSAGE_JOB, STATUS_UPDATE_JOB, TEMPLATE_EVENT_JOB, USER_ID_UPDATE_JOB } from '../../infrastructure/queue/webhook-job.processor.js';
 
 @Public()
 @ApiTags('Webhooks')
@@ -55,7 +55,7 @@ export class WebhookController {
   async receiveWhatsApp(@Req() req: Request, @Body() body: MetaWebhookPayload) {
     const phoneNumber = (req as any).phoneNumber as PhoneNumber;
 
-    const { messages, statuses, templateEvents } = parseMetaWebhook(body);
+    const { messages, statuses, templateEvents, userIdUpdates } = parseMetaWebhook(body);
 
     // Enqueue inbound messages
     for (const parsed of messages) {
@@ -65,6 +65,11 @@ export class WebhookController {
         continue;
       }
       await this.queue.enqueue(INBOUND_MESSAGE_JOB, input);
+    }
+
+    // Cambios de BSUID (el usuario cambió de número)
+    for (const update of userIdUpdates) {
+      await this.queue.enqueue(USER_ID_UPDATE_JOB, mapUserIdUpdateToInput(update));
     }
 
     // Enqueue status updates
@@ -94,7 +99,7 @@ export class WebhookController {
       return { status: 'ignored' };
     }
 
-    const { messages, statuses } = parseMetaWebhook(body);
+    const { messages, statuses, userIdUpdates } = parseMetaWebhook(body);
 
     for (const parsed of messages) {
       const input = mapMetaMessageToInbound(parsed, phoneNumberId);
@@ -103,6 +108,10 @@ export class WebhookController {
         continue;
       }
       await this.queue.enqueue(INBOUND_MESSAGE_JOB, input);
+    }
+
+    for (const update of userIdUpdates) {
+      await this.queue.enqueue(USER_ID_UPDATE_JOB, mapUserIdUpdateToInput(update));
     }
 
     for (const status of statuses) {

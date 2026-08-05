@@ -1,7 +1,7 @@
 // ── Meta Cloud API Webhook Parser ────────────────────────────────
 // Pure functions — no NestJS dependencies, no side effects.
 
-import type { InboundMessageInput } from '../../application/dtos/webhook/inbound-message-input.dto.js';
+import type { InboundMessageInput, UserIdUpdateInput } from '../../application/dtos/webhook/inbound-message-input.dto.js';
 import type { StatusUpdateInput } from '../../application/dtos/webhook/status-update-input.dto.js';
 import type { TemplateEventInput } from '../../application/dtos/webhook/template-event-input.dto.js';
 import type {
@@ -12,7 +12,9 @@ import type {
   MetaTemplateQualityValue,
   MetaTemplateStatusValue,
   MetaTemplateCategoryValue,
+  MetaUserIdUpdateValue,
   ParsedTemplateEvent,
+  ParsedUserIdUpdate,
 } from './meta-webhook.types.js';
 
 // ── Intermediate type after flattening ───────────────────────────
@@ -37,6 +39,9 @@ const SUPPORTED_TYPES: Record<string, string> = {
   // plantillas ('button'). Se persisten como 'interactive'.
   interactive: 'interactive',
   button: 'interactive',
+  // Tarjeta de contacto: es lo que llega cuando el usuario toca
+  // `REQUEST_CONTACT_INFO` y comparte su número.
+  contacts: 'contacts',
 };
 
 const MEDIA_TYPES = new Set(['image', 'audio', 'video', 'document', 'sticker']);
@@ -63,10 +68,12 @@ export function parseMetaWebhook(payload: MetaWebhookPayload): {
   messages: ParsedMetaMessage[];
   statuses: MetaWebhookStatus[];
   templateEvents: ParsedTemplateEvent[];
+  userIdUpdates: ParsedUserIdUpdate[];
 } {
   const messages: ParsedMetaMessage[] = [];
   const statuses: MetaWebhookStatus[] = [];
   const templateEvents: ParsedTemplateEvent[] = [];
+  const userIdUpdates: ParsedUserIdUpdate[] = [];
 
   for (const entry of payload.entry ?? []) {
     for (const change of entry.changes ?? []) {
@@ -79,15 +86,19 @@ export function parseMetaWebhook(payload: MetaWebhookPayload): {
         continue;
       }
 
+      if (change.field === 'user_id_update') {
+        const parsed = parseUserIdUpdate(entry.id, change.value as unknown as MetaUserIdUpdateValue);
+        if (parsed) userIdUpdates.push(parsed);
+        continue;
+      }
+
       if (change.field !== 'messages') continue;
 
       const { value } = change;
       const contacts = value.contacts ?? [];
 
-      // Pair each message with its contact (matched by from === wa_id)
       for (const msg of value.messages ?? []) {
-        const contact = contacts.find((c) => c.wa_id === msg.from);
-        messages.push({ message: msg, contact });
+        messages.push({ message: msg, contact: pairContact(contacts, msg) });
       }
 
       for (const status of value.statuses ?? []) {
@@ -96,7 +107,47 @@ export function parseMetaWebhook(payload: MetaWebhookPayload): {
     }
   }
 
-  return { messages, statuses, templateEvents };
+  return { messages, statuses, templateEvents, userIdUpdates };
+}
+
+/**
+ * Empareja un mensaje con su bloque de contacto.
+ *
+ * El BSUID manda porque es el único identificador siempre presente. Nunca se
+ * comparan campos ausentes entre sí: `undefined === undefined` daba `true` y
+ * enganchaba al primer contacto del array, cruzando mensajes entre personas
+ * distintas en payloads con varios contactos.
+ */
+function pairContact(
+  contacts: MetaWebhookContact[],
+  msg: MetaWebhookMessage,
+): MetaWebhookContact | undefined {
+  if (msg.from_user_id) {
+    const byBsuid = contacts.find((c) => c.user_id && c.user_id === msg.from_user_id);
+    if (byBsuid) return byBsuid;
+  }
+
+  if (msg.from) {
+    const byPhone = contacts.find((c) => c.wa_id && c.wa_id === msg.from);
+    if (byPhone) return byPhone;
+  }
+
+  // Con un único contacto en el cambio no hay ambigüedad posible.
+  return contacts.length === 1 ? contacts[0] : undefined;
+}
+
+/**
+ * Meta no publica el shape de `user_id_update`, así que se aceptan los alias
+ * plausibles y se descarta el evento si no se resuelve el par viejo→nuevo.
+ * Confirmar contra un payload real antes de confiar en esto.
+ */
+function parseUserIdUpdate(wabaId: string, value: MetaUserIdUpdateValue): ParsedUserIdUpdate | null {
+  const previousBsuid = value.previous_user_id ?? value.old_user_id;
+  const newBsuid = value.new_user_id ?? value.user_id;
+
+  if (!previousBsuid || !newBsuid || previousBsuid === newBsuid) return null;
+
+  return { wabaId, previousBsuid, newBsuid, phone: value.wa_id ?? null };
 }
 
 // ── 2. Map a single Meta message → InboundMessageInput ───────────
@@ -110,13 +161,24 @@ export function mapMetaMessageToInbound(
   const messageType = SUPPORTED_TYPES[msg.type];
   if (!messageType) return null; // unsupported type — caller should log & skip
 
+  const bsuid = msg.from_user_id ?? contact?.user_id;
+  const phone = msg.from ?? contact?.wa_id;
+
+  // Sin ninguno de los dos ejes no hay contacto al que atribuir el mensaje.
+  if (!phone && !bsuid) return null;
+
   const media = extractMedia(msg);
+  const username = contact?.profile?.username?.replace(/^@/, '');
 
   return {
     phoneNumberId,
     waMessageId: msg.id,
-    from: msg.from,
-    contactName: contact?.profile?.name ?? msg.from,
+    from: phone,
+    bsuid,
+    parentBsuid: msg.from_parent_user_id ?? contact?.parent_user_id,
+    username,
+    sharedPhone: extractSharedPhone(msg),
+    contactName: contact?.profile?.name ?? username ?? phone,
     messageType,
     body: extractBody(msg),
     mediaId: media?.id,
@@ -127,6 +189,11 @@ export function mapMetaMessageToInbound(
     interactiveReplyId: extractInteractiveReplyId(msg),
     contextWaMessageId: msg.context?.id,
   };
+}
+
+/** Mapea un `user_id_update` ya parseado al input de la capa de aplicación. */
+export function mapUserIdUpdateToInput(parsed: ParsedUserIdUpdate): UserIdUpdateInput {
+  return parsed;
 }
 
 // ── 3. Map a Meta status → StatusUpdateInput ─────────────────────
@@ -196,9 +263,35 @@ function extractBody(msg: MetaWebhookMessage): string | undefined {
       return msg.interactive?.button_reply?.title ?? msg.interactive?.list_reply?.title;
     case 'button':
       return msg.button?.text;
+    case 'contacts': {
+      const shared = msg.contacts?.[0];
+      const name = shared?.name?.formatted_name ?? shared?.name?.first_name;
+      const number = shared?.phones?.[0]?.phone ?? shared?.phones?.[0]?.wa_id;
+      return [name, number].filter(Boolean).join(' · ') || undefined;
+    }
     default:
       return undefined;
   }
+}
+
+/**
+ * Teléfono que el usuario compartió en una tarjeta de contacto. Es la única vía
+ * para recuperar el número de alguien que solo se identifica por username, y
+ * llega tras un botón `REQUEST_CONTACT_INFO`.
+ *
+ * Se prefiere `wa_id` sobre `phone`: el primero ya viene en dígitos, el segundo
+ * suele traer formato humano ('+54 9 11 …').
+ */
+function extractSharedPhone(msg: MetaWebhookMessage): string | undefined {
+  if (msg.type !== 'contacts') return undefined;
+
+  for (const shared of msg.contacts ?? []) {
+    for (const entry of shared.phones ?? []) {
+      const digits = (entry.wa_id ?? entry.phone ?? '').replace(/\D/g, '');
+      if (digits.length >= 8 && digits.length <= 15) return digits;
+    }
+  }
+  return undefined;
 }
 
 function extractInteractiveReplyId(msg: MetaWebhookMessage): string | undefined {

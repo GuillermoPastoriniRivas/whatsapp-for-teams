@@ -127,7 +127,13 @@ export class ConversationController {
         return {
           ...conv,
           contact: contact
-            ? { name: contact.name, phone: contact.phone, waId: contact.waId, profilePicUrl: contact.profilePicUrl }
+            ? {
+                name: contact.name,
+                phone: contact.phone,
+                username: contact.username,
+                bsuid: contact.bsuid,
+                profilePicUrl: contact.profilePicUrl,
+              }
             : null,
           agentName: conv.agentId ? (agentMap.get(conv.agentId)?.name ?? null) : null,
           agentType: conv.agentId ? (agentMap.get(conv.agentId)?.type ?? null) : null,
@@ -167,7 +173,8 @@ export class ConversationController {
             id: contact.id,
             name: contact.name,
             phone: contact.phone,
-            waId: contact.waId,
+            username: contact.username,
+            bsuid: contact.bsuid,
             profilePicUrl: contact.profilePicUrl,
             email: contact.email,
             company: contact.company,

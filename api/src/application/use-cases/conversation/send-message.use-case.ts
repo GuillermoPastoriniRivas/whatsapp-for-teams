@@ -22,6 +22,7 @@ import { MediaAssetRepository } from '../../../domain/repositories/media-asset.r
 import { MediaAccessService } from '../media/media-access.service.js';
 import { MessageMediaEnricher } from '../media/message-media.enricher.js';
 import { CancelActiveFlowExecutionUseCase } from '../flow/cancel-active-flow-execution.use-case.js';
+import { recipientIdentityOf } from '../../../domain/value-objects/recipient-identity.js';
 
 /** El tipo de mensaje de WhatsApp que corresponde a cada clase de archivo. */
 const MEDIA_MESSAGE_TYPES: Record<MediaKind, MessageType> = {
@@ -89,7 +90,7 @@ export class SendMessageUseCase {
       provider: phone.provider,
       providerConfig: phone.providerConfig,
       phoneNumberId: phone.phoneNumberId,
-      to: contact!.waId,
+      ...recipientIdentityOf(contact!),
       type: messageType,
       body: input.body,
       mediaId,

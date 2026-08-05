@@ -19,6 +19,13 @@ export class PhoneNumberModel {
   @Prop({ required: true })
   wabaId: string;
 
+  /**
+   * Portfolio de negocio que scopea los BSUID de este número. Null hasta que se
+   * configure: ahí se cae a `wabaId`.
+   */
+  @Prop({ type: String, default: null })
+  portfolioId: string | null;
+
   @Prop({ required: true, unique: true })
   phoneNumberId: string;
 

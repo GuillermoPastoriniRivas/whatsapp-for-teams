@@ -17,6 +17,7 @@ export class PhoneNumberMapper {
       doc.webhookSecret,
       doc.status as PhoneNumberStatus,
       doc.createdAt,
+      doc.portfolioId ?? null,
     );
   }
 }

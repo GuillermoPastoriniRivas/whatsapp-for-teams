@@ -6,8 +6,10 @@ export class CampaignRecipient {
     public readonly campaignId: string,
     public readonly tenantId: string,
     public readonly contactId: string,
-    public readonly waId: string,
-    public readonly phone: string,
+    /** Snapshot del teléfono al armar la campaña. Null si el contacto solo tiene BSUID. */
+    public readonly phone: string | null,
+    /** Snapshot del BSUID. Al menos uno de los dos está presente. */
+    public readonly bsuid: string | null,
     public readonly resolvedVariables: Record<string, string>,
     public readonly status: CampaignRecipientStatus,
     public readonly attemptCount: number,

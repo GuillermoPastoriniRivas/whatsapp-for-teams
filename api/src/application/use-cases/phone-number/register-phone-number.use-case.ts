@@ -18,6 +18,7 @@ export class RegisterPhoneNumberUseCase {
       label: input.label,
       webhookSecret: input.webhookSecret,
       status: PhoneNumberStatus.ACTIVE,
+      portfolioId: input.portfolioId?.trim() || null,
     });
 
     return ok(phone);

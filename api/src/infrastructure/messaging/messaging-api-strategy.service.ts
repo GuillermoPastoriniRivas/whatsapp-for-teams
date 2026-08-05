@@ -5,6 +5,8 @@ import { MessagingApiPort, SendMessageParams, SendMessageResult, TypingIndicator
 import { MetaCloudApiService } from './meta-cloud-api.service.js';
 import { TwilioWhatsAppService } from './twilio-whatsapp.service.js';
 import { KapsoWhatsAppService } from './kapso-whatsapp.service.js';
+import { getProviderCapabilities } from '../../domain/constants/provider-capabilities.js';
+import { BsuidNotSupportedByProviderError, RecipientNotReachableError } from '../../domain/errors/domain-errors.js';
 
 @Injectable()
 export class MessagingApiStrategyService implements MessagingApiPort {
@@ -29,6 +31,14 @@ export class MessagingApiStrategyService implements MessagingApiPort {
   }
 
   async sendMessage(params: SendMessageParams): Promise<SendMessageResult> {
+    if (!params.to && !params.recipient) {
+      throw new RecipientNotReachableError('The contact has neither a phone number nor a business-scoped user ID.');
+    }
+
+    if (!params.to && !getProviderCapabilities(params.provider).bsuid) {
+      throw new BsuidNotSupportedByProviderError(params.provider);
+    }
+
     switch (params.provider) {
       case MessagingProvider.META:
         return this.metaService.sendMessage(params);

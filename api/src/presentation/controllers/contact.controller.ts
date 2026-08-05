@@ -139,9 +139,10 @@ export class ContactController {
     properties: {
       id: { type: 'string' },
       tenantId: { type: 'string' },
-      waId: { type: 'string' },
       name: { type: 'string' },
-      phone: { type: 'string' },
+      phone: { type: 'string', nullable: true, description: 'Null si el contacto solo comparte su username de WhatsApp' },
+      bsuid: { type: 'string', nullable: true, description: 'Business-Scoped User ID' },
+      username: { type: 'string', nullable: true },
       profilePicUrl: { type: 'string', nullable: true },
       email: { type: 'string', nullable: true },
       company: { type: 'string', nullable: true },

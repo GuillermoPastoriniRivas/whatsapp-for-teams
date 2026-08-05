@@ -66,10 +66,14 @@ export class StartFlowFromWebhookUseCase {
     const nameField = version.trigger.contactNameField;
     const contactName = nameField ? String(resolvePath(payload, nameField) ?? '') : '';
 
-    const contact = await this.contactRepo.upsertByWaId(flow.tenantId, phoneDigits, {
-      name: contactName || phoneDigits,
-      phone: phoneDigits,
-    });
+    const existing = await this.contactRepo.findByPhone(flow.tenantId, phoneDigits);
+    const contact =
+      existing ??
+      (await this.contactRepo.create(
+        flow.tenantId,
+        { phone: phoneDigits },
+        { name: contactName || phoneDigits },
+      ));
 
     const now = new Date();
     const { conversation } = await this.conversationRepo.findOrCreateByContactAndPhone({

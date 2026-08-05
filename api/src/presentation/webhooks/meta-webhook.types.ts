@@ -62,13 +62,20 @@ export interface MetaWebhookValue {
 }
 
 export interface MetaWebhookContact {
-  wa_id: string;
-  profile: { name: string };
+  /** Se **omite** (no llega vacío) si el usuario no comparte su teléfono. */
+  wa_id?: string;
+  /** BSUID. Presente siempre desde abril 2026. */
+  user_id?: string;
+  parent_user_id?: string;
+  profile: { name?: string; username?: string };
 }
 
 export interface MetaWebhookMessage {
   id: string;
-  from: string;
+  /** Teléfono del remitente. Omitido para usuarios que solo comparten username. */
+  from?: string;
+  from_user_id?: string;
+  from_parent_user_id?: string;
   timestamp: string;
   type: string;
   /** Present when the message replies to another (button taps always carry it). */
@@ -83,7 +90,8 @@ export interface MetaWebhookMessage {
   sticker?: MetaMediaPayload;
   location?: { latitude: number; longitude: number; name?: string; address?: string };
   reaction?: { message_id: string; emoji: string };
-  contacts?: unknown[];
+  /** Tarjetas de contacto compartidas; es la respuesta a `REQUEST_CONTACT_INFO`. */
+  contacts?: MetaSharedContact[];
   /** Reply to an interactive (non-template) buttons/list message. */
   interactive?: {
     type: 'button_reply' | 'list_reply' | string;
@@ -101,10 +109,41 @@ export interface MetaMediaPayload {
   caption?: string;
 }
 
+export interface MetaSharedContact {
+  name?: { formatted_name?: string; first_name?: string };
+  phones?: Array<{ phone?: string; wa_id?: string; type?: string }>;
+}
+
 export interface MetaWebhookStatus {
   id: string;
   status: string;
   timestamp: string;
-  recipient_id: string;
+  recipient_id?: string;
+  recipient_user_id?: string;
+  recipient_parent_user_id?: string;
   errors?: Array<{ code: number; title: string }>;
+}
+
+/**
+ * Campo `user_id_update`: Meta regenera el BSUID cuando el usuario cambia de
+ * teléfono y avisa con el valor viejo y el nuevo.
+ *
+ * OJO: Meta no publica el shape exacto de este payload, así que se leen varios
+ * alias plausibles y se descarta el evento si no se puede resolver el par.
+ * Confirmar contra un payload real antes de confiar en él.
+ */
+export interface MetaUserIdUpdateValue {
+  user_id?: string;
+  new_user_id?: string;
+  previous_user_id?: string;
+  old_user_id?: string;
+  wa_id?: string;
+  [key: string]: unknown;
+}
+
+export interface ParsedUserIdUpdate {
+  wabaId: string;
+  previousBsuid: string;
+  newBsuid: string;
+  phone: string | null;
 }

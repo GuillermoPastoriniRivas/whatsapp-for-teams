@@ -33,8 +33,10 @@ export interface Conversation {
   contact: {
     id: string;
     name: string;
-    phone: string;
-    waId: string;
+    /** Null si el contacto solo comparte su username de WhatsApp. */
+    phone: string | null;
+    username: string | null;
+    bsuid: string | null;
     profilePicUrl: string | null;
     email: string | null;
     company: string | null;
@@ -46,9 +48,16 @@ export interface Conversation {
 export interface Contact {
   id: string;
   tenantId: string;
-  waId: string;
   name: string;
-  phone: string;
+  /**
+   * Dígitos E.164 sin '+'. Null para los usuarios que adoptaron username: ahí
+   * `bsuid` es el único identificador estable.
+   */
+  phone: string | null;
+  /** Username público de WhatsApp, sin '@'. */
+  username: string | null;
+  /** Business-Scoped User ID. */
+  bsuid: string | null;
   profilePicUrl: string | null;
   lastSeenAt: string;
   email: string | null;
@@ -160,6 +169,8 @@ export interface PhoneNumber {
   provider: "meta" | "twilio" | "360dialog" | "kapso" | "demo";
   providerConfig: Record<string, string>;
   wabaId: string;
+  /** Portfolio que scopea los BSUID. Null ⇒ se usa `wabaId`. */
+  portfolioId: string | null;
   phoneNumberId: string;
   displayPhone: string;
   label: string;
@@ -477,8 +488,8 @@ export interface CampaignRecipient {
   campaignId: string;
   tenantId: string;
   contactId: string;
-  waId: string;
-  phone: string;
+  phone: string | null;
+  bsuid: string | null;
   resolvedVariables: Record<string, string>;
   status: CampaignRecipientStatus;
   attemptCount: number;

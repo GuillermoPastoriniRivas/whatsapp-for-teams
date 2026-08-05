@@ -10,6 +10,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { LoadingState, Spinner } from "@/components/ui/spinner";
 import { InlineNotice } from "@/components/shared/inline-notice";
 import { useTranslations } from "@/lib/i18n/use-translations";
+import { displayIdentity, identitySubtitle } from "@/lib/identity";
 import { api } from "@/lib/api";
 import type { Contact, PaginatedResponse } from "@/types";
 
@@ -177,8 +178,8 @@ export function ContactPicker({ selected, onChange }: ContactPickerProps) {
                 <User className="size-3.5 text-muted-foreground" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{contact.name}</p>
-                <p className="truncate text-xs text-muted-foreground">+{contact.waId || contact.phone}</p>
+                <p className="truncate text-sm font-medium">{displayIdentity(contact)}</p>
+                <p className="truncate text-xs text-muted-foreground">{identitySubtitle(contact)}</p>
               </div>
             </label>
           ))

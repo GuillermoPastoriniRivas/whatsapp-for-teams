@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { BulkUpsertContactRow, ContactRepository } from '../../../../domain/repositories/contact.repository.js';
+import {
+  BulkUpsertContactRow,
+  ContactIdentity,
+  ContactProfile,
+  ContactRepository,
+} from '../../../../domain/repositories/contact.repository.js';
 import { Contact } from '../../../../domain/entities/contact.entity.js';
 import { ContactModel, ContactDocument } from '../schemas/contact.schema.js';
 import { ContactMapper } from '../mappers/contact.mapper.js';
@@ -12,37 +17,50 @@ export class MongoContactRepository implements ContactRepository {
     @InjectModel(ContactModel.name) private readonly model: Model<ContactDocument>,
   ) {}
 
-  async upsertByWaId(
-    tenantId: string,
-    waId: string,
-    data: { name: string; phone: string; profilePicUrl?: string | null },
-  ): Promise<Contact> {
-    const doc = await this.model.findOneAndUpdate(
-      { tenantId: new Types.ObjectId(tenantId), waId },
-      {
-        $set: {
-          name: data.name,
-          phone: data.phone,
-          ...(data.profilePicUrl !== undefined && { profilePicUrl: data.profilePicUrl }),
-          lastSeenAt: new Date(),
-        },
-        $setOnInsert: {
-          tenantId: new Types.ObjectId(tenantId),
-          waId,
-        },
-      },
-      { upsert: true, returnDocument: 'after' },
-    );
-    return ContactMapper.toDomain(doc!);
-  }
-
   async findById(id: string): Promise<Contact | null> {
     const doc = await this.model.findById(id);
     return doc ? ContactMapper.toDomain(doc) : null;
   }
 
-  async findByWaId(tenantId: string, waId: string): Promise<Contact | null> {
-    const doc = await this.model.findOne({ tenantId: new Types.ObjectId(tenantId), waId });
+  async findByPhone(tenantId: string, phone: string): Promise<Contact | null> {
+    const doc = await this.model.findOne({ tenantId: new Types.ObjectId(tenantId), phone });
+    return doc ? ContactMapper.toDomain(doc) : null;
+  }
+
+  async findByBsuid(tenantId: string, portfolioId: string, bsuid: string): Promise<Contact | null> {
+    const doc = await this.model.findOne({ tenantId: new Types.ObjectId(tenantId), portfolioId, bsuid });
+    return doc ? ContactMapper.toDomain(doc) : null;
+  }
+
+  async create(tenantId: string, identity: ContactIdentity, profile: ContactProfile): Promise<Contact> {
+    const doc = await this.model.create({
+      tenantId: new Types.ObjectId(tenantId),
+      name: profile.name?.trim() || identity.username || identity.phone || 'Contacto',
+      phone: identity.phone ?? null,
+      bsuid: identity.bsuid ?? null,
+      parentBsuid: identity.parentBsuid ?? null,
+      username: identity.username ?? null,
+      portfolioId: identity.portfolioId ?? null,
+      profilePicUrl: profile.profilePicUrl ?? null,
+      lastSeenAt: new Date(),
+    });
+    return ContactMapper.toDomain(doc);
+  }
+
+  async applyIdentity(id: string, identity: ContactIdentity, profile: ContactProfile): Promise<Contact | null> {
+    const set: Record<string, unknown> = { lastSeenAt: new Date() };
+
+    // Solo se escriben los ejes que vinieron. Meta omite el teléfono cuando no
+    // corresponde compartirlo, y eso no significa que el contacto lo perdió.
+    if (identity.phone) set.phone = identity.phone;
+    if (identity.bsuid) set.bsuid = identity.bsuid;
+    if (identity.parentBsuid) set.parentBsuid = identity.parentBsuid;
+    if (identity.username) set.username = identity.username;
+    if (identity.portfolioId) set.portfolioId = identity.portfolioId;
+    if (profile.name?.trim()) set.name = profile.name.trim();
+    if (profile.profilePicUrl !== undefined) set.profilePicUrl = profile.profilePicUrl;
+
+    const doc = await this.model.findByIdAndUpdate(id, { $set: set }, { returnDocument: 'after' });
     return doc ? ContactMapper.toDomain(doc) : null;
   }
 
@@ -50,7 +68,14 @@ export class MongoContactRepository implements ContactRepository {
     const filter: Record<string, unknown> = { tenantId: new Types.ObjectId(tenantId) };
     if (options.search) {
       const regex = { $regex: options.search, $options: 'i' };
-      filter.$or = [{ name: regex }, { phone: regex }, { waId: regex }, { email: regex }, { company: regex }];
+      filter.$or = [
+        { name: regex },
+        { phone: regex },
+        { username: regex },
+        { bsuid: regex },
+        { email: regex },
+        { company: regex },
+      ];
     }
 
     const [data, total] = await Promise.all([
@@ -83,25 +108,24 @@ export class MongoContactRepository implements ContactRepository {
     return doc ? ContactMapper.toDomain(doc) : null;
   }
 
-  async bulkUpsertByWaId(tenantId: string, rows: BulkUpsertContactRow[]): Promise<{ inserted: number; updated: number }> {
+  async bulkUpsertByPhone(tenantId: string, rows: BulkUpsertContactRow[]): Promise<{ inserted: number; updated: number }> {
     if (rows.length === 0) return { inserted: 0, updated: 0 };
 
     const tenantObjectId = new Types.ObjectId(tenantId);
     const result = await this.model.bulkWrite(
       rows.map((row) => ({
         updateOne: {
-          filter: { tenantId: tenantObjectId, waId: row.waId },
+          filter: { tenantId: tenantObjectId, phone: row.phone },
           update: {
             $set: {
               name: row.name,
-              phone: row.phone,
               ...(row.email !== undefined && { email: row.email }),
               ...(row.company !== undefined && { company: row.company }),
               ...(row.customFields && Object.keys(row.customFields).length > 0
                 ? Object.fromEntries(Object.entries(row.customFields).map(([k, v]) => [`customFields.${k}`, v]))
                 : {}),
             },
-            $setOnInsert: { tenantId: tenantObjectId, waId: row.waId, lastSeenAt: new Date() },
+            $setOnInsert: { tenantId: tenantObjectId, phone: row.phone, lastSeenAt: new Date() },
           },
           upsert: true,
         },
@@ -116,5 +140,9 @@ export class MongoContactRepository implements ContactRepository {
     if (ids.length === 0) return [];
     const docs = await this.model.find({ _id: { $in: ids.map((id) => new Types.ObjectId(id)) } });
     return docs.map(ContactMapper.toDomain);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.model.findByIdAndDelete(id);
   }
 }

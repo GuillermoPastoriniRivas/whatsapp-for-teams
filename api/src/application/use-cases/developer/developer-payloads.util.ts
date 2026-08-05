@@ -46,9 +46,12 @@ export function serializeConversation(conversation: Conversation) {
 export function serializeContact(contact: Contact) {
   return {
     id: contact.id,
-    waId: contact.waId,
     name: contact.name,
     phone: contact.phone,
+    // Identidad de WhatsApp: `phone` puede venir null para usuarios que solo
+    // comparten su username, y ahí `bsuid` es el único identificador estable.
+    bsuid: contact.bsuid,
+    username: contact.username,
     email: contact.email,
     company: contact.company,
     customFields: contact.customFields,

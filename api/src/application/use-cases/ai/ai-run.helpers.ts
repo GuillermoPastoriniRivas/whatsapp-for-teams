@@ -10,6 +10,7 @@ import type { MessageRepository } from '../../../domain/repositories/message.rep
 import type { Message } from '../../../domain/entities/message.entity.js';
 import type { AiAgentConfig } from '../../../domain/entities/ai-agent-config.entity.js';
 import type { Contact } from '../../../domain/entities/contact.entity.js';
+import type { RecipientIdentity } from '../../../domain/value-objects/recipient-identity.js';
 import type { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
@@ -123,7 +124,7 @@ export interface SendBubblesParams {
   messageRepo: MessageRepository;
   gateway: RealtimeGatewayPort;
   phone: { provider: any; providerConfig: any; phoneNumberId: string };
-  contactWaId: string;
+  recipient: RecipientIdentity;
   conversationId: string;
   senderAgentId: string | null;
   senderAgentName: string | null;
@@ -136,12 +137,12 @@ export interface SendBubblesParams {
 
 /** Envía burbujas de texto con typing + delay entre burbujas, persiste y emite WS */
 export async function sendBubbles(params: SendBubblesParams): Promise<void> {
-  const { messagingApi, messageRepo, gateway, phone, contactWaId, conversationId } = params;
+  const { messagingApi, messageRepo, gateway, phone, recipient, conversationId } = params;
   const typingParams = {
     provider: phone.provider,
     providerConfig: phone.providerConfig,
     phoneNumberId: phone.phoneNumberId,
-    to: contactWaId,
+    ...recipient,
   };
 
   for (let i = 0; i < params.bubbles.length; i++) {
@@ -156,7 +157,7 @@ export async function sendBubbles(params: SendBubblesParams): Promise<void> {
       provider: phone.provider,
       providerConfig: phone.providerConfig,
       phoneNumberId: phone.phoneNumberId,
-      to: contactWaId,
+      ...recipient,
       type: MessageType.TEXT,
       body,
     });

@@ -28,6 +28,7 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
 
   const [providerConfig, setProviderConfig] = useState<Record<string, string>>(phone.providerConfig ?? {});
   const [wabaId, setWabaId] = useState(phone.wabaId ?? "");
+  const [portfolioId, setPortfolioId] = useState(phone.portfolioId ?? "");
   const [phoneNumberId, setPhoneNumberId] = useState(phone.phoneNumberId ?? "");
   const [displayPhone, setDisplayPhone] = useState(phone.displayPhone ?? "");
   const [label, setLabel] = useState(phone.label ?? "");
@@ -39,6 +40,7 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
   useEffect(() => {
     setProviderConfig(phone.providerConfig ?? {});
     setWabaId(phone.wabaId ?? "");
+    setPortfolioId(phone.portfolioId ?? "");
     setPhoneNumberId(phone.phoneNumberId ?? "");
     setDisplayPhone(phone.displayPhone ?? "");
     setLabel(phone.label ?? "");
@@ -61,6 +63,8 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
       const body: Record<string, unknown> = {
         providerConfig,
         wabaId,
+        // Vacío se manda como null: así el backend vuelve a scopear por wabaId.
+        portfolioId: portfolioId.trim() || null,
         phoneNumberId,
         displayPhone,
         label,
@@ -133,6 +137,14 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
 
         <Field label="WABA ID">
           <Input value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="WABA ID" />
+        </Field>
+
+        <Field label={t.admin.portfolioId} hint={t.admin.portfolioIdHint}>
+          <Input
+            value={portfolioId}
+            onChange={(e) => setPortfolioId(e.target.value)}
+            placeholder={t.admin.portfolioIdPlaceholder}
+          />
         </Field>
 
         <Field label="Phone Number ID">

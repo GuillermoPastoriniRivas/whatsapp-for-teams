@@ -264,3 +264,29 @@ export class RecipientNotReachableError extends DomainError {
     super('INVALID_RECIPIENT', detail ?? 'The destination phone number is not valid.');
   }
 }
+
+/**
+ * El contacto solo tiene BSUID y el proveedor del número emisor no sabe
+ * direccionar por `recipient` (Twilio, 360dialog).
+ */
+export class BsuidNotSupportedByProviderError extends DomainError {
+  constructor(provider: string) {
+    super(
+      'BSUID_NOT_SUPPORTED',
+      `This contact only shared a WhatsApp username, and the '${provider}' provider cannot address business-scoped user IDs. Move this number to Meta or Kapso, or ask the contact for their phone number.`,
+    );
+  }
+}
+
+/**
+ * Meta rechaza las plantillas de autenticación one-tap/zero-tap/copy-code
+ * dirigidas a un BSUID (error 131062): hay que pedir el teléfono primero.
+ */
+export class AuthTemplateRequiresPhoneError extends DomainError {
+  constructor() {
+    super(
+      'AUTH_TEMPLATE_REQUIRES_PHONE',
+      'Authentication templates cannot be delivered to a WhatsApp username. Request the contact phone number first, then send the code.',
+    );
+  }
+}

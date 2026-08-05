@@ -4,6 +4,7 @@ import { SendMessageParams, SendMessageResult, TypingIndicatorParams } from '../
 import { classifyMetaError, MetaErrorBody } from './meta-api-error.js';
 import { buildInteractivePayload } from './interactive-payload.builder.js';
 import { buildMediaPayload } from './media-payload.builder.js';
+import { addressee } from './addressee.builder.js';
 
 @Injectable()
 export class MetaCloudApiService {
@@ -30,7 +31,7 @@ export class MetaCloudApiService {
         body: JSON.stringify({
           messaging_product: 'whatsapp',
           recipient_type: 'individual',
-          to: params.to,
+          ...addressee(params),
           type: 'typing_indicator',
           typing_indicator: { type: 'text' },
         }),
@@ -50,7 +51,7 @@ export class MetaCloudApiService {
 
     const body: Record<string, unknown> = {
       messaging_product: 'whatsapp',
-      to: params.to,
+      ...addressee(params),
       type: params.type,
     };
 

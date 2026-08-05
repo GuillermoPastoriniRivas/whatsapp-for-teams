@@ -53,9 +53,17 @@ export function ConversationList() {
     if (!searchQuery.trim()) return conversations;
     const q = searchQuery.toLowerCase();
     return conversations.filter((conv) => {
-      const name = conv.contact?.name?.toLowerCase() || "";
-      const waId = conv.contact?.waId?.toLowerCase() || "";
-      return name.includes(q) || waId.includes(q);
+      // Se busca sobre los tres ejes: el teléfono ya no siempre está, y el
+      // username es lo único que un agente puede tipear de esos contactos.
+      const haystack = [
+        conv.contact?.name,
+        conv.contact?.phone,
+        conv.contact?.username,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
     });
   }, [conversations, searchQuery]);
 

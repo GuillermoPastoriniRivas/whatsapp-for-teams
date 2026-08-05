@@ -6,9 +6,8 @@ export class ContactMapper {
     return new Contact(
       doc._id.toHexString(),
       doc.tenantId.toHexString(),
-      doc.waId,
       doc.name,
-      doc.phone,
+      doc.phone ?? null,
       doc.profilePicUrl,
       doc.lastSeenAt,
       doc.createdAt,
@@ -16,6 +15,10 @@ export class ContactMapper {
       doc.company ?? null,
       doc.notes ?? null,
       doc.customFields ?? {},
+      doc.bsuid ?? null,
+      doc.parentBsuid ?? null,
+      doc.username ?? null,
+      doc.portfolioId ?? null,
     );
   }
 }

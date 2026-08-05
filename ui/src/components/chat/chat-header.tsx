@@ -9,6 +9,8 @@ import { ChatMenu } from "./chat-menu";
 import { AssignedToControl } from "./assigned-to-control";
 import { FlowChip } from "./flow-chip";
 import { avatarStyle, initials } from "@/lib/avatar";
+import { displayIdentity, identitySubtitle } from "@/lib/identity";
+import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -18,6 +20,7 @@ interface Props {
 
 export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
   const router = useRouter();
+  const { t } = useTranslations();
   const conversation = useConversationStore((s) =>
     s.conversations.find((c) => c.id === conversationId)
   );
@@ -53,10 +56,10 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
             </Avatar>
             <div className="flex flex-col min-w-0 text-left">
               <h2 className="truncate font-medium text-base leading-tight text-foreground">
-                {contact?.name || "Unknown"}
+                {displayIdentity(contact, t.chat.unknown)}
               </h2>
               <span className="truncate text-xs text-muted-foreground mt-0.5">
-                +{contact?.waId || contact?.phone || "—"}
+                {identitySubtitle(contact)}
                 {conversation?.phoneLabel && <span className="ml-1">· {conversation.phoneLabel}</span>}
               </span>
             </div>

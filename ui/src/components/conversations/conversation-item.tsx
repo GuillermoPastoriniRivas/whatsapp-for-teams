@@ -27,6 +27,7 @@ function timeAgo(dateStr: string, yesterdayLabel: string): string {
 }
 
 import { avatarStyle, initials } from "@/lib/avatar";
+import { displayIdentity } from "@/lib/identity";
 
 interface Props {
   conversation: Conversation;
@@ -84,7 +85,7 @@ export function ConversationItem({ conversation, onSelect }: Props) {
               unreadCount > 0 ? "font-semibold" : "font-medium"
             )}
           >
-            {contactName || `+${conversation.contact?.waId || t.chat.unknown}`}
+            {displayIdentity(conversation.contact, t.chat.unknown)}
           </span>
           {conversation.phoneLabel && (
             <Badge variant="outline" className="max-w-[90px] min-w-0 shrink px-1.5 font-normal text-muted-foreground">

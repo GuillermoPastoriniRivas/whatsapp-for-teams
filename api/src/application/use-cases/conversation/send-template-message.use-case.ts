@@ -17,6 +17,8 @@ import { MessageDirection } from '../../../domain/enums/message-direction.enum.j
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
 import { TemplateStatus } from '../../../domain/enums/template-status.enum.js';
+import { isBsuidOnly, recipientIdentityOf, templateRequiresPhone } from '../../../domain/value-objects/recipient-identity.js';
+import { AuthTemplateRequiresPhoneError } from '../../../domain/errors/domain-errors.js';
 
 export interface SendTemplateMessageInput {
   conversationId: string;
@@ -81,6 +83,13 @@ export class SendTemplateMessageUseCase {
     const contact = await this.contactRepo.findById(conversation.contactId);
     if (!contact) return err(new DomainError('CONTACT_NOT_FOUND', 'Contact not found'));
 
+    // Meta rechaza las plantillas de autenticación dirigidas a un BSUID (131062).
+    // Se corta acá para no gastar el intento contra la API.
+    const identity = recipientIdentityOf(contact);
+    if (isBsuidOnly(identity) && templateRequiresPhone(template.category)) {
+      return err(new AuthTemplateRequiresPhoneError());
+    }
+
     const phone = await this.phoneRepo.findById(conversation.phoneNumberId);
     if (!phone || phone.status !== 'active') {
       return err(new DomainError('PHONE_NUMBER_INACTIVE', 'This phone number is currently inactive.'));
@@ -93,7 +102,7 @@ export class SendTemplateMessageUseCase {
       provider: phone.provider,
       providerConfig: phone.providerConfig,
       phoneNumberId: phone.phoneNumberId,
-      to: contact.waId,
+      ...recipientIdentityOf(contact),
       type: MessageType.TEMPLATE,
       body: built.renderedBody,
       template: {

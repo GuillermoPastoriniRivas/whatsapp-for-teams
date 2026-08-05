@@ -299,18 +299,25 @@ export class InMemoryContactRepository implements ContactRepository {
     this.contact = { ...this.contact, ...data } as Contact;
     return this.contact;
   }
-  async upsertByWaId(): Promise<Contact> {
+  async create(): Promise<Contact> {
     return this.contact;
   }
-  async findByWaId(): Promise<Contact | null> {
+  async applyIdentity(): Promise<Contact | null> {
+    return this.contact;
+  }
+  async findByPhone(): Promise<Contact | null> {
+    return this.contact;
+  }
+  async findByBsuid(): Promise<Contact | null> {
     return this.contact;
   }
   async findByTenantId(): Promise<PaginatedResult<Contact>> {
     return { data: [], meta: { total: 0, page: 1, pages: 0 } };
   }
-  async bulkUpsertByWaId(_t: string, _rows: BulkUpsertContactRow[]): Promise<{ inserted: number; updated: number }> {
+  async bulkUpsertByPhone(_t: string, _rows: BulkUpsertContactRow[]): Promise<{ inserted: number; updated: number }> {
     return { inserted: 0, updated: 0 };
   }
+  async delete(): Promise<void> {}
   async findByIds(): Promise<Contact[]> {
     return [this.contact];
   }

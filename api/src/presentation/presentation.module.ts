@@ -114,6 +114,8 @@ import { GetTenantUseCase } from '../application/use-cases/tenant/get-tenant.use
 
 // Use Cases — Webhook
 import { HandleInboundMessageUseCase } from '../application/use-cases/webhook/handle-inbound-message.use-case.js';
+import { HandleUserIdUpdateUseCase } from '../application/use-cases/webhook/handle-user-id-update.use-case.js';
+import { ResolveContactIdentityUseCase } from '../application/use-cases/contact/resolve-contact-identity.use-case.js';
 import { HandleStatusUpdateUseCase } from '../application/use-cases/webhook/handle-status-update.use-case.js';
 import { HandleTemplateStatusUpdateUseCase } from '../application/use-cases/webhook/handle-template-status-update.use-case.js';
 import { HandleTemplateQualityUpdateUseCase } from '../application/use-cases/webhook/handle-template-quality-update.use-case.js';
@@ -624,9 +626,20 @@ const useCaseProviders = [
   // Webhook
   {
     provide: 'HandleInboundMessageUseCase',
-    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any, sendPush: any, accessRepo: any, flowRouter: any, devEvents: any, registerMedia: any, mediaEnricher: any) =>
-      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply, sendPush, accessRepo, flowRouter, devEvents, registerMedia, mediaEnricher),
-    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase', 'AgentPhoneAccessRepository', 'FlowInboundRouterUseCase', 'DeveloperEventsPort', 'RegisterInboundMediaUseCase', 'MessageMediaEnricher'],
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any, sendPush: any, accessRepo: any, flowRouter: any, devEvents: any, registerMedia: any, mediaEnricher: any, resolveIdentity: any) =>
+      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply, sendPush, accessRepo, flowRouter, devEvents, registerMedia, mediaEnricher, resolveIdentity),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase', 'AgentPhoneAccessRepository', 'FlowInboundRouterUseCase', 'DeveloperEventsPort', 'RegisterInboundMediaUseCase', 'MessageMediaEnricher', 'ResolveContactIdentityUseCase'],
+  },
+  {
+    provide: 'ResolveContactIdentityUseCase',
+    useFactory: (contactRepo: any, mergeRepo: any) => new ResolveContactIdentityUseCase(contactRepo, mergeRepo),
+    inject: ['ContactRepository', 'ContactMergeRepository'],
+  },
+  {
+    provide: 'HandleUserIdUpdateUseCase',
+    useFactory: (phoneRepo: any, contactRepo: any, mergeRepo: any) =>
+      new HandleUserIdUpdateUseCase(phoneRepo, contactRepo, mergeRepo),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ContactMergeRepository'],
   },
   {
     provide: 'HandleStatusUpdateUseCase',

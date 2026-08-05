@@ -22,6 +22,7 @@ import { PhoneNumber } from '../../../domain/entities/phone-number.entity.js';
 import { MessageTemplate } from '../../../domain/entities/message-template.entity.js';
 import { buildTemplatePayload } from './helpers/template-variable.resolver.js';
 import { CAMPAIGN_DISPATCH_JOB } from './start-campaign.use-case.js';
+import { recipientIdentityOf } from '../../../domain/value-objects/recipient-identity.js';
 
 const STALE_QUEUED_MS = 10 * 60 * 1000;
 const RATE_LIMIT_BACKOFF_MS = 60 * 1000;
@@ -152,7 +153,7 @@ export class ProcessCampaignBatchUseCase {
         provider: phone.provider,
         providerConfig: phone.providerConfig,
         phoneNumberId: phone.phoneNumberId,
-        to: recipient.waId,
+        ...recipientIdentityOf(recipient),
         type: 'template',
         template: {
           name: template.name,

@@ -5,6 +5,8 @@ export interface ProviderCapabilities {
   interactive: boolean;
   /** Puede enviar plantillas aprobadas */
   templates: boolean;
+  /** Acepta el campo `recipient` para direccionar por BSUID en vez de teléfono */
+  bsuid: boolean;
 }
 
 /**
@@ -13,13 +15,13 @@ export interface ProviderCapabilities {
  * bloquear en la validación de publicación (plantillas en Twilio).
  */
 const CAPABILITIES: Record<string, ProviderCapabilities> = {
-  [MessagingProvider.META]: { interactive: true, templates: true },
-  [MessagingProvider.KAPSO]: { interactive: true, templates: true },
-  [MessagingProvider.TWILIO]: { interactive: false, templates: false },
-  [MessagingProvider.DIALOG_360]: { interactive: false, templates: false },
-  [MessagingProvider.DEMO]: { interactive: true, templates: true },
+  [MessagingProvider.META]: { interactive: true, templates: true, bsuid: true },
+  [MessagingProvider.KAPSO]: { interactive: true, templates: true, bsuid: true },
+  [MessagingProvider.TWILIO]: { interactive: false, templates: false, bsuid: false },
+  [MessagingProvider.DIALOG_360]: { interactive: false, templates: false, bsuid: false },
+  [MessagingProvider.DEMO]: { interactive: true, templates: true, bsuid: true },
 };
 
 export function getProviderCapabilities(provider: string): ProviderCapabilities {
-  return CAPABILITIES[provider] ?? { interactive: false, templates: false };
+  return CAPABILITIES[provider] ?? { interactive: false, templates: false, bsuid: false };
 }

@@ -13,8 +13,11 @@ import {
   DomainError,
   ConversationWindowExpiredError,
   RecipientNotReachableError,
+  AuthTemplateRequiresPhoneError,
 } from '../../../domain/errors/domain-errors.js';
 import { normalizePhone } from '../contact/normalize-phone.js';
+import { Contact } from '../../../domain/entities/contact.entity.js';
+import { isBsuidOnly, recipientIdentityOf, templateRequiresPhone } from '../../../domain/value-objects/recipient-identity.js';
 import { listTemplatePlaceholders, buildTemplatePayload, TemplatePlaceholder } from '../campaign/helpers/template-variable.resolver.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
 import { ConversationOrigin } from '../../../domain/enums/conversation-origin.enum.js';
@@ -32,8 +35,16 @@ const API_SENDER_NAME = 'API';
 
 export interface SendApiMessageInput {
   tenantId: string;
-  /** Número destino en cualquier formato; se normaliza a wa_id */
-  to: string;
+  /**
+   * Número destino en cualquier formato; se normaliza a dígitos. Opcional
+   * cuando se pasa `contactId`.
+   */
+  to?: string;
+  /**
+   * Contacto ya resuelto. Tiene prioridad sobre `to` y evita pasar la identidad
+   * por `normalizePhone`, que le borraría los puntos y las letras a un BSUID.
+   */
+  contactId?: string;
   /** Opcional si el tenant tiene un solo número activo */
   phoneNumberId?: string;
   /** Nombre para el contacto si no existe todavía */
@@ -80,20 +91,32 @@ export class SendApiMessageUseCase {
       return err(new DomainError('MISSING_MESSAGE_CONTENT', 'Provide either `body` (free-form text) or `templateId` (approved template).'));
     }
 
-    const waId = normalizePhone(input.to);
-    if (!waId) return err(new RecipientNotReachableError(`'${input.to}' is not a valid phone number.`));
-
     // Resolver el número emisor del tenant
     const phone = await this.resolvePhone(input.tenantId, input.phoneNumberId);
     if (phone instanceof DomainError) return err(phone);
 
-    // Contacto: nunca pisar el nombre de uno existente
-    let contact = await this.contactRepo.findByWaId(input.tenantId, waId);
-    if (!contact) {
-      contact = await this.contactRepo.upsertByWaId(input.tenantId, waId, {
-        name: input.contactName?.trim() || waId,
-        phone: waId,
-      });
+    let contact: Contact | null;
+
+    if (input.contactId) {
+      // Responder en una conversación existente: la identidad ya está resuelta
+      // y puede ser solo-BSUID, así que no pasa por la normalización de teléfono.
+      contact = await this.contactRepo.findById(input.contactId);
+      if (!contact || contact.tenantId !== input.tenantId) {
+        return err(new DomainError('CONTACT_NOT_FOUND', 'Contact not found.'));
+      }
+    } else {
+      const waId = normalizePhone(input.to ?? '');
+      if (!waId) return err(new RecipientNotReachableError(`'${input.to ?? ''}' is not a valid phone number.`));
+
+      // Contacto: nunca pisar el nombre de uno existente
+      contact = await this.contactRepo.findByPhone(input.tenantId, waId);
+      if (!contact) {
+        contact = await this.contactRepo.create(
+          input.tenantId,
+          { phone: waId },
+          { name: input.contactName?.trim() || waId },
+        );
+      }
     }
 
     // Conversación: si no existe se crea con lastInboundAt en época 0 para que
@@ -115,7 +138,7 @@ export class SendApiMessageUseCase {
 
     let message: Message;
     if (input.templateId) {
-      const sent = await this.sendTemplate(input, phone, contact.waId, conversation.id);
+      const sent = await this.sendTemplate(input, phone, contact, conversation.id);
       if (!sent.ok) return sent;
       message = sent.value;
     } else {
@@ -126,7 +149,7 @@ export class SendApiMessageUseCase {
         provider: phone.provider,
         providerConfig: phone.providerConfig,
         phoneNumberId: phone.phoneNumberId,
-        to: contact.waId,
+        ...recipientIdentityOf(contact),
         type: MessageType.TEXT,
         body: input.body!,
       });
@@ -215,7 +238,7 @@ export class SendApiMessageUseCase {
   private async sendTemplate(
     input: SendApiMessageInput,
     phone: { id: string; provider: any; providerConfig: any; phoneNumberId: string },
-    toWaId: string,
+    contact: Contact,
     conversationId: string,
   ): Promise<Result<Message, DomainError>> {
     const template = await this.templateRepo.findById(input.templateId!);
@@ -227,6 +250,10 @@ export class SendApiMessageUseCase {
     }
     if (template.phoneNumberId !== phone.id) {
       return err(new DomainError('TEMPLATE_PHONE_MISMATCH', 'Template belongs to a different phone number.'));
+    }
+    // Meta rechaza las plantillas de autenticación dirigidas a un BSUID (131062).
+    if (isBsuidOnly(recipientIdentityOf(contact)) && templateRequiresPhone(template.category)) {
+      return err(new AuthTemplateRequiresPhoneError());
     }
 
     const variables = input.variables ?? {};
@@ -243,7 +270,7 @@ export class SendApiMessageUseCase {
       provider: phone.provider,
       providerConfig: phone.providerConfig,
       phoneNumberId: phone.phoneNumberId,
-      to: toWaId,
+      ...recipientIdentityOf(contact),
       type: MessageType.TEMPLATE,
       body: built.renderedBody,
       template: {

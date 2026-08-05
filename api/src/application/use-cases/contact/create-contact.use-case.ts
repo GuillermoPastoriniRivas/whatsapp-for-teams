@@ -24,13 +24,14 @@ export class CreateContactUseCase {
       return err(new DomainError('INVALID_PHONE', `Invalid phone number: '${input.phone ?? ''}'`));
     }
 
-    const existing = await this.contactRepo.findByWaId(input.tenantId, waId);
+    const existing = await this.contactRepo.findByPhone(input.tenantId, waId);
     if (existing) return ok(existing);
 
-    const contact = await this.contactRepo.upsertByWaId(input.tenantId, waId, {
-      name: input.name?.trim() || waId,
-      phone: waId,
-    });
+    const contact = await this.contactRepo.create(
+      input.tenantId,
+      { phone: waId },
+      { name: input.name?.trim() || waId },
+    );
     return ok(contact);
   }
 }

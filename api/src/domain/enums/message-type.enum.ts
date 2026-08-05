@@ -8,4 +8,6 @@ export enum MessageType {
   LOCATION = 'location',
   TEMPLATE = 'template',
   INTERACTIVE = 'interactive',
+  /** Tarjeta de contacto. La manda el usuario al tocar `REQUEST_CONTACT_INFO`. */
+  CONTACTS = 'contacts',
 }

@@ -19,6 +19,7 @@ import { MongoPhoneNumberRepository } from './mongoose/repositories/mongo-phone-
 import { MongoAgentRepository } from './mongoose/repositories/mongo-agent.repository.js';
 import { MongoAgentPhoneAccessRepository } from './mongoose/repositories/mongo-agent-phone-access.repository.js';
 import { MongoContactRepository } from './mongoose/repositories/mongo-contact.repository.js';
+import { MongoContactMergeRepository } from './mongoose/repositories/mongo-contact-merge.repository.js';
 import { MongoConversationRepository } from './mongoose/repositories/mongo-conversation.repository.js';
 import { MongoMessageRepository } from './mongoose/repositories/mongo-message.repository.js';
 import { MongoRefreshTokenRepository } from './mongoose/repositories/mongo-refresh-token.repository.js';
@@ -103,6 +104,7 @@ const repositories = [
   { provide: 'AgentRepository', useClass: MongoAgentRepository },
   { provide: 'AgentPhoneAccessRepository', useClass: MongoAgentPhoneAccessRepository },
   { provide: 'ContactRepository', useClass: MongoContactRepository },
+  { provide: 'ContactMergeRepository', useClass: MongoContactMergeRepository },
   { provide: 'ConversationRepository', useClass: MongoConversationRepository },
   { provide: 'MessageRepository', useClass: MongoMessageRepository },
   { provide: 'RefreshTokenRepository', useClass: MongoRefreshTokenRepository },

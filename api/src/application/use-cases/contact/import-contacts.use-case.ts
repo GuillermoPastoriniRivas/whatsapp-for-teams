@@ -51,7 +51,6 @@ export class ImportContactsUseCase {
       seenWaIds.add(waId);
 
       valid.push({
-        waId,
         phone: waId,
         name: row.name?.trim() || waId,
         ...(row.email?.trim() ? { email: row.email.trim() } : {}),
@@ -60,7 +59,7 @@ export class ImportContactsUseCase {
       });
     }
 
-    const { inserted, updated } = await this.contactRepo.bulkUpsertByWaId(input.tenantId, valid);
+    const { inserted, updated } = await this.contactRepo.bulkUpsertByPhone(input.tenantId, valid);
 
     return ok({ imported: inserted, updated, skipped });
   }

@@ -15,11 +15,11 @@ export class CampaignRecipientModel {
   @Prop({ type: Types.ObjectId, required: true })
   contactId: Types.ObjectId;
 
-  @Prop({ required: true })
-  waId: string;
+  @Prop({ type: String, default: null })
+  phone: string | null;
 
-  @Prop({ required: true })
-  phone: string;
+  @Prop({ type: String, default: null })
+  bsuid: string | null;
 
   @Prop({ type: Object, required: true, default: {} })
   resolvedVariables: Record<string, string>;

@@ -28,6 +28,7 @@ import type { ConversationEventRepository } from '../../../../domain/repositorie
 import type { MessageTemplateRepository } from '../../../../domain/repositories/message-template.repository.js';
 import type { MediaAssetRepository } from '../../../../domain/repositories/media-asset.repository.js';
 import type { MediaAsset } from '../../../../domain/entities/media-asset.entity.js';
+import { isBsuidOnly, recipientIdentityOf, templateRequiresPhone } from '../../../../domain/value-objects/recipient-identity.js';
 import { MediaKind } from '../../../../domain/enums/media-kind.enum.js';
 import type { MediaAccessService } from '../../media/media-access.service.js';
 import type { FlowSecretsPort } from '../../../ports/flow-secrets.port.js';
@@ -584,7 +585,7 @@ export class FlowEngineService {
       provider: ctx.phone.provider,
       providerConfig: ctx.phone.providerConfig,
       phoneNumberId: ctx.phone.phoneNumberId,
-      to: ctx.contact.waId,
+      ...recipientIdentityOf(ctx.contact),
       type: messageType,
       body: caption,
       mediaId,
@@ -833,6 +834,10 @@ export class FlowEngineService {
     if (!getProviderCapabilities(ctx.phone.provider).templates) {
       return { kind: 'error', message: 'El proveedor de este número no soporta plantillas' };
     }
+    // Meta rechaza las plantillas de autenticación dirigidas a un BSUID (131062).
+    if (isBsuidOnly(recipientIdentityOf(ctx.contact)) && templateRequiresPhone(template.category)) {
+      return { kind: 'error', message: 'Las plantillas de autenticación necesitan un teléfono, y este contacto solo compartió su usuario de WhatsApp' };
+    }
 
     const varCtx = this.varCtx(ctx);
     const variables: Record<string, string> = {};
@@ -854,7 +859,7 @@ export class FlowEngineService {
       provider: ctx.phone.provider,
       providerConfig: ctx.phone.providerConfig,
       phoneNumberId: ctx.phone.phoneNumberId,
-      to: ctx.contact.waId,
+      ...recipientIdentityOf(ctx.contact),
       type: 'template',
       template: {
         name: template.name,
@@ -959,7 +964,7 @@ export class FlowEngineService {
       messageRepo: this.messageRepo,
       gateway: this.gateway,
       phone: ctx.phone,
-      contactWaId: ctx.contact.waId,
+      recipient: recipientIdentityOf(ctx.contact),
       conversationId: ctx.conversation.id,
       senderAgentId: agent.id,
       senderAgentName: agent.name,
@@ -1446,7 +1451,7 @@ export class FlowEngineService {
       provider: ctx.phone.provider,
       providerConfig: ctx.phone.providerConfig,
       phoneNumberId: ctx.phone.phoneNumberId,
-      to: ctx.contact.waId,
+      ...recipientIdentityOf(ctx.contact),
       type: interactive ? 'interactive' : 'text',
       body,
       interactive,

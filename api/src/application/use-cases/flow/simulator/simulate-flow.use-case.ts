@@ -161,20 +161,15 @@ export class SimulateFlowUseCase {
 
     const contact =
       session?.contact ??
-      ({
-        id: SIM_IDS.contact,
-        tenantId: input.tenantId,
-        waId: '598999999',
-        name: 'Cliente de prueba',
-        phone: '598999999',
-        profilePicUrl: null,
-        lastSeenAt: now,
-        createdAt: now,
-        email: null,
-        company: null,
-        notes: null,
-        customFields: {},
-      } as Contact);
+      new Contact(
+        SIM_IDS.contact,
+        input.tenantId,
+        'Cliente de prueba',
+        '598999999',
+        null,
+        now,
+        now,
+      );
 
     // El mensaje del cliente entra al historial: el motor lo lee para el
     // contexto de la IA y para resolver la ventana de 24 h.

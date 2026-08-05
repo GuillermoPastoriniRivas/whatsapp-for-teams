@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useTranslations } from "@/lib/i18n/use-translations";
+import { identityHandle } from "@/lib/identity";
 import { api } from "@/lib/api";
 import type { CampaignRecipient, CampaignRecipientStatus, PaginatedResponse } from "@/types";
 
@@ -129,7 +130,7 @@ export function RecipientsTable({ campaignId, refreshKey }: { campaignId: string
               <TableBody>
                 {recipients.map((recipient) => (
                   <TableRow key={recipient.id}>
-                    <TableCell className="font-mono text-xs">+{recipient.waId}</TableCell>
+                    <TableCell className="font-mono text-xs">{identityHandle(recipient) ?? "—"}</TableCell>
                     <TableCell>
                       <RecipientStatusPill status={recipient.status} />
                     </TableCell>
@@ -174,7 +175,7 @@ export function RecipientsTable({ campaignId, refreshKey }: { campaignId: string
             {recipients.map((recipient) => (
               <div key={recipient.id} className="rounded-xl border p-3 text-xs">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono">+{recipient.waId}</span>
+                  <span className="font-mono">{identityHandle(recipient) ?? "—"}</span>
                   <RecipientStatusPill status={recipient.status} />
                 </div>
                 <div className="mt-1.5 space-y-0.5 text-muted-foreground">

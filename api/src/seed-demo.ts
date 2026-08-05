@@ -241,20 +241,20 @@ async function seedDemo() {
 
   // ── 7. Contacts ──
   const contacts = await Contact.insertMany([
-    { tenantId: T, waId: '5491155551001', name: 'Maria Gonzalez', phone: '+54 9 11 5555-1001', company: 'Tienda Ropa BA', customFields: { direccion: 'Palermo, CABA', presupuesto: '$35.600' }, lastSeenAt: ago(30) },
-    { tenantId: T, waId: '5491155551002', name: 'Juan Rodriguez', phone: '+54 9 11 5555-1002', notes: 'Cliente frecuente', lastSeenAt: ago(15) },
-    { tenantId: T, waId: '5491155551003', name: 'Valentina Ramirez', phone: '+54 9 11 5555-1003', email: 'vale@email.com', customFields: { talle: 'S', interes: 'buzos y camperas' }, lastSeenAt: ago(5) },
-    { tenantId: T, waId: '5491155551004', name: 'Diego Torres', phone: '+54 9 11 5555-1004', company: 'Torres Electronica', lastSeenAt: ago(3) },
-    { tenantId: T, waId: '5491155551005', name: 'Camila Herrera', phone: '+54 9 11 5555-1005', lastSeenAt: ago(20) },
-    { tenantId: T, waId: '5491155551006', name: 'Sebastian Morales', phone: '+54 9 11 5555-1006', company: 'Morales y Cia', lastSeenAt: ago(1440) },
-    { tenantId: T, waId: '5491155551007', name: 'Isabella Acosta', phone: '+54 9 11 5555-1007', email: 'isa.acosta@gmail.com', lastSeenAt: ago(4320) },
-    { tenantId: T, waId: '5491155551008', name: 'Mateo Vargas', phone: '+54 9 11 5555-1008', notes: 'Consulto por mayoreo', customFields: { tipo_cliente: 'mayorista', productos: 'remeras y buzos', cantidad_minima: '12 unidades' }, lastSeenAt: ago(60) },
-    { tenantId: T, waId: '5491155551009', name: 'Florencia Diaz', phone: '+54 9 351 555-1009', email: 'florencia@tiendacba.com', company: '3 sucursales en Cordoba', customFields: { ciudad: 'Cordoba', volumen_mensual: '200 unidades', tipo_cliente: 'mayorista premium' }, lastSeenAt: ago(25) },
+    { tenantId: T, phone: '5491155551001', name: 'Maria Gonzalez', company: 'Tienda Ropa BA', customFields: { direccion: 'Palermo, CABA', presupuesto: '$35.600' }, lastSeenAt: ago(30) },
+    { tenantId: T, phone: '5491155551002', name: 'Juan Rodriguez', notes: 'Cliente frecuente', lastSeenAt: ago(15) },
+    { tenantId: T, phone: '5491155551003', name: 'Valentina Ramirez', email: 'vale@email.com', customFields: { talle: 'S', interes: 'buzos y camperas' }, lastSeenAt: ago(5) },
+    { tenantId: T, phone: '5491155551004', name: 'Diego Torres', company: 'Torres Electronica', lastSeenAt: ago(3) },
+    { tenantId: T, phone: '5491155551005', name: 'Camila Herrera', lastSeenAt: ago(20) },
+    { tenantId: T, phone: '5491155551006', name: 'Sebastian Morales', company: 'Morales y Cia', lastSeenAt: ago(1440) },
+    { tenantId: T, phone: '5491155551007', name: 'Isabella Acosta', email: 'isa.acosta@gmail.com', lastSeenAt: ago(4320) },
+    { tenantId: T, phone: '5491155551008', name: 'Mateo Vargas', notes: 'Consulto por mayoreo', customFields: { tipo_cliente: 'mayorista', productos: 'remeras y buzos', cantidad_minima: '12 unidades' }, lastSeenAt: ago(60) },
+    { tenantId: T, phone: '5491155551009', name: 'Florencia Diaz', email: 'florencia@tiendacba.com', company: '3 sucursales en Cordoba', customFields: { ciudad: 'Cordoba', volumen_mensual: '200 unidades', tipo_cliente: 'mayorista premium' }, lastSeenAt: ago(25) },
     // Contactos de la campana: uno respondio, otro todavia no
-    { tenantId: T, waId: '5491155551010', name: 'Lucas Benitez', phone: '+54 9 11 5555-1010', customFields: { origen: 'campana bienvenida' }, lastSeenAt: ago(95) },
-    { tenantId: T, waId: '5491155551011', name: 'Agustina Rossi', phone: '+54 9 11 5555-1011', customFields: { origen: 'campana bienvenida' }, lastSeenAt: ago(180) },
+    { tenantId: T, phone: '5491155551010', name: 'Lucas Benitez', customFields: { origen: 'campana bienvenida' }, lastSeenAt: ago(95) },
+    { tenantId: T, phone: '5491155551011', name: 'Agustina Rossi', customFields: { origen: 'campana bienvenida' }, lastSeenAt: ago(180) },
     // Contacto sin asignar, para que la cola de "Sin asignar" tenga trabajo
-    { tenantId: T, waId: '5491155551012', name: 'Nicolas Peralta', phone: '+54 9 11 5555-1012', lastSeenAt: ago(2) },
+    { tenantId: T, phone: '5491155551012', name: 'Nicolas Peralta', lastSeenAt: ago(2) },
   ]);
   console.log(`+ ${contacts.length} contacts`);
 
@@ -580,7 +580,7 @@ async function seedDemo() {
       const row = doneStatuses[i];
       return {
         campaignId: campaignDone._id, tenantId: T, contactId: contact._id,
-        waId: contact.waId, phone: contact.phone,
+        phone: contact.phone, bsuid: contact.bsuid ?? null,
         resolvedVariables: { 'body.1': contact.name },
         status: row.status,
         attemptCount: 1,
@@ -600,7 +600,7 @@ async function seedDemo() {
       const skipped = i === 7;
       return {
         campaignId: campaignMixed._id, tenantId: T, contactId: contact._id,
-        waId: contact.waId, phone: contact.phone,
+        phone: contact.phone, bsuid: contact.bsuid ?? null,
         resolvedVariables: skipped ? {} : { 'body.1': contact.name },
         status: failed ? 'failed' : skipped ? 'skipped' : i < 4 ? 'read' : 'delivered',
         attemptCount: failed ? 3 : 1,

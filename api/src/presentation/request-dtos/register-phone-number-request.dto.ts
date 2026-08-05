@@ -9,6 +9,7 @@ export const RegisterPhoneNumberRequestSchema = z.object({
   displayPhone: z.string().min(1).max(30),
   label: z.string().min(1).max(100),
   webhookSecret: z.string().min(1).max(500),
+  portfolioId: z.string().max(100).nullable().optional(),
 });
 
 export type RegisterPhoneNumberRequestDto = z.infer<typeof RegisterPhoneNumberRequestSchema>;

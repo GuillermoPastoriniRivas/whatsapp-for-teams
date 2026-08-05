@@ -9,6 +9,9 @@ export const UpdatePhoneNumberRequestSchema = z.object({
   wabaId: z.string().min(1).optional(),
   phoneNumberId: z.string().min(1).optional(),
   displayPhone: z.string().min(1).optional(),
+  // Vacío es válido a propósito: es cómo se limpia el campo para volver a
+  // scopear los BSUID por `wabaId`.
+  portfolioId: z.string().max(100).nullable().optional(),
 });
 
 export type UpdatePhoneNumberRequestDto = z.infer<typeof UpdatePhoneNumberRequestSchema>;

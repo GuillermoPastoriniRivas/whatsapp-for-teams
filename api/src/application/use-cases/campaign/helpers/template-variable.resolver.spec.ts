@@ -10,7 +10,6 @@ import {
 const contact = new Contact(
   'contact-1',
   'tenant-1',
-  '5491122334455',
   'Guille',
   '5491122334455',
   null,

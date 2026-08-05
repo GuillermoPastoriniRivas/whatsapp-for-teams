@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Phone, Clock, StickyNote, Tag } from "lucide-react";
+import { User, Phone, AtSign, Clock, StickyNote, Tag } from "lucide-react";
 import { api } from "@/lib/api";
+import { displayIdentity, identityHandle, identitySubtitle, formatPhone } from "@/lib/identity";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { ActivityTimeline } from "./activity-timeline";
 import { ConversationNotes } from "./conversation-notes";
@@ -43,10 +44,10 @@ export function ContactInfoPanel({ conversation }: Props) {
           </AvatarFallback>
         </Avatar>
         <h2 className="text-lg font-semibold text-center px-4">
-          {contact?.name || t.chat.unknown}
+          {displayIdentity(contact, t.chat.unknown)}
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
-          +{contact?.waId || contact?.phone || "—"}
+          {identitySubtitle(contact)}
         </p>
       </div>
 
@@ -57,8 +58,19 @@ export function ContactInfoPanel({ conversation }: Props) {
             {t.contactPanel.contactInfo}
           </h3>
           <div className="flex items-center gap-3 text-sm">
-            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span>+{contact?.waId || contact?.phone || "—"}</span>
+            {contact?.phone ? (
+              <>
+                <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span>{formatPhone(contact.phone)}</span>
+              </>
+            ) : (
+              // Sin teléfono el contacto igual es alcanzable por su BSUID; se
+              // muestra el username para que el agente sepa con quién habla.
+              <>
+                <AtSign className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span>{identityHandle(contact ?? {}) ?? "—"}</span>
+              </>
+            )}
           </div>
           {contact?.id && (
             <ContactFields

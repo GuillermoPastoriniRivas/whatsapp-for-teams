@@ -240,7 +240,7 @@ const translations = {
     },
     contacts: {
       title: "Contactos",
-      searchPlaceholder: "Buscar por nombre, telefono, email...",
+      searchPlaceholder: "Buscar por nombre, telefono, usuario, email...",
       noContacts: "No hay contactos",
       noResults: "No se encontraron contactos",
       contactInfo: "Info de contacto",
@@ -765,6 +765,10 @@ const translations = {
       providerConfig: "Credenciales del proveedor",
       displayPhone: "Teléfono visible",
       displayPhonePlaceholder: "+598 91 234 567",
+      portfolioId: "Portfolio ID (opcional)",
+      portfolioIdPlaceholder: "Se usa el WABA ID",
+      portfolioIdHint:
+        "Solo si tu portfolio de Meta agrupa varias WABAs. WhatsApp identifica a cada persona por portfolio, así que sin esto un mismo contacto entra dos veces según por qué línea escriba.",
       phoneLabel: "Nombre del número",
       phoneLabelPlaceholder: "Teléfono del negocio",
       webhookSecret: "Webhook secret",
@@ -1462,7 +1466,7 @@ const translations = {
     },
     contacts: {
       title: "Contacts",
-      searchPlaceholder: "Search by name, phone, email...",
+      searchPlaceholder: "Search by name, phone, username, email...",
       noContacts: "No contacts yet",
       noResults: "No contacts found",
       contactInfo: "Contact Info",
@@ -1987,6 +1991,10 @@ const translations = {
       providerConfig: "Provider credentials",
       displayPhone: "Display phone",
       displayPhonePlaceholder: "+1 234 567 8900",
+      portfolioId: "Portfolio ID (optional)",
+      portfolioIdPlaceholder: "Defaults to the WABA ID",
+      portfolioIdHint:
+        "Only if your Meta portfolio groups several WABAs. WhatsApp identifies each person per portfolio, so without this the same contact shows up twice depending on which line they message.",
       phoneLabel: "Number name",
       phoneLabelPlaceholder: "Business phone",
       webhookSecret: "Webhook secret",

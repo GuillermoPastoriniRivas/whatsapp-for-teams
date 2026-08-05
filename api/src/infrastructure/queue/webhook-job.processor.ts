@@ -5,13 +5,15 @@ import { HandleStatusUpdateUseCase } from '../../application/use-cases/webhook/h
 import { HandleTemplateStatusUpdateUseCase } from '../../application/use-cases/webhook/handle-template-status-update.use-case.js';
 import { HandleTemplateQualityUpdateUseCase } from '../../application/use-cases/webhook/handle-template-quality-update.use-case.js';
 import { HandleTemplateCategoryUpdateUseCase } from '../../application/use-cases/webhook/handle-template-category-update.use-case.js';
-import type { InboundMessageInput } from '../../application/dtos/webhook/inbound-message-input.dto.js';
+import { HandleUserIdUpdateUseCase } from '../../application/use-cases/webhook/handle-user-id-update.use-case.js';
+import type { InboundMessageInput, UserIdUpdateInput } from '../../application/dtos/webhook/inbound-message-input.dto.js';
 import type { StatusUpdateInput } from '../../application/dtos/webhook/status-update-input.dto.js';
 import type { TemplateEventInput } from '../../application/dtos/webhook/template-event-input.dto.js';
 
 export const INBOUND_MESSAGE_JOB = 'webhook.inbound-message';
 export const STATUS_UPDATE_JOB = 'webhook.status-update';
 export const TEMPLATE_EVENT_JOB = 'webhook.template-event';
+export const USER_ID_UPDATE_JOB = 'webhook.user-id-update';
 
 @Injectable()
 export class WebhookJobProcessor implements OnModuleInit {
@@ -24,6 +26,7 @@ export class WebhookJobProcessor implements OnModuleInit {
     @Inject('HandleTemplateStatusUpdateUseCase') private readonly handleTemplateStatus: HandleTemplateStatusUpdateUseCase,
     @Inject('HandleTemplateQualityUpdateUseCase') private readonly handleTemplateQuality: HandleTemplateQualityUpdateUseCase,
     @Inject('HandleTemplateCategoryUpdateUseCase') private readonly handleTemplateCategory: HandleTemplateCategoryUpdateUseCase,
+    @Inject('HandleUserIdUpdateUseCase') private readonly handleUserIdUpdate: HandleUserIdUpdateUseCase,
   ) {}
 
   onModuleInit(): void {
@@ -39,6 +42,12 @@ export class WebhookJobProcessor implements OnModuleInit {
       input.timestamp = new Date(input.timestamp);
       await this.handleStatus.execute(input);
     }, 10);
+
+    this.queue.define(USER_ID_UPDATE_JOB, async (data) => {
+      const input = data as UserIdUpdateInput;
+      this.logger.debug(`Processing BSUID change ${input.previousBsuid} → ${input.newBsuid}`);
+      await this.handleUserIdUpdate.execute(input);
+    }, 5);
 
     this.queue.define(TEMPLATE_EVENT_JOB, async (data) => {
       const input = data as TemplateEventInput;

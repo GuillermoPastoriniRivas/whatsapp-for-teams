@@ -41,6 +41,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   TEMPLATE_PHONE_MISMATCH: 422,
   INVALID_RECIPIENT: 422,
   INVALID_PHONE: 422,
+  AUTH_TEMPLATE_REQUIRES_PHONE: 422,
+  BSUID_NOT_SUPPORTED: 422,
   MISSING_MESSAGE_CONTENT: 422,
   PHONE_NUMBER_AMBIGUOUS: 422,
   PHONE_NUMBER_INACTIVE: 422,
@@ -249,7 +251,7 @@ export class PublicApiController {
     // Delegar en el use case de envío: contacto+número resuelven a esta misma conversación
     const result = await this.sendApiMessage.execute({
       tenantId: principal.tenantId,
-      to: contact.waId,
+      contactId: contact.id,
       phoneNumberId: conversation.phoneNumberId,
       body: body.body,
     });

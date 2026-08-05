@@ -16,6 +16,7 @@ import { TemplatePreview } from "@/components/templates/template-preview";
 import { ContactPicker } from "./contact-picker";
 import { useCampaignStore } from "@/stores/campaign.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
+import { identityHandle } from "@/lib/identity";
 import { api } from "@/lib/api";
 import { toast } from "@/lib/toast";
 import { extractPlaceholders, resolveMappingSample, variableKey } from "@/lib/template-utils";
@@ -211,7 +212,7 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
         batch.map(async (phone) => {
           try {
             const res = await api.get<PaginatedResponse<Contact>>(`/contacts?search=${phone}&limit=1`);
-            const match = res.data.find((c) => c.waId === phone || c.phone === phone);
+            const match = res.data.find((c) => c.phone === phone);
             if (match) found.push(match);
             else notFound.push(phone);
           } catch {
@@ -473,7 +474,7 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
                         <p className="text-xs text-muted-foreground">{t.campaigns.reachPreview}</p>
                         {reach.preview.map((contact) => (
                           <p key={contact.id} className="text-xs text-muted-foreground">
-                            {contact.name} · +{contact.waId}
+                            {[contact.name, identityHandle(contact)].filter(Boolean).join(" · ")}
                           </p>
                         ))}
                       </>

@@ -39,7 +39,14 @@ export interface SendMessageParams {
   provider: MessagingProvider;
   providerConfig: Record<string, string>;
   phoneNumberId: string;
-  to: string;
+  /**
+   * Teléfono del destinatario. Opcional desde el rollout de usernames: hay
+   * contactos que solo se pueden direccionar por `recipient`. Meta le da
+   * precedencia sobre `recipient` cuando llegan los dos.
+   */
+  to?: string;
+  /** BSUID del destinatario. */
+  recipient?: string;
   type: string;
   body?: string;
   /**
@@ -63,7 +70,8 @@ export interface TypingIndicatorParams {
   provider: MessagingProvider;
   providerConfig: Record<string, string>;
   phoneNumberId: string;
-  to: string;
+  to?: string;
+  recipient?: string;
 }
 
 export interface MessagingApiPort {

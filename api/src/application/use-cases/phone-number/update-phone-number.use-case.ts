@@ -20,6 +20,8 @@ export class UpdatePhoneNumberUseCase {
       wabaId: input.wabaId,
       phoneNumberId: input.phoneNumberId,
       displayPhone: input.displayPhone,
+      // Vacío ⇒ null, para que `bsuidScope` vuelva a caer en `wabaId`.
+      portfolioId: input.portfolioId === undefined ? undefined : input.portfolioId?.trim() || null,
     });
 
     return ok(updated!);

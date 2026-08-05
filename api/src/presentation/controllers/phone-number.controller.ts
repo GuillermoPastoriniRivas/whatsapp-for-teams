@@ -43,6 +43,12 @@ export class PhoneNumberController {
         displayPhone: { type: 'string', example: '+1234567890' },
         label: { type: 'string', example: 'Sales Line' },
         webhookSecret: { type: 'string', example: 'whsec_abc123' },
+        portfolioId: {
+          type: 'string',
+          nullable: true,
+          example: 'portfolio_789',
+          description: 'Business portfolio that scopes BSUIDs. Defaults to wabaId when empty.',
+        },
       },
     },
   })
@@ -77,6 +83,12 @@ export class PhoneNumberController {
         wabaId: { type: 'string', example: 'waba_123' },
         phoneNumberId: { type: 'string', example: '1030090320194248' },
         displayPhone: { type: 'string', example: '+15551511323' },
+        portfolioId: {
+          type: 'string',
+          nullable: true,
+          example: 'portfolio_789',
+          description: 'Business portfolio that scopes BSUIDs. Empty clears it and falls back to wabaId.',
+        },
       },
     },
   })

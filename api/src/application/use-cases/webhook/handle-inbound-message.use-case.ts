@@ -15,6 +15,8 @@ import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
 import { serializeMessage, serializeConversation, serializeContact } from '../developer/developer-payloads.util.js';
 import { InboundMessageInput } from '../../dtos/webhook/inbound-message-input.dto.js';
+import { ResolveContactIdentityUseCase } from '../contact/resolve-contact-identity.use-case.js';
+import { recipientIdentityOf } from '../../../domain/value-objects/recipient-identity.js';
 import { AutoAssignConversationUseCase } from '../conversation/auto-assign-conversation.use-case.js';
 import { AttributeCampaignReplyUseCase } from '../campaign/attribute-campaign-reply.use-case.js';
 import { FlowInboundRouterUseCase } from '../flow/flow-inbound-router.use-case.js';
@@ -53,6 +55,7 @@ export class HandleInboundMessageUseCase {
     private readonly devEvents: DeveloperEventsPort,
     private readonly registerMedia: RegisterInboundMediaUseCase,
     private readonly mediaEnricher: MessageMediaEnricher,
+    private readonly resolveIdentity: ResolveContactIdentityUseCase,
   ) {}
 
   async execute(input: InboundMessageInput): Promise<void> {
@@ -63,10 +66,18 @@ export class HandleInboundMessageUseCase {
 
     const tenantId = phone.tenantId;
 
-    // 2. Find or create Contact
-    const contact = await this.contactRepo.upsertByWaId(tenantId, input.from, {
+    // 2. Resolver el contacto por identidad (BSUID primero, teléfono después).
+    // `sharedPhone` gana sobre `from`: es el número que el usuario acaba de
+    // compartir con un `REQUEST_CONTACT_INFO`, y puede ser el primero que
+    // conocemos de alguien que hasta ahora solo tenía username.
+    const contact = await this.resolveIdentity.execute({
+      tenantId,
+      portfolioId: phone.bsuidScope,
+      phone: input.sharedPhone ?? input.from ?? null,
+      bsuid: input.bsuid ?? null,
+      parentBsuid: input.parentBsuid ?? null,
+      username: input.username ?? null,
       name: input.contactName,
-      phone: input.from,
       profilePicUrl: input.profilePicUrl ?? null,
     });
 
@@ -205,7 +216,7 @@ export class HandleInboundMessageUseCase {
     // conversación; este evento alimenta el toast in-app del resto
     this.gateway.emitToTenant(tenantId, 'message.preview', {
       conversationId: conversation.id,
-      contactName: contact.name || contact.phone,
+      contactName: contact.displayName,
       body: this.messagePreview(input.body, input.messageType),
       messageId: message.id,
     });
@@ -237,14 +248,14 @@ export class HandleInboundMessageUseCase {
     }
 
     if (aiAgent && !flowHandled) {
-      await this.enqueueAiResponse(aiAgent, conversation.id, phone, contact.waId);
+      await this.enqueueAiResponse(aiAgent, conversation.id, phone, contact);
     }
 
     // 9. Web push (fire-and-forget; the SW suppresses it when the app is
     // focused). Assigned human → only them; AI-assigned or unassigned →
     // every human agent with access to this phone number.
     const payload = {
-      title: contact.name || contact.phone,
+      title: contact.displayName,
       body: this.messagePreview(input.body, input.messageType),
       url: `/conversations/${conversation.id}`,
       tag: `conv-${conversation.id}`,
@@ -292,7 +303,7 @@ export class HandleInboundMessageUseCase {
     agent: Agent,
     conversationId: string,
     phone: { provider: any; providerConfig: any; phoneNumberId: string },
-    contactWaId: string,
+    contact: { phone: string | null; bsuid: string | null },
   ): Promise<void> {
     const config = await this.aiConfigRepo.findByAgentId(agent.id);
     const multiMessage = config?.multiMessage;
@@ -308,7 +319,7 @@ export class HandleInboundMessageUseCase {
       provider: phone.provider,
       providerConfig: phone.providerConfig,
       phoneNumberId: phone.phoneNumberId,
-      to: contactWaId,
+      ...recipientIdentityOf(contact),
     }).catch(() => {});
 
     // Set pendingAiSince if not already set (first unanswered message)

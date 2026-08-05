@@ -13,6 +13,7 @@ import { FlowExecutionRepository } from '../../../domain/repositories/flow-execu
 import { AiCompletionPort } from '../../ports/ai-completion.port.js';
 import type { ChatMessage } from '../../ports/ai-completion.port.js';
 import { MessagingApiPort } from '../../ports/messaging-api.port.js';
+import { recipientIdentityOf } from '../../../domain/value-objects/recipient-identity.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { HandoffToHumanUseCase } from './handoff-to-human.use-case.js';
@@ -194,7 +195,7 @@ export class ProcessAiResponseUseCase {
       provider: phone.provider,
       providerConfig: phone.providerConfig,
       phoneNumberId: phone.phoneNumberId,
-      to: sendContact.waId,
+      ...recipientIdentityOf(sendContact),
     };
     const typingLoop = this.startTypingLoop(typingParams);
 
@@ -328,7 +329,7 @@ export class ProcessAiResponseUseCase {
       messageRepo: this.messageRepo,
       gateway: this.gateway,
       phone,
-      contactWaId: sendContact.waId,
+      recipient: recipientIdentityOf(sendContact),
       conversationId: conversation.id,
       senderAgentId: agent.id,
       senderAgentName: agent.name,
