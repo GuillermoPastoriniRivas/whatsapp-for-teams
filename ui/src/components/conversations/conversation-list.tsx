@@ -103,7 +103,7 @@ export function ConversationList() {
             />
           )
         ) : (
-          <div className="divide-y">
+          <div>
             {filteredConversations.map((conv) => (
               <ConversationItem
                 key={conv.id}
