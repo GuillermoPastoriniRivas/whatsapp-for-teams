@@ -52,7 +52,7 @@ export function ConversationItem({ conversation, onSelect }: Props) {
     <button
       onClick={onSelect}
       className={cn(
-        "flex w-full items-center gap-4 px-4 py-3 text-left transition-colors border-b border-transparent group",
+        "flex w-full items-center gap-4 px-4 text-left transition-colors group",
         isActive
           ? "bg-muted"
           : "hover:bg-muted/50"
@@ -77,7 +77,7 @@ export function ConversationItem({ conversation, onSelect }: Props) {
         />
       </div>
 
-      <div className="flex-1 min-w-0 border-b border-border pb-1 group-last:border-transparent h-full flex flex-col justify-center">
+      <div className="flex-1 min-w-0 border-b border-border py-3 group-last:border-transparent flex flex-col justify-center">
         <div className="flex items-center gap-1.5 mb-0.5">
           <span
             className={cn(
