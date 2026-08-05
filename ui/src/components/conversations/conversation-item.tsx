@@ -77,7 +77,7 @@ export function ConversationItem({ conversation, onSelect }: Props) {
         />
       </div>
 
-      <div className="flex-1 min-w-0 border-b border-border py-3 group-last:border-transparent flex flex-col justify-center">
+      <div className="flex-1 min-w-0 py-3 flex flex-col justify-center">
         <div className="flex items-center gap-1.5 mb-0.5">
           <span
             className={cn(
