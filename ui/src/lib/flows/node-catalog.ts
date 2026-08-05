@@ -52,7 +52,7 @@ export const NODE_CATALOG: NodeTypeDef[] = [
   {
     type: "trigger.webhook",
     label: "Webhook entrante",
-    description: "Un sistema externo (CRM, tienda, formulario) inicia el flujo",
+    description: "Un sistema externo (CRM, tienda, formulario) inicia la automatización",
     category: "trigger",
     icon: Webhook,
     defaultData: { phoneNumberId: "", contactPhoneField: "phone", contactNameField: "" },
@@ -116,7 +116,7 @@ export const NODE_CATALOG: NodeTypeDef[] = [
   {
     type: "action.ai_reply",
     label: "Respuesta IA",
-    description: "Tu asistente responde una vez y el flujo sigue",
+    description: "Tu asistente responde una vez y la automatización sigue",
     category: "ai",
     icon: Sparkles,
     defaultData: { aiAgentId: "", instructions: "" },
@@ -132,7 +132,7 @@ export const NODE_CATALOG: NodeTypeDef[] = [
   {
     type: "action.handoff_ai",
     label: "Entregar al asistente IA",
-    description: "El bot toma la conversación (fin del flujo)",
+    description: "El bot toma la conversación (fin de la automatización)",
     category: "ai",
     icon: Bot,
     defaultData: { aiAgentId: "" },
@@ -140,7 +140,7 @@ export const NODE_CATALOG: NodeTypeDef[] = [
   {
     type: "action.handoff_human",
     label: "Pasar a un humano",
-    description: "Asigna al equipo con contexto (fin del flujo)",
+    description: "Asigna al equipo con contexto (fin de la automatización)",
     category: "team",
     icon: Users,
     defaultData: { note: "" },
@@ -214,7 +214,7 @@ export const NODE_CATALOG: NodeTypeDef[] = [
   {
     type: "logic.delay",
     label: "Esperar",
-    description: "Pausa el flujo un tiempo",
+    description: "Pausa la automatización un tiempo",
     category: "logic",
     icon: Clock,
     defaultData: { duration: { amount: 30, unit: "minutes" } },

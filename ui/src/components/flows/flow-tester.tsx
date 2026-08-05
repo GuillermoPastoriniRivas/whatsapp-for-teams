@@ -92,15 +92,15 @@ export function FlowTester({ flowId, onCurrentNodeChange, onClose }: Props) {
         if (res.waitingOnTimer) {
           next.push({
             from: "sistema",
-            text: "El flujo quedó esperando un tiempo. En la prueba los temporizadores no corren.",
+            text: "La automatización quedó esperando un tiempo. En la prueba los temporizadores no corren.",
             tone: "info",
           });
         }
         if (res.status === "completed") {
-          next.push({ from: "sistema", text: `Flujo terminado (${res.endReason ?? "fin"})`, tone: "info" });
+          next.push({ from: "sistema", text: `Automatización terminada (${res.endReason ?? "fin"})`, tone: "info" });
         }
         if (res.status === "failed") {
-          next.push({ from: "sistema", text: "El flujo se detuvo por un error", tone: "error" });
+          next.push({ from: "sistema", text: "La automatización se detuvo por un error", tone: "error" });
         }
         return next;
       });
@@ -150,7 +150,7 @@ export function FlowTester({ flowId, onCurrentNodeChange, onClose }: Props) {
     <div className="w-96 shrink-0 border-l bg-background flex flex-col h-full min-h-0">
       <div className="flex items-center gap-2 border-b px-3 py-2.5">
         <Play className="size-4 text-primary" />
-        <span className="text-sm font-medium flex-1">Probar el flujo</span>
+        <span className="text-sm font-medium flex-1">Probar la automatización</span>
         <button className="text-muted-foreground hover:text-foreground" title="Reiniciar" onClick={reset}>
           <RotateCcw className="size-4" />
         </button>
@@ -160,7 +160,7 @@ export function FlowTester({ flowId, onCurrentNodeChange, onClose }: Props) {
       </div>
 
       <p className="text-[11px] text-muted-foreground px-3 py-1.5 border-b bg-muted/40">
-        Corre el flujo del editor sin publicar ni mandar mensajes reales.
+        Corre la automatización del editor sin publicar ni mandar mensajes reales.
       </p>
 
       {/* ── Conversación ── */}

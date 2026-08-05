@@ -78,22 +78,22 @@ export const eventConfig: Record<
   flow_started: {
     icon: Workflow,
     color: "text-teal-500",
-    label: (data) => `⚡ Flujo «${data.flowName ?? "Flujo"}» iniciado`,
+    label: (data) => `⚡ Automatización «${data.flowName ?? "Automatización"}» iniciada`,
   },
   flow_completed: {
     icon: Workflow,
     color: "text-teal-500",
-    label: (data) => `Flujo «${data.flowName ?? "Flujo"}» completado`,
+    label: (data) => `Automatización «${data.flowName ?? "Automatización"}» completada`,
   },
   flow_failed: {
     icon: Workflow,
     color: "text-red-500",
-    label: (data) => `Flujo «${data.flowName ?? "Flujo"}» se detuvo por un error`,
+    label: (data) => `Automatización «${data.flowName ?? "Automatización"}» se detuvo por un error`,
   },
   flow_stopped: {
     icon: Workflow,
     color: "text-muted-foreground",
-    label: (data) => `Flujo «${data.flowName ?? "Flujo"}» detenido${data.reason === "agent_takeover" ? " (intervino un agente)" : ""}`,
+    label: (data) => `Automatización «${data.flowName ?? "Automatización"}» detenida${data.reason === "agent_takeover" ? " (intervino un agente)" : ""}`,
   },
 };
 

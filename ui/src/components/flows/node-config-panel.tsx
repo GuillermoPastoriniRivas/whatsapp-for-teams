@@ -757,7 +757,7 @@ function ListForm({ data, set }: { data: Record<string, any>; set: (p: Record<st
 const TEMPLATE_VARIABLE_SOURCES = [
   { value: "static", label: "Texto fijo" },
   { value: "contact_field", label: "Campo del contacto" },
-  { value: "flow_var", label: "Variable del flujo" },
+  { value: "flow_var", label: "Variable de la automatización" },
 ];
 
 function TemplateForm({ data, set, refs }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs }) {

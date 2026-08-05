@@ -35,7 +35,7 @@ export class CancelActiveFlowExecutionUseCase {
         tenantId: cancelled.tenantId,
         type: ConversationEventType.FLOW_STOPPED,
         performedBy,
-        data: { flowId: cancelled.flowId, flowName: flow?.name ?? 'Flujo', reason: endReason },
+        data: { flowId: cancelled.flowId, flowName: flow?.name ?? 'Automatización', reason: endReason },
       });
       this.gateway.emitToConversation(conversationId, 'conversation.event', event);
       this.gateway.emitToTenant(cancelled.tenantId, 'flow.execution.finished', {

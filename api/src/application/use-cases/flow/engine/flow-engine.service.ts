@@ -1163,7 +1163,7 @@ export class FlowEngineService {
           tenantId: ctx.tenantId,
           type: ConversationEventType.LABEL_REMOVED,
           performedBy: null,
-          data: { agentName: `Flujo: ${ctx.flow.name}`, labelName: label.name, labelColor: label.color },
+          data: { agentName: `Automatización: ${ctx.flow.name}`, labelName: label.name, labelColor: label.color },
         });
         this.gateway.emitToConversation(ctx.conversation.id, 'conversation.event', event);
         this.gateway.emitToConversation(ctx.conversation.id, 'label.removed', {
@@ -1187,7 +1187,7 @@ export class FlowEngineService {
         tenantId: ctx.tenantId,
         type: ConversationEventType.LABEL_ADDED,
         performedBy: null,
-        data: { agentName: `Flujo: ${ctx.flow.name}`, labelName: label.name, labelColor: label.color },
+        data: { agentName: `Automatización: ${ctx.flow.name}`, labelName: label.name, labelColor: label.color },
       });
       this.gateway.emitToConversation(ctx.conversation.id, 'conversation.event', event);
       this.gateway.emitToConversation(ctx.conversation.id, 'label.assigned', {
@@ -1234,7 +1234,7 @@ export class FlowEngineService {
       tenantId: ctx.tenantId,
       type: ConversationEventType.CONTACT_UPDATED,
       performedBy: null,
-      data: { agentName: `Flujo: ${ctx.flow.name}`, fields: applied },
+      data: { agentName: `Automatización: ${ctx.flow.name}`, fields: applied },
     });
     this.gateway.emitToConversation(ctx.conversation.id, 'conversation.event', event);
     this.gateway.emitToConversation(ctx.conversation.id, 'contact.updated', {
@@ -1496,7 +1496,7 @@ export class FlowEngineService {
       conversationId: ctx.conversation.id,
       tenantId: ctx.tenantId,
       authorId: ctx.flow.createdByAgentId,
-      authorName: `Flujo: ${ctx.flow.name}`,
+      authorName: `Automatización: ${ctx.flow.name}`,
       body: body.substring(0, 4096),
     });
     this.gateway.emitToConversation(ctx.conversation.id, 'note.new', note);
@@ -1505,7 +1505,7 @@ export class FlowEngineService {
       tenantId: ctx.tenantId,
       type: ConversationEventType.NOTE_ADDED,
       performedBy: null,
-      data: { agentName: `Flujo: ${ctx.flow.name}` },
+      data: { agentName: `Automatización: ${ctx.flow.name}` },
     });
     this.gateway.emitToConversation(ctx.conversation.id, 'conversation.event', event);
   }
@@ -1594,7 +1594,7 @@ export class FlowEngineService {
     await this.flowRepo.incrementStats(exec.flowId, failed ? { failed: 1 } : { completed: 1 });
 
     const flow = await this.flowRepo.findById(exec.flowId);
-    const flowName = flow?.name ?? 'Flujo';
+    const flowName = flow?.name ?? 'Automatización';
     try {
       const event = await this.eventRepo.create({
         conversationId: exec.conversationId,

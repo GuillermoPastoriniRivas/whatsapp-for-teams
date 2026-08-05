@@ -87,7 +87,7 @@ export class GetActiveFlowForConversationUseCase {
     const flow = await this.flowRepo.findById(execution.flowId);
     return {
       flowId: execution.flowId,
-      flowName: flow?.name ?? 'Flujo',
+      flowName: flow?.name ?? 'Automatización',
       executionId: execution.id,
       status: execution.status,
     };

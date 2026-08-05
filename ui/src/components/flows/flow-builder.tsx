@@ -474,7 +474,7 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
             setShowTester((v) => !v);
             if (showTester) setTestingNodeId(null);
           }}
-          title="Probar el flujo sin publicarlo"
+          title="Probar la automatización sin publicarla"
         >
           <Play className="size-3.5 mr-1" />
           Probar

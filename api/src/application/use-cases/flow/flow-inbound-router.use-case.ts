@@ -214,7 +214,7 @@ export class FlowInboundRouterUseCase {
         tenantId: input.tenantId,
         type: ConversationEventType.FLOW_STARTED,
         performedBy: null,
-        data: { flowId, flowName: flow?.name ?? 'Flujo' },
+        data: { flowId, flowName: flow?.name ?? 'Automatización' },
       });
       this.gateway.emitToConversation(input.conversation.id, 'conversation.event', event);
     } catch (error: any) {
