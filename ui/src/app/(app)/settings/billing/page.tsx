@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/table";
 import { Receipt } from "lucide-react";
 import type { PlanTier } from "@/types";
-import { PLAN_ORDER } from "@/lib/plans";
+import { PLAN_ORDER, PLAN_SPECS, planPrice } from "@/lib/plans";
 
 export default function BillingPage() {
   const router = useRouter();
@@ -122,7 +122,13 @@ export default function BillingPage() {
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <CurrentPlanIcon className="size-5" />
                     </div>
-                    <p className="truncate text-base font-semibold">{planNames[plan]}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-semibold">{planNames[plan]}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {planPrice(plan, t.billing)}
+                        {PLAN_SPECS[plan].priceMonthly > 0 && t.billing.perMonth}
+                      </p>
+                    </div>
                   </div>
                   {subscription && (
                     <Badge
@@ -237,67 +243,63 @@ export default function BillingPage() {
           </div>
 
           {/* Selector de plan */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.billing.changePlan}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {PLAN_ORDER.map((tierKey) => {
-                  const isCurrent = tierKey === plan;
-                  const isScheduled = subscription?.scheduledPlan === tierKey;
-                  const isUpgrade = PLAN_ORDER.indexOf(tierKey) > PLAN_ORDER.indexOf(plan);
+          <section className="space-y-4">
+            <h2 className="text-base font-semibold">{t.billing.changePlan}</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {PLAN_ORDER.map((tierKey) => {
+                const isCurrent = tierKey === plan;
+                const isScheduled = subscription?.scheduledPlan === tierKey;
+                const isUpgrade = PLAN_ORDER.indexOf(tierKey) > PLAN_ORDER.indexOf(plan);
 
-                  const action = isCurrent ? (
-                    <Badge variant="secondary">{t.billing.currentBadge}</Badge>
-                  ) : isScheduled ? (
-                    <Badge variant="outline" className="border-accent/30 bg-accent/10 text-accent">
-                      {t.billing.scheduled}
-                    </Badge>
-                  ) : tierKey === "agencies" ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => window.open("https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies", "_blank")}
-                    >
-                      {t.billing.contactUs}
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant={isUpgrade ? "default" : "outline"}
-                      className="w-full"
-                      disabled={pendingPlan !== null}
-                      onClick={() => handlePlanAction(tierKey)}
-                    >
-                      {pendingPlan === tierKey ? (
-                        <Spinner size="sm" className="text-current" />
-                      ) : isUpgrade ? (
-                        t.billing.upgrade
-                      ) : (
-                        t.billing.downgrade
-                      )}
-                    </Button>
-                  );
+                const action = isCurrent ? (
+                  <div className="flex h-10 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-medium text-primary md:h-8">
+                    {t.billing.currentBadge}
+                  </div>
+                ) : isScheduled ? (
+                  <div className="flex h-10 w-full items-center justify-center rounded-lg bg-accent/10 text-sm font-medium text-accent md:h-8">
+                    {t.billing.scheduled}
+                  </div>
+                ) : tierKey === "agencies" ? (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => window.open("https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies", "_blank")}
+                  >
+                    {t.billing.contactUs}
+                  </Button>
+                ) : (
+                  <Button
+                    variant={isUpgrade ? "default" : "outline"}
+                    className="w-full"
+                    disabled={pendingPlan !== null}
+                    onClick={() => handlePlanAction(tierKey)}
+                  >
+                    {pendingPlan === tierKey ? (
+                      <Spinner size="sm" className="text-current" />
+                    ) : isUpgrade ? (
+                      t.billing.upgrade
+                    ) : (
+                      t.billing.downgrade
+                    )}
+                  </Button>
+                );
 
-                  return (
-                    <PlanCard
-                      key={tierKey}
-                      tier={tierKey}
-                      current={isCurrent}
-                      action={action}
-                      className={
-                        isScheduled && !isCurrent
-                          ? "border-accent/40 bg-accent/5 ring-1 ring-accent/20"
-                          : undefined
-                      }
-                    />
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+                return (
+                  <PlanCard
+                    key={tierKey}
+                    tier={tierKey}
+                    current={isCurrent}
+                    action={action}
+                    className={
+                      isScheduled && !isCurrent
+                        ? "border-accent/40 bg-accent/5 ring-1 ring-accent/20"
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </div>
+          </section>
 
           {/* Historial de facturación */}
           <Card>
