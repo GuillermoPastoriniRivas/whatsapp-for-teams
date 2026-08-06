@@ -1,4 +1,5 @@
 import type { Locale } from "@/stores/locale.store";
+import { LEGAL_ENTITY, legalEntityLine } from "@/lib/legal-entity";
 
 export const privacyContent: Record<Locale, React.ReactNode> = {
   es: (
@@ -7,7 +8,8 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
       <p>
         asis.chat (&quot;nosotros&quot;, &quot;nuestro&quot; o &quot;la
         Plataforma&quot;) es una plataforma de gestion de comunicaciones por
-        WhatsApp para equipos de trabajo. Esta Politica de Privacidad
+        WhatsApp para equipos de trabajo, operada por{" "}
+        <strong>{LEGAL_ENTITY.name}</strong>. Esta Politica de Privacidad
         describe como recopilamos, usamos, almacenamos y protegemos la
         informacion personal en relacion con nuestros servicios, incluyendo
         el uso de la API de WhatsApp Business proporcionada por Meta
@@ -221,9 +223,12 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
       </p>
       <ul>
         <li>
+          <strong>Responsable del tratamiento:</strong> {legalEntityLine()}
+        </li>
+        <li>
           <strong>Email:</strong>{" "}
-          <a href="mailto:privacidad@asis.chat">
-            privacidad@asis.chat
+          <a href="mailto:contact@asis.chat">
+            contact@asis.chat
           </a>
         </li>
         <li>
@@ -241,7 +246,8 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
       <p>
         asis.chat (&quot;we&quot;, &quot;our&quot; or &quot;the
         Platform&quot;) is a WhatsApp communications management platform
-        for teams. This Privacy Policy describes how we collect, use,
+        for teams, operated by <strong>{LEGAL_ENTITY.name}</strong>. This
+        Privacy Policy describes how we collect, use,
         store, and protect personal information in connection with our
         services, including the use of the WhatsApp Business API provided
         by Meta Platforms, Inc.
@@ -446,9 +452,12 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
       </p>
       <ul>
         <li>
+          <strong>Data controller:</strong> {legalEntityLine()}
+        </li>
+        <li>
           <strong>Email:</strong>{" "}
-          <a href="mailto:privacidad@asis.chat">
-            privacidad@asis.chat
+          <a href="mailto:contact@asis.chat">
+            contact@asis.chat
           </a>
         </li>
         <li>

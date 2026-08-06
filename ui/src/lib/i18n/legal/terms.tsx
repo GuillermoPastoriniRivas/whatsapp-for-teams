@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Locale } from "@/stores/locale.store";
+import { legalEntityLine } from "@/lib/legal-entity";
 
 export const termsContent: Record<Locale, React.ReactNode> = {
   es: (
@@ -251,9 +252,12 @@ export const termsContent: Record<Locale, React.ReactNode> = {
       </p>
       <ul>
         <li>
+          <strong>Titular del servicio:</strong> {legalEntityLine()}
+        </li>
+        <li>
           <strong>Email:</strong>{" "}
-          <a href="mailto:legal@asis.chat">
-            legal@asis.chat
+          <a href="mailto:contact@asis.chat">
+            contact@asis.chat
           </a>
         </li>
         <li>
@@ -510,9 +514,12 @@ export const termsContent: Record<Locale, React.ReactNode> = {
       </p>
       <ul>
         <li>
+          <strong>Service provider:</strong> {legalEntityLine()}
+        </li>
+        <li>
           <strong>Email:</strong>{" "}
-          <a href="mailto:legal@asis.chat">
-            legal@asis.chat
+          <a href="mailto:contact@asis.chat">
+            contact@asis.chat
           </a>
         </li>
         <li>

@@ -50,7 +50,7 @@ variable "inbound_mail_bucket_name" {
 variable "inbound_mail_recipients" {
   description = "Casillas @asis.chat que reciben correo. Agregar acá para sumar una nueva."
   type        = list(string)
-  default     = ["guillermo@asis.chat"]
+  default     = ["guillermo@asis.chat", "contact@asis.chat"]
 }
 
 variable "inbound_mail_forward_to" {

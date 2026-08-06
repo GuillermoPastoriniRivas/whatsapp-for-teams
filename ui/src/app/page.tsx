@@ -23,6 +23,7 @@ import {
 import { AsisLogo } from "@/components/brand/asis-logo";
 import { PlanCard } from "@/components/shared/plan-card";
 import { PLAN_ORDER } from "@/lib/plans";
+import { legalEntityLine } from "@/lib/legal-entity";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -503,7 +504,7 @@ export default function LandingPage() {
                 <div className="mt-10 md:mt-0">
                   <h3 className="text-sm leading-6 font-semibold text-foreground">{t.landing.footerCompany}</h3>
                   <ul role="list" className="mt-6 space-y-4">
-                    <li><a href="#" className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.footerContact}</a></li>
+                    <li><a href="mailto:contact@asis.chat" className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.footerContact}</a></li>
                   </ul>
                 </div>
               </div>
@@ -522,6 +523,12 @@ export default function LandingPage() {
             <p className="text-sm leading-5 text-muted-foreground">
               &copy; {new Date().getFullYear()} asis.chat — {t.landing.footerRights}. Construido por{" "}
               <a href="https://www.linkedin.com/in/guillermopastorini/" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground transition-colors hover:text-primary">Guillermo</a>.
+            </p>
+            {/* Nombre legal del titular: la verificacion de negocio de Meta
+                rechaza el dominio si no puede atarlo a la documentacion. */}
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t.landing.footerOperatedBy}{" "}
+              <span className="font-medium text-foreground">{legalEntityLine()}</span>
             </p>
           </div>
         </div>

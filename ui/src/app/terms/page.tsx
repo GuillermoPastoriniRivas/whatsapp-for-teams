@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { termsContent } from "@/lib/i18n/legal";
+import { legalEntityLine } from "@/lib/legal-entity";
 
 export default function TermsOfServicePage() {
   const { t, locale } = useTranslations();
@@ -53,6 +54,10 @@ export default function TermsOfServicePage() {
         <div className="mx-auto flex max-w-4xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
           <p className="text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} asis.chat — {t.legal.allRightsReserved}
+            <br />
+            <span className="text-xs">
+              {t.legal.operatedBy} {legalEntityLine()}
+            </span>
           </p>
           <div className="flex gap-6 text-sm">
             <Link

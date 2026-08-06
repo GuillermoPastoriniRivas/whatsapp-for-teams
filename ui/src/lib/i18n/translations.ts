@@ -817,6 +817,7 @@ const translations = {
       footerPrivacy: "Privacidad",
       footerTerms: "Terminos",
       footerRights: "Todos los derechos reservados.",
+      footerOperatedBy: "asis.chat es un servicio operado por",
       footerTagline:
         "Bandeja compartida de WhatsApp para equipos. Agentes humanos, bots de IA y campanas en un solo lugar.",
       aiSuggestion: "IA ha generado una respuesta sugerida",
@@ -862,6 +863,7 @@ const translations = {
       privacy: "Privacidad",
       terms: "Terminos",
       allRightsReserved: "Todos los derechos reservados.",
+      operatedBy: "Operado por",
       privacyTitle: "Politica de Privacidad",
       privacyUpdated: "Ultima actualizacion: 2 de abril de 2026",
       termsTitle: "Terminos y Condiciones de Servicio",
@@ -2045,6 +2047,7 @@ const translations = {
       footerPrivacy: "Privacy",
       footerTerms: "Terms",
       footerRights: "All rights reserved.",
+      footerOperatedBy: "asis.chat is a service operated by",
       footerTagline:
         "Shared WhatsApp inbox for teams. Human agents, AI bots, and campaigns in one place.",
       aiSuggestion: "AI generated a suggested reply",
@@ -2090,6 +2093,7 @@ const translations = {
       privacy: "Privacy",
       terms: "Terms",
       allRightsReserved: "All rights reserved.",
+      operatedBy: "Operated by",
       privacyTitle: "Privacy Policy",
       privacyUpdated: "Last updated: April 2, 2026",
       termsTitle: "Terms and Conditions of Service",
