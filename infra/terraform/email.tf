@@ -97,12 +97,19 @@ resource "aws_route53_record" "mail_from_spf" {
 # SPF + DMARC for root domain
 # ─────────────────────────────────────────────────
 
+# TXT del apex. Route53 admite UN solo record set por (nombre, tipo), asi que
+# todos los valores TXT de asis.chat conviven aca: el SPF y la verificacion de
+# dominio de Meta. Crear un record aparte para el apex falla, y hacer un UPSERT
+# suelto por CLI borraria el SPF y dejaria a SES sin poder enviar.
 resource "aws_route53_record" "root_spf" {
   zone_id = aws_route53_zone.asis_chat.zone_id
   name    = "asis.chat"
   type    = "TXT"
   ttl     = 600
-  records = ["v=spf1 include:amazonses.com ~all"]
+  records = [
+    "v=spf1 include:amazonses.com ~all",
+    "facebook-domain-verification=gjajrn7mnice55hheptfdhtuy3hd3y",
+  ]
 }
 
 resource "aws_route53_record" "dmarc" {
