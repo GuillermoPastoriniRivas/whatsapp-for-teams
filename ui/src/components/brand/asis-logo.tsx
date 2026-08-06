@@ -8,10 +8,10 @@ const BUBBLE_PATH =
    la variante "full" es el icono de la app, y un icono de marca no cambia de
    color con el tema. Es una de las excepciones deliberadas a la regla de
    solo-tokens de DESIGN.md, junto con el degradado del logo. */
-const BRAND_TOP = "#118F7E";
-const BRAND_BOTTOM = "#077E72";
-const BRAND_LINE = "#057B6F";
-const ACCENT_MINT = "#11B69C";
+const BRAND_TOP = "#3BC0A5";
+const BRAND_BOTTOM = "#2DB298";
+const BRAND_LINE = "#159578";
+const ACCENT_MINT = "#2BBBA1";
 
 interface AsisLogoProps {
   size?: number;
