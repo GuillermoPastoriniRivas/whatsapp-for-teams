@@ -5,6 +5,7 @@ import { PhoneNumberRepository } from '../../../../domain/repositories/phone-num
 import { PhoneNumber } from '../../../../domain/entities/phone-number.entity.js';
 import { PhoneNumberModel, PhoneNumberDocument } from '../schemas/phone-number.schema.js';
 import { PhoneNumberMapper } from '../mappers/phone-number.mapper.js';
+import { encryptProviderConfig } from '../../../crypto/provider-config.cipher.js';
 
 @Injectable()
 export class MongoPhoneNumberRepository implements PhoneNumberRepository {
@@ -15,6 +16,7 @@ export class MongoPhoneNumberRepository implements PhoneNumberRepository {
   async create(data: Omit<PhoneNumber, 'id' | 'createdAt'>): Promise<PhoneNumber> {
     const doc = await this.model.create({
       ...data,
+      providerConfig: encryptProviderConfig(data.providerConfig),
       tenantId: new Types.ObjectId(data.tenantId),
     });
     return PhoneNumberMapper.toDomain(doc);
@@ -42,8 +44,11 @@ export class MongoPhoneNumberRepository implements PhoneNumberRepository {
     return docs.map(PhoneNumberMapper.toDomain);
   }
 
-  async update(id: string, data: Partial<Pick<PhoneNumber, 'label' | 'status' | 'webhookSecret' | 'providerConfig' | 'wabaId' | 'phoneNumberId' | 'displayPhone' | 'portfolioId'>>): Promise<PhoneNumber | null> {
-    const doc = await this.model.findByIdAndUpdate(id, { $set: data }, { returnDocument: 'after' });
+  async update(id: string, data: Partial<Pick<PhoneNumber, 'label' | 'status' | 'webhookSecret' | 'providerConfig' | 'wabaId' | 'phoneNumberId' | 'displayPhone' | 'portfolioId' | 'businessProfile'>>): Promise<PhoneNumber | null> {
+    const patch = data.providerConfig
+      ? { ...data, providerConfig: encryptProviderConfig(data.providerConfig) }
+      : data;
+    const doc = await this.model.findByIdAndUpdate(id, { $set: patch }, { returnDocument: 'after' });
     return doc ? PhoneNumberMapper.toDomain(doc) : null;
   }
 
