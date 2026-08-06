@@ -177,6 +177,11 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
           Las contrasenas de los agentes se almacenan utilizando funciones de
           hash seguras.
         </li>
+        <li>
+          Las credenciales de acceso a las APIs de mensajeria (los tokens de
+          WhatsApp Business y las claves de los demas proveedores) se
+          almacenan cifradas con AES-256-GCM.
+        </li>
       </ul>
 
       <h2>7. Retencion de datos</h2>
@@ -411,6 +416,10 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
         </li>
         <li>
           Agent passwords are stored using secure hash functions.
+        </li>
+        <li>
+          Messaging API credentials (WhatsApp Business tokens and the keys
+          for other providers) are stored encrypted with AES-256-GCM.
         </li>
       </ul>
 
