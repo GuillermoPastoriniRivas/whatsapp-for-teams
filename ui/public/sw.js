@@ -1,7 +1,10 @@
 /* Service worker de asis.chat: shell offline mínimo + notificaciones push.
  * App realtime: nunca cachear /api, socket.io ni datos; solo el fallback offline. */
 
-const SHELL_CACHE = "asis-shell-v1";
+/* Bumpear al cambiar cualquier archivo de PRECACHE: el handler de activate
+ * borra las caches "asis-shell-*" que no sean esta, y es la unica forma de que
+ * una PWA ya instalada deje de servir el icono viejo. */
+const SHELL_CACHE = "asis-shell-v2";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/icons/badge-72.png"];
 

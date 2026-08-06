@@ -1,5 +1,12 @@
 import { useId } from "react";
 
+/** Contorno de la burbuja. Compartido por las dos variantes y por la capa mint. */
+const BUBBLE_PATH =
+  "M120 185C120 163.46 137.46 146 159 146H353C374.54 146 392 163.46 392 185V310C392 331.54 374.54 349 353 349H280L240 389V349H159C137.46 349 120 331.54 120 310V185Z";
+
+/** Verde claro del logo, muestreado del arte original. */
+const ACCENT_MINT = "#11B69C";
+
 interface AsisLogoProps {
   size?: number;
   className?: string;
@@ -27,10 +34,7 @@ export function AsisLogo({
         xmlns="http://www.w3.org/2000/svg"
         className={className}
       >
-        <path
-          d="M120 185C120 163.46 137.46 146 159 146H353C374.54 146 392 163.46 392 185V310C392 331.54 374.54 349 353 349H280L240 389V349H159C137.46 349 120 331.54 120 310V185Z"
-          fill={color}
-        />
+        <path d={BUBBLE_PATH} fill={color} />
         <path d="M190 235L240 235" stroke="white" strokeWidth="14" strokeLinecap="round" />
         <path d="M190 267L300 267" stroke="white" strokeWidth="14" strokeLinecap="round" />
       </svg>
@@ -58,8 +62,16 @@ export function AsisLogo({
           />
         </filter>
       </defs>
+      {/* Capa mint desplazada, que asoma abajo y a la derecha de la burbuja
+          blanca. Es el degradado de marca, una de las excepciones a la regla
+          de solo-tokens de DESIGN.md: el logo no cambia con el tema. */}
       <path
-        d="M120 185C120 163.46 137.46 146 159 146H353C374.54 146 392 163.46 392 185V310C392 331.54 374.54 349 353 349H280L240 389V349H159C137.46 349 120 331.54 120 310V185Z"
+        d={BUBBLE_PATH}
+        fill={ACCENT_MINT}
+        transform="translate(18 16)"
+      />
+      <path
+        d={BUBBLE_PATH}
         fill="white"
         filter={`url(#${filterId})`}
       />

@@ -15,7 +15,9 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     lang: "es",
     background_color: "#ffffff",
-    theme_color: "#00987c",
+    // Verde de marca del logo. Va en hex porque el manifest lo lee el sistema
+    // operativo, no el navegador: no puede resolver var(--primary).
+    theme_color: "#088274",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
