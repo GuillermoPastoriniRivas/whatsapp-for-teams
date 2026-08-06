@@ -90,49 +90,56 @@ resource "aws_route53_record" "inbound_mx" {
 
 # ── Entrega al buzón real ───────────────────────
 #
-# Lo natural sería un Lambda que reescriba el `From` y reenvíe el mail tal
-# cual. No se puede: esta cuenta de AWS tiene bloqueada la creación de
-# funciones (CreateFunction devuelve AccessDenied incluso con
-# AdministratorAccess). SNS entrega el correo directo al buzón sin código que
-# mantener; el mail llega envuelto en la notificación, menos prolijo pero
-# legible, y el original queda íntegro en S3.
+# Lo natural sería un Lambda que reescriba el `From` y reenvíe el mail. No se
+# puede: esta cuenta de AWS tiene bloqueada la creación de funciones
+# (CreateFunction devuelve AccessDenied incluso con AdministratorAccess).
+#
+# El primer intento fue SNS, que entrega sin código propio, pero sus mails
+# nunca llegaron al buzón destino (ni el de confirmación) y además envuelve el
+# correo en la notificación y lo trunca arriba de ~150 KB. Ahora reenvía el
+# API, que ya usa SES y tiene un scheduler: lee el bucket cada minuto y manda
+# el mail reescrito. Ver `api/src/infrastructure/email/inbound-mail-forwarder.service.ts`.
 
-resource "aws_sns_topic" "inbound_mail" {
-  name         = "${var.app_name}-inbound-mail"
-  display_name = "asis.chat"
-
-  tags = {
-    Name = "${var.app_name}-inbound-mail"
-  }
-}
-
-resource "aws_sns_topic_policy" "inbound_mail" {
-  arn = aws_sns_topic.inbound_mail.arn
+resource "aws_iam_role_policy" "ec2_inbound_mail" {
+  name = "${var.app_name}-inbound-mail-read"
+  role = aws_iam_role.ec2_ses.id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Sid       = "AllowSESPublish"
-      Effect    = "Allow"
-      Principal = { Service = "ses.amazonaws.com" }
-      Action    = "SNS:Publish"
-      Resource  = aws_sns_topic.inbound_mail.arn
-      Condition = {
-        StringEquals = {
-          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = aws_s3_bucket.inbound_mail.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = ["${local.inbound_mail_prefix}*"]
+          }
         }
-      }
-    }]
+      },
+      {
+        Effect = "Allow"
+        # El borrado es parte del reenvío: sin él, cada corrida vuelve a mandar
+        # los mismos mails.
+        Action   = ["s3:GetObject", "s3:DeleteObject"]
+        Resource = "${aws_s3_bucket.inbound_mail.arn}/${local.inbound_mail_prefix}*"
+      },
+    ]
   })
 }
 
-# Cada destinatario tiene que confirmar la suscripción desde su buzón: AWS
-# manda un mail con un link y hasta que no se toca no llega nada.
-resource "aws_sns_topic_subscription" "inbound_mail" {
-  for_each  = toset(var.inbound_mail_forward_to)
-  topic_arn = aws_sns_topic.inbound_mail.arn
-  protocol  = "email"
-  endpoint  = each.value
+# El API lee su configuración de SSM al arrancar (infra/scripts/hydrate-env.sh).
+
+resource "aws_ssm_parameter" "inbound_mail_bucket" {
+  name  = "/asis/api/INBOUND_MAIL_BUCKET"
+  type  = "String"
+  value = aws_s3_bucket.inbound_mail.id
+}
+
+resource "aws_ssm_parameter" "inbound_mail_forward_to" {
+  name  = "/asis/api/INBOUND_MAIL_FORWARD_TO"
+  type  = "String"
+  value = join(",", var.inbound_mail_forward_to)
 }
 
 # ── Reglas de recepción ─────────────────────────
@@ -155,24 +162,15 @@ resource "aws_ses_receipt_rule" "forward" {
   scan_enabled  = true
   tls_policy    = "Require"
 
-  # El original completo, con adjuntos: SNS trunca arriba de ~150 KB y S3 es
-  # la copia fiel a la que recurrir cuando el mail no entra en la notificación.
+  # Única acción: el mail crudo, entero, con sus adjuntos. De acá lo levanta el
+  # API para reenviarlo y lo borra; lo que quede lo limpia el lifecycle.
   s3_action {
     position          = 1
     bucket_name       = aws_s3_bucket.inbound_mail.id
     object_key_prefix = local.inbound_mail_prefix
   }
 
-  sns_action {
-    position  = 2
-    topic_arn = aws_sns_topic.inbound_mail.arn
-    encoding  = "UTF-8"
-  }
-
-  depends_on = [
-    aws_s3_bucket_policy.inbound_mail,
-    aws_sns_topic_policy.inbound_mail,
-  ]
+  depends_on = [aws_s3_bucket_policy.inbound_mail]
 }
 
 locals {

@@ -12,6 +12,7 @@
  */
 
 import * as bcrypt from 'bcrypt';
+import { createCipheriv, createHash, randomBytes } from 'node:crypto';
 import { connect, connection, model, Types } from 'mongoose';
 
 import { TenantSchema } from './infrastructure/persistence/mongoose/schemas/tenant.schema.js';
@@ -32,6 +33,14 @@ import { CampaignRecipientSchema } from './infrastructure/persistence/mongoose/s
 import { SubscriptionSchema } from './infrastructure/persistence/mongoose/schemas/subscription.schema.js';
 import { BillingRecordSchema } from './infrastructure/persistence/mongoose/schemas/billing-record.schema.js';
 import { AiUsageSchema } from './infrastructure/persistence/mongoose/schemas/ai-usage.schema.js';
+import { FlowSchema } from './infrastructure/persistence/mongoose/schemas/flow.schema.js';
+import { FlowVersionSchema } from './infrastructure/persistence/mongoose/schemas/flow-version.schema.js';
+import { FlowExecutionSchema } from './infrastructure/persistence/mongoose/schemas/flow-execution.schema.js';
+import { FlowNodeStatSchema } from './infrastructure/persistence/mongoose/schemas/flow-node-stat.schema.js';
+import { FlowConnectionSchema } from './infrastructure/persistence/mongoose/schemas/flow-connection.schema.js';
+import { ApiKeySchema } from './infrastructure/persistence/mongoose/schemas/api-key.schema.js';
+import { WebhookEndpointSchema } from './infrastructure/persistence/mongoose/schemas/webhook-endpoint.schema.js';
+import { WebhookDeliverySchema } from './infrastructure/persistence/mongoose/schemas/webhook-delivery.schema.js';
 
 // ── Helpers ─────────────────────────────────────────────
 
@@ -41,6 +50,10 @@ function ago(minutes: number): Date {
 
 function inDays(days: number): Date {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+}
+
+function inMinutes(minutes: number): Date {
+  return new Date(Date.now() + minutes * 60 * 1000);
 }
 
 function dayKey(daysAgo: number): string {
@@ -88,6 +101,14 @@ async function seedDemo() {
   const Subscription = model('Subscription', SubscriptionSchema);
   const BillingRecord = model('BillingRecord', BillingRecordSchema);
   const AiUsage = model('AiUsage', AiUsageSchema);
+  const Flow = model('Flow', FlowSchema);
+  const FlowVersion = model('FlowVersion', FlowVersionSchema);
+  const FlowExecution = model('FlowExecution', FlowExecutionSchema);
+  const FlowNodeStat = model('FlowNodeStat', FlowNodeStatSchema);
+  const FlowConnection = model('FlowConnection', FlowConnectionSchema);
+  const ApiKey = model('ApiKey', ApiKeySchema);
+  const WebhookEndpoint = model('WebhookEndpoint', WebhookEndpointSchema);
+  const WebhookDelivery = model('WebhookDelivery', WebhookDeliverySchema);
 
   // ── 1. Clean existing demo data ──
   const existingTenant = await Tenant.findOne({ slug: 'demo-asis-chat' });
@@ -108,6 +129,14 @@ async function seedDemo() {
     const orphanResult = await Message.deleteMany({ conversationId: { $nin: allConvIds } });
     if (orphanResult.deletedCount > 0) console.log(`  Cleaned ${orphanResult.deletedCount} orphan messages`);
 
+    await FlowExecution.deleteMany({ tenantId: tid });
+    await FlowNodeStat.deleteMany({ tenantId: tid });
+    await FlowVersion.deleteMany({ tenantId: tid });
+    await Flow.deleteMany({ tenantId: tid });
+    await FlowConnection.deleteMany({ tenantId: tid });
+    await WebhookDelivery.deleteMany({ tenantId: tid });
+    await WebhookEndpoint.deleteMany({ tenantId: tid });
+    await ApiKey.deleteMany({ tenantId: tid });
     await ConvEvent.deleteMany({ tenantId: tid });
     await ConvNote.deleteMany({ tenantId: tid });
     await ConvLabel.deleteMany({ tenantId: tid });
@@ -273,6 +302,11 @@ async function seedDemo() {
       agentName?: string;
       type?: string;
       campaignId?: Types.ObjectId;
+      /** Botones/lista que dibuja la burbuja saliente */
+      interactivePayload?: Record<string, unknown>;
+      /** Id del boton/fila que toco el cliente ('fl:<nodo>:<idx>') */
+      interactiveReplyId?: string;
+      location?: { latitude: number; longitude: number; name?: string; address?: string };
     }[],
   ) {
     const docs = msgs.map((m) => ({
@@ -286,6 +320,9 @@ async function seedDemo() {
       senderAgentId: m.agentId ?? null,
       senderAgentName: m.agentName ?? null,
       campaignId: m.campaignId ?? null,
+      interactivePayload: m.interactivePayload ?? null,
+      interactiveReplyId: m.interactiveReplyId ?? null,
+      location: m.location ?? null,
     }));
     await Message.insertMany(docs);
   }
@@ -385,16 +422,24 @@ async function seedDemo() {
   ]);
 
   // --- Conv 7: Isabella → Sofia IA (horarios y ubicacion) ---
+  // Cierra con una ubicacion compartida: es el unico lugar del demo donde se
+  // ve el mapa que dibuja el inbox para los mensajes de tipo location.
   const conv7 = await Conversation.create({
     tenantId: T, phoneNumberId: phone._id, contactId: contacts[6]._id,
     agentId: sofia._id, status: 'active',
-    lastMessageAt: ago(8), lastInboundAt: ago(10),
+    lastMessageAt: ago(5), lastInboundAt: ago(6),
   });
   await createMessages(conv7._id, [
     { dir: 'inbound', body: 'Hola! Donde queda el local? Y a que hora abren?', minutesAgo: 12 },
     { dir: 'outbound', body: 'Hola Isabella! Nuestro local queda en Av. Santa Fe 1234, Palermo. El horario es Lunes a Viernes de 9 a 18hs y Sabados de 10 a 14hs. Te esperamos!', minutesAgo: 11, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
     { dir: 'inbound', body: 'Tienen estacionamiento?', minutesAgo: 10 },
     { dir: 'outbound', body: 'No tenemos estacionamiento propio, pero hay un parking a media cuadra en Av. Santa Fe 1250. Los sabados suele haber lugar en la calle tambien.', minutesAgo: 8, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+    {
+      dir: 'inbound', type: 'location', body: 'Casa: Thames 1500',
+      minutesAgo: 6,
+      location: { latitude: -34.5875, longitude: -58.4302, name: 'Casa', address: 'Thames 1500, Palermo, CABA' },
+    },
+    { dir: 'outbound', body: 'Genial, estas a 12 cuadras del local 🙌 Si preferis, te lo mandamos a domicilio: el envio a Palermo es gratis y llega en 24hs.', minutesAgo: 5, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
   ]);
 
   // --- Conv 8: Mateo → Sofia IA (mayoreo inquiry) ---
@@ -506,7 +551,7 @@ async function seedDemo() {
       rejectionReason: 'El contenido no cumple las politicas de Meta: uso excesivo de mayusculas y lenguaje promocional agresivo.',
     },
   ]);
-  const [tplBienvenida, tplPromo, tplCarrito] = templates;
+  const [tplBienvenida, tplPromo, tplCarrito, tplEnvio] = templates;
   console.log(`+ ${templates.length} templates (aprobadas, en revision y rechazada)`);
 
   // ── 10. Campaigns ──
@@ -778,6 +823,836 @@ async function seedDemo() {
   }));
   await AiUsage.insertMany(usage);
   console.log(`+ ${usage.length} dias de uso de IA`);
+
+  // ── 19. Automatizaciones (flujos) ────────────────────────
+  // Los grafos apuntan a entidades reales del demo (etiquetas, la IA, la
+  // plantilla aprobada y el numero): el visitante los abre, los publica y los
+  // prueba sin tener que configurar nada antes. Si cambia el catalogo de nodos
+  // hay que revisar estos grafos: se guardan ya publicados, sin pasar por el
+  // validador de publish-flow.
+  const sofiaId = sofia._id.toString();
+
+  const menuGraph = {
+    nodes: [
+      {
+        id: 'trigger', type: 'trigger.inbound_message', position: { x: 40, y: 260 },
+        data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: true, ignoreIfAssignedToHuman: true },
+      },
+      {
+        id: 'etiqueta', type: 'action.label', position: { x: 340, y: 260 },
+        data: { action: 'add', labelId: lNuevo._id.toString() },
+      },
+      {
+        id: 'menu', type: 'action.send_buttons', position: { x: 640, y: 240 },
+        data: {
+          body: '¡Hola {{contact.name}}! 👋 Gracias por escribir a Demo Store. ¿Con qué te podemos ayudar?',
+          footer: 'Elegí una opción',
+          buttons: [{ title: 'Ver catálogo' }, { title: 'Estado del pedido' }, { title: 'Hablar con alguien' }],
+          timeout: { amount: 1, unit: 'days' },
+          saveAs: 'opcion',
+          invalidMessage: '',
+          windowPolicy: 'error',
+        },
+      },
+      {
+        id: 'catalogo', type: 'action.send_text', position: { x: 1020, y: 60 },
+        data: {
+          body: 'Este es el catálogo de la temporada 👇\n\n👕 Remeras desde $9.800\n🧥 Buzos desde $11.500\n👖 Jeans desde $18.900\n\nDecime cuál te gustó y te paso talles, colores y disponibilidad.',
+          windowPolicy: 'error',
+        },
+      },
+      {
+        id: 'pedido', type: 'action.ask', position: { x: 1020, y: 280 },
+        data: {
+          body: '¡Dale! 📦 Pasame el número de pedido (por ejemplo #4521) y lo busco.',
+          saveAs: 'pedido', validation: 'texto', invalidMessage: 'Necesito el número de pedido, por ejemplo #4521.',
+          saveToContact: '', timeout: { amount: 1, unit: 'days' }, windowPolicy: 'error',
+        },
+      },
+      {
+        id: 'nota', type: 'action.internal_note', position: { x: 1380, y: 300 },
+        data: { body: 'Consulta por el pedido {{vars.pedido}}. Llegó por el menú de bienvenida.' },
+      },
+      {
+        id: 'humano', type: 'action.handoff_human', position: { x: 1720, y: 340 },
+        data: { note: 'El cliente eligió "{{vars.opcion}}" en el menú de bienvenida.' },
+      },
+      {
+        id: 'bot', type: 'action.handoff_ai', position: { x: 1380, y: 60 },
+        data: { aiAgentId: sofiaId },
+      },
+    ],
+    edges: [
+      { id: 'e1', source: 'trigger', sourceHandle: 'out', target: 'etiqueta' },
+      { id: 'e2', source: 'etiqueta', sourceHandle: 'out', target: 'menu' },
+      { id: 'e3', source: 'menu', sourceHandle: 'btn:0', target: 'catalogo' },
+      { id: 'e4', source: 'menu', sourceHandle: 'btn:1', target: 'pedido' },
+      { id: 'e5', source: 'menu', sourceHandle: 'btn:2', target: 'humano' },
+      // Respuesta libre: la atiende la IA en vez de cortar la conversación.
+      { id: 'e6', source: 'menu', sourceHandle: 'other', target: 'bot' },
+      { id: 'e7', source: 'catalogo', sourceHandle: 'out', target: 'bot' },
+      { id: 'e8', source: 'pedido', sourceHandle: 'reply', target: 'nota' },
+      { id: 'e9', source: 'pedido', sourceHandle: 'timeout', target: 'humano' },
+      { id: 'e10', source: 'nota', sourceHandle: 'out', target: 'humano' },
+    ],
+  };
+
+  const horarioSchedule = { days: [1, 2, 3, 4, 5], from: '09:00', to: '18:00', timezone: 'America/Argentina/Buenos_Aires' };
+  const fueraHorarioGraph = {
+    nodes: [
+      {
+        id: 'trigger', type: 'trigger.inbound_message', position: { x: 40, y: 240 },
+        data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: false, ignoreIfAssignedToHuman: true },
+      },
+      {
+        id: 'horario', type: 'logic.condition', position: { x: 340, y: 240 },
+        data: { logic: 'and', rules: [{ op: 'in_schedule', schedule: horarioSchedule }] },
+      },
+      { id: 'bot', type: 'action.handoff_ai', position: { x: 700, y: 100 }, data: { aiAgentId: sofiaId } },
+      {
+        id: 'cerrado', type: 'action.send_text', position: { x: 700, y: 340 },
+        data: {
+          body: '¡Gracias por escribirnos! 🙌 Ahora estamos cerrados. Te respondemos apenas abramos: lunes a viernes de 9 a 18 y sábados de 10 a 14.',
+          windowPolicy: 'error',
+        },
+      },
+      {
+        id: 'esperar', type: 'logic.wait_business_hours', position: { x: 1040, y: 340 },
+        data: { schedule: horarioSchedule },
+      },
+      {
+        id: 'humano', type: 'action.handoff_human', position: { x: 1380, y: 340 },
+        data: { note: 'Escribió fuera de horario. Contestar apenas se abra.' },
+      },
+    ],
+    edges: [
+      { id: 'e1', source: 'trigger', sourceHandle: 'out', target: 'horario' },
+      { id: 'e2', source: 'horario', sourceHandle: 'yes', target: 'bot' },
+      { id: 'e3', source: 'horario', sourceHandle: 'no', target: 'cerrado' },
+      { id: 'e4', source: 'cerrado', sourceHandle: 'out', target: 'esperar' },
+      { id: 'e5', source: 'esperar', sourceHandle: 'out', target: 'humano' },
+    ],
+  };
+
+  const leadsGraph = {
+    nodes: [
+      {
+        id: 'trigger', type: 'trigger.inbound_message', position: { x: 40, y: 300 },
+        data: {
+          phoneNumberIds: [], match: 'keywords',
+          keywords: ['mayorista', 'por mayor', 'mayoreo', 'revendedor', 'cantidad'],
+          keywordMode: 'contains', onlyNewConversations: false, ignoreIfAssignedToHuman: true,
+        },
+      },
+      {
+        id: 'clasificar', type: 'logic.ai_route', position: { x: 360, y: 300 },
+        data: {
+          aiAgentId: sofiaId,
+          question: '¿Qué está buscando el cliente?',
+          options: [
+            { key: 'mayorista', label: 'Quiere comprar por mayor o revender' },
+            { key: 'minorista', label: 'Compra una o pocas unidades' },
+            { key: 'otro', label: 'Es un reclamo o una consulta de otra cosa' },
+          ],
+        },
+      },
+      {
+        id: 'volumen', type: 'action.ask', position: { x: 720, y: 160 },
+        data: {
+          body: '¡Genial! 🙌 Para pasarte la lista mayorista: ¿qué cantidad aproximada necesitás por mes?',
+          saveAs: 'volumen', validation: 'texto', invalidMessage: '',
+          saveToContact: '', timeout: { amount: 12, unit: 'hours' }, windowPolicy: 'error',
+        },
+      },
+      {
+        id: 'guardar', type: 'action.update_contact', position: { x: 1040, y: 160 },
+        data: {
+          fields: [
+            { field: 'custom.tipo_cliente', value: 'mayorista' },
+            { field: 'custom.volumen_mensual', value: '{{vars.volumen}}' },
+          ],
+        },
+      },
+      {
+        id: 'etiquetar', type: 'action.label', position: { x: 1360, y: 160 },
+        data: { action: 'add', labelId: lMayorista._id.toString() },
+      },
+      {
+        id: 'avisar', type: 'action.emit_event', position: { x: 1680, y: 160 },
+        data: { eventName: 'lead.mayorista', fields: [{ key: 'volumen', value: '{{vars.volumen}}' }, { key: 'telefono', value: '{{contact.phone}}' }] },
+      },
+      { id: 'bot', type: 'action.handoff_ai', position: { x: 2000, y: 160 }, data: { aiAgentId: sofiaId } },
+      {
+        id: 'humano', type: 'action.handoff_human', position: { x: 720, y: 460 },
+        data: { note: 'La IA no lo clasificó como mayorista. Revisar a mano.' },
+      },
+    ],
+    edges: [
+      { id: 'e1', source: 'trigger', sourceHandle: 'out', target: 'clasificar' },
+      { id: 'e2', source: 'clasificar', sourceHandle: 'opt:mayorista', target: 'volumen' },
+      { id: 'e3', source: 'clasificar', sourceHandle: 'opt:minorista', target: 'bot' },
+      { id: 'e4', source: 'clasificar', sourceHandle: 'opt:otro', target: 'humano' },
+      // Obligatoria: sin fallback el flujo se corta en silencio.
+      { id: 'e5', source: 'clasificar', sourceHandle: 'fallback', target: 'humano' },
+      { id: 'e6', source: 'volumen', sourceHandle: 'reply', target: 'guardar' },
+      { id: 'e7', source: 'volumen', sourceHandle: 'timeout', target: 'humano' },
+      { id: 'e8', source: 'guardar', sourceHandle: 'out', target: 'etiquetar' },
+      { id: 'e9', source: 'etiquetar', sourceHandle: 'out', target: 'avisar' },
+      { id: 'e10', source: 'avisar', sourceHandle: 'out', target: 'bot' },
+    ],
+  };
+
+  const envioGraph = {
+    nodes: [
+      {
+        id: 'trigger', type: 'trigger.webhook', position: { x: 40, y: 240 },
+        data: { phoneNumberId: phone._id.toString(), contactPhoneField: 'telefono', contactNameField: 'nombre' },
+      },
+      {
+        id: 'aviso', type: 'action.send_template', position: { x: 380, y: 240 },
+        data: {
+          templateId: tplEnvio._id.toString(),
+          variables: {
+            'body.1': { source: 'contact_field', value: 'name' },
+            'body.2': { source: 'flow_var', value: 'webhook.pedido' },
+          },
+        },
+      },
+      {
+        id: 'avisar', type: 'action.emit_event', position: { x: 740, y: 140 },
+        data: { eventName: 'envio.notificado', fields: [{ key: 'pedido', value: '{{webhook.pedido}}' }] },
+      },
+      {
+        id: 'nota', type: 'action.internal_note', position: { x: 740, y: 380 },
+        data: { body: 'No se pudo avisar el envío del pedido {{webhook.pedido}}. Contactar a mano.' },
+      },
+    ],
+    edges: [
+      { id: 'e1', source: 'trigger', sourceHandle: 'out', target: 'aviso' },
+      { id: 'e2', source: 'aviso', sourceHandle: 'out', target: 'avisar' },
+      { id: 'e3', source: 'aviso', sourceHandle: 'error', target: 'nota' },
+    ],
+  };
+
+  // Borrador: queda a medio configurar a proposito, para que el visitante vea
+  // el estado "borrador" y pueda terminarlo y publicarlo el mismo.
+  const cobroGraph = {
+    nodes: [
+      {
+        id: 'trigger', type: 'trigger.inbound_message', position: { x: 40, y: 240 },
+        data: { phoneNumberIds: [], match: 'keywords', keywords: ['pagar', 'pago', 'link de pago'], keywordMode: 'contains', onlyNewConversations: false, ignoreIfAssignedToHuman: true },
+      },
+      {
+        id: 'monto', type: 'action.ask', position: { x: 360, y: 240 },
+        data: {
+          body: '¡Dale! 💳 ¿Por qué monto te genero el link de pago? (solo el número)',
+          saveAs: 'monto', validation: 'numero', invalidMessage: 'Necesito solo el número, por ejemplo: 15000',
+          saveToContact: '', timeout: { amount: 12, unit: 'hours' }, windowPolicy: 'error',
+        },
+      },
+      {
+        id: 'mp', type: 'action.http', position: { x: 680, y: 240 },
+        data: {
+          method: 'POST', url: 'https://api.mercadopago.com/checkout/preferences',
+          headers: [], connectionId: '', bodyMode: 'json',
+          body: '{"items":[{"title":"Pago por WhatsApp","quantity":1,"currency_id":"ARS","unit_price":{{vars.monto}}}]}',
+          saveAs: 'pago', retryOnFailure: false,
+        },
+      },
+      {
+        id: 'link', type: 'action.send_text', position: { x: 1020, y: 140 },
+        data: { body: 'Listo ✅ Acá tenés tu link de pago:\n{{vars.pago.body.init_point}}\n\nAvisanos cuando lo completes.', windowPolicy: 'error' },
+      },
+      {
+        id: 'fallo', type: 'action.handoff_human', position: { x: 1020, y: 360 },
+        data: { note: 'El link de pago falló (HTTP {{vars.pago.status}}). Atender a mano.' },
+      },
+    ],
+    edges: [
+      { id: 'e1', source: 'trigger', sourceHandle: 'out', target: 'monto' },
+      { id: 'e2', source: 'monto', sourceHandle: 'reply', target: 'mp' },
+      { id: 'e3', source: 'mp', sourceHandle: 'success', target: 'link' },
+      { id: 'e4', source: 'mp', sourceHandle: 'error', target: 'fallo' },
+    ],
+  };
+
+  /** Crea el flujo + su version publicada (o solo el borrador). */
+  async function createFlow(input: {
+    name: string;
+    description: string;
+    graph: any;
+    priority: number;
+    status: 'published' | 'paused' | 'draft';
+    stats: { started: number; completed: number; failed: number; cancelled: number };
+    trigger?: Partial<{
+      type: 'inbound_message' | 'webhook' | 'campaign_reply';
+      match: 'any' | 'keywords';
+      keywords: string[];
+      onlyNewConversations: boolean;
+      contactPhoneField: string | null;
+      contactNameField: string | null;
+      phoneNumberIds: string[];
+    }>;
+    createdMinutesAgo: number;
+  }) {
+    const flow = await Flow.create({
+      tenantId: T,
+      name: input.name,
+      description: input.description,
+      status: input.status,
+      draftGraph: input.graph,
+      priority: input.priority,
+      webhookToken: input.trigger?.type === 'webhook' ? randomBytes(32).toString('hex') : null,
+      stats: input.stats,
+      createdByAgentId: ana._id,
+      createdAt: ago(input.createdMinutesAgo),
+      updatedAt: ago(Math.round(input.createdMinutesAgo / 3)),
+    });
+
+    if (input.status === 'draft') return { flow, version: null };
+
+    const version = await FlowVersion.create({
+      flowId: flow._id,
+      tenantId: T,
+      version: 1,
+      graph: input.graph,
+      trigger: {
+        type: input.trigger?.type ?? 'inbound_message',
+        phoneNumberIds: input.trigger?.phoneNumberIds ?? [],
+        match: input.trigger?.match ?? 'any',
+        keywords: input.trigger?.keywords ?? [],
+        keywordMode: 'contains',
+        onlyNewConversations: input.trigger?.onlyNewConversations ?? false,
+        ignoreIfAssignedToHuman: true,
+        contactPhoneField: input.trigger?.contactPhoneField ?? null,
+        contactNameField: input.trigger?.contactNameField ?? null,
+        campaignIds: [],
+      },
+      publishedByAgentId: ana._id,
+      createdAt: ago(Math.round(input.createdMinutesAgo / 2)),
+    });
+
+    await Flow.updateOne(
+      { _id: flow._id },
+      { publishedVersionId: version._id, publishedVersion: version.version },
+    );
+
+    return { flow, version };
+  }
+
+  const { flow: flowMenu, version: verMenu } = await createFlow({
+    name: 'Menú de bienvenida',
+    description: 'Saluda al que escribe por primera vez, lo etiqueta y lo manda al catálogo, al estado del pedido o a una persona.',
+    graph: menuGraph, priority: 10, status: 'published',
+    stats: { started: 148, completed: 131, failed: 2, cancelled: 6 },
+    trigger: { type: 'inbound_message', onlyNewConversations: true },
+    createdMinutesAgo: 45 * 24 * 60,
+  });
+
+  const { flow: flowHorario, version: verHorario } = await createFlow({
+    name: 'Fuera de horario',
+    description: 'Dentro del horario deriva a la IA; fuera, avisa cuándo abrimos y espera a que abra para pasarlo al equipo.',
+    graph: fueraHorarioGraph, priority: 20, status: 'published',
+    stats: { started: 96, completed: 93, failed: 0, cancelled: 3 },
+    trigger: { type: 'inbound_message' },
+    createdMinutesAgo: 30 * 24 * 60,
+  });
+
+  const { flow: flowLeads, version: verLeads } = await createFlow({
+    name: 'Calificar leads mayoristas',
+    description: 'Clasifica la intención con IA, pregunta el volumen, lo guarda en la ficha, etiqueta y avisa a tus sistemas.',
+    graph: leadsGraph, priority: 30, status: 'published',
+    stats: { started: 42, completed: 33, failed: 3, cancelled: 6 },
+    trigger: { type: 'inbound_message', match: 'keywords', keywords: ['mayorista', 'por mayor', 'mayoreo', 'revendedor', 'cantidad'] },
+    createdMinutesAgo: 20 * 24 * 60,
+  });
+
+  const { flow: flowEnvio, version: verEnvio } = await createFlow({
+    name: 'Aviso de envío desde tu sistema',
+    description: 'Tu backend pega en la URL del flujo cuando despacha un pedido y el cliente recibe la plantilla aprobada.',
+    graph: envioGraph, priority: 40, status: 'published',
+    trigger: { type: 'webhook', contactPhoneField: 'telefono', contactNameField: 'nombre', phoneNumberIds: [phone._id.toString()] },
+    stats: { started: 87, completed: 85, failed: 2, cancelled: 0 },
+    createdMinutesAgo: 12 * 24 * 60,
+  });
+
+  await createFlow({
+    name: 'Cobrar con MercadoPago',
+    description: 'Genera un link de pago con tu cuenta de MercadoPago y lo manda por WhatsApp. Falta elegir la conexión.',
+    graph: cobroGraph, priority: 50, status: 'draft',
+    stats: { started: 0, completed: 0, failed: 0, cancelled: 0 },
+    createdMinutesAgo: 3 * 24 * 60,
+  });
+  console.log(`+ 5 flujos (4 publicados + 1 borrador)`);
+
+  // Conexion para el nodo HTTP. El secreto va cifrado con el mismo formato que
+  // usa FlowSecretsService; con otra FLOW_SECRETS_KEY en runtime solo falla si
+  // un flujo la usa, y ninguno de los publicados la referencia.
+  const flowSecretsKey = createHash('sha256').update(process.env.FLOW_SECRETS_KEY ?? 'demo-seed').digest();
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', flowSecretsKey, iv);
+  const encrypted = Buffer.concat([cipher.update('APP_USR-demo-token-no-real', 'utf8'), cipher.final()]);
+  await FlowConnection.create({
+    tenantId: T,
+    name: 'MercadoPago (demo)',
+    headerName: 'Authorization',
+    secretEncrypted: `${iv.toString('base64')}.${cipher.getAuthTag().toString('base64')}.${encrypted.toString('base64')}`,
+  });
+  console.log(`+ 1 conexion para el nodo HTTP`);
+
+  // ── 20. Conversaciones que nacieron de un flujo o de la API ──
+  const flowContacts = await Contact.insertMany([
+    { tenantId: T, phone: '5491155551013', name: 'Brenda Suarez', customFields: { origen: 'menu de bienvenida' }, lastSeenAt: ago(190) },
+    { tenantId: T, phone: '5491155551014', name: 'Tomas Quiroga', lastSeenAt: ago(240) },
+    { tenantId: T, phone: '5491155551015', name: 'Julian Ferrari', lastSeenAt: ago(320) },
+    { tenantId: T, phone: '5491155551016', name: 'Ramiro Sosa', company: 'Pedido #5120', customFields: { origen: 'api' }, lastSeenAt: ago(140) },
+    { tenantId: T, phone: '5491155551017', name: 'Andres Bustos', lastSeenAt: ago(70) },
+  ]);
+  const [brenda, tomas, julian, ramiro, andres] = flowContacts;
+
+  const menuButtons = {
+    kind: 'buttons',
+    body: menuGraph.nodes[2].data.body as string,
+    footer: 'Elegí una opción',
+    buttons: [
+      { id: 'fl:menu:0', title: 'Ver catálogo' },
+      { id: 'fl:menu:1', title: 'Estado del pedido' },
+      { id: 'fl:menu:2', title: 'Hablar con alguien' },
+    ],
+  };
+  const menuBody = (name: string) => menuButtons.body.replace('{{contact.name}}', name);
+
+  // Brenda: recorrio el menu entero y termino en Carlos.
+  const convBrenda = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: brenda._id,
+    agentId: carlos._id, status: 'active',
+    lastMessageAt: ago(180), lastInboundAt: ago(184),
+    summary: 'Llegó por el menú de bienvenida, eligió "Estado del pedido" y dejó el número #5087. El flujo la derivó a Carlos con la nota.',
+  });
+  await createMessages(convBrenda._id, [
+    { dir: 'inbound', body: 'Hola! buenas', minutesAgo: 195 },
+    { dir: 'outbound', type: 'interactive', body: menuBody('Brenda Suarez'), minutesAgo: 194, agentName: 'Menú de bienvenida', interactivePayload: menuButtons },
+    { dir: 'inbound', type: 'interactive', body: 'Estado del pedido', minutesAgo: 190, interactiveReplyId: 'fl:menu:1' },
+    { dir: 'outbound', body: '¡Dale! 📦 Pasame el número de pedido (por ejemplo #4521) y lo busco.', minutesAgo: 189, agentName: 'Menú de bienvenida' },
+    { dir: 'inbound', body: '#5087', minutesAgo: 184 },
+    { dir: 'outbound', body: 'Hola Brenda! Soy Carlos. Tu pedido #5087 salio ayer y lo entregan hoy antes de las 18. Te paso el seguimiento por acá cuando lo tenga.', minutesAgo: 180, agentId: carlos._id.toString(), agentName: 'Carlos Lopez' },
+  ]);
+
+  // Tomas: el flujo le mando el menu y todavia no contesto (ejecucion en espera).
+  const convTomas = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: tomas._id,
+    agentId: null, status: 'unassigned',
+    lastMessageAt: ago(239), lastInboundAt: ago(240),
+  });
+  await createMessages(convTomas._id, [
+    { dir: 'inbound', body: 'hola', minutesAgo: 240 },
+    { dir: 'outbound', type: 'interactive', body: menuBody('Tomas Quiroga'), minutesAgo: 239, agentName: 'Menú de bienvenida', interactivePayload: menuButtons },
+  ]);
+
+  // Julian: toco "Hablar con alguien" y el flujo lo derivo directo.
+  const convJulian = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: julian._id,
+    agentId: lucia._id, status: 'active',
+    lastMessageAt: ago(310), lastInboundAt: ago(315),
+    unreadCount: 1,
+  });
+  await createMessages(convJulian._id, [
+    { dir: 'inbound', body: 'Buenas! consulta', minutesAgo: 322 },
+    { dir: 'outbound', type: 'interactive', body: menuBody('Julian Ferrari'), minutesAgo: 321, agentName: 'Menú de bienvenida', interactivePayload: menuButtons },
+    { dir: 'inbound', type: 'interactive', body: 'Hablar con alguien', minutesAgo: 315, interactiveReplyId: 'fl:menu:2' },
+    { dir: 'outbound', body: 'Hola Julian! Soy Lucia, en que te ayudo?', minutesAgo: 312, agentId: lucia._id.toString(), agentName: 'Lucia Fernandez' },
+    { dir: 'inbound', body: 'Queria saber si hacen envios a La Plata', minutesAgo: 310 },
+  ]);
+
+  // Ramiro: la conversacion la abrio el backend de la tienda por la API,
+  // disparando el flujo de aviso de envio.
+  const convRamiro = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: ramiro._id,
+    agentId: sofia._id, status: 'active',
+    origin: 'api', hasReplied: true, repliedAt: ago(140),
+    lastMessageAt: ago(138), lastInboundAt: ago(140),
+  });
+  await createMessages(convRamiro._id, [
+    { dir: 'outbound', type: 'template', body: 'Hola Ramiro Sosa! Tu pedido #5120 ya salio de nuestro deposito y llega en 24-48hs.', minutesAgo: 150, agentName: 'Aviso de envío desde tu sistema' },
+    { dir: 'inbound', body: 'Gracias! Puede recibirlo un vecino si no estoy?', minutesAgo: 140 },
+    { dir: 'outbound', body: 'Si, sin problema 🙌 El correo entrega a cualquier persona en el domicilio con DNI. Si preferis, tambien podes reprogramar la entrega desde el link del seguimiento.', minutesAgo: 138, agentId: sofia._id.toString(), agentName: 'Sofia IA' },
+  ]);
+
+  // Andres: el flujo de leads se corto por el limite diario de la IA. Queda sin
+  // asignar y con el mensaje sin leer: es el caso que explica la pantalla de
+  // ejecuciones fallidas.
+  const convAndres = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: andres._id,
+    agentId: null, status: 'unassigned',
+    lastMessageAt: ago(70), lastInboundAt: ago(70),
+    unreadCount: 1,
+  });
+  await createMessages(convAndres._id, [
+    { dir: 'inbound', body: 'Hola, hacen precios por mayor? Tengo un local en Rosario', minutesAgo: 70 },
+  ]);
+
+  await ConvEvent.insertMany([
+    { conversationId: convBrenda._id, tenantId: T, type: 'created', createdAt: ago(195) },
+    { conversationId: convBrenda._id, tenantId: T, type: 'reassigned', performedBy: ana._id.toString(), data: { fromAgentName: 'Menú de bienvenida', toAgentName: 'Carlos Lopez' }, createdAt: ago(183) },
+    { conversationId: convTomas._id, tenantId: T, type: 'created', createdAt: ago(240) },
+    { conversationId: convJulian._id, tenantId: T, type: 'created', createdAt: ago(322) },
+    { conversationId: convJulian._id, tenantId: T, type: 'assigned', performedBy: ana._id.toString(), data: { agentName: 'Lucia Fernandez' }, createdAt: ago(314) },
+    { conversationId: convRamiro._id, tenantId: T, type: 'created', createdAt: ago(150) },
+    { conversationId: convRamiro._id, tenantId: T, type: 'assigned', performedBy: sofia._id.toString(), data: { agentName: 'Sofia IA' }, createdAt: ago(139) },
+    { conversationId: convAndres._id, tenantId: T, type: 'created', createdAt: ago(70) },
+  ]);
+  await ConvLabel.insertMany([
+    { conversationId: convBrenda._id, tenantId: T, labelId: lNuevo._id, assignedBy: ana._id.toString() },
+    { conversationId: convTomas._id, tenantId: T, labelId: lNuevo._id, assignedBy: ana._id.toString() },
+    { conversationId: convJulian._id, tenantId: T, labelId: lNuevo._id, assignedBy: ana._id.toString() },
+    { conversationId: convRamiro._id, tenantId: T, labelId: lEnvio._id, assignedBy: ana._id.toString() },
+  ]);
+  console.log(`+ 5 contactos y conversaciones nacidas de flujos y de la API`);
+
+  // ── 21. Ejecuciones de flujos ──
+  let execSeq = 0;
+  async function createExecution(input: {
+    flowId: Types.ObjectId;
+    versionId: Types.ObjectId;
+    conversationId: Types.ObjectId;
+    contactId: Types.ObjectId;
+    status: 'completed' | 'waiting' | 'failed';
+    startedMinutesAgo: number;
+    endedMinutesAgo?: number;
+    currentNodeId?: string | null;
+    steps: { nodeId: string; type: string; handle: string | null; status?: 'ok' | 'error' | 'skipped'; note?: string }[];
+    variables?: Record<string, unknown>;
+    waitState?: Record<string, unknown> | null;
+    endReason?: string | null;
+    error?: { nodeId: string; message: string } | null;
+    triggeredBy?: { type: 'message' | 'webhook'; messageId?: string };
+  }) {
+    execSeq += 1;
+    const start = ago(input.startedMinutesAgo);
+    await FlowExecution.create({
+      tenantId: T,
+      flowId: input.flowId,
+      flowVersionId: input.versionId,
+      conversationId: input.conversationId,
+      contactId: input.contactId,
+      phoneNumberId: phone._id,
+      status: input.status,
+      currentNodeId: input.currentNodeId ?? null,
+      resumeToken: randomBytes(16).toString('hex'),
+      stepCount: input.steps.length,
+      waitState: input.waitState ?? null,
+      lastConsumedMessageId: null,
+      variables: input.variables ?? {},
+      steps: input.steps.map((step, i) => ({
+        nodeId: step.nodeId,
+        type: step.type,
+        status: step.status ?? 'ok',
+        handle: step.handle,
+        at: new Date(start.getTime() + i * 1500),
+        ms: 40 + ((i * 37) % 260),
+        note: step.note ?? null,
+      })),
+      triggeredBy: input.triggeredBy ?? { type: 'message', messageId: `demo-exec-${execSeq}` },
+      endReason: input.endReason ?? null,
+      error: input.error ?? null,
+      runningSince: null,
+      startedAt: start,
+      endedAt: input.endedMinutesAgo !== undefined ? ago(input.endedMinutesAgo) : null,
+      createdAt: start,
+      updatedAt: ago(input.endedMinutesAgo ?? input.startedMinutesAgo),
+    });
+  }
+
+  await createExecution({
+    flowId: flowMenu._id, versionId: verMenu!._id,
+    conversationId: convBrenda._id, contactId: brenda._id,
+    status: 'completed', startedMinutesAgo: 195, endedMinutesAgo: 183,
+    variables: { vars: { opcion: 'Estado del pedido', pedido: '#5087' } },
+    endReason: 'handoff_human',
+    steps: [
+      { nodeId: 'trigger', type: 'trigger.inbound_message', handle: 'out' },
+      { nodeId: 'etiqueta', type: 'action.label', handle: 'out', note: 'Etiqueta "Nuevo" agregada' },
+      { nodeId: 'menu', type: 'action.send_buttons', handle: 'btn:1', note: 'Estado del pedido' },
+      { nodeId: 'pedido', type: 'action.ask', handle: 'reply', note: '#5087' },
+      { nodeId: 'nota', type: 'action.internal_note', handle: 'out' },
+      { nodeId: 'humano', type: 'action.handoff_human', handle: null, note: 'Asignada a Carlos Lopez' },
+    ],
+  });
+
+  await createExecution({
+    flowId: flowMenu._id, versionId: verMenu!._id,
+    conversationId: convJulian._id, contactId: julian._id,
+    status: 'completed', startedMinutesAgo: 322, endedMinutesAgo: 314,
+    variables: { vars: { opcion: 'Hablar con alguien' } },
+    endReason: 'handoff_human',
+    steps: [
+      { nodeId: 'trigger', type: 'trigger.inbound_message', handle: 'out' },
+      { nodeId: 'etiqueta', type: 'action.label', handle: 'out' },
+      { nodeId: 'menu', type: 'action.send_buttons', handle: 'btn:2', note: 'Hablar con alguien' },
+      { nodeId: 'humano', type: 'action.handoff_human', handle: null, note: 'Asignada a Lucia Fernandez' },
+    ],
+  });
+
+  await createExecution({
+    flowId: flowMenu._id, versionId: verMenu!._id,
+    conversationId: convTomas._id, contactId: tomas._id,
+    status: 'waiting', startedMinutesAgo: 240, currentNodeId: 'menu',
+    variables: {},
+    waitState: {
+      nodeId: 'menu', kind: 'reply',
+      timeoutAt: inMinutes(1200), waitingSince: ago(239),
+      saveAs: 'opcion',
+      optionMap: { 'fl:menu:0': 'btn:0', 'fl:menu:1': 'btn:1', 'fl:menu:2': 'btn:2' },
+      textMap: { 'ver catalogo': 'btn:0', 'estado del pedido': 'btn:1', 'hablar con alguien': 'btn:2' },
+      attempts: 0, validation: null,
+    },
+    steps: [
+      { nodeId: 'trigger', type: 'trigger.inbound_message', handle: 'out' },
+      { nodeId: 'etiqueta', type: 'action.label', handle: 'out' },
+      { nodeId: 'menu', type: 'action.send_buttons', handle: null, note: 'Esperando respuesta' },
+    ],
+  });
+
+  await createExecution({
+    flowId: flowHorario._id, versionId: verHorario!._id,
+    conversationId: conv3._id, contactId: valentina._id,
+    status: 'completed', startedMinutesAgo: 8, endedMinutesAgo: 7,
+    variables: {}, endReason: 'handoff_ai',
+    steps: [
+      { nodeId: 'trigger', type: 'trigger.inbound_message', handle: 'out' },
+      { nodeId: 'horario', type: 'logic.condition', handle: 'yes', note: 'Dentro del horario' },
+      { nodeId: 'bot', type: 'action.handoff_ai', handle: null, note: 'Sofia IA toma la conversación' },
+    ],
+  });
+
+  await createExecution({
+    flowId: flowHorario._id, versionId: verHorario!._id,
+    conversationId: conv6._id, contactId: sebastian._id,
+    status: 'completed', startedMinutesAgo: 1500, endedMinutesAgo: 1491,
+    variables: {}, endReason: 'handoff_human',
+    steps: [
+      { nodeId: 'trigger', type: 'trigger.inbound_message', handle: 'out' },
+      { nodeId: 'horario', type: 'logic.condition', handle: 'no', note: 'Fuera del horario' },
+      { nodeId: 'cerrado', type: 'action.send_text', handle: 'out' },
+      { nodeId: 'esperar', type: 'logic.wait_business_hours', handle: 'out', note: 'Esperó a las 09:00' },
+      { nodeId: 'humano', type: 'action.handoff_human', handle: null },
+    ],
+  });
+
+  await createExecution({
+    flowId: flowLeads._id, versionId: verLeads!._id,
+    conversationId: conv9._id, contactId: florencia._id,
+    status: 'completed', startedMinutesAgo: 35, endedMinutesAgo: 22,
+    variables: { vars: { volumen: '200 unidades por mes' } },
+    endReason: 'handoff_ai',
+    steps: [
+      { nodeId: 'trigger', type: 'trigger.inbound_message', handle: 'out' },
+      { nodeId: 'clasificar', type: 'logic.ai_route', handle: 'opt:mayorista', note: 'mayorista' },
+      { nodeId: 'volumen', type: 'action.ask', handle: 'reply', note: '200 unidades por mes' },
+      { nodeId: 'guardar', type: 'action.update_contact', handle: 'out', note: '2 campos actualizados' },
+      { nodeId: 'etiquetar', type: 'action.label', handle: 'out', note: 'Etiqueta "Mayorista"' },
+      { nodeId: 'avisar', type: 'action.emit_event', handle: 'out', note: 'lead.mayorista' },
+      { nodeId: 'bot', type: 'action.handoff_ai', handle: null },
+    ],
+  });
+
+  await createExecution({
+    flowId: flowLeads._id, versionId: verLeads!._id,
+    conversationId: conv8._id, contactId: contacts[7]._id,
+    status: 'completed', startedMinutesAgo: 60, endedMinutesAgo: 52,
+    variables: { vars: { volumen: '12 unidades por modelo' } },
+    endReason: 'handoff_ai',
+    steps: [
+      { nodeId: 'trigger', type: 'trigger.inbound_message', handle: 'out' },
+      { nodeId: 'clasificar', type: 'logic.ai_route', handle: 'opt:mayorista', note: 'mayorista' },
+      { nodeId: 'volumen', type: 'action.ask', handle: 'reply', note: '12 unidades por modelo' },
+      { nodeId: 'guardar', type: 'action.update_contact', handle: 'out' },
+      { nodeId: 'etiquetar', type: 'action.label', handle: 'out' },
+      { nodeId: 'avisar', type: 'action.emit_event', handle: 'out', note: 'lead.mayorista' },
+      { nodeId: 'bot', type: 'action.handoff_ai', handle: null },
+    ],
+  });
+
+  await createExecution({
+    flowId: flowLeads._id, versionId: verLeads!._id,
+    conversationId: convAndres._id, contactId: andres._id,
+    status: 'failed', startedMinutesAgo: 70, endedMinutesAgo: 70,
+    variables: {},
+    error: { nodeId: 'clasificar', message: 'El asistente IA superó su límite diario de mensajes' },
+    endReason: 'error',
+    steps: [
+      { nodeId: 'trigger', type: 'trigger.inbound_message', handle: 'out' },
+      { nodeId: 'clasificar', type: 'logic.ai_route', handle: null, status: 'error', note: 'Límite diario del asistente alcanzado' },
+    ],
+  });
+
+  await createExecution({
+    flowId: flowEnvio._id, versionId: verEnvio!._id,
+    conversationId: convRamiro._id, contactId: ramiro._id,
+    status: 'completed', startedMinutesAgo: 150, endedMinutesAgo: 150,
+    variables: { webhook: { pedido: '#5120', telefono: '5491155551016', nombre: 'Ramiro Sosa' } },
+    endReason: 'end_of_flow',
+    triggeredBy: { type: 'webhook' },
+    steps: [
+      { nodeId: 'trigger', type: 'trigger.webhook', handle: 'out' },
+      { nodeId: 'aviso', type: 'action.send_template', handle: 'out', note: 'aviso_envio' },
+      { nodeId: 'avisar', type: 'action.emit_event', handle: 'out', note: 'envio.notificado' },
+    ],
+  });
+  console.log(`+ ${execSeq} ejecuciones de flujos (completadas, en espera y con error)`);
+
+  // ── 22. Embudo por nodo (lo que dibuja "N× ejecutado" en el canvas) ──
+  const nodeStatDocs: Record<string, unknown>[] = [];
+  const funnels: { flowId: Types.ObjectId; versionId: Types.ObjectId; nodes: [string, number, number][] }[] = [
+    {
+      flowId: flowMenu._id, versionId: verMenu!._id,
+      // [nodeId, entrantes por dia, errores por dia]
+      nodes: [['trigger', 21, 0], ['etiqueta', 21, 0], ['menu', 21, 0], ['catalogo', 8, 0], ['pedido', 6, 0], ['nota', 5, 0], ['humano', 9, 0], ['bot', 9, 0]],
+    },
+    {
+      flowId: flowHorario._id, versionId: verHorario!._id,
+      nodes: [['trigger', 14, 0], ['horario', 14, 0], ['bot', 9, 0], ['cerrado', 5, 0], ['esperar', 5, 0], ['humano', 4, 0]],
+    },
+    {
+      flowId: flowLeads._id, versionId: verLeads!._id,
+      nodes: [['trigger', 6, 0], ['clasificar', 6, 1], ['volumen', 4, 0], ['guardar', 3, 0], ['etiquetar', 3, 0], ['avisar', 3, 0], ['bot', 4, 0], ['humano', 1, 0]],
+    },
+    {
+      flowId: flowEnvio._id, versionId: verEnvio!._id,
+      nodes: [['trigger', 12, 0], ['aviso', 12, 0], ['avisar', 12, 0], ['nota', 0, 0]],
+    },
+  ];
+  for (const funnel of funnels) {
+    for (let day = 0; day < 7; day += 1) {
+      for (const [nodeId, base, errors] of funnel.nodes) {
+        // Variación determinista: el mismo seed da siempre el mismo embudo.
+        const entered = Math.max(0, base + ((day * 3 + nodeId.length) % 5) - 2);
+        if (entered === 0 && errors === 0) continue;
+        nodeStatDocs.push({
+          tenantId: T, flowId: funnel.flowId, flowVersionId: funnel.versionId,
+          nodeId, date: dayKey(day), entered,
+          errors: day === 1 ? errors : 0,
+          outcomes: {},
+        });
+      }
+    }
+  }
+  await FlowNodeStat.insertMany(nodeStatDocs);
+  console.log(`+ ${nodeStatDocs.length} contadores diarios por nodo`);
+
+  // ── 23. Plataforma de desarrolladores ──
+  // Las claves se guardan hasheadas: la de la lista no se puede volver a ver
+  // (igual que en produccion). El visitante crea la suya desde la UI para el
+  // playground; el plan del demo es Pro y la API esta habilitada en todos.
+  const activeKeyPlain = `ak_live_${randomBytes(20).toString('hex')}`;
+  const revokedKeyPlain = `ak_live_${randomBytes(20).toString('hex')}`;
+  await ApiKey.insertMany([
+    {
+      tenantId: T, name: 'Backend de la tienda',
+      prefix: activeKeyPlain.slice(0, 12),
+      keyHash: createHash('sha256').update(activeKeyPlain, 'utf8').digest('hex'),
+      createdBy: ana._id, lastUsedAt: ago(12), revokedAt: null,
+      createdAt: ago(38 * 24 * 60),
+    },
+    {
+      tenantId: T, name: 'Integración con n8n (vieja)',
+      prefix: revokedKeyPlain.slice(0, 12),
+      keyHash: createHash('sha256').update(revokedKeyPlain, 'utf8').digest('hex'),
+      createdBy: ana._id, lastUsedAt: ago(26 * 24 * 60), revokedAt: ago(9 * 24 * 60),
+      createdAt: ago(60 * 24 * 60),
+    },
+  ]);
+
+  const endpointTienda = await WebhookEndpoint.create({
+    tenantId: T,
+    url: 'https://api.demostore.com.ar/hooks/asis',
+    description: 'Sincroniza conversaciones y pedidos con el backend de la tienda',
+    secret: `whsec_${randomBytes(24).toString('hex')}`,
+    events: ['message.received', 'conversation.created', 'message.status.updated', 'flow.custom'],
+    active: true,
+    createdAt: ago(38 * 24 * 60),
+  });
+  const endpointCrm = await WebhookEndpoint.create({
+    tenantId: T,
+    url: 'https://hooks.zapier.com/hooks/catch/482913/asis-crm',
+    description: 'Alta de leads en el CRM (pausado mientras migramos)',
+    secret: `whsec_${randomBytes(24).toString('hex')}`,
+    events: ['conversation.created', 'flow.completed'],
+    active: false,
+    createdAt: ago(21 * 24 * 60),
+  });
+
+  const deliveries: Record<string, unknown>[] = [];
+  const pushDelivery = (input: {
+    endpointId: Types.ObjectId;
+    eventType: string;
+    data: Record<string, unknown>;
+    status: 'success' | 'failed' | 'pending';
+    minutesAgo: number;
+    attempts: number;
+    responseStatus?: number | null;
+    lastError?: string | null;
+    nextRetryMinutes?: number | null;
+  }) => {
+    const eventId = `evt_${randomBytes(12).toString('hex')}`;
+    deliveries.push({
+      tenantId: T,
+      endpointId: input.endpointId,
+      eventId,
+      eventType: input.eventType,
+      payload: { id: eventId, type: input.eventType, createdAt: ago(input.minutesAgo).toISOString(), data: input.data },
+      status: input.status,
+      attempts: input.attempts,
+      responseStatus: input.responseStatus ?? null,
+      responseBody: input.responseStatus === 200 ? '{"ok":true}' : null,
+      lastError: input.lastError ?? null,
+      lastAttemptAt: ago(input.minutesAgo),
+      nextRetryAt: input.nextRetryMinutes !== undefined && input.nextRetryMinutes !== null ? inMinutes(input.nextRetryMinutes) : null,
+      createdAt: ago(input.minutesAgo),
+    });
+  };
+
+  pushDelivery({
+    endpointId: endpointTienda._id, eventType: 'message.received', minutesAgo: 5, status: 'success', attempts: 1, responseStatus: 200,
+    data: { message: { conversationId: conv3._id.toString(), direction: 'inbound', type: 'text', body: 'Sii! Queria saber los precios de los buzos. Tienen talle S?' } },
+  });
+  pushDelivery({
+    endpointId: endpointTienda._id, eventType: 'conversation.created', minutesAgo: 70, status: 'success', attempts: 1, responseStatus: 200,
+    data: { conversation: { id: convAndres._id.toString(), origin: 'inbound', status: 'unassigned' }, contact: { name: 'Andres Bustos', phone: '5491155551017' } },
+  });
+  pushDelivery({
+    endpointId: endpointTienda._id, eventType: 'flow.custom', minutesAgo: 28, status: 'success', attempts: 1, responseStatus: 200,
+    data: { name: 'lead.mayorista', flowId: flowLeads._id.toString(), contactId: florencia._id.toString(), data: { volumen: '200 unidades por mes', telefono: '5491155551009' } },
+  });
+  pushDelivery({
+    endpointId: endpointTienda._id, eventType: 'message.status.updated', minutesAgo: 138, status: 'success', attempts: 1, responseStatus: 200,
+    data: { messageId: 'demo-status-1', status: 'read', conversationId: convRamiro._id.toString() },
+  });
+  pushDelivery({
+    endpointId: endpointTienda._id, eventType: 'flow.custom', minutesAgo: 150, status: 'success', attempts: 2, responseStatus: 200,
+    data: { name: 'envio.notificado', flowId: flowEnvio._id.toString(), data: { pedido: '#5120' } },
+  });
+  // Fallo con reintentos pendientes: es el estado que la pantalla deja reintentar a mano.
+  pushDelivery({
+    endpointId: endpointTienda._id, eventType: 'message.received', minutesAgo: 26, status: 'failed', attempts: 3,
+    responseStatus: 502, lastError: 'HTTP 502 Bad Gateway', nextRetryMinutes: 22,
+    data: { message: { conversationId: convJulian._id.toString(), direction: 'inbound', type: 'text', body: 'Queria saber si hacen envios a La Plata' } },
+  });
+  pushDelivery({
+    endpointId: endpointTienda._id, eventType: 'conversation.created', minutesAgo: 240, status: 'failed', attempts: 6,
+    responseStatus: null, lastError: 'connect ETIMEDOUT 190.2.14.77:443',
+    data: { conversation: { id: convTomas._id.toString(), origin: 'inbound', status: 'unassigned' }, contact: { name: 'Tomas Quiroga' } },
+  });
+  pushDelivery({
+    endpointId: endpointCrm._id, eventType: 'conversation.created', minutesAgo: 26 * 60, status: 'success', attempts: 1, responseStatus: 200,
+    data: { conversation: { id: convBrenda._id.toString(), origin: 'inbound', status: 'active' }, contact: { name: 'Brenda Suarez' } },
+  });
+  pushDelivery({
+    endpointId: endpointCrm._id, eventType: 'flow.completed', minutesAgo: 27 * 60, status: 'success', attempts: 1, responseStatus: 200,
+    data: { flowId: flowMenu._id.toString(), conversationId: convBrenda._id.toString(), endReason: 'handoff_human' },
+  });
+  await WebhookDelivery.insertMany(deliveries);
+  console.log(`+ 2 claves de API, 2 webhooks y ${deliveries.length} entregas`);
 
   // ── Done ──
   console.log('\n--- Demo seed complete ---');

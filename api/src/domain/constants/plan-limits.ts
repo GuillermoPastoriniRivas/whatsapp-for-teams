@@ -35,7 +35,9 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxActiveFlows: 1,
     maxConversationsPerMonth: 50,
     webhooks: false,
-    apiAccess: false,
+    // La API es la puerta de entrada de los devs: se prueba gratis o no se
+    // prueba. El techo real del plan free lo pone maxConversationsPerMonth.
+    apiAccess: true,
     whiteLabel: false,
     prioritySupport: false,
     whatsappSupport: false,
@@ -52,7 +54,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxActiveFlows: 5,
     maxConversationsPerMonth: -1,
     webhooks: true,
-    apiAccess: false,
+    apiAccess: true,
     whiteLabel: false,
     prioritySupport: false,
     whatsappSupport: true,
