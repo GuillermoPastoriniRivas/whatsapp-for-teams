@@ -127,7 +127,7 @@
   --card-foreground: oklch(0.145 0.015 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0.015 260);
-  --primary: oklch(0.545 0.096 182);
+  --primary: oklch(0.600 0.130 175);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.968 0.007 247);
   --secondary-foreground: oklch(0.280 0.020 260);
@@ -138,8 +138,8 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.900 0.010 250);
   --input: oklch(0.900 0.010 250);
-  --ring: oklch(0.545 0.096 182);
-  --chart-1: oklch(0.545 0.096 182);
+  --ring: oklch(0.600 0.130 175);
+  --chart-1: oklch(0.600 0.130 175);
   --chart-2: oklch(0.580 0.200 45);
   --chart-3: oklch(0.439 0.010 250);
   --chart-4: oklch(0.371 0.010 250);
@@ -147,12 +147,12 @@
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0.005 250);
   --sidebar-foreground: oklch(0.145 0.015 260);
-  --sidebar-primary: oklch(0.545 0.096 182);
+  --sidebar-primary: oklch(0.600 0.130 175);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.545 0.096 182 / 10%);
-  --sidebar-accent-foreground: oklch(0.545 0.096 182);
+  --sidebar-accent: oklch(0.600 0.130 175 / 10%);
+  --sidebar-accent-foreground: oklch(0.600 0.130 175);
   --sidebar-border: oklch(0.900 0.010 250);
-  --sidebar-ring: oklch(0.545 0.096 182);
+  --sidebar-ring: oklch(0.600 0.130 175);
 
   /* asis.chat custom tokens */
   --asis-bubble-outbound: #DBEAFE;
