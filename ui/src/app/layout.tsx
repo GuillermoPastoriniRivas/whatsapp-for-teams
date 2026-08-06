@@ -19,7 +19,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Asis Chat",
-  description: "Atención por WhatsApp para equipos, con IA",
+  description:
+    "Automatizá el WhatsApp de tu empresa: una IA que responde en segundos las 24 horas, bandeja compartida para tu equipo y campañas masivas.",
   icons: { icon: "/favicon.ico", apple: "/apple-icon.png" },
   appleWebApp: {
     capable: true,

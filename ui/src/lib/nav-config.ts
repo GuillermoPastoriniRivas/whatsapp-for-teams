@@ -21,6 +21,8 @@ export interface NavItem {
   href: string
   icon: LucideIcon
   labelKey: NavLabelKey
+  /** Etiqueta corta para la barra inferior de mobile, donde no entra la larga. */
+  tabLabelKey?: NavLabelKey
   adminOnly?: boolean
 }
 
@@ -38,7 +40,13 @@ const CAMPAIGNS: NavItem = { href: "/campaigns", icon: Megaphone, labelKey: "cam
 const TEMPLATES: NavItem = { href: "/templates", icon: LayoutTemplate, labelKey: "templates" }
 const MEDIA: NavItem = { href: "/media", icon: Images, labelKey: "media" }
 const FLOWS: NavItem = { href: "/flows", icon: Workflow, labelKey: "flows", adminOnly: true }
-const PHONE_ADMIN: NavItem = { href: "/admin", icon: Phone, labelKey: "phoneAdmin", adminOnly: true }
+const PHONE_ADMIN: NavItem = {
+  href: "/admin",
+  icon: Phone,
+  labelKey: "phoneAdmin",
+  tabLabelKey: "numbers",
+  adminOnly: true,
+}
 const TEAM: NavItem = { href: "/agents", icon: Users, labelKey: "team", adminOnly: true }
 const DEVELOPERS: NavItem = { href: "/developers", icon: Code2, labelKey: "developers", adminOnly: true }
 const BILLING: NavItem = { href: "/settings/billing", icon: CreditCard, labelKey: "billing", adminOnly: true }
@@ -59,13 +67,21 @@ export const NAV_SECTIONS: NavSection[] = [
 /** Bloque anclado al pie del sidebar. */
 export const NAV_BOTTOM: NavItem[] = [BILLING, SETTINGS]
 
-/** Tabs de la barra inferior en mobile. El resto vive en "Más". */
-export const MOBILE_TABS: NavItem[] = [CONVERSATIONS, CONTACTS, CAMPAIGNS]
+/**
+ * Tabs de la barra inferior en mobile: lo que se usa todos los días. El resto
+ * vive detrás del botón de menú. Números es admin-only, así que un agente ve
+ * tres tabs y no cuatro.
+ */
+const MOBILE_TABS: NavItem[] = [CONVERSATIONS, CONTACTS, PHONE_ADMIN, SETTINGS]
 
-const MOBILE_MORE: NavItem[] = [TEMPLATES, MEDIA, FLOWS, PHONE_ADMIN, TEAM, DEVELOPERS, BILLING, SETTINGS]
+const MOBILE_MORE: NavItem[] = [TEMPLATES, CAMPAIGNS, MEDIA, FLOWS, TEAM, DEVELOPERS, BILLING]
 
 export function visibleItems(items: NavItem[], isAdmin: boolean): NavItem[] {
   return items.filter((item) => !item.adminOnly || isAdmin)
+}
+
+export function mobileTabs(isAdmin: boolean): NavItem[] {
+  return visibleItems(MOBILE_TABS, isAdmin)
 }
 
 export function mobileMoreItems(isAdmin: boolean): NavItem[] {

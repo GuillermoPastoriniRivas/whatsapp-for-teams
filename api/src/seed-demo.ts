@@ -1178,7 +1178,7 @@ async function seedDemo() {
 
   await createFlow({
     name: 'Cobrar con MercadoPago',
-    description: 'Genera un link de pago con tu cuenta de MercadoPago y lo manda por WhatsApp. Falta elegir la conexión.',
+    description: 'Genera un link de pago con tu cuenta de MercadoPago y lo manda por WhatsApp. Elegí la conexión en el nodo HTTP y publicalo.',
     graph: cobroGraph, priority: 50, status: 'draft',
     stats: { started: 0, completed: 0, failed: 0, cancelled: 0 },
     createdMinutesAgo: 3 * 24 * 60,
@@ -1506,27 +1506,30 @@ async function seedDemo() {
   const funnels: { flowId: Types.ObjectId; versionId: Types.ObjectId; nodes: [string, number, number][] }[] = [
     {
       flowId: flowMenu._id, versionId: verMenu!._id,
-      // [nodeId, entrantes por dia, errores por dia]
-      nodes: [['trigger', 21, 0], ['etiqueta', 21, 0], ['menu', 21, 0], ['catalogo', 8, 0], ['pedido', 6, 0], ['nota', 5, 0], ['humano', 9, 0], ['bot', 9, 0]],
+      // [nodeId, entrantes por dia, errores por dia]. Las ramas suman lo que
+      // entra al nodo de arriba: si no, el embudo del canvas miente.
+      nodes: [['trigger', 21, 0], ['etiqueta', 21, 0], ['menu', 21, 0], ['catalogo', 8, 0], ['pedido', 6, 0], ['nota', 5, 0], ['humano', 10, 0], ['bot', 11, 0]],
     },
     {
       flowId: flowHorario._id, versionId: verHorario!._id,
-      nodes: [['trigger', 14, 0], ['horario', 14, 0], ['bot', 9, 0], ['cerrado', 5, 0], ['esperar', 5, 0], ['humano', 4, 0]],
+      nodes: [['trigger', 14, 0], ['horario', 14, 0], ['bot', 9, 0], ['cerrado', 5, 0], ['esperar', 5, 0], ['humano', 5, 0]],
     },
     {
       flowId: flowLeads._id, versionId: verLeads!._id,
-      nodes: [['trigger', 6, 0], ['clasificar', 6, 1], ['volumen', 4, 0], ['guardar', 3, 0], ['etiquetar', 3, 0], ['avisar', 3, 0], ['bot', 4, 0], ['humano', 1, 0]],
+      nodes: [['trigger', 6, 0], ['clasificar', 6, 1], ['volumen', 4, 0], ['guardar', 3, 0], ['etiquetar', 3, 0], ['avisar', 3, 0], ['bot', 4, 0], ['humano', 2, 0]],
     },
     {
       flowId: flowEnvio._id, versionId: verEnvio!._id,
-      nodes: [['trigger', 12, 0], ['aviso', 12, 0], ['avisar', 12, 0], ['nota', 0, 0]],
+      nodes: [['trigger', 12, 0], ['aviso', 12, 0], ['avisar', 11, 0], ['nota', 1, 0]],
     },
   ];
   for (const funnel of funnels) {
     for (let day = 0; day < 7; day += 1) {
+      // La variación es por día, no por nodo: así el embudo sigue siendo
+      // decreciente de arriba hacia abajo en cualquier día.
+      const delta = ((day * 3) % 5) - 2;
       for (const [nodeId, base, errors] of funnel.nodes) {
-        // Variación determinista: el mismo seed da siempre el mismo embudo.
-        const entered = Math.max(0, base + ((day * 3 + nodeId.length) % 5) - 2);
+        const entered = Math.max(0, base + (base > 4 ? delta : 0));
         if (entered === 0 && errors === 0) continue;
         nodeStatDocs.push({
           tenantId: T, flowId: funnel.flowId, flowVersionId: funnel.versionId,

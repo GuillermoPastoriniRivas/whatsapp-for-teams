@@ -11,6 +11,10 @@ export const EVENT_CATALOG: {
   { value: "message.status.updated", labelKey: "eventMessageStatus", descKey: "eventMessageStatusDesc" },
   { value: "conversation.created", labelKey: "eventConvCreated", descKey: "eventConvCreatedDesc" },
   { value: "conversation.assigned", labelKey: "eventConvAssigned", descKey: "eventConvAssignedDesc" },
+  { value: "flow.started", labelKey: "eventFlowStarted", descKey: "eventFlowStartedDesc" },
+  { value: "flow.completed", labelKey: "eventFlowCompleted", descKey: "eventFlowCompletedDesc" },
+  { value: "flow.failed", labelKey: "eventFlowFailed", descKey: "eventFlowFailedDesc" },
+  { value: "flow.custom", labelKey: "eventFlowCustom", descKey: "eventFlowCustomDesc" },
 ];
 
 export interface CatalogQueryParam {

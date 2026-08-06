@@ -19,11 +19,54 @@ import {
   Shield,
   Megaphone,
   BarChart3,
+  Workflow,
+  Zap,
+  GitBranch,
+  Flag,
+  Code2,
+  Webhook,
+  KeyRound,
+  TerminalSquare,
 } from "lucide-react";
 import { AsisLogo } from "@/components/brand/asis-logo";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { PlanCard } from "@/components/shared/plan-card";
 import { PLAN_ORDER } from "@/lib/plans";
 import { legalEntityLine } from "@/lib/legal-entity";
+
+const FOOTER_LINK = "text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground";
+
+/** Nodo del mock del editor de flujos. Los tonos siguen las categorías reales. */
+function FlowNode({
+  icon: Icon,
+  label,
+  tone,
+}: {
+  icon: typeof Bot;
+  label: string;
+  tone: "trigger" | "ai" | "action";
+}) {
+  const tones = {
+    trigger: "border-primary/30 bg-primary/10 text-primary",
+    ai: "border-accent/30 bg-accent/10 text-accent",
+    action: "border-border bg-card text-foreground",
+  } as const;
+
+  return (
+    <div className={`flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 shadow-sm ${tones[tone]}`}>
+      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span className="text-xs font-semibold leading-tight">{label}</span>
+    </div>
+  );
+}
+
+function FlowArrow() {
+  return (
+    <div className="flex h-6 flex-col items-center justify-center">
+      <div className="h-full w-px bg-border" />
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const router = useRouter();
@@ -33,34 +76,54 @@ export default function LandingPage() {
   const [hydrated, setHydrated] = useState(false);
   const { t } = useTranslations();
 
-  const handleDemoLogin = async () => {
+  const handleDemoLogin = async (target = "/conversations") => {
     await demoLogin();
-    router.push("/conversations");
+    router.push(target);
   };
 
+  const scrollTo = (id: string) =>
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+
+  // Automatizaciones y API son las dos patas que la landing no mostraba.
+  const automationItems = [
+    { icon: Zap, title: t.landing.autoItem1Title, description: t.landing.autoItem1Desc },
+    { icon: GitBranch, title: t.landing.autoItem2Title, description: t.landing.autoItem2Desc },
+    { icon: Bot, title: t.landing.autoItem3Title, description: t.landing.autoItem3Desc },
+    { icon: Flag, title: t.landing.autoItem4Title, description: t.landing.autoItem4Desc },
+  ];
+
+  const devItems = [
+    { icon: Code2, title: t.landing.dev1Title, description: t.landing.dev1Desc },
+    { icon: Webhook, title: t.landing.dev2Title, description: t.landing.dev2Desc, hint: t.landing.dev2Hint },
+    { icon: KeyRound, title: t.landing.dev3Title, description: t.landing.dev3Desc },
+    { icon: TerminalSquare, title: t.landing.dev4Title, description: t.landing.dev4Desc },
+  ];
+
+  // El orden importa: la promesa es automatizar, asi que la IA va primera y
+  // la bandeja compartida queda como soporte, no al reves.
   const features = [
     {
-      icon: MessageSquare,
+      icon: Bot,
       title: t.landing.feature1Title,
       description: t.landing.feature1Desc,
     },
     {
-      icon: Users,
+      icon: MessageSquare,
       title: t.landing.feature2Title,
       description: t.landing.feature2Desc,
     },
     {
-      icon: Bot,
+      icon: Megaphone,
       title: t.landing.feature3Title,
       description: t.landing.feature3Desc,
     },
     {
-      icon: Shield,
+      icon: Users,
       title: t.landing.feature4Title,
       description: t.landing.feature4Desc,
     },
     {
-      icon: Megaphone,
+      icon: Shield,
       title: t.landing.feature5Title,
       description: t.landing.feature5Desc,
     },
@@ -81,13 +144,13 @@ export default function LandingPage() {
     },
     {
       number: "02",
-      icon: Users,
+      icon: Bot,
       title: t.landing.step2Title,
       description: t.landing.step2Desc,
     },
     {
       number: "03",
-      icon: Bot,
+      icon: Users,
       title: t.landing.step3Title,
       description: t.landing.step3Desc,
     },
@@ -130,19 +193,27 @@ export default function LandingPage() {
             <span className="-ml-1 text-lg font-bold tracking-tight text-foreground sm:text-xl">asis<span className="text-primary">.chat</span></span>
           </div>
 
-          <div className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
-            <button onClick={() => document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" })} className="transition-colors hover:text-primary">
+          <div className="hidden items-center gap-5 text-sm font-medium text-muted-foreground md:flex lg:gap-8">
+            <button onClick={() => scrollTo("como-funciona")} className="transition-colors hover:text-primary">
               {t.landing.navHowItWorks}
             </button>
-            <button onClick={() => document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" })} className="transition-colors hover:text-primary">
+            <button onClick={() => scrollTo("funcionalidades")} className="transition-colors hover:text-primary">
               {t.landing.navFeatures}
             </button>
-            <button onClick={() => document.getElementById("precios")?.scrollIntoView({ behavior: "smooth" })} className="transition-colors hover:text-primary">
+            {/* A 768px el navbar ya está justo: estos dos aparecen recién en lg. */}
+            <button onClick={() => scrollTo("automatizaciones")} className="hidden transition-colors hover:text-primary lg:block">
+              {t.landing.navAutomations}
+            </button>
+            <button onClick={() => scrollTo("desarrolladores")} className="hidden transition-colors hover:text-primary lg:block">
+              {t.landing.navDevelopers}
+            </button>
+            <button onClick={() => scrollTo("precios")} className="transition-colors hover:text-primary">
               {t.landing.navPricing}
             </button>
           </div>
 
           <div className="flex shrink-0 items-center gap-1 sm:gap-4">
+            <ThemeToggle />
             <LanguageToggle />
             {hydrated && agent ? (
               <Button
@@ -167,7 +238,7 @@ export default function LandingPage() {
                   size="lg"
                   className="hidden rounded-full bg-foreground text-background shadow-md transition-transform hover:scale-105 hover:bg-foreground/90 sm:inline-flex"
                   disabled={isLoading}
-                  onClick={handleDemoLogin}
+                  onClick={() => handleDemoLogin()}
                 >
                   {t.landing.navDemo}
                 </Button>
@@ -196,7 +267,7 @@ export default function LandingPage() {
                 size="lg"
                 className="h-14 rounded-full px-8 text-base shadow-lg shadow-primary/30 transition-all hover:scale-105 hover:bg-primary/90"
                 disabled={isLoading}
-                onClick={handleDemoLogin}
+                onClick={() => handleDemoLogin()}
               >
                 {t.landing.ctaDemo}
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -213,6 +284,8 @@ export default function LandingPage() {
                 {t.landing.ctaHowItWorks}
               </Button>
             </div>
+            {/* Baja el riesgo percibido justo donde se decide el clic. */}
+            <p className="mt-4 text-sm text-muted-foreground">{t.landing.ctaReassurance}</p>
           </div>
 
           {/* Product Mockup */}
@@ -399,6 +472,151 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Automatizaciones */}
+      <section id="automatizaciones" className="border-y border-border bg-background py-24 sm:py-32">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <h2 className="mb-3 text-sm font-bold tracking-wide uppercase text-primary">{t.landing.automationsLabel}</h2>
+            <p className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+              {t.landing.automationsTitle}
+            </p>
+            <p className="mt-4 text-lg text-muted-foreground">
+              {t.landing.automationsSubtitle}
+            </p>
+          </div>
+
+          <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 lg:grid-cols-2">
+            <dl className="space-y-8">
+              {automationItems.map((item) => (
+                <div key={item.title} className="flex gap-4">
+                  <div className="h-fit shrink-0 rounded-xl bg-primary/10 p-3 ring-1 ring-primary/20">
+                    <item.icon className="h-5 w-5 text-primary" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <dt className="text-lg font-bold text-foreground">{item.title}</dt>
+                    <dd className="mt-1.5 text-base leading-7 text-muted-foreground">{item.description}</dd>
+                  </div>
+                </div>
+              ))}
+            </dl>
+
+            {/* Mock del editor de flujos: un caso real, no un diagrama abstracto. */}
+            <div className="rounded-xl border border-border bg-muted/40 p-6 shadow-lg shadow-foreground/5 sm:p-8">
+              <div className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Workflow className="h-4 w-4 text-primary" />
+                {t.landing.automationsLabel}
+              </div>
+
+              <div className="flex flex-col items-center">
+                <FlowNode icon={MessageCircle} label={t.landing.autoFlowTrigger} tone="trigger" />
+                <FlowArrow />
+                <FlowNode icon={Bot} label={t.landing.autoFlowClassify} tone="ai" />
+                <div className="h-6 w-px bg-border" />
+                <div className="grid w-full grid-cols-2 gap-3">
+                  <div className="flex flex-col items-center gap-3">
+                    <span className="rounded-full border border-border bg-card px-2.5 py-1 text-center text-[11px] font-medium text-muted-foreground">
+                      {t.landing.autoFlowBranchSales}
+                    </span>
+                    <FlowNode icon={Megaphone} label={t.landing.autoFlowSalesAction} tone="action" />
+                  </div>
+                  <div className="flex flex-col items-center gap-3">
+                    <span className="rounded-full border border-border bg-card px-2.5 py-1 text-center text-[11px] font-medium text-muted-foreground">
+                      {t.landing.autoFlowBranchSupport}
+                    </span>
+                    <FlowNode icon={MessageSquare} label={t.landing.autoFlowSupportAction} tone="action" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-14 flex justify-center">
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-12 rounded-full px-7"
+              disabled={isLoading}
+              onClick={() => handleDemoLogin("/flows")}
+            >
+              {t.landing.autoCta}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Para desarrolladores */}
+      <section id="desarrolladores" className="bg-muted/40 py-24 sm:py-32">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <h2 className="mb-3 text-sm font-bold tracking-wide uppercase text-primary">{t.landing.developersLabel}</h2>
+            <p className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+              {t.landing.developersTitle}
+            </p>
+            <p className="mt-4 text-lg text-muted-foreground">
+              {t.landing.developersSubtitle}
+            </p>
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
+              <Sparkles className="h-4 w-4 shrink-0" />
+              <span>{t.landing.devFreeBadge}</span>
+            </div>
+          </div>
+
+          <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-12 lg:grid-cols-2">
+            {/* Snippet real: mismo endpoint y misma cabecera que /v1. */}
+            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-lg shadow-foreground/5">
+              <div className="flex items-center justify-between border-b border-border bg-muted/50 px-4 py-2.5">
+                <span className="text-xs font-medium text-muted-foreground">{t.landing.devCodeCaption}</span>
+                <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-primary">POST /v1/messages</span>
+              </div>
+              <pre className="overflow-x-auto p-5 font-mono text-[13px] leading-6 text-muted-foreground">
+                <code>{`curl -X POST https://api.asis.chat/v1/messages \\
+  -H "X-Api-Key: ak_live_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "to": "+5493442670825",
+    "text": "Tu pedido #1042 ya salió 🚚"
+  }'`}</code>
+              </pre>
+            </div>
+
+            <dl className="space-y-8">
+              {devItems.map((item) => (
+                <div key={item.title} className="flex gap-4">
+                  <div className="h-fit shrink-0 rounded-xl bg-primary/10 p-3 ring-1 ring-primary/20">
+                    <item.icon className="h-5 w-5 text-primary" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <dt className="flex flex-wrap items-center gap-2 text-lg font-bold text-foreground">
+                      {item.title}
+                      {"hint" in item && item.hint && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-border">
+                          {item.hint}
+                        </span>
+                      )}
+                    </dt>
+                    <dd className="mt-1.5 text-base leading-7 text-muted-foreground">{item.description}</dd>
+                  </div>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          <div className="mt-14 flex justify-center">
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-12 rounded-full px-7"
+              disabled={isLoading}
+              onClick={() => handleDemoLogin("/developers")}
+            >
+              {t.landing.devCta}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* Precios */}
       <section id="precios" className="border-y border-border bg-background py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -470,11 +688,12 @@ export default function LandingPage() {
             {t.landing.ctaSubtitle}
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Button size="lg" className="h-14 rounded-full px-8 text-lg font-semibold shadow-xl shadow-primary/20 transition-transform hover:scale-105 hover:bg-primary/90" disabled={isLoading} onClick={handleDemoLogin}>
+            <Button size="lg" className="h-14 rounded-full px-8 text-lg font-semibold shadow-xl shadow-primary/20 transition-transform hover:scale-105 hover:bg-primary/90" disabled={isLoading} onClick={() => handleDemoLogin()}>
               {t.landing.ctaDemo}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
+          <p className="mt-4 text-sm text-muted-foreground">{t.landing.ctaReassurance}</p>
         </div>
       </section>
 
@@ -496,24 +715,36 @@ export default function LandingPage() {
                 <div>
                   <h3 className="text-sm leading-6 font-semibold text-foreground">{t.landing.footerProduct}</h3>
                   <ul role="list" className="mt-6 space-y-4">
-                    <li><button onClick={() => document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.navFeatures}</button></li>
-                    <li><button onClick={() => document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.navHowItWorks}</button></li>
-                    <li><button onClick={() => document.getElementById("precios")?.scrollIntoView({ behavior: "smooth" })} className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.navPricing}</button></li>
+                    <li><button onClick={() => scrollTo("como-funciona")} className={FOOTER_LINK}>{t.landing.navHowItWorks}</button></li>
+                    <li><button onClick={() => scrollTo("funcionalidades")} className={FOOTER_LINK}>{t.landing.navFeatures}</button></li>
+                    <li><button onClick={() => scrollTo("automatizaciones")} className={FOOTER_LINK}>{t.landing.navAutomations}</button></li>
+                    <li><button onClick={() => scrollTo("desarrolladores")} className={FOOTER_LINK}>{t.landing.navDevelopers}</button></li>
+                    <li><a href="/pricing" className={FOOTER_LINK}>{t.landing.navPricing}</a></li>
                   </ul>
                 </div>
                 <div className="mt-10 md:mt-0">
-                  <h3 className="text-sm leading-6 font-semibold text-foreground">{t.landing.footerCompany}</h3>
+                  <h3 className="text-sm leading-6 font-semibold text-foreground">{t.landing.footerStart}</h3>
                   <ul role="list" className="mt-6 space-y-4">
-                    <li><a href="mailto:contact@asis.chat" className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.footerContact}</a></li>
+                    <li><button onClick={() => handleDemoLogin()} className={FOOTER_LINK}>{t.landing.footerDemo}</button></li>
+                    <li><a href="/signup" className={FOOTER_LINK}>{t.landing.footerSignup}</a></li>
+                    <li><a href="/login" className={FOOTER_LINK}>{t.landing.navLogin}</a></li>
                   </ul>
                 </div>
               </div>
               <div className="md:grid md:grid-cols-2 md:gap-8">
-                 <div>
+                <div>
+                  <h3 className="text-sm leading-6 font-semibold text-foreground">{t.landing.footerCompany}</h3>
+                  <ul role="list" className="mt-6 space-y-4">
+                    <li><a href="mailto:contact@asis.chat" className={FOOTER_LINK}>{t.landing.footerContact}</a></li>
+                    <li><a href="https://wa.me/5493442670825" target="_blank" rel="noopener noreferrer" className={FOOTER_LINK}>{t.landing.footerWhatsapp}</a></li>
+                    <li><a href="https://www.linkedin.com/in/guillermopastorini/" target="_blank" rel="noopener noreferrer" className={FOOTER_LINK}>{t.landing.footerLinkedin}</a></li>
+                  </ul>
+                </div>
+                <div className="mt-10 md:mt-0">
                   <h3 className="text-sm leading-6 font-semibold text-foreground">{t.landing.footerLegal}</h3>
                   <ul role="list" className="mt-6 space-y-4">
-                    <li><a href="/privacy" className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.footerPrivacy}</a></li>
-                    <li><a href="/terms" className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">{t.landing.footerTerms}</a></li>
+                    <li><a href="/privacy" className={FOOTER_LINK}>{t.landing.footerPrivacy}</a></li>
+                    <li><a href="/terms" className={FOOTER_LINK}>{t.landing.footerTerms}</a></li>
                   </ul>
                 </div>
               </div>
@@ -521,7 +752,7 @@ export default function LandingPage() {
           </div>
           <div className="mt-16 border-t border-border pt-8 text-center sm:mt-20 lg:mt-24">
             <p className="text-sm leading-5 text-muted-foreground">
-              &copy; {new Date().getFullYear()} asis.chat — {t.landing.footerRights}. Construido por{" "}
+              &copy; {new Date().getFullYear()} asis.chat — {t.landing.footerRights} Construido por{" "}
               <a href="https://www.linkedin.com/in/guillermopastorini/" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground transition-colors hover:text-primary">Guillermo</a>.
             </p>
             {/* Nombre legal del titular: la verificacion de negocio de Meta
