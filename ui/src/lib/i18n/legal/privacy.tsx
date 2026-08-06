@@ -165,8 +165,9 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
           transito (TLS) y en reposo.
         </li>
         <li>
-          Las claves de API de proveedores de modelos de lenguaje se
-          almacenan de forma cifrada.
+          Los archivos multimedia se almacenan en un bucket privado, cifrado
+          en reposo y accesible unicamente mediante URLs firmadas de
+          duracion limitada.
         </li>
         <li>
           Implementamos controles de acceso basados en roles para limitar
@@ -401,8 +402,8 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
           and at rest.
         </li>
         <li>
-          API keys for language model providers are stored in encrypted
-          form.
+          Media files are stored in a private bucket, encrypted at rest and
+          accessible only through short-lived signed URLs.
         </li>
         <li>
           We implement role-based access controls to limit who can access
