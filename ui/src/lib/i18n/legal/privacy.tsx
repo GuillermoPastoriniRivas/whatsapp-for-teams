@@ -31,10 +31,10 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
           equipo) que utilizan la plataforma.
         </li>
         <li>
-          <strong>Configuracion de agentes de IA:</strong> claves de API de
-          proveedores de modelos de lenguaje (OpenAI, Anthropic, Google
-          Gemini, OpenRouter), prompts de sistema y bases de conocimiento
-          configuradas por el usuario.
+          <strong>Configuracion de agentes de IA:</strong> perfil del
+          negocio, instrucciones y bases de conocimiento que el usuario
+          configura para sus agentes de IA. Las claves del proveedor de
+          modelos las administra asis.chat; el usuario no carga ninguna.
         </li>
         <li>
           <strong>Numeros de telefono de WhatsApp Business:</strong> numeros
@@ -121,11 +121,10 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
           entregar comunicaciones entre el negocio y sus clientes.
         </li>
         <li>
-          Cuando un agente de IA esta configurado, el contenido de los
-          mensajes puede ser enviado al proveedor de modelos de lenguaje
-          seleccionado por el usuario (OpenAI, Anthropic, Google Gemini u
-          OpenRouter) exclusivamente para generar respuestas. Cada proveedor
-          tiene sus propias politicas de privacidad que recomendamos
+          Cuando un agente de IA esta activo, el contenido de los mensajes
+          se envia a <strong>OpenAI</strong> exclusivamente para generar la
+          respuesta. Es el unico proveedor de modelos que utilizamos, y se
+          rige por su propia politica de privacidad, que recomendamos
           consultar.
         </li>
       </ul>
@@ -140,13 +139,18 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
           recepcion de mensajes a traves de la API de WhatsApp Business.
         </li>
         <li>
-          <strong>Proveedores de modelos de IA:</strong> cuando el usuario
-          configura un agente de IA, el contenido de los mensajes se envia
-          al proveedor seleccionado para generar respuestas automaticas.
+          <strong>OpenAI:</strong> cuando un agente de IA esta activo, el
+          contenido de la conversacion se envia a OpenAI para generar la
+          respuesta automatica. Es el unico proveedor de modelos que
+          utilizamos y lo administra asis.chat.
         </li>
         <li>
-          <strong>Proveedores de infraestructura:</strong> servicios de
-          alojamiento y base de datos necesarios para operar la plataforma.
+          <strong>Amazon Web Services:</strong> alojamiento de la
+          aplicacion, almacenamiento de archivos y envio de correo.
+        </li>
+        <li>
+          <strong>MongoDB Atlas:</strong> base de datos donde se almacenan
+          las conversaciones y los contactos.
         </li>
         <li>
           <strong>Requerimientos legales:</strong> cuando sea necesario para
@@ -266,9 +270,10 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
           credentials of the agents (team members) who use the platform.
         </li>
         <li>
-          <strong>AI agent configuration:</strong> API keys for language
-          model providers (OpenAI, Anthropic, Google Gemini, OpenRouter),
-          system prompts, and knowledge bases configured by the user.
+          <strong>AI agent configuration:</strong> business profile,
+          instructions, and knowledge bases the user configures for their
+          AI agents. Model provider keys are managed by asis.chat; users do
+          not supply any.
         </li>
         <li>
           <strong>WhatsApp Business phone numbers:</strong> numbers
@@ -354,11 +359,10 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
           communications between the business and its customers.
         </li>
         <li>
-          When an AI agent is configured, message content may be sent to
-          the language model provider selected by the user (OpenAI,
-          Anthropic, Google Gemini, or OpenRouter) exclusively to generate
-          responses. Each provider has its own privacy policies that we
-          recommend reviewing.
+          When an AI agent is active, message content is sent to{" "}
+          <strong>OpenAI</strong> exclusively to generate the reply. It is
+          the only model provider we use, and it is governed by its own
+          privacy policy, which we recommend reviewing.
         </li>
       </ul>
 
@@ -372,13 +376,17 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
           receiving messages through the WhatsApp Business API.
         </li>
         <li>
-          <strong>AI model providers:</strong> when the user configures an
-          AI agent, message content is sent to the selected provider to
-          generate automatic responses.
+          <strong>OpenAI:</strong> when an AI agent is active, conversation
+          content is sent to OpenAI to generate the automated reply. It is
+          the only model provider we use, and it is managed by asis.chat.
         </li>
         <li>
-          <strong>Infrastructure providers:</strong> hosting and database
-          services necessary to operate the platform.
+          <strong>Amazon Web Services:</strong> application hosting, file
+          storage, and email delivery.
+        </li>
+        <li>
+          <strong>MongoDB Atlas:</strong> the database where conversations
+          and contacts are stored.
         </li>
         <li>
           <strong>Legal requirements:</strong> when necessary to comply
