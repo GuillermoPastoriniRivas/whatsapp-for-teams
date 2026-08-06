@@ -38,3 +38,29 @@ variable "media_cors_origins" {
   type        = list(string)
   default     = ["https://asis.chat", "https://www.asis.chat", "http://localhost:3001"]
 }
+
+# ── Recepción de correo (email-inbound.tf) ──────
+
+variable "inbound_mail_bucket_name" {
+  description = "Bucket S3 donde SES deja el correo entrante antes de reenviarlo"
+  type        = string
+  default     = "asis-chat-inbound-mail"
+}
+
+variable "inbound_mail_recipients" {
+  description = "Casillas @asis.chat que reciben correo. Agregar acá para sumar una nueva."
+  type        = list(string)
+  default     = ["guillermo@asis.chat"]
+}
+
+variable "inbound_mail_forward_to" {
+  description = "Buzones reales a los que se reenvía el correo recibido"
+  type        = list(string)
+  default     = ["guillepastorini5@gmail.com"]
+}
+
+variable "inbound_mail_forward_from" {
+  description = "Remitente del reenvío. Tiene que ser del dominio verificado en SES."
+  type        = string
+  default     = "no-reply@asis.chat"
+}
