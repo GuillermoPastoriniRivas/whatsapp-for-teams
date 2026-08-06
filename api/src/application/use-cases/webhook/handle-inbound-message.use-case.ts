@@ -133,6 +133,7 @@ export class HandleInboundMessageUseCase {
       senderAgentName: null,
       interactiveReplyId: input.interactiveReplyId ?? null,
       contextWaMessageId: input.contextWaMessageId ?? null,
+      location: input.location ?? null,
     });
 
     // 4b. Archivo adjunto: se registra el asset y, si el plan tiene storage, se
@@ -295,6 +296,8 @@ export class HandleInboundMessageUseCase {
       case MessageType.AUDIO: return '🎵 Audio';
       case MessageType.DOCUMENT: return '📄 Documento';
       case MessageType.STICKER: return '🩷 Sticker';
+      case MessageType.LOCATION: return '📍 Ubicación';
+      case MessageType.CONTACTS: return '👤 Contacto';
       default: return 'Nuevo mensaje';
     }
   }

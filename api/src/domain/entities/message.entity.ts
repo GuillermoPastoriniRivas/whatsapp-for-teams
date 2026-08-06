@@ -1,6 +1,7 @@
 import { MessageDirection } from '../enums/message-direction.enum.js';
 import { MessageType } from '../enums/message-type.enum.js';
 import { MessageWaStatus } from '../enums/message-wa-status.enum.js';
+import { MessageLocation, formatLocation } from '../value-objects/message-location.js';
 
 export class Message {
   constructor(
@@ -27,5 +28,20 @@ export class Message {
     public readonly interactivePayload: Record<string, unknown> | null = null,
     /** MediaAsset asociado. El estado del archivo (listo/expirado) vive ahí, no acá. */
     public readonly mediaAssetId: string | null = null,
+    /** Coordenadas de un mensaje `location`, para dibujar el mapa en el chat. */
+    public readonly location: MessageLocation | null = null,
   ) {}
+}
+
+/**
+ * Representación en texto de un mensaje, para todo lo que no dibuja burbujas:
+ * el transcript que lee la IA, el matcheo de automatizaciones y los previews.
+ *
+ * Una ubicación llega con el `body` vacío — las coordenadas viajan aparte — así
+ * que sin esto esos canales veían un turno en blanco.
+ */
+export function messageToText(message: Pick<Message, 'body' | 'location'>): string {
+  if (message.body) return message.body;
+  if (message.location) return formatLocation(message.location);
+  return '';
 }

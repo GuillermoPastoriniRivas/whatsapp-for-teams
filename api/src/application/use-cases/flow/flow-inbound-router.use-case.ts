@@ -16,7 +16,7 @@ import type { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
 import { Conversation } from '../../../domain/entities/conversation.entity.js';
 import { Contact } from '../../../domain/entities/contact.entity.js';
-import { Message } from '../../../domain/entities/message.entity.js';
+import { Message, messageToText } from '../../../domain/entities/message.entity.js';
 import type { FlowVersion } from '../../../domain/entities/flow-version.entity.js';
 import { FlowExecutionStatus } from '../../../domain/enums/flow-execution-status.enum.js';
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
@@ -115,7 +115,9 @@ export class FlowInboundRouterUseCase {
         reason: 'reply',
         messageId: input.message.id,
         interactiveReplyId: input.message.interactiveReplyId,
-        body: input.message.body,
+        // Una ubicación se responde con su texto: si no, el nodo "Preguntar"
+        // recibía vacío y repreguntaba aunque el cliente ya había contestado.
+        body: messageToText(input.message) || null,
       } satisfies FlowResumeJobData);
       return true;
     }
@@ -186,7 +188,7 @@ export class FlowInboundRouterUseCase {
       // primera espera del flujo.
       lastConsumedMessageId: input.message.id,
       variables: {
-        message: { body: input.message.body, type: input.message.messageType },
+        message: { body: messageToText(input.message), type: input.message.messageType },
         vars: {},
       },
       steps: [],

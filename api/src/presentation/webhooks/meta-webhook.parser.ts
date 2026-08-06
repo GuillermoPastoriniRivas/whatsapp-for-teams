@@ -1,6 +1,7 @@
 // ── Meta Cloud API Webhook Parser ────────────────────────────────
 // Pure functions — no NestJS dependencies, no side effects.
 
+import { toMessageLocation } from '../../domain/value-objects/message-location.js';
 import type { InboundMessageInput, UserIdUpdateInput } from '../../application/dtos/webhook/inbound-message-input.dto.js';
 import type { StatusUpdateInput } from '../../application/dtos/webhook/status-update-input.dto.js';
 import type { TemplateEventInput } from '../../application/dtos/webhook/template-event-input.dto.js';
@@ -188,6 +189,7 @@ export function mapMetaMessageToInbound(
     timestamp: new Date(parseInt(msg.timestamp, 10) * 1000),
     interactiveReplyId: extractInteractiveReplyId(msg),
     contextWaMessageId: msg.context?.id,
+    location: msg.type === 'location' && msg.location ? toMessageLocation(msg.location) : null,
   };
 }
 
@@ -251,14 +253,10 @@ function extractBody(msg: MetaWebhookMessage): string | undefined {
       return msg.video?.caption;
     case 'document':
       return msg.document?.caption;
-    case 'location': {
-      const loc = msg.location;
-      if (!loc) return undefined;
-      if (loc.name || loc.address) {
-        return [loc.name, loc.address].filter(Boolean).join(': ');
-      }
-      return `${loc.latitude},${loc.longitude}`;
-    }
+    // Las coordenadas no van en el body: viajan estructuradas en `location`,
+    // que es lo que dibuja el mapa. Acá solo el nombre del lugar, si lo hay.
+    case 'location':
+      return [msg.location?.name, msg.location?.address].filter(Boolean).join(': ') || undefined;
     case 'interactive':
       return msg.interactive?.button_reply?.title ?? msg.interactive?.list_reply?.title;
     case 'button':

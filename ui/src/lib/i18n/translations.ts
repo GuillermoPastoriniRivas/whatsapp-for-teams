@@ -221,6 +221,8 @@ const translations = {
       today: "Hoy",
       yesterday: "Ayer",
       newMessage: "Nuevo mensaje",
+      sharedLocation: "Ubicación compartida",
+      openInMaps: "Abrir en Google Maps",
       windowExpiredTitle: "Ventana de 24 horas cerrada",
       windowExpiredBody:
         "Pasaron más de 24 horas desde el último mensaje del cliente. WhatsApp solo permite responder libremente dentro de esa ventana; para retomar la conversación, envía una plantilla aprobada.",
@@ -1447,6 +1449,8 @@ const translations = {
       today: "Today",
       yesterday: "Yesterday",
       newMessage: "New message",
+      sharedLocation: "Shared location",
+      openInMaps: "Open in Google Maps",
       windowExpiredTitle: "24-hour window closed",
       windowExpiredBody:
         "More than 24 hours have passed since the customer's last message. WhatsApp only allows free-form replies within that window; to resume the conversation, send an approved template.",

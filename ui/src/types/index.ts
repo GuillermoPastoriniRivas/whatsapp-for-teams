@@ -134,6 +134,15 @@ export interface MediaUsage {
   atRiskCount: number;
 }
 
+/** Ubicación compartida por un contacto. Las coordenadas siempre vienen. */
+export interface MessageLocation {
+  latitude: number;
+  longitude: number;
+  /** Nombre del lugar, cuando el contacto comparte un POI y no un pin suelto. */
+  name?: string | null;
+  address?: string | null;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -161,6 +170,8 @@ export interface Message {
     buttonText?: string;
     rows?: Array<{ id: string; title: string; description?: string }>;
   } | null;
+  /** Mensajes `location`: coordenadas para dibujar el mapa en el chat. */
+  location?: MessageLocation | null;
 }
 
 export interface PhoneNumber {

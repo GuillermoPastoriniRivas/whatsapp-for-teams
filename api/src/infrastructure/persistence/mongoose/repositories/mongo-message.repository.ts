@@ -34,6 +34,7 @@ export class MongoMessageRepository implements MessageRepository {
           contextWaMessageId: message.contextWaMessageId ?? null,
           interactivePayload: message.interactivePayload ?? null,
           mediaAssetId: message.mediaAssetId ? new Types.ObjectId(message.mediaAssetId) : null,
+          location: message.location ?? null,
         },
       },
       { upsert: true, returnDocument: 'after' },

@@ -1,3 +1,5 @@
+import type { MessageLocation } from '../../../domain/value-objects/message-location.js';
+
 export interface InboundMessageInput {
   phoneNumberId: string;
   waMessageId: string;
@@ -35,6 +37,8 @@ export interface InboundMessageInput {
   interactiveReplyId?: string;
   /** waMessageId del mensaje al que responde (context.id) */
   contextWaMessageId?: string;
+  /** Coordenadas de un mensaje `location`, ya normalizadas. */
+  location?: MessageLocation | null;
 }
 
 /** Meta regeneró el BSUID de un usuario (cambió de teléfono). */

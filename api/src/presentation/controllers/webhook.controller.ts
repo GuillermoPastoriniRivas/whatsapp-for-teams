@@ -6,6 +6,7 @@ import { Public } from '../decorators/public.decorator.js';
 import { WebhookSignatureGuard } from '../guards/webhook-signature.guard.js';
 import { parseMetaWebhook, mapMetaMessageToInbound, mapMetaStatusToUpdate, mapTemplateEventToInput, mapUserIdUpdateToInput } from '../webhooks/meta-webhook.parser.js';
 import type { MetaWebhookPayload } from '../webhooks/meta-webhook.types.js';
+import { toMessageLocation } from '../../domain/value-objects/message-location.js';
 import type { PhoneNumber } from '../../domain/entities/phone-number.entity.js';
 import type { JobQueuePort } from '../../application/ports/job-queue.port.js';
 import { INBOUND_MESSAGE_JOB, STATUS_UPDATE_JOB, TEMPLATE_EVENT_JOB, USER_ID_UPDATE_JOB } from '../../infrastructure/queue/webhook-job.processor.js';
@@ -157,6 +158,12 @@ export class WebhookController {
       // auth de la cuenta, no es pública.
       mediaId: body.MediaUrl0 || undefined,
       mimeType: body.MediaContentType0 || undefined,
+      location: toMessageLocation({
+        latitude: body.Latitude,
+        longitude: body.Longitude,
+        name: body.Label,
+        address: body.Address,
+      }),
       timestamp: new Date(),
     });
 
@@ -176,6 +183,9 @@ export class WebhookController {
   }
 
   private mapTwilioMessageType(body: Record<string, string>): string {
+    // Twilio no manda un `type`: la ubicación se reconoce por las coordenadas.
+    if (body.Latitude && body.Longitude) return 'location';
+
     const numMedia = parseInt(body.NumMedia || '0', 10);
     if (numMedia > 0) {
       const contentType = body.MediaContentType0 || '';

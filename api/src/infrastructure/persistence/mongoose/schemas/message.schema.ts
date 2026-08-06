@@ -3,6 +3,7 @@ import { HydratedDocument, Types } from 'mongoose';
 import { MessageDirection } from '../../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../../domain/enums/message-wa-status.enum.js';
+import { MessageLocation } from '../../../../domain/value-objects/message-location.js';
 
 export type MessageDocument = HydratedDocument<MessageModel>;
 
@@ -61,6 +62,9 @@ export class MessageModel {
 
   @Prop({ type: Types.ObjectId, default: null })
   mediaAssetId: Types.ObjectId | null;
+
+  @Prop({ type: Object, default: null })
+  location: MessageLocation | null;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(MessageModel);

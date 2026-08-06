@@ -1,16 +1,18 @@
 import { Message } from '../entities/message.entity.js';
 import { MessageWaStatus } from '../enums/message-wa-status.enum.js';
+import { MessageLocation } from '../value-objects/message-location.js';
 import { PaginatedResult } from './conversation.repository.js';
 
 export type UpsertMessageInput = Omit<
   Message,
-  'id' | 'campaignId' | 'waErrorCode' | 'waErrorMessage' | 'interactiveReplyId' | 'contextWaMessageId' | 'interactivePayload' | 'mediaAssetId'
+  'id' | 'campaignId' | 'waErrorCode' | 'waErrorMessage' | 'interactiveReplyId' | 'contextWaMessageId' | 'interactivePayload' | 'mediaAssetId' | 'location'
 > & {
   campaignId?: string | null;
   interactiveReplyId?: string | null;
   contextWaMessageId?: string | null;
   interactivePayload?: Record<string, unknown> | null;
   mediaAssetId?: string | null;
+  location?: MessageLocation | null;
 };
 
 export interface MessageRepository {

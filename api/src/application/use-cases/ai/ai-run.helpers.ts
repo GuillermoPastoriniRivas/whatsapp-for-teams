@@ -11,6 +11,7 @@ import type { Message } from '../../../domain/entities/message.entity.js';
 import type { AiAgentConfig } from '../../../domain/entities/ai-agent-config.entity.js';
 import type { Contact } from '../../../domain/entities/contact.entity.js';
 import type { RecipientIdentity } from '../../../domain/value-objects/recipient-identity.js';
+import { messageToText } from '../../../domain/entities/message.entity.js';
 import type { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
@@ -24,7 +25,7 @@ import { computeBusinessStatus } from './prompts/business-hours.util.js';
 export function buildChatHistory(messages: Message[]): ChatMessage[] {
   return messages.map((m) => ({
     role: (m.direction === MessageDirection.INBOUND ? 'user' : 'assistant') as 'user' | 'assistant',
-    content: `[${m.timestamp.toISOString()}] ${m.body ?? ''}`,
+    content: `[${m.timestamp.toISOString()}] ${messageToText(m)}`,
   }));
 }
 

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Check, CheckCheck } from "lucide-react";
 import type { Message } from "@/types";
 import { MessageMedia } from "./message-media";
+import { MessageLocation } from "./message-location";
 
 interface Props {
   message: Message;
@@ -57,7 +58,12 @@ export function MessageBubble({ message }: Props) {
           </p>
         )}
         {message.media && <MessageMedia media={message.media} outbound={isOutbound} />}
-        {message.body && (
+        {message.location && (
+          <MessageLocation location={message.location} outbound={isOutbound} />
+        )}
+        {/* En una ubicación el body es el nombre del lugar, que ya sale en la
+            tarjeta del mapa: repetirlo debajo se lee como un mensaje extra. */}
+        {message.body && !message.location && (
           <p className="whitespace-pre-wrap break-words inline">{message.body}</p>
         )}
         {/* Mensaje interactivo saliente: dibuja sus botones/opciones */}
