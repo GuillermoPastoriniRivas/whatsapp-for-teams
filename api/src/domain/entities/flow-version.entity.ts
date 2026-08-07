@@ -12,7 +12,6 @@ export interface FlowTriggerIndex {
   keywords: string[];
   keywordMode: 'exact' | 'contains';
   onlyNewConversations: boolean;
-  ignoreIfAssignedToHuman: boolean;
   /** Solo trigger.webhook: dot-path del teléfono en el payload */
   contactPhoneField: string | null;
   contactNameField: string | null;

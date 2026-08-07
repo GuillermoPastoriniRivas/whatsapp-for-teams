@@ -6,13 +6,12 @@ import { validateFlowGraph, type FlowGraphRefs } from '../engine/flow-graph.vali
 // momento que estamos tratando de salvar. Por eso se valida TODA combinación
 // de respuestas contra el validador real de publicación.
 
-const AI_AGENT_ID = 'ai1';
+const AI_CONFIG = { name: 'Asistente' };
 
 const REFS: FlowGraphRefs = {
   templates: new Map(),
   labelIds: new Set(),
   agentIds: new Set(),
-  aiAgentIds: new Set([AI_AGENT_ID]),
   connectionIds: new Set(),
   phones: new Set(['p1']),
 };
@@ -27,7 +26,7 @@ const BASE: AssistantAnswers = {
 };
 
 function validate(answers: AssistantAnswers) {
-  const graph = buildAssistantGraph(answers, defaultCopy(answers), AI_AGENT_ID);
+  const graph = buildAssistantGraph(answers, defaultCopy(answers), AI_CONFIG);
   return { graph, ...validateFlowGraph(graph, REFS) };
 }
 
@@ -78,7 +77,8 @@ describe('assistant-blueprint', () => {
     const { graph } = validate({ ...BASE, topics: ['turno', 'precios'] });
     const precios = graph.nodes.find((n) => n.id === 'tema-precios');
     expect(precios?.type).toBe('action.handoff_ai');
-    expect((precios?.data as any).aiAgentId).toBe(AI_AGENT_ID);
+    // La config del asistente viaja adentro del nodo: ya no hay bot al que apuntar.
+    expect((precios?.data as any).name).toBe(AI_CONFIG.name);
   });
 
   it('conecta las salidas "otra respuesta" y "sin respuesta" del menú', () => {

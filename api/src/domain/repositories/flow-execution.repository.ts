@@ -47,6 +47,10 @@ export interface FlowExecutionRepository {
    * botón del inbox, pausa masiva). Rota el token para cercar workers zombie.
    */
   cancelActiveByConversation(conversationId: string, endReason: string): Promise<FlowExecution | null>;
+  /** Congela la ejecución viva conservando su punto; el token rota. */
+  pauseActiveByConversation(conversationId: string, reason: string): Promise<FlowExecution | null>;
+  /** Reanima la pausada. El caller reencola el job según su waitState. */
+  resumePausedByConversation(conversationId: string): Promise<FlowExecution | null>;
   /** Cancela todas las vivas de un flujo (emergencia). Devuelve cantidad. */
   cancelActiveByFlowId(flowId: string, endReason: string): Promise<number>;
   /** running colgadas: runningSince < before (crash a mitad de paso) */

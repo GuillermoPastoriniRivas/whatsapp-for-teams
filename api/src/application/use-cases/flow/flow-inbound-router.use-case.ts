@@ -93,6 +93,12 @@ export class FlowInboundRouterUseCase {
   }
 
   private async routeToFlow(input: FlowRouteInput): Promise<boolean> {
+    // Piloto apagado: alguien tomó el chat. Ninguna automatización actúa hasta
+    // que lo vuelvan a prender. Esta es la única regla que frena flujos ahora —
+    // antes era `ignoreIfAssignedToHuman`, una opción por disparador que venía
+    // prendida y hacía que asignarse un chat lo silenciara sin decirlo.
+    if (!input.conversation.autopilot.enabled) return false;
+
     // A/B: ¿hay una ejecución viva en esta conversación?
     const active = await this.execRepo.findActiveByConversationId(input.conversation.id);
     if (active) return this.handleActive(active, input);
@@ -105,15 +111,6 @@ export class FlowInboundRouterUseCase {
     const versions = await this.versionRepo.findByIds(versionIds);
     const versionById = new Map(versions.map((v) => [v.id, v]));
 
-    // Cache del tipo del agente asignado (para ignoreIfAssignedToHuman).
-    let assignedIsHuman: boolean | null = null;
-    const isAssignedToHuman = async (): Promise<boolean> => {
-      if (assignedIsHuman !== null) return assignedIsHuman;
-      if (!input.conversation.agentId) return (assignedIsHuman = false);
-      const agent = await this.agentRepo.findById(input.conversation.agentId);
-      return (assignedIsHuman = !!agent && agent.type === AgentType.HUMAN);
-    };
-
     for (const flow of flows) {
       const version = flow.publishedVersionId ? versionById.get(flow.publishedVersionId) : undefined;
       if (!version) continue;
@@ -122,7 +119,7 @@ export class FlowInboundRouterUseCase {
         if (!input.promotedFromCampaign) continue;
         if (!(await this.campaignTriggerMatches(version, input))) continue;
       } else if (version.trigger.type === 'inbound_message') {
-        if (!(await this.triggerMatches(version, input, isAssignedToHuman))) continue;
+        if (!this.triggerMatches(version, input)) continue;
       } else {
         continue; // webhook: no se dispara desde mensajes entrantes
       }
@@ -180,16 +177,11 @@ export class FlowInboundRouterUseCase {
     return !!campaignId && trigger.campaignIds.includes(campaignId);
   }
 
-  private async triggerMatches(
-    version: FlowVersion,
-    input: FlowRouteInput,
-    isAssignedToHuman: () => Promise<boolean>,
-  ): Promise<boolean> {
+  private triggerMatches(version: FlowVersion, input: FlowRouteInput): boolean {
     const trigger = version.trigger;
 
     if (trigger.phoneNumberIds.length > 0 && !trigger.phoneNumberIds.includes(input.phoneId)) return false;
     if (trigger.onlyNewConversations && !input.created) return false;
-    if (trigger.ignoreIfAssignedToHuman && (await isAssignedToHuman())) return false;
 
     if (trigger.match === 'keywords') {
       const body = normalizeText(input.message.body ?? '');

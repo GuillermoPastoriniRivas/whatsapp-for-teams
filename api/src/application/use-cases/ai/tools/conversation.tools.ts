@@ -60,7 +60,7 @@ export function createConversationTools(deps: {
             conversationId: ctx.conversationId,
             tenantId: ctx.tenantId,
             labelId: label.id,
-            assignedBy: ctx.agentId,
+            assignedBy: ctx.agentId ?? 'ai',
           });
           await deps.eventRepo.create({
             conversationId: ctx.conversationId,

@@ -1,4 +1,4 @@
-import type { BusinessVertical } from '../../../../domain/entities/ai-agent-config.entity.js';
+import type { BusinessVertical } from '../../../../domain/value-objects/business-profile.js';
 
 export interface VerticalTemplate {
   /** Short label for what kind of business this is, injected into the identity block. */

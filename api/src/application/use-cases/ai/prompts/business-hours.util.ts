@@ -1,4 +1,4 @@
-import type { BusinessHours, WeekDay } from '../../../../domain/entities/ai-agent-config.entity.js';
+import type { BusinessHours, WeekDay } from '../../../../domain/value-objects/business-profile.js';
 
 export interface BusinessStatus {
   isOpen: boolean;

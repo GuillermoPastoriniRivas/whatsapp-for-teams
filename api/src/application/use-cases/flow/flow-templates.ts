@@ -17,7 +17,7 @@ const bienvenidaMenu: FlowGraph = {
       id: 'trigger',
       type: 'trigger.inbound_message',
       position: { x: 60, y: 260 },
-      data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: true, ignoreIfAssignedToHuman: true },
+      data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: true },
     },
     {
       id: 'menu',
@@ -58,7 +58,7 @@ const fueraDeHorario: FlowGraph = {
       id: 'trigger',
       type: 'trigger.inbound_message',
       position: { x: 60, y: 240 },
-      data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: false, ignoreIfAssignedToHuman: true },
+      data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: false },
     },
     {
       id: 'horario',
@@ -95,7 +95,7 @@ const calificarLeads: FlowGraph = {
       id: 'trigger',
       type: 'trigger.inbound_message',
       position: { x: 60, y: 240 },
-      data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: true, ignoreIfAssignedToHuman: true },
+      data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: true },
     },
     {
       id: 'nombre',
@@ -157,7 +157,7 @@ const cobrarMercadoPago: FlowGraph = {
       id: 'trigger',
       type: 'trigger.inbound_message',
       position: { x: 60, y: 240 },
-      data: { phoneNumberIds: [], match: 'keywords', keywords: ['pagar', 'pago', 'link de pago'], keywordMode: 'contains', onlyNewConversations: false, ignoreIfAssignedToHuman: true },
+      data: { phoneNumberIds: [], match: 'keywords', keywords: ['pagar', 'pago', 'link de pago'], keywordMode: 'contains', onlyNewConversations: false },
     },
     {
       id: 'monto',

@@ -52,6 +52,18 @@ export class ConversationModel {
   @Prop({ required: true, default: 0 })
   unreadCount: number;
 
+  /**
+   * Piloto automático. Ausente en los chats anteriores a ago-2026: el mapper
+   * los lee como prendido, que es como venían comportándose.
+   */
+  @Prop({ type: Object, default: null })
+  autopilot: {
+    enabled: boolean;
+    pausedReason: string | null;
+    pausedAt: Date | null;
+    aiNode: { flowId: string; flowVersionId: string; nodeId: string } | null;
+  } | null;
+
   createdAt: Date;
 }
 

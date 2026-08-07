@@ -30,7 +30,6 @@ import { FlowVersionSchema } from './infrastructure/persistence/mongoose/schemas
 import { PhoneNumberSchema } from './infrastructure/persistence/mongoose/schemas/phone-number.schema.js';
 import { AgentSchema } from './infrastructure/persistence/mongoose/schemas/agent.schema.js';
 import { AgentPhoneAccessSchema } from './infrastructure/persistence/mongoose/schemas/agent-phone-access.schema.js';
-import { AiAgentConfigSchema } from './infrastructure/persistence/mongoose/schemas/ai-agent-config.schema.js';
 import { FlowStatus } from './domain/enums/flow-status.enum.js';
 import { AgentType } from './domain/enums/agent-type.enum.js';
 import { AgentRole } from './domain/enums/agent-role.enum.js';
@@ -54,7 +53,6 @@ async function main() {
   const PhoneNumber = model('PhoneNumberModel', PhoneNumberSchema);
   const Agent = model('AgentModel', AgentSchema);
   const AgentPhoneAccess = model('AgentPhoneAccessModel', AgentPhoneAccessSchema);
-  const AiAgentConfig = model('AiAgentConfigModel', AiAgentConfigSchema);
 
   const phones = await PhoneNumber.find({ status: 'active' }).lean();
   console.log(`${phones.length} números activos${dryRun ? ' (DRY RUN, no escribe)' : ''}\n`);
@@ -83,10 +81,10 @@ async function main() {
       continue;
     }
 
-    const responder = await resolveResponder(phone, { AgentPhoneAccess, Agent, AiAgentConfig });
+    const responder = await resolveResponder(phone, { AgentPhoneAccess, Agent });
     const graph = buildDefaultPhoneFlowGraph(phoneId, responder);
     const target =
-      responder.kind === 'ai' ? `bot IA ${responder.aiAgentId}` : 'el equipo';
+      responder.kind === 'ai' ? `el asistente "${responder.assistant.name}"` : 'el equipo';
     console.log(`  + ${label} — responde ${target}`);
 
     if (dryRun) {
@@ -124,7 +122,6 @@ async function main() {
           keywords: [],
           keywordMode: 'contains',
           onlyNewConversations: true,
-          ignoreIfAssignedToHuman: true,
           contactPhoneField: null,
           contactNameField: null,
           campaignIds: [],
@@ -153,7 +150,7 @@ async function main() {
  */
 async function resolveResponder(
   phone: any,
-  models: { AgentPhoneAccess: any; Agent: any; AiAgentConfig: any },
+  models: { AgentPhoneAccess: any; Agent: any },
 ): Promise<DefaultResponder> {
   const access = await models.AgentPhoneAccess.find({ phoneNumberId: phone._id }).lean();
   if (access.length === 0) return { kind: 'team' };
@@ -164,10 +161,8 @@ async function resolveResponder(
   // equipo, que es el comportamiento menos sorprendente.
   if (bots.length !== 1 || agents.length !== bots.length) return { kind: 'team' };
 
-  const config = await models.AiAgentConfig.findOne({ agentId: bots[0]._id, isActive: true }).lean();
-  if (!config) return { kind: 'team' };
-
-  return { kind: 'ai', aiAgentId: String(bots[0]._id) };
+  // La conducta viaja adentro del nodo; el nombre es lo único que se hereda.
+  return { kind: 'ai', assistant: { name: bots[0].name ?? 'Asistente' } };
 }
 
 main().catch((error) => {

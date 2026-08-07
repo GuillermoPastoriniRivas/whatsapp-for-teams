@@ -73,12 +73,16 @@ export class FlowExecutionModel {
 
 export const FlowExecutionSchema = SchemaFactory.createForClass(FlowExecutionModel);
 
-// El lock por conversación: máx. 1 ejecución viva (running|waiting).
+// El lock por conversación: máx. 1 ejecución viva (running|waiting|paused).
+// Las pausadas cuentan: conservan su punto para retomarse, así que dejarlas
+// afuera permitiría arrancar una segunda y tener dos al reanudar.
 FlowExecutionSchema.index(
   { conversationId: 1 },
   {
     unique: true,
-    partialFilterExpression: { status: { $in: [FlowExecutionStatus.RUNNING, FlowExecutionStatus.WAITING] } },
+    partialFilterExpression: {
+      status: { $in: [FlowExecutionStatus.RUNNING, FlowExecutionStatus.WAITING, FlowExecutionStatus.PAUSED] },
+    },
   },
 );
 // Idempotencia del arranque por mensaje: el job entrante se reintenta y Meta

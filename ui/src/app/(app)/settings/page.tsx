@@ -9,6 +9,7 @@ import { PageShell, PageContent } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { PushSettingsCard } from "@/components/pwa/push-settings-card";
 import { PasswordSettingsCard } from "@/components/settings/password-settings-card";
+import { BusinessProfileCard } from "@/components/settings/business-profile-card";
 import { ZoomSettingsCard } from "@/components/settings/zoom-settings-card";
 import { ThemeSettingsCard } from "@/components/settings/theme-settings-card";
 import { LogOut, User } from "lucide-react";
@@ -51,6 +52,8 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          <BusinessProfileCard />
 
           <PasswordSettingsCard />
 

@@ -10,7 +10,7 @@ import type { FlowVersionRepository } from '../../../../domain/repositories/flow
 import type { FlowConnectionRepository } from '../../../../domain/repositories/flow-connection.repository.js';
 import type { PhoneNumberRepository } from '../../../../domain/repositories/phone-number.repository.js';
 import type { AgentRepository } from '../../../../domain/repositories/agent.repository.js';
-import type { AiAgentConfigRepository } from '../../../../domain/repositories/ai-agent-config.repository.js';
+import type { TenantRepository } from '../../../../domain/repositories/tenant.repository.js';
 import type { LabelRepository } from '../../../../domain/repositories/label.repository.js';
 import type { MessageTemplateRepository } from '../../../../domain/repositories/message-template.repository.js';
 import type { AiCompletionPort } from '../../../ports/ai-completion.port.js';
@@ -96,7 +96,7 @@ export class SimulateFlowUseCase {
     private readonly connectionRepo: FlowConnectionRepository,
     private readonly phoneRepo: PhoneNumberRepository,
     private readonly agentRepo: AgentRepository,
-    private readonly aiConfigRepo: AiAgentConfigRepository,
+    private readonly tenantRepo: TenantRepository,
     private readonly labelRepo: LabelRepository,
     private readonly templateRepo: MessageTemplateRepository,
     private readonly aiCompletion: AiCompletionPort,
@@ -214,7 +214,7 @@ export class SimulateFlowUseCase {
       contactRepo,
       this.phoneRepo,
       this.agentRepo,
-      this.aiConfigRepo,
+      this.tenantRepo,
       new NoopAiUsage(),
       messageRepo,
       this.labelRepo,
@@ -340,7 +340,6 @@ export class SimulateFlowUseCase {
         keywords: [],
         keywordMode: 'contains',
         onlyNewConversations: false,
-        ignoreIfAssignedToHuman: false,
         contactPhoneField: null,
         contactNameField: null,
         campaignIds: [],

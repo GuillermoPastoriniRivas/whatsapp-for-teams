@@ -5,7 +5,6 @@ import type { FlowConnectionRepository } from '../../../domain/repositories/flow
 import type { MessageTemplateRepository } from '../../../domain/repositories/message-template.repository.js';
 import type { LabelRepository } from '../../../domain/repositories/label.repository.js';
 import type { AgentRepository } from '../../../domain/repositories/agent.repository.js';
-import type { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-config.repository.js';
 import type { PhoneNumberRepository } from '../../../domain/repositories/phone-number.repository.js';
 import { FlowTriggerIndex } from '../../../domain/entities/flow-version.entity.js';
 import { FlowStatus } from '../../../domain/enums/flow-status.enum.js';
@@ -32,7 +31,6 @@ export class PublishFlowUseCase {
     private readonly templateRepo: MessageTemplateRepository,
     private readonly labelRepo: LabelRepository,
     private readonly agentRepo: AgentRepository,
-    private readonly aiConfigRepo: AiAgentConfigRepository,
     private readonly phoneRepo: PhoneNumberRepository,
     private readonly checkPlanLimit: CheckPlanLimitUseCase,
   ) {}
@@ -93,7 +91,6 @@ export class PublishFlowUseCase {
       keywords: Array.isArray(data.keywords) ? data.keywords.map(String) : [],
       keywordMode: data.keywordMode === 'exact' ? 'exact' : 'contains',
       onlyNewConversations: data.onlyNewConversations === true,
-      ignoreIfAssignedToHuman: data.ignoreIfAssignedToHuman !== false,
       contactPhoneField: typeof data.contactPhoneField === 'string' && data.contactPhoneField ? data.contactPhoneField : null,
       contactNameField: typeof data.contactNameField === 'string' && data.contactNameField ? data.contactNameField : null,
       campaignIds: Array.isArray(data.campaignIds) ? data.campaignIds.map(String) : [],
@@ -110,10 +107,9 @@ export class PublishFlowUseCase {
       if (node.type === 'action.http' && typeof data.connectionId === 'string' && data.connectionId) connectionIds.add(data.connectionId);
     }
 
-    const [labels, agents, aiConfigs, phones, templates, connections] = await Promise.all([
+    const [labels, agents, phones, templates, connections] = await Promise.all([
       this.labelRepo.findByTenantId(tenantId),
       this.agentRepo.findByTenantId(tenantId),
-      this.aiConfigRepo.findByTenantId(tenantId),
       this.phoneRepo.findByTenantId(tenantId),
       Promise.all([...templateIds].map((id) => this.templateRepo.findById(id).catch(() => null))),
       Promise.all([...connectionIds].map((id) => this.connectionRepo.findById(id).catch(() => null))),
@@ -130,7 +126,6 @@ export class PublishFlowUseCase {
       templates: templateMap,
       labelIds: new Set(labels.map((l) => l.id)),
       agentIds: new Set(agents.filter((a) => a.type === AgentType.HUMAN).map((a) => a.id)),
-      aiAgentIds: new Set(aiConfigs.filter((c: any) => c.isActive).map((c: any) => c.agentId)),
       connectionIds: new Set(connections.filter((c) => c && c.tenantId === tenantId).map((c) => c!.id)),
       phones: new Set(phones.map((phone) => phone.id)),
     };

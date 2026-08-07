@@ -31,6 +31,8 @@ import { AgentController } from './controllers/agent.controller.js';
 import { PhoneNumberController } from './controllers/phone-number.controller.js';
 import { ConversationController } from './controllers/conversation.controller.js';
 import { TenantController } from './controllers/tenant.controller.js';
+import { AccountProfileController } from './controllers/account-profile.controller.js';
+import { GetAccountProfileUseCase, UpdateAccountProfileUseCase } from '../application/use-cases/tenant/account-profile.use-cases.js';
 import { WebhookController } from './controllers/webhook.controller.js';
 import { ContactController } from './controllers/contact.controller.js';
 import { TemplateController } from './controllers/template.controller.js';
@@ -95,6 +97,7 @@ import { MarkConversationReadUseCase } from '../application/use-cases/conversati
 import { ReactToMessageUseCase } from '../application/use-cases/conversation/react-to-message.use-case.js';
 import { AssignConversationUseCase } from '../application/use-cases/conversation/assign-conversation.use-case.js';
 import { AutoAssignConversationUseCase } from '../application/use-cases/conversation/auto-assign-conversation.use-case.js';
+import { SetAutopilotUseCase } from '../application/use-cases/conversation/set-autopilot.use-case.js';
 import { GetConversationEventsUseCase } from '../application/use-cases/conversation/get-conversation-events.use-case.js';
 import { AddConversationNoteUseCase } from '../application/use-cases/conversation/add-conversation-note.use-case.js';
 import { GetConversationNotesUseCase } from '../application/use-cases/conversation/get-conversation-notes.use-case.js';
@@ -145,13 +148,7 @@ import { HandleTemplateQualityUpdateUseCase } from '../application/use-cases/web
 import { HandleTemplateCategoryUpdateUseCase } from '../application/use-cases/webhook/handle-template-category-update.use-case.js';
 
 // Use Cases — AI Agent
-import { CreateAiAgentUseCase } from '../application/use-cases/ai/create-ai-agent.use-case.js';
-import { GetAiAgentUseCase } from '../application/use-cases/ai/get-ai-agent.use-case.js';
-import { ListAiAgentsUseCase } from '../application/use-cases/ai/list-ai-agents.use-case.js';
-import { UpdateAiAgentConfigUseCase } from '../application/use-cases/ai/update-ai-agent-config.use-case.js';
-import { DeleteAiAgentUseCase } from '../application/use-cases/ai/delete-ai-agent.use-case.js';
 import { ProcessAiResponseUseCase } from '../application/use-cases/ai/process-ai-response.use-case.js';
-import { PlaygroundChatUseCase } from '../application/use-cases/ai/playground-chat.use-case.js';
 import { HandoffToHumanUseCase } from '../application/use-cases/ai/handoff-to-human.use-case.js';
 
 // Use Cases — Label
@@ -164,7 +161,6 @@ import { RemoveLabelUseCase } from '../application/use-cases/label/remove-label.
 import { GetConversationLabelsUseCase } from '../application/use-cases/label/get-conversation-labels.use-case.js';
 
 // Controllers — AI
-import { AiAgentController } from './controllers/ai-agent.controller.js';
 
 // Controllers — Label
 import { LabelController } from './controllers/label.controller.js';
@@ -334,6 +330,22 @@ const useCaseProviders = [
     inject: ['AgentRepository'],
   },
   {
+    provide: 'GetAccountProfileUseCase',
+    useFactory: (tenantRepo: any) => new GetAccountProfileUseCase(tenantRepo),
+    inject: ['TenantRepository'],
+  },
+  {
+    provide: 'UpdateAccountProfileUseCase',
+    useFactory: (tenantRepo: any) => new UpdateAccountProfileUseCase(tenantRepo),
+    inject: ['TenantRepository'],
+  },
+  {
+    provide: 'SetAutopilotUseCase',
+    useFactory: (convRepo: any, execRepo: any, flowRepo: any, eventRepo: any, gateway: any, jobQueue: any) =>
+      new SetAutopilotUseCase(convRepo, execRepo, flowRepo, eventRepo, gateway, jobQueue),
+    inject: ['ConversationRepository', 'FlowExecutionRepository', 'FlowRepository', 'ConversationEventRepository', 'RealtimeGatewayPort', 'JobQueuePort'],
+  },
+  {
     provide: 'AutoAssignConversationUseCase',
     useFactory: (convRepo: any, agentRepo: any, accessRepo: any, gateway: any, eventRepo: any, devEvents: any) =>
       new AutoAssignConversationUseCase(convRepo, agentRepo, accessRepo, gateway, eventRepo, devEvents),
@@ -467,9 +479,9 @@ const useCaseProviders = [
   },
   {
     provide: 'SendMessageUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, messagingApi: any, gateway: any, agentRepo: any, cancelFlow: any, devEvents: any, assetRepo: any, mediaAccess: any, mediaEnricher: any) =>
-      new SendMessageUseCase(convRepo, msgRepo, contactRepo, phoneRepo, messagingApi, gateway, agentRepo, cancelFlow, devEvents, assetRepo, mediaAccess, mediaEnricher),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'AgentRepository', 'CancelActiveFlowExecutionUseCase', 'DeveloperEventsPort', 'MediaAssetRepository', 'MediaAccessService', 'MessageMediaEnricher'],
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, messagingApi: any, gateway: any, agentRepo: any, setAutopilot: any, devEvents: any, assetRepo: any, mediaAccess: any, mediaEnricher: any) =>
+      new SendMessageUseCase(convRepo, msgRepo, contactRepo, phoneRepo, messagingApi, gateway, agentRepo, setAutopilot, devEvents, assetRepo, mediaAccess, mediaEnricher),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'AgentRepository', 'SetAutopilotUseCase', 'DeveloperEventsPort', 'MediaAssetRepository', 'MediaAccessService', 'MessageMediaEnricher'],
   },
   {
     provide: 'MarkConversationReadUseCase',
@@ -573,7 +585,7 @@ const useCaseProviders = [
       ),
     inject: [
       'FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'FlowNodeStatRepository', 'FlowConnectionRepository',
-      'ConversationRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository',
+      'ConversationRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'TenantRepository',
       'AiUsageRepository', 'MessageRepository', 'LabelRepository', 'ConversationLabelRepository', 'ConversationNoteRepository',
       'ConversationEventRepository', 'MessageTemplateRepository', 'FlowSecretsPort', 'FlowHttpPort', 'MessagingApiPort',
       'AiCompletionPort', 'RealtimeGatewayPort', 'JobQueuePort', 'AutoAssignConversationUseCase',
@@ -620,9 +632,9 @@ const useCaseProviders = [
   },
   {
     provide: 'PublishFlowUseCase',
-    useFactory: (flowRepo: any, versionRepo: any, connectionRepo: any, templateRepo: any, labelRepo: any, agentRepo: any, aiConfigRepo: any, phoneRepo: any, checkPlanLimit: any) =>
-      new PublishFlowUseCase(flowRepo, versionRepo, connectionRepo, templateRepo, labelRepo, agentRepo, aiConfigRepo, phoneRepo, checkPlanLimit),
-    inject: ['FlowRepository', 'FlowVersionRepository', 'FlowConnectionRepository', 'MessageTemplateRepository', 'LabelRepository', 'AgentRepository', 'AiAgentConfigRepository', 'PhoneNumberRepository', 'CheckPlanLimitUseCase'],
+    useFactory: (flowRepo: any, versionRepo: any, connectionRepo: any, templateRepo: any, labelRepo: any, agentRepo: any, phoneRepo: any, checkPlanLimit: any) =>
+      new PublishFlowUseCase(flowRepo, versionRepo, connectionRepo, templateRepo, labelRepo, agentRepo, phoneRepo, checkPlanLimit),
+    inject: ['FlowRepository', 'FlowVersionRepository', 'FlowConnectionRepository', 'MessageTemplateRepository', 'LabelRepository', 'AgentRepository', 'PhoneNumberRepository', 'CheckPlanLimitUseCase'],
   },
   {
     provide: 'EnsureDefaultPhoneFlowUseCase',
@@ -682,25 +694,25 @@ const useCaseProviders = [
   },
   {
     provide: 'SetupAssistantUseCase',
-    useFactory: (createAi: any, createFlow: any, updateFlow: any, publishFlow: any, aiCompletion: any) =>
-      new SetupAssistantUseCase(createAi, createFlow, updateFlow, publishFlow, aiCompletion),
-    inject: ['CreateAiAgentUseCase', 'CreateFlowUseCase', 'UpdateFlowUseCase', 'PublishFlowUseCase', 'AiCompletionPort'],
+    useFactory: (tenantRepo: any, createFlow: any, updateFlow: any, publishFlow: any, aiCompletion: any) =>
+      new SetupAssistantUseCase(tenantRepo, createFlow, updateFlow, publishFlow, aiCompletion),
+    inject: ['TenantRepository', 'CreateFlowUseCase', 'UpdateFlowUseCase', 'PublishFlowUseCase', 'AiCompletionPort'],
   },
   {
     provide: 'SimulateFlowUseCase',
     useFactory: (
       flowRepo: any, versionRepo: any, connectionRepo: any, phoneRepo: any, agentRepo: any,
-      aiConfigRepo: any, labelRepo: any, templateRepo: any, aiCompletion: any, secrets: any,
+      tenantRepo: any, labelRepo: any, templateRepo: any, aiCompletion: any, secrets: any,
       assetRepo: any, mediaAccess: any,
     ) =>
       new SimulateFlowUseCase(
         flowRepo, versionRepo, connectionRepo, phoneRepo, agentRepo,
-        aiConfigRepo, labelRepo, templateRepo, aiCompletion, secrets,
+        tenantRepo, labelRepo, templateRepo, aiCompletion, secrets,
         assetRepo, mediaAccess,
       ),
     inject: [
       'FlowRepository', 'FlowVersionRepository', 'FlowConnectionRepository', 'PhoneNumberRepository', 'AgentRepository',
-      'AiAgentConfigRepository', 'LabelRepository', 'MessageTemplateRepository', 'AiCompletionPort', 'FlowSecretsPort',
+      'TenantRepository', 'LabelRepository', 'MessageTemplateRepository', 'AiCompletionPort', 'FlowSecretsPort',
       'MediaAssetRepository', 'MediaAccessService',
     ],
   },
@@ -728,9 +740,9 @@ const useCaseProviders = [
   // Webhook
   {
     provide: 'HandleInboundMessageUseCase',
-    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any, sendPush: any, accessRepo: any, flowRouter: any, devEvents: any, registerMedia: any, mediaEnricher: any, resolveIdentity: any) =>
-      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply, sendPush, accessRepo, flowRouter, devEvents, registerMedia, mediaEnricher, resolveIdentity),
-    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase', 'AgentPhoneAccessRepository', 'FlowInboundRouterUseCase', 'DeveloperEventsPort', 'RegisterInboundMediaUseCase', 'MessageMediaEnricher', 'ResolveContactIdentityUseCase'],
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, eventRepo: any, agentRepo: any, jobQueue: any, versionRepo: any, messagingApi: any, attributeReply: any, sendPush: any, accessRepo: any, flowRouter: any, devEvents: any, registerMedia: any, mediaEnricher: any, resolveIdentity: any) =>
+      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, eventRepo, agentRepo, jobQueue, versionRepo, messagingApi, attributeReply, sendPush, accessRepo, flowRouter, devEvents, registerMedia, mediaEnricher, resolveIdentity),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'FlowVersionRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase', 'AgentPhoneAccessRepository', 'FlowInboundRouterUseCase', 'DeveloperEventsPort', 'RegisterInboundMediaUseCase', 'MessageMediaEnricher', 'ResolveContactIdentityUseCase'],
   },
   {
     provide: 'ResolveContactIdentityUseCase',
@@ -887,46 +899,16 @@ const useCaseProviders = [
 
   // AI Agent
   {
-    provide: 'CreateAiAgentUseCase',
-    useFactory: (agentRepo: any, configRepo: any) => new CreateAiAgentUseCase(agentRepo, configRepo),
-    inject: ['AgentRepository', 'AiAgentConfigRepository'],
-  },
-  {
-    provide: 'GetAiAgentUseCase',
-    useFactory: (agentRepo: any, configRepo: any) => new GetAiAgentUseCase(agentRepo, configRepo),
-    inject: ['AgentRepository', 'AiAgentConfigRepository'],
-  },
-  {
-    provide: 'ListAiAgentsUseCase',
-    useFactory: (agentRepo: any, configRepo: any) => new ListAiAgentsUseCase(agentRepo, configRepo),
-    inject: ['AgentRepository', 'AiAgentConfigRepository'],
-  },
-  {
-    provide: 'UpdateAiAgentConfigUseCase',
-    useFactory: (agentRepo: any, configRepo: any) => new UpdateAiAgentConfigUseCase(agentRepo, configRepo),
-    inject: ['AgentRepository', 'AiAgentConfigRepository'],
-  },
-  {
-    provide: 'DeleteAiAgentUseCase',
-    useFactory: (agentRepo: any, configRepo: any) => new DeleteAiAgentUseCase(agentRepo, configRepo),
-    inject: ['AgentRepository', 'AiAgentConfigRepository'],
-  },
-  {
-    provide: 'PlaygroundChatUseCase',
-    useFactory: (configRepo: any, aiCompletion: any) => new PlaygroundChatUseCase(configRepo, aiCompletion),
-    inject: ['AiAgentConfigRepository', 'AiCompletionPort'],
-  },
-  {
     provide: 'HandoffToHumanUseCase',
-    useFactory: (convRepo: any, agentRepo: any, noteRepo: any, eventRepo: any, gateway: any, autoAssign: any) =>
-      new HandoffToHumanUseCase(convRepo, agentRepo, noteRepo, eventRepo, gateway, autoAssign),
-    inject: ['ConversationRepository', 'AgentRepository', 'ConversationNoteRepository', 'ConversationEventRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase'],
+    useFactory: (convRepo: any, noteRepo: any, eventRepo: any, gateway: any, autoAssign: any) =>
+      new HandoffToHumanUseCase(convRepo, noteRepo, eventRepo, gateway, autoAssign),
+    inject: ['ConversationRepository', 'ConversationNoteRepository', 'ConversationEventRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase'],
   },
   {
     provide: 'ProcessAiResponseUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, configRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, flowExecRepo: any, devEvents: any) =>
-      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, configRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, flowExecRepo, devEvents),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', 'FlowExecutionRepository', 'DeveloperEventsPort'],
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, tenantRepo: any, versionRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, flowExecRepo: any, devEvents: any) =>
+      new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, tenantRepo, versionRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, flowExecRepo, devEvents),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'TenantRepository', 'FlowVersionRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', 'FlowExecutionRepository', 'DeveloperEventsPort'],
   },
 
   // Label
@@ -973,15 +955,15 @@ const useCaseProviders = [
   // Billing
   {
     provide: 'EnforcePlanLimitsUseCase',
-    useFactory: (subRepo: any, phoneRepo: any, agentRepo: any, aiConfigRepo: any) =>
-      new EnforcePlanLimitsUseCase(subRepo, phoneRepo, agentRepo, aiConfigRepo),
-    inject: ['SubscriptionRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository'],
+    useFactory: (subRepo: any, phoneRepo: any, agentRepo: any) =>
+      new EnforcePlanLimitsUseCase(subRepo, phoneRepo, agentRepo),
+    inject: ['SubscriptionRepository', 'PhoneNumberRepository', 'AgentRepository'],
   },
   {
     provide: 'ToggleResourceUseCase',
-    useFactory: (subRepo: any, phoneRepo: any, agentRepo: any, aiConfigRepo: any) =>
-      new ToggleResourceUseCase(subRepo, phoneRepo, agentRepo, aiConfigRepo),
-    inject: ['SubscriptionRepository', 'PhoneNumberRepository', 'AgentRepository', 'AiAgentConfigRepository'],
+    useFactory: (subRepo: any, phoneRepo: any, agentRepo: any) =>
+      new ToggleResourceUseCase(subRepo, phoneRepo, agentRepo),
+    inject: ['SubscriptionRepository', 'PhoneNumberRepository', 'AgentRepository'],
   },
   {
     provide: 'SubscribeUseCase',
@@ -1010,9 +992,9 @@ const useCaseProviders = [
   },
   {
     provide: 'CheckPlanLimitUseCase',
-    useFactory: (subRepo: any, phoneRepo: any, agentRepo: any, convRepo: any, aiConfigRepo: any, flowRepo: any) =>
-      new CheckPlanLimitUseCase(subRepo, phoneRepo, agentRepo, convRepo, aiConfigRepo, flowRepo),
-    inject: ['SubscriptionRepository', 'PhoneNumberRepository', 'AgentRepository', 'ConversationRepository', 'AiAgentConfigRepository', 'FlowRepository'],
+    useFactory: (subRepo: any, phoneRepo: any, agentRepo: any, convRepo: any, flowRepo: any) =>
+      new CheckPlanLimitUseCase(subRepo, phoneRepo, agentRepo, convRepo, flowRepo),
+    inject: ['SubscriptionRepository', 'PhoneNumberRepository', 'AgentRepository', 'ConversationRepository', 'FlowRepository'],
   },
   {
     provide: 'CreateCheckoutUseCase',
@@ -1204,12 +1186,12 @@ const useCaseProviders = [
     PhoneNumberController,
     ConversationController,
     TenantController,
+    AccountProfileController,
     WebhookController,
     ContactController,
     TemplateController,
     CampaignController,
     AnalyticsController,
-    AiAgentController,
     LabelController,
     BillingController,
     PaymentWebhookController,

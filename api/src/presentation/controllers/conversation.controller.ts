@@ -9,6 +9,7 @@ import { GetActiveFlowForConversationUseCase } from '../../application/use-cases
 import { GetConversationMessagesUseCase } from '../../application/use-cases/conversation/get-conversation-messages.use-case.js';
 import { SendMessageUseCase } from '../../application/use-cases/conversation/send-message.use-case.js';
 import { AssignConversationUseCase } from '../../application/use-cases/conversation/assign-conversation.use-case.js';
+import { SetAutopilotUseCase } from '../../application/use-cases/conversation/set-autopilot.use-case.js';
 import { GetConversationEventsUseCase } from '../../application/use-cases/conversation/get-conversation-events.use-case.js';
 import { AddConversationNoteUseCase } from '../../application/use-cases/conversation/add-conversation-note.use-case.js';
 import { GetConversationNotesUseCase } from '../../application/use-cases/conversation/get-conversation-notes.use-case.js';
@@ -27,8 +28,8 @@ import { ReactToMessageRequestSchema } from '../request-dtos/react-to-message-re
 import type { ReactToMessageRequestDto } from '../request-dtos/react-to-message-request.dto.js';
 import { SendTemplateRequestSchema } from '../request-dtos/send-template-request.dto.js';
 import type { SendTemplateRequestDto } from '../request-dtos/send-template-request.dto.js';
-import { AssignConversationRequestSchema } from '../request-dtos/assign-conversation-request.dto.js';
-import type { AssignConversationRequestDto } from '../request-dtos/assign-conversation-request.dto.js';
+import { AssignConversationRequestSchema, SetAutopilotRequestSchema } from '../request-dtos/assign-conversation-request.dto.js';
+import type { AssignConversationRequestDto, SetAutopilotRequestDto } from '../request-dtos/assign-conversation-request.dto.js';
 import { ConversationQueryParamsSchema } from '../request-dtos/conversation-query-params.dto.js';
 import type { ConversationQueryParamsDto } from '../request-dtos/conversation-query-params.dto.js';
 import { AddNoteRequestSchema } from '../request-dtos/add-note-request.dto.js';
@@ -57,6 +58,7 @@ export class ConversationController {
     @Inject('MarkConversationReadUseCase') private readonly markConversationRead: MarkConversationReadUseCase,
     @Inject('ReactToMessageUseCase') private readonly reactToMessage: ReactToMessageUseCase,
     @Inject('AssignConversationUseCase') private readonly assignConversation: AssignConversationUseCase,
+    @Inject('SetAutopilotUseCase') private readonly setAutopilotUseCase: SetAutopilotUseCase,
     @Inject('GetConversationEventsUseCase') private readonly getConversationEvents: GetConversationEventsUseCase,
     @Inject('AddConversationNoteUseCase') private readonly addNote: AddConversationNoteUseCase,
     @Inject('GetConversationNotesUseCase') private readonly getNotes: GetConversationNotesUseCase,
@@ -168,10 +170,14 @@ export class ConversationController {
     const detailLabels = detailLabelIds.length > 0 ? await this.labelRepo.findByIds(detailLabelIds) : [];
     const detailLabelMap = new Map(detailLabels.map((l) => [l.id, l]));
     const activeFlow = await this.getActiveFlow.execute(id);
+    // El piloto lo lee el header del chat para pintar el toggle y el aviso de
+    // "pausado, retomar": sin esto habría que pedir la conversación aparte.
+    const conversation = await this.conversationRepo.findById(id);
 
     return {
       ...result.value,
       activeFlow,
+      autopilot: conversation?.autopilot ?? null,
       contact: contact
         ? {
             id: contact.id,
@@ -492,4 +498,35 @@ export class ConversationController {
     return result.value;
   }
 
+  @Patch(':id/autopilot')
+  @ApiOperation({
+    summary: 'Turn the conversation autopilot on or off',
+    description:
+      'While it is off no automation acts on this chat and any running execution stays frozen at its current step. Turning it back on resumes it.',
+  })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['enabled'],
+      properties: { enabled: { type: 'boolean' } },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Autopilot updated' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  async setAutopilot(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(SetAutopilotRequestSchema)) body: SetAutopilotRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.setAutopilotUseCase.execute({
+      conversationId: id,
+      tenantId: agent.tenantId,
+      enabled: body.enabled,
+      reason: 'manual',
+      performedBy: agent._id,
+    });
+    if (!result.ok) throw new NotFoundException(result.error.message);
+    return result.value;
+  }
 }

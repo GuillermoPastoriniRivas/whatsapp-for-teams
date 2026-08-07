@@ -12,36 +12,17 @@ export class MongoAiUsageRepository implements AiUsageRepository {
     @InjectModel(AiUsageModel.name) private readonly model: Model<AiUsageDocument>,
   ) {}
 
-  async incrementUsage(
-    tenantId: string,
-    aiAgentId: string,
-    date: string,
-    messageDelta: number,
-    tokenDelta: number,
-  ): Promise<AiUsage> {
+  async incrementUsage(tenantId: string, date: string, messageDelta: number, tokenDelta: number): Promise<AiUsage> {
     const doc = await this.model.findOneAndUpdate(
-      {
-        tenantId: new Types.ObjectId(tenantId),
-        aiAgentId: new Types.ObjectId(aiAgentId),
-        date,
-      },
-      {
-        $inc: { messageCount: messageDelta, tokenCount: tokenDelta },
-      },
-      {
-        upsert: true,
-        returnDocument: 'after',
-      },
+      { tenantId: new Types.ObjectId(tenantId), date },
+      { $inc: { messageCount: messageDelta, tokenCount: tokenDelta } },
+      { upsert: true, returnDocument: 'after' },
     );
     return AiUsageMapper.toDomain(doc!);
   }
 
-  async getUsage(tenantId: string, aiAgentId: string, date: string): Promise<AiUsage | null> {
-    const doc = await this.model.findOne({
-      tenantId: new Types.ObjectId(tenantId),
-      aiAgentId: new Types.ObjectId(aiAgentId),
-      date,
-    });
+  async getUsage(tenantId: string, date: string): Promise<AiUsage | null> {
+    const doc = await this.model.findOne({ tenantId: new Types.ObjectId(tenantId), date });
     return doc ? AiUsageMapper.toDomain(doc) : null;
   }
 }

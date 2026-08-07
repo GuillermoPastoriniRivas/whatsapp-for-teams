@@ -175,13 +175,7 @@ export class DemoSimulationService implements OnModuleInit, OnModuleDestroy {
   private async simulateAiReply() {
     if (!this.demoTenantId) return;
 
-    // Find conversations assigned to AI agents
-    const agents = await this.agentRepo.findByTenantId(this.demoTenantId);
-    const aiAgents = agents.filter((a) => a.type === AgentType.AI);
-    if (aiAgents.length === 0) return;
-
-    const aiAgentIds = new Set(aiAgents.map((a) => a.id));
-
+    // Conversaciones en manos del asistente: lo dice el piloto, no el asignado.
     const conversations = await this.conversationRepo.findByFilters({
       tenantId: this.demoTenantId,
       status: ConversationStatus.ACTIVE,
@@ -189,11 +183,10 @@ export class DemoSimulationService implements OnModuleInit, OnModuleDestroy {
       limit: 20,
     });
 
-    const aiConvs = conversations.data.filter((c) => c.agentId && aiAgentIds.has(c.agentId));
+    const aiConvs = conversations.data.filter((c) => c.autopilot?.enabled && c.autopilot.aiNode);
     if (aiConvs.length === 0) return;
 
     const conv = aiConvs[Math.floor(Math.random() * aiConvs.length)];
-    const agent = aiAgents.find((a) => a.id === conv.agentId)!;
     const body = AI_RESPONSES[Math.floor(Math.random() * AI_RESPONSES.length)];
     const waMessageId = `demo-ai-sim-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -207,8 +200,9 @@ export class DemoSimulationService implements OnModuleInit, OnModuleDestroy {
       waMessageId,
       waStatus: MessageWaStatus.DELIVERED,
       timestamp: new Date(),
-      senderAgentId: agent.id,
-      senderAgentName: agent.name,
+      senderAgentId: null,
+      senderAgentName: 'Sofía',
+      senderKind: 'ai',
     });
 
     await this.conversationRepo.update(conv.id, { lastMessageAt: new Date() } as any);

@@ -11,15 +11,15 @@ export class HandoffDirectiveHandler {
   async handleAction(
     reason: string,
     conversationId: string,
-    aiAgentId: string,
+    aiName: string,
     tenantId: string,
     conversationSummary: string | null,
   ): Promise<void> {
-    this.logger.log(`AI agent ${aiAgentId} initiated handoff: ${reason}`);
+    this.logger.log(`AI agent ${aiName} initiated handoff: ${reason}`);
 
     await this.handoffUseCase.execute({
       conversationId,
-      aiAgentId,
+      aiName,
       tenantId,
       reason: reason || 'AI-initiated escalation',
       summary: conversationSummary ?? undefined,

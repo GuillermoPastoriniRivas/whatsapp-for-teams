@@ -21,7 +21,7 @@ import { MediaKind } from '../../../domain/enums/media-kind.enum.js';
 import { MediaAssetRepository } from '../../../domain/repositories/media-asset.repository.js';
 import { MediaAccessService } from '../media/media-access.service.js';
 import { MessageMediaEnricher } from '../media/message-media.enricher.js';
-import { CancelActiveFlowExecutionUseCase } from '../flow/cancel-active-flow-execution.use-case.js';
+import { SetAutopilotUseCase } from './set-autopilot.use-case.js';
 import { recipientIdentityOf } from '../../../domain/value-objects/recipient-identity.js';
 
 /** El tipo de mensaje de WhatsApp que corresponde a cada clase de archivo. */
@@ -44,7 +44,7 @@ export class SendMessageUseCase {
     private readonly messagingApi: MessagingApiPort,
     private readonly gateway: RealtimeGatewayPort,
     private readonly agentRepo: AgentRepository,
-    private readonly cancelActiveFlow: CancelActiveFlowExecutionUseCase,
+    private readonly setAutopilot: SetAutopilotUseCase,
     private readonly devEvents: DeveloperEventsPort,
     private readonly assetRepo: MediaAssetRepository,
     private readonly mediaAccess: MediaAccessService,
@@ -55,7 +55,10 @@ export class SendMessageUseCase {
     const conversation = await this.conversationRepo.findById(input.conversationId);
     if (!conversation) return err(new ConversationNotFoundError());
 
-    if (conversation.agentId !== input.agentId) return err(new AgentNotAssignedError());
+    // Escribir NO requiere tener el chat asignado. Exigirlo obligaba a
+    // apropiárselo, y apropiárselo apagaba las automatizaciones para siempre:
+    // no se podía mandar un mensaje suelto sin romper el flujo. El acceso ya
+    // está acotado por el número (AgentPhoneAccess) y el guard de la ruta.
 
     // 24h window check
     const elapsed = Date.now() - conversation.lastInboundAt.getTime();
@@ -131,11 +134,18 @@ export class SendMessageUseCase {
 
     await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date() } as any);
 
-    // El humano siempre gana: si un flujo estaba manejando la conversación,
-    // escribir la detiene (nunca dos escritores hablándole al cliente). Va
-    // DESPUÉS del envío: un intento fallido (ventana vencida, error del
-    // proveedor) no llegó al cliente y no debe matar la automatización.
-    await this.cancelActiveFlow.execute(conversation.id, 'agent_takeover', input.agentId);
+    // El humano siempre gana: escribir apaga el piloto automático para que no
+    // haya dos escritores hablándole al cliente. Pausa, no cancela — la
+    // ejecución conserva su punto y se retoma con un botón. Va DESPUÉS del
+    // envío: un intento fallido (ventana vencida, error del proveedor) no
+    // llegó al cliente y no debe frenar la automatización.
+    await this.setAutopilot.execute({
+      conversationId: conversation.id,
+      tenantId: conversation.tenantId,
+      enabled: false,
+      reason: 'agent_reply',
+      performedBy: input.agentId,
+    });
 
     this.gateway.emitToConversation(conversation.id, 'message.new', enriched);
 

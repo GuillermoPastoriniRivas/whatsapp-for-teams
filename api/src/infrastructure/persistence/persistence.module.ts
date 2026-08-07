@@ -10,7 +10,6 @@ import { MessageModel, MessageSchema } from './mongoose/schemas/message.schema.j
 import { RefreshTokenModel, RefreshTokenSchema } from './mongoose/schemas/refresh-token.schema.js';
 import { ConversationEventModel, ConversationEventSchema } from './mongoose/schemas/conversation-event.schema.js';
 import { ConversationNoteModel, ConversationNoteSchema } from './mongoose/schemas/conversation-note.schema.js';
-import { AiAgentConfigModel, AiAgentConfigSchema } from './mongoose/schemas/ai-agent-config.schema.js';
 import { AiUsageModel, AiUsageSchema } from './mongoose/schemas/ai-usage.schema.js';
 import { LabelModel, LabelSchema } from './mongoose/schemas/label.schema.js';
 import { ConversationLabelModel, ConversationLabelSchema } from './mongoose/schemas/conversation-label.schema.js';
@@ -25,7 +24,6 @@ import { MongoMessageRepository } from './mongoose/repositories/mongo-message.re
 import { MongoRefreshTokenRepository } from './mongoose/repositories/mongo-refresh-token.repository.js';
 import { MongoConversationEventRepository } from './mongoose/repositories/mongo-conversation-event.repository.js';
 import { MongoConversationNoteRepository } from './mongoose/repositories/mongo-conversation-note.repository.js';
-import { MongoAiAgentConfigRepository } from './mongoose/repositories/mongo-ai-agent-config.repository.js';
 import { MongoAiUsageRepository } from './mongoose/repositories/mongo-ai-usage.repository.js';
 import { MongoLabelRepository } from './mongoose/repositories/mongo-label.repository.js';
 import { MongoConversationLabelRepository } from './mongoose/repositories/mongo-conversation-label.repository.js';
@@ -75,7 +73,6 @@ const schemas = MongooseModule.forFeature([
   { name: RefreshTokenModel.name, schema: RefreshTokenSchema },
   { name: ConversationEventModel.name, schema: ConversationEventSchema },
   { name: ConversationNoteModel.name, schema: ConversationNoteSchema },
-  { name: AiAgentConfigModel.name, schema: AiAgentConfigSchema },
   { name: AiUsageModel.name, schema: AiUsageSchema },
   { name: LabelModel.name, schema: LabelSchema },
   { name: ConversationLabelModel.name, schema: ConversationLabelSchema },
@@ -110,7 +107,6 @@ const repositories = [
   { provide: 'RefreshTokenRepository', useClass: MongoRefreshTokenRepository },
   { provide: 'ConversationEventRepository', useClass: MongoConversationEventRepository },
   { provide: 'ConversationNoteRepository', useClass: MongoConversationNoteRepository },
-  { provide: 'AiAgentConfigRepository', useClass: MongoAiAgentConfigRepository },
   { provide: 'AiUsageRepository', useClass: MongoAiUsageRepository },
   { provide: 'LabelRepository', useClass: MongoLabelRepository },
   { provide: 'ConversationLabelRepository', useClass: MongoConversationLabelRepository },

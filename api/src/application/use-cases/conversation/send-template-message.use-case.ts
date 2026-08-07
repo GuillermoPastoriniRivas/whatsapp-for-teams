@@ -58,11 +58,8 @@ export class SendTemplateMessageUseCase {
     const conversation = await this.conversationRepo.findById(input.conversationId);
     if (!conversation) return err(new ConversationNotFoundError());
 
-    // El asignado puede enviar; un admin también (caso típico: la conversación
-    // quedó en manos del bot o sin asignar y venció la ventana)
-    if (conversation.agentId !== input.agentId && input.agentRole !== 'admin') {
-      return err(new AgentNotAssignedError());
-    }
+    // Enviar no requiere tener el chat asignado: mismo criterio que el texto
+    // libre (ver SendMessageUseCase). El acceso ya está acotado por el número.
 
     const phone = await this.phoneRepo.findById(conversation.phoneNumberId);
     if (!phone || phone.status !== 'active') {

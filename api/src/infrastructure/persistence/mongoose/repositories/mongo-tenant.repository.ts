@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { TenantRepository } from '../../../../domain/repositories/tenant.repository.js';
+import { TenantRepository, UpdateTenantBusinessInput } from '../../../../domain/repositories/tenant.repository.js';
 import { Tenant } from '../../../../domain/entities/tenant.entity.js';
 import { TenantModel, TenantDocument } from '../schemas/tenant.schema.js';
 import { TenantMapper } from '../mappers/tenant.mapper.js';
@@ -24,6 +24,15 @@ export class MongoTenantRepository implements TenantRepository {
 
   async findBySlug(slug: string): Promise<Tenant | null> {
     const doc = await this.model.findOne({ slug });
+    return doc ? TenantMapper.toDomain(doc) : null;
+  }
+
+  async updateBusinessProfile(id: string, patch: UpdateTenantBusinessInput): Promise<Tenant | null> {
+    const set: Record<string, unknown> = {};
+    if (patch.businessProfile !== undefined) set.businessProfile = patch.businessProfile;
+    if (patch.timezone !== undefined) set.timezone = patch.timezone;
+    if (patch.businessHours !== undefined) set.businessHours = patch.businessHours;
+    const doc = await this.model.findByIdAndUpdate(id, { $set: set }, { returnDocument: 'after' });
     return doc ? TenantMapper.toDomain(doc) : null;
   }
 }

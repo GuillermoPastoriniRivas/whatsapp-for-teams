@@ -18,7 +18,8 @@ import type { ContactRepository } from '../../../../domain/repositories/contact.
 import type { PhoneNumberRepository } from '../../../../domain/repositories/phone-number.repository.js';
 import type { AgentRepository } from '../../../../domain/repositories/agent.repository.js';
 import type { AgentPhoneAccessRepository } from '../../../../domain/repositories/agent-phone-access.repository.js';
-import type { AiAgentConfigRepository } from '../../../../domain/repositories/ai-agent-config.repository.js';
+import type { TenantRepository } from '../../../../domain/repositories/tenant.repository.js';
+import { resolveAiPersona } from '../../../../domain/value-objects/ai-persona.js';
 import type { AiUsageRepository } from '../../../../domain/repositories/ai-usage.repository.js';
 import type { MessageRepository } from '../../../../domain/repositories/message.repository.js';
 import type { LabelRepository } from '../../../../domain/repositories/label.repository.js';
@@ -90,7 +91,7 @@ const FLOW_MEDIA_MESSAGE_TYPES: Record<MediaKind, MessageType> = {
 type NodeResult =
   | { kind: 'advance'; handle: string; note?: string; skipped?: boolean; isError?: boolean }
   | { kind: 'wait'; wait: FlowWaitState; sentAt: Date }
-  | { kind: 'end'; endReason: string; note?: string; delegateToAiAgentId?: string }
+  | { kind: 'end'; endReason: string; note?: string; delegateToAiNodeId?: string }
   | { kind: 'error'; message: string };
 
 interface RunCtx {
@@ -127,7 +128,7 @@ export class FlowEngineService {
     private readonly contactRepo: ContactRepository,
     private readonly phoneRepo: PhoneNumberRepository,
     private readonly agentRepo: AgentRepository,
-    private readonly aiConfigRepo: AiAgentConfigRepository,
+    private readonly tenantRepo: TenantRepository,
     private readonly usageRepo: AiUsageRepository,
     private readonly messageRepo: MessageRepository,
     private readonly labelRepo: LabelRepository,
@@ -332,7 +333,7 @@ export class FlowEngineService {
           result.endReason,
           null,
           this.stepLog(node, 'ok', null, result.note ?? null, startMs),
-          result.delegateToAiAgentId,
+          result.delegateToAiNodeId,
         );
       }
 
@@ -522,7 +523,7 @@ export class FlowEngineService {
       case 'logic.ai_route':
         return this.execAiRoute(ctx, data);
       case 'action.handoff_ai':
-        return this.execHandoffAi(ctx, data);
+        return this.execHandoffAi(ctx, node, data);
       case 'action.handoff_human':
         return this.execHandoffHuman(ctx, data);
       case 'action.assign_agent':
@@ -895,18 +896,16 @@ export class FlowEngineService {
   private async execAiReply(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
     if (this.checkWindow(ctx, 'error')) return { kind: 'error', message: 'Ventana de 24 h cerrada' };
 
-    const aiAgentId = String(data.aiAgentId ?? '');
-    const agent = await this.agentRepo.findById(aiAgentId);
-    const config = await this.aiConfigRepo.findByAgentId(aiAgentId);
-    if (!agent || !config || config.tenantId !== ctx.tenantId || !config.isActive) {
-      return { kind: 'error', message: 'El asistente IA no está disponible' };
-    }
+    // El negocio sale de la cuenta; la conducta, de este nodo.
+    const tenant = await this.tenantRepo.findById(ctx.tenantId);
+    if (!tenant) return { kind: 'error', message: 'No se pudo leer la cuenta' };
+    const config = resolveAiPersona(tenant, data);
 
-    // Límite diario del agente referenciado.
-    if (config.rateLimits.maxMessagesPerDay > 0) {
-      const usage = await this.usageRepo.getUsage(ctx.tenantId, aiAgentId, today());
-      if (usage && usage.messageCount >= config.rateLimits.maxMessagesPerDay) {
-        return { kind: 'error', message: 'El asistente alcanzó su límite diario de mensajes' };
+    // Tope diario de la cuenta.
+    if (tenant.aiRateLimits.maxMessagesPerDay > 0) {
+      const usage = await this.usageRepo.getUsage(ctx.tenantId, today());
+      if (usage && usage.messageCount >= tenant.aiRateLimits.maxMessagesPerDay) {
+        return { kind: 'error', message: 'La cuenta alcanzó su límite diario de mensajes de IA' };
       }
     }
 
@@ -952,7 +951,7 @@ export class FlowEngineService {
       ? parseMultiMessageResponse(content, config.multiMessage.maxBubbles, this.logger)
       : [content];
 
-    await this.usageRepo.incrementUsage(ctx.tenantId, aiAgentId, today(), bubbles.length, result.tokensUsed.total);
+    await this.usageRepo.incrementUsage(ctx.tenantId, today(), bubbles.length, result.tokensUsed.total);
 
     await sendBubbles({
       messagingApi: this.messagingApi,
@@ -961,8 +960,9 @@ export class FlowEngineService {
       phone: ctx.phone,
       recipient: recipientIdentityOf(ctx.contact),
       conversationId: ctx.conversation.id,
-      senderAgentId: agent.id,
-      senderAgentName: agent.name,
+      senderAgentId: null,
+      senderAgentName: config.name,
+      senderKind: 'ai',
       bubbles,
       interBubbleDelayMs: config.multiMessage?.interBubbleDelayMs ?? 1200,
       replyToWaMessageId: lastInboundOf(history)?.waMessageId ?? null,
@@ -974,12 +974,6 @@ export class FlowEngineService {
   }
 
   private async execAiRoute(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
-    const aiAgentId = String(data.aiAgentId ?? '');
-    const config = await this.aiConfigRepo.findByAgentId(aiAgentId);
-    if (!config || config.tenantId !== ctx.tenantId || !config.isActive) {
-      return { kind: 'error', message: 'El asistente IA no está disponible' };
-    }
-
     const options: Array<{ key: string; label: string }> = Array.isArray(data.options) ? data.options : [];
     if (options.length < 2) return { kind: 'error', message: 'El clasificador necesita al menos 2 opciones' };
 
@@ -1001,7 +995,7 @@ export class FlowEngineService {
       maxTokens: 32,
     });
 
-    await this.usageRepo.incrementUsage(ctx.tenantId, aiAgentId, today(), 0, result.tokensUsed.total);
+    await this.usageRepo.incrementUsage(ctx.tenantId, today(), 0, result.tokensUsed.total);
 
     const raw = normalizeText(stripTimestampPrefixes(result.content ?? ''));
     const exact = options.find((o) => normalizeText(o.key) === raw);
@@ -1010,26 +1004,30 @@ export class FlowEngineService {
     return { kind: 'advance', handle: 'fallback', note: `sin clasificar: "${raw.slice(0, 60)}"` };
   }
 
-  private async execHandoffAi(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
-    const aiAgentId = String(data.aiAgentId ?? '');
-    const agent = await this.agentRepo.findById(aiAgentId);
-    const config = await this.aiConfigRepo.findByAgentId(aiAgentId);
-    if (!agent || agent.type !== AgentType.AI || !config || config.tenantId !== ctx.tenantId || !config.isActive) {
-      return { kind: 'error', message: 'El asistente IA no está disponible' };
-    }
+  private async execHandoffAi(ctx: RunCtx, node: FlowNode, data: Record<string, any>): Promise<NodeResult> {
+    const tenant = await this.tenantRepo.findById(ctx.tenantId);
+    if (!tenant) return { kind: 'error', message: 'No se pudo leer la cuenta' };
+    const persona = resolveAiPersona(tenant, data);
 
-    if (ctx.conversation.agentId && ctx.conversation.agentId !== aiAgentId) {
+    // El bot no se "asigna": queda apuntado en el piloto de la conversación.
+    // El puntero va a la versión publicada — inmutable — así que editar el
+    // flujo no le cambia la personalidad a un chat ya en curso. `agentId` se
+    // libera porque a partir de acá contesta el bot, no una persona.
+    if (ctx.conversation.agentId) {
       await this.agentRepo.incrementActiveCount(ctx.conversation.agentId, -1);
     }
-    if (ctx.conversation.agentId !== aiAgentId) {
-      await this.agentRepo.incrementActiveCount(aiAgentId, 1);
-    }
     await this.conversationRepo.update(ctx.conversation.id, {
-      agentId: aiAgentId,
+      agentId: null,
       status: ConversationStatus.ACTIVE,
       // Latch del debounce: sin esto ProcessAiResponseUseCase descarta el job
       // por su chequeo de idempotencia (multiMessage viene activo por defecto).
       pendingAiSince: new Date(),
+      autopilot: {
+        enabled: true,
+        pausedReason: null,
+        pausedAt: null,
+        aiNode: { flowId: ctx.flow.id, flowVersionId: ctx.version.id, nodeId: node.id },
+      },
     } as any);
 
     const event = await this.eventRepo.create({
@@ -1037,14 +1035,14 @@ export class FlowEngineService {
       tenantId: ctx.tenantId,
       type: ConversationEventType.ASSIGNED,
       performedBy: null,
-      data: { agentName: agent.name, via: 'flow', flowName: ctx.flow.name },
+      data: { agentName: persona.name, via: 'flow', flowName: ctx.flow.name },
     });
     this.gateway.emitToConversation(ctx.conversation.id, 'conversation.event', event);
     this.gateway.emitToTenant(ctx.tenantId, 'conversation.updated', { conversationId: ctx.conversation.id });
 
     // El job se encola en afterFinish, ya cerrada la ejecución: mientras siga
     // viva, el guard de ProcessAiResponseUseCase lo descartaría sin reintento.
-    return { kind: 'end', endReason: 'delegated_ai', note: agent.name, delegateToAiAgentId: aiAgentId };
+    return { kind: 'end', endReason: 'delegated_ai', note: persona.name, delegateToAiNodeId: node.id };
   }
 
   private async execHandoffHuman(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
@@ -1616,7 +1614,7 @@ export class FlowEngineService {
     endReason: string,
     error: { nodeId: string; message: string } | null,
     finalStep?: FlowStepLog,
-    delegateToAiAgentId?: string,
+    delegateToAiNodeId?: string,
   ): Promise<void> {
     const patch = {
       status,
@@ -1634,7 +1632,7 @@ export class FlowEngineService {
       : await this.execRepo.casClaim(ctx.execId, FlowExecutionStatus.RUNNING, ctx.token, patch);
     if (!updated) return;
 
-    await this.afterFinish(updated, status, endReason, delegateToAiAgentId);
+    await this.afterFinish(updated, status, endReason, delegateToAiNodeId);
   }
 
   /** Efectos post-final: stats, evento de timeline, WS y fallback humano */
@@ -1642,7 +1640,7 @@ export class FlowEngineService {
     exec: FlowExecution,
     status: FlowExecutionStatus,
     endReason: string,
-    delegateToAiAgentId?: string,
+    delegateToAiNodeId?: string,
   ): Promise<void> {
     const failed = status === FlowExecutionStatus.FAILED;
     await this.flowRepo.incrementStats(exec.flowId, failed ? { failed: 1 } : { completed: 1 });
@@ -1696,7 +1694,7 @@ export class FlowEngineService {
 
     // Delegación al bot: recién ahora la ejecución está cerrada, así que el
     // guard de "un flujo es dueño de la conversación" ya no descarta el job.
-    if (!failed && delegateToAiAgentId) {
+    if (!failed && delegateToAiNodeId) {
       await this.jobQueue.enqueue(AI_RESPONSE_JOB, { conversationId: exec.conversationId });
     }
   }

@@ -50,7 +50,7 @@ export class ReactToMessageUseCase {
   async execute(input: ReactToMessageInput): Promise<Result<Message, DomainError>> {
     const conversation = await this.conversationRepo.findById(input.conversationId);
     if (!conversation) return err(new ConversationNotFoundError());
-    if (conversation.agentId !== input.agentId) return err(new AgentNotAssignedError());
+    // Reaccionar tampoco requiere tener el chat asignado (ver SendMessageUseCase).
 
     if (Date.now() - conversation.lastInboundAt.getTime() >= TWENTY_FOUR_HOURS_MS) {
       return err(new ConversationWindowExpiredError());

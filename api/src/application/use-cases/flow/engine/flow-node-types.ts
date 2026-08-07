@@ -38,6 +38,11 @@ export function isTrigger(type: string): boolean {
   return type.startsWith('trigger.');
 }
 
+/** Nodos que consumen el modelo de IA (y por lo tanto, plata). */
+export function isAiNode(type: string): boolean {
+  return type === 'action.ai_reply' || type === 'logic.ai_route' || type === 'action.handoff_ai';
+}
+
 /** Sobre qué líneas actúa un disparador. */
 export type PhoneScope = 'all' | 'specific';
 

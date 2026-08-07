@@ -6,7 +6,6 @@ export class AiUsageMapper {
     return new AiUsage(
       doc._id.toHexString(),
       doc.tenantId.toHexString(),
-      doc.aiAgentId.toHexString(),
       doc.date,
       doc.messageCount,
       doc.tokenCount,

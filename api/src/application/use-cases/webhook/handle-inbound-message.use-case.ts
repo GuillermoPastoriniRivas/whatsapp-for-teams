@@ -7,9 +7,9 @@ import { PhoneNumberRepository } from '../../../domain/repositories/phone-number
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { AgentPhoneAccessRepository } from '../../../domain/repositories/agent-phone-access.repository.js';
-import { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-config.repository.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { JobQueuePort } from '../../ports/job-queue.port.js';
+import { FlowVersionRepository } from '../../../domain/repositories/flow-version.repository.js';
 import { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
@@ -44,7 +44,7 @@ export class HandleInboundMessageUseCase {
     private readonly eventRepo: ConversationEventRepository,
     private readonly agentRepo: AgentRepository,
     private readonly jobQueue: JobQueuePort,
-    private readonly aiConfigRepo: AiAgentConfigRepository,
+    private readonly versionRepo: FlowVersionRepository,
     private readonly messagingApi: MessagingApiPort,
     private readonly attributeCampaignReply: AttributeCampaignReplyUseCase,
     private readonly sendPushToAgent: SendPushToAgentUseCase,
@@ -224,26 +224,17 @@ export class HandleInboundMessageUseCase {
       phoneNumberId: phone.id,
     });
 
-    // 8. If assigned to AI agent → enqueue AI response job (with debounce if enabled)
-    let aiAgent: Agent | null = null;
-    let humanAgent: Agent | null = null;
-    if (assignedAgent) {
-      if (assignedAgent.type === AgentType.AI) {
-        aiAgent = assignedAgent;
-      } else {
-        humanAgent = assignedAgent;
-      }
-    } else if (!created && conversation.agentId) {
-      const currentAgent = await this.agentRepo.findById(conversation.agentId);
-      if (currentAgent && currentAgent.type === AgentType.AI) {
-        aiAgent = currentAgent;
-      } else {
-        humanAgent = currentAgent;
-      }
+    // 8. ¿Contesta el bot? Lo dice el puntero del piloto, no el asignado: un
+    // agente asignado es siempre una persona desde que los bots dejaron de ser
+    // entidades. El piloto apagado calla al bot sin desasignar a nadie.
+    const aiNode = conversation.autopilot.enabled ? conversation.autopilot.aiNode : null;
+    let humanAgent: Agent | null = assignedAgent;
+    if (!humanAgent && !created && conversation.agentId) {
+      humanAgent = await this.agentRepo.findById(conversation.agentId);
     }
 
-    if (aiAgent && !flowHandled) {
-      await this.enqueueAiResponse(aiAgent, conversation.id, phone, input.waMessageId);
+    if (aiNode && !flowHandled) {
+      await this.enqueueAiResponse(conversation.id, phone, input.waMessageId, aiNode);
     }
 
     // 9. Web push (fire-and-forget; the SW suppresses it when the app is
@@ -298,13 +289,17 @@ export class HandleInboundMessageUseCase {
   }
 
   private async enqueueAiResponse(
-    agent: Agent,
     conversationId: string,
     phone: { provider: any; providerConfig: any; phoneNumberId: string },
     waMessageId: string,
+    aiNode: { flowVersionId: string; nodeId: string },
   ): Promise<void> {
-    const config = await this.aiConfigRepo.findByAgentId(agent.id);
-    const multiMessage = config?.multiMessage;
+    // El debounce lo define el propio nodo de IA de la versión publicada.
+    const versions = await this.versionRepo.findByIds([aiNode.flowVersionId]);
+    const node = versions[0]?.graph.nodes.find((n) => n.id === aiNode.nodeId);
+    const multiMessage = (node?.data as Record<string, any> | undefined)?.multiMessage as
+      | { enabled?: boolean; debounceWindowMs?: number; debounceMaxWaitMs?: number }
+      | undefined;
 
     if (!multiMessage?.enabled) {
       // No debounce — enqueue immediately (backward compatible)
@@ -330,8 +325,8 @@ export class HandleInboundMessageUseCase {
     }
 
     // Calculate debounced run time with hard cap
-    const debounceTime = Date.now() + multiMessage.debounceWindowMs;
-    const hardCap = pendingAiSince.getTime() + multiMessage.debounceMaxWaitMs;
+    const debounceTime = Date.now() + (multiMessage.debounceWindowMs ?? 2000);
+    const hardCap = pendingAiSince.getTime() + (multiMessage.debounceMaxWaitMs ?? 20000);
     const runAt = new Date(Math.min(debounceTime, hardCap));
 
     await this.jobQueue.schedule(AI_RESPONSE_JOB, {

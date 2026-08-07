@@ -3,9 +3,11 @@ import { ConversationRepository } from '../../../domain/repositories/conversatio
 import { MessageRepository } from '../../../domain/repositories/message.repository.js';
 import { ContactRepository } from '../../../domain/repositories/contact.repository.js';
 import { PhoneNumberRepository } from '../../../domain/repositories/phone-number.repository.js';
-import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
-import { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-config.repository.js';
 import { AiUsageRepository } from '../../../domain/repositories/ai-usage.repository.js';
+import { TenantRepository } from '../../../domain/repositories/tenant.repository.js';
+import { FlowVersionRepository } from '../../../domain/repositories/flow-version.repository.js';
+import type { AiPersona } from '../../../domain/value-objects/ai-persona.js';
+import { resolveAiPersona } from '../../../domain/value-objects/ai-persona.js';
 import { LabelRepository } from '../../../domain/repositories/label.repository.js';
 import { ConversationLabelRepository } from '../../../domain/repositories/conversation-label.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
@@ -19,7 +21,6 @@ import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { HandoffToHumanUseCase } from './handoff-to-human.use-case.js';
 import { HandoffDetectionDomainService } from '../../../domain/services/handoff-detection.domain-service.js';
 import { ContactDirectiveHandler } from './handlers/contact-directive.handler.js';
-import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
@@ -54,8 +55,8 @@ export class ProcessAiResponseUseCase {
     private readonly messageRepo: MessageRepository,
     private readonly contactRepo: ContactRepository,
     private readonly phoneRepo: PhoneNumberRepository,
-    private readonly agentRepo: AgentRepository,
-    private readonly configRepo: AiAgentConfigRepository,
+    private readonly tenantRepo: TenantRepository,
+    private readonly versionRepo: FlowVersionRepository,
     private readonly usageRepo: AiUsageRepository,
     private readonly aiCompletion: AiCompletionPort,
     private readonly messagingApi: MessagingApiPort,
@@ -73,13 +74,22 @@ export class ProcessAiResponseUseCase {
   async execute(input: ProcessAiResponseInput): Promise<void> {
     // ── Load context ────────────────────────────────────────────────────
     const conversation = await this.conversationRepo.findById(input.conversationId);
-    if (!conversation || !conversation.agentId) return;
+    if (!conversation) return;
 
-    const agent = await this.agentRepo.findById(conversation.agentId);
-    if (!agent || agent.type !== AgentType.AI) return;
+    // Quien contesta ya no es un agente asignado: es el nodo de IA que dejo
+    // puesto el "Entregar al asistente IA". Sin ese puntero no hay bot acá.
+    const aiNode = conversation.autopilot.aiNode;
+    if (!aiNode) return;
 
-    const config = await this.configRepo.findByAgentId(agent.id);
-    if (!config || !config.isActive) return;
+    // Piloto apagado = alguien tomo el chat a mano. El bot se calla.
+    if (!conversation.autopilot.enabled) {
+      this.logger.debug(`Skipping AI response for ${input.conversationId} - piloto apagado`);
+      return;
+    }
+
+    const persona = await this.resolvePersona(conversation.tenantId, aiNode);
+    if (!persona) return;
+    const config = persona;
 
     // Un flujo activo es el dueño exclusivo de la conversación: un job de IA
     // encolado por un mensaje anterior no debe hablarle al cliente en paralelo.
@@ -111,16 +121,17 @@ export class ProcessAiResponseUseCase {
       }
     }
 
-    // Rate limit check
+    // Rate limit check - el tope es de la cuenta, no del nodo.
     const today = new Date().toISOString().slice(0, 10);
-    if (config.rateLimits.maxMessagesPerDay > 0) {
-      const usage = await this.usageRepo.getUsage(config.tenantId, agent.id, today);
-      if (usage && usage.messageCount >= config.rateLimits.maxMessagesPerDay) {
-        this.logger.warn(`AI agent ${agent.id} exceeded daily message limit`);
+    const rateLimits = (await this.tenantRepo.findById(conversation.tenantId))?.aiRateLimits;
+    if (rateLimits && rateLimits.maxMessagesPerDay > 0) {
+      const usage = await this.usageRepo.getUsage(conversation.tenantId, today);
+      if (usage && usage.messageCount >= rateLimits.maxMessagesPerDay) {
+        this.logger.warn(`La cuenta ${conversation.tenantId} supero el tope diario de mensajes de IA`);
         await this.conversationRepo.update(input.conversationId, { pendingAiSince: null } as any);
         await this.handoffUseCase.execute({
           conversationId: input.conversationId,
-          aiAgentId: agent.id,
+          aiName: persona.name,
           tenantId: conversation.tenantId,
           reason: 'Daily message limit exceeded',
         });
@@ -148,7 +159,7 @@ export class ProcessAiResponseUseCase {
       await this.conversationRepo.update(input.conversationId, { pendingAiSince: null } as any);
       await this.handoffUseCase.execute({
         conversationId: input.conversationId,
-        aiAgentId: agent.id,
+        aiName: persona.name,
         tenantId: conversation.tenantId,
         reason: preCheck.reason,
       });
@@ -242,8 +253,8 @@ export class ProcessAiResponseUseCase {
             contactId: conversation.contactId,
             phoneNumberId: conversation.phoneNumberId,
             tenantId: conversation.tenantId,
-            agentId: agent.id,
-            agentName: agent.name,
+            agentId: null,
+            agentName: persona.name,
           };
 
           for (const tc of result.toolCalls) {
@@ -275,7 +286,7 @@ export class ProcessAiResponseUseCase {
       }
     } catch (error: any) {
       typingLoop.stop();
-      this.logger.error(`AI tool loop failed for agent ${agent.id}: ${error.message}`, error.stack);
+      this.logger.error(`AI tool loop failed for node ${aiNode.nodeId}: ${error.message}`, error.stack);
       throw error;
     }
 
@@ -291,8 +302,10 @@ export class ProcessAiResponseUseCase {
 
     // Post-check: low-confidence handoff
     if (this.handoffDetection.isLowConfidenceResponse(responseContent)) {
+      // Solo cuentan las respuestas del bot: las de una persona o las que mando
+      // un nodo del flujo no son "fallas del asistente".
       const recentOutbound = messages
-        .filter((m) => m.direction === MessageDirection.OUTBOUND && m.senderAgentId === agent.id)
+        .filter((m) => m.direction === MessageDirection.OUTBOUND && m.senderKind === 'ai')
         .slice(-config.handoffRules.maxConsecutiveFailures);
 
       const consecutiveFailures = recentOutbound.filter((m) =>
@@ -305,7 +318,7 @@ export class ProcessAiResponseUseCase {
         await this.conversationRepo.update(input.conversationId, { pendingAiSince: null } as any);
         await this.handoffUseCase.execute({
           conversationId: input.conversationId,
-          aiAgentId: agent.id,
+          aiName: persona.name,
           tenantId: conversation.tenantId,
           reason: postCheck.reason,
           summary: conversation.summary ?? `Last AI response: "${responseContent.substring(0, 200)}"`,
@@ -331,7 +344,7 @@ export class ProcessAiResponseUseCase {
     }
 
     // ── Send & Record ───────────────────────────────────────────────────
-    await this.usageRepo.incrementUsage(config.tenantId, agent.id, today, bubbles.length, totalTokens.total);
+    await this.usageRepo.incrementUsage(conversation.tenantId, today, bubbles.length, totalTokens.total);
 
     await sendBubbles({
       messagingApi: this.messagingApi,
@@ -340,8 +353,9 @@ export class ProcessAiResponseUseCase {
       phone,
       recipient: recipientIdentityOf(sendContact),
       conversationId: conversation.id,
-      senderAgentId: agent.id,
-      senderAgentName: agent.name,
+      senderAgentId: null,
+      senderAgentName: persona.name,
+      senderKind: 'ai',
       bubbles,
       interBubbleDelayMs: config.multiMessage?.interBubbleDelayMs ?? 1200,
       replyToWaMessageId: lastInbound?.waMessageId ?? null,
@@ -356,7 +370,7 @@ export class ProcessAiResponseUseCase {
     if (pendingHandoffReason) {
       await this.handoffUseCase.execute({
         conversationId: input.conversationId,
-        aiAgentId: agent.id,
+        aiName: persona.name,
         tenantId: conversation.tenantId,
         reason: pendingHandoffReason,
         summary: conversation.summary ?? undefined,
@@ -365,6 +379,31 @@ export class ProcessAiResponseUseCase {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
+
+  /**
+   * La config con la que contesta: el negocio sale de la cuenta y la conducta
+   * del nodo de la version publicada. Esa version es inmutable, asi que editar
+   * el flujo no le cambia la personalidad a una conversacion ya en curso.
+   */
+  private async resolvePersona(
+    tenantId: string,
+    aiNode: { flowVersionId: string; nodeId: string },
+  ): Promise<AiPersona | null> {
+    const [tenant, versions] = await Promise.all([
+      this.tenantRepo.findById(tenantId),
+      this.versionRepo.findByIds([aiNode.flowVersionId]),
+    ]);
+    if (!tenant) return null;
+
+    const node = versions[0]?.graph.nodes.find((n) => n.id === aiNode.nodeId);
+    if (!node) {
+      // El flujo se archivo o el nodo se borro: sin config no se inventa una.
+      this.logger.warn(`El nodo de IA ${aiNode.nodeId} ya no existe: la conversacion queda sin bot`);
+      return null;
+    }
+
+    return resolveAiPersona(tenant, node.data as Record<string, any>);
+  }
 
   private startTypingLoop(
     params: import('../../ports/messaging-api.port.js').ReadReceiptParams | null,

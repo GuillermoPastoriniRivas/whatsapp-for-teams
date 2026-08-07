@@ -48,7 +48,7 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     description: "Se activa cuando un cliente escribe",
     category: "trigger",
     icon: Zap,
-    defaultData: { phoneScope: "all", phoneNumberIds: [], match: "any", keywords: [], keywordMode: "contains", onlyNewConversations: false, ignoreIfAssignedToHuman: true },
+    defaultData: { phoneScope: "all", phoneNumberIds: [], match: "any", keywords: [], keywordMode: "contains", onlyNewConversations: false },
   },
   {
     type: "trigger.webhook",

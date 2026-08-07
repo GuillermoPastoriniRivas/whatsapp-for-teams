@@ -11,8 +11,9 @@ export class ConversationNoteModel {
   @Prop({ type: Types.ObjectId, required: true })
   tenantId: Types.ObjectId;
 
-  @Prop({ required: true })
-  authorId: string;
+  /** Null cuando la nota la dejó el asistente y no una persona. */
+  @Prop({ type: String, default: null })
+  authorId: string | null;
 
   @Prop({ required: true })
   authorName: string;

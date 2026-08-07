@@ -52,7 +52,7 @@ const EMPTY_GRAPH: FlowGraph = {
       id: 'trigger',
       type: 'trigger.inbound_message',
       position: { x: 80, y: 200 },
-      data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: false, ignoreIfAssignedToHuman: true },
+      data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: false },
     },
   ],
   edges: [],

@@ -8,10 +8,10 @@ import type { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import type { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import type { MessageRepository } from '../../../domain/repositories/message.repository.js';
 import type { Message } from '../../../domain/entities/message.entity.js';
-import type { AiAgentConfig } from '../../../domain/entities/ai-agent-config.entity.js';
+import type { AiPersona } from '../../../domain/value-objects/ai-persona.js';
 import type { Contact } from '../../../domain/entities/contact.entity.js';
 import type { RecipientIdentity } from '../../../domain/value-objects/recipient-identity.js';
-import { messageToText } from '../../../domain/entities/message.entity.js';
+import { messageToText, type MessageSenderKind } from '../../../domain/entities/message.entity.js';
 import type { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
@@ -65,9 +65,9 @@ export function parseMultiMessageResponse(raw: string, maxBubbles: number, logge
   return [raw];
 }
 
-/** Compila el system prompt de un agente IA con el boilerplate de fecha/estado */
+/** Compila el system prompt del asistente con el boilerplate de fecha/estado */
 export function buildAgentSystemPrompt(params: {
-  config: AiAgentConfig;
+  config: AiPersona;
   contact: Contact | null;
   conversationSummary: string | null;
   labels: string[];
@@ -145,6 +145,8 @@ export interface SendBubblesParams {
   conversationId: string;
   senderAgentId: string | null;
   senderAgentName: string | null;
+  /** Quién escribe: distingue las burbujas del bot de las de un flujo. */
+  senderKind?: MessageSenderKind;
   bubbles: string[];
   interBubbleDelayMs: number;
   /**
@@ -199,6 +201,7 @@ export async function sendBubbles(params: SendBubblesParams): Promise<void> {
       timestamp: new Date(),
       senderAgentId: params.senderAgentId,
       senderAgentName: params.senderAgentName,
+      senderKind: params.senderKind ?? null,
     });
 
     gateway.emitToConversation(conversationId, 'message.new', message);

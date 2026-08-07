@@ -42,8 +42,6 @@ export interface FlowGraphRefs {
   labelIds: Set<string>;
   /** agentes humanos */
   agentIds: Set<string>;
-  /** agentes IA activos */
-  aiAgentIds: Set<string>;
   connectionIds: Set<string>;
   /** ids de las líneas del tenant */
   phones: Set<string>;
@@ -340,15 +338,15 @@ function validateNodeConfig(
     }
     case 'action.ai_reply':
     case 'action.handoff_ai': {
-      if (typeof data.aiAgentId !== 'string' || !refs.aiAgentIds.has(data.aiAgentId)) {
-        err('bad_ai_agent', 'Elegí un asistente IA activo.', id);
-      }
+      // La config del asistente vive en el propio nodo desde ago-2026: ya no
+      // hay un bot al que apuntar, así que no hay referencia que validar. Lo
+      // único que se pide es que tenga nombre, porque es lo que ve el cliente
+      // en la nota de derivación y en el historial del chat.
+      const name = String(data.name ?? '').trim();
+      if (name.length > 60) err('ai_name_too_long', 'El nombre del asistente supera los 60 caracteres.', id);
       break;
     }
     case 'logic.ai_route': {
-      if (typeof data.aiAgentId !== 'string' || !refs.aiAgentIds.has(data.aiAgentId)) {
-        err('bad_ai_agent', 'Elegí un asistente IA activo (se usa para la clasificación y su límite diario).', id);
-      }
       const options: Array<{ key?: string; label?: string }> = Array.isArray(data.options) ? data.options : [];
       if (options.length < 2 || options.length > 6) {
         err('ai_route_options', 'Definí entre 2 y 6 opciones de clasificación.', id);

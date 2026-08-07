@@ -8,6 +8,7 @@ import { ArrowLeft, User } from "lucide-react";
 import { ChatMenu } from "./chat-menu";
 import { AssignedToControl } from "./assigned-to-control";
 import { FlowChip } from "./flow-chip";
+import { AutopilotControl } from "./autopilot-control";
 import { avatarStyle, initials } from "@/lib/avatar";
 import { displayIdentity, identitySubtitle } from "@/lib/identity";
 import { useTranslations } from "@/lib/i18n/use-translations";
@@ -68,6 +69,7 @@ export function ChatHeader({ conversationId, onToggleContactInfo }: Props) {
 
         <div className="flex items-center gap-1 sm:gap-2">
           <FlowChip conversationId={conversationId} />
+          <AutopilotControl conversationId={conversationId} />
           <AssignedToControl
             conversationId={conversationId}
             assignedAgentId={conversation?.agentId}

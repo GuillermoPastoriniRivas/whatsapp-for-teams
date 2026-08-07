@@ -8,9 +8,6 @@ export class AiUsageModel {
   @Prop({ type: Types.ObjectId, required: true })
   tenantId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, required: true })
-  aiAgentId: Types.ObjectId;
-
   @Prop({ required: true })
   date: string;
 
@@ -23,4 +20,6 @@ export class AiUsageModel {
 
 export const AiUsageSchema = SchemaFactory.createForClass(AiUsageModel);
 
-AiUsageSchema.index({ tenantId: 1, aiAgentId: 1, date: 1 }, { unique: true });
+// El consumo se acumula por cuenta y día. Las filas viejas, que además tenían
+// aiAgentId, quedan fuera de este índice y las borra el script de migración.
+AiUsageSchema.index({ tenantId: 1, date: 1 }, { unique: true });

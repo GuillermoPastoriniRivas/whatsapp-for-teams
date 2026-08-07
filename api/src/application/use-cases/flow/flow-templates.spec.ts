@@ -12,7 +12,6 @@ const refs: FlowGraphRefs = {
   templates: new Map(),
   labelIds: new Set(),
   agentIds: new Set(),
-  aiAgentIds: new Set(),
   connectionIds: new Set(),
   phones: new Set(['linea-meta']),
 };

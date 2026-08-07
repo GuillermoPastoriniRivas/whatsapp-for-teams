@@ -30,6 +30,7 @@ export interface Conversation {
   agentType?: "human" | "ai" | null;
   labels?: { id: string; name: string; color: string }[];
   activeFlow?: { flowId: string; flowName: string; executionId: string; status: string } | null;
+  autopilot?: ConversationAutopilot | null;
   contact: {
     id: string;
     name: string;
@@ -45,6 +46,16 @@ export interface Conversation {
     /** Pidió no recibir marketing desde WhatsApp. Null = puede recibirlo. */
     marketingOptOutAt?: string | null;
   } | null;
+}
+
+/**
+ * Piloto automático de una conversación: si las automatizaciones pueden actuar
+ * sobre ella. Es un eje distinto del de `agentId` (quién es el responsable).
+ */
+export interface ConversationAutopilot {
+  enabled: boolean;
+  pausedReason: "agent_reply" | "manual" | null;
+  pausedAt: string | null;
 }
 
 export interface Contact {
@@ -346,56 +357,9 @@ export interface FaqEntry {
   answer: string;
 }
 
-export interface BusinessProfile {
-  vertical: BusinessVertical;
-  businessName: string;
-  description: string;
-  address: string;
-  paymentMethods: string;
-  catalog: CatalogItem[];
-  faqs: FaqEntry[];
-  extraNotes: string;
-}
-
-export interface BotBehavior {
-  language: string;
-  formality: "informal" | "formal";
-  useEmojis: boolean;
-  goal: string;
-  customInstructions: string;
-}
-
-export interface AiAgentConfig {
-  id: string;
-  agentId: string;
-  tenantId: string;
-  businessProfile: BusinessProfile;
-  behavior: BotBehavior;
-  handoffRules: {
-    keywords: string[];
-    maxConsecutiveFailures: number;
-    onCustomerRequest: boolean;
-    urgencyKeywords: string[];
-  };
-  contextConfig: {
-    maxHistoryMessages: number;
-    includeContactInfo: boolean;
-  };
-  rateLimits: {
-    maxMessagesPerDay: number;
-    maxTokensPerDay: number;
-  };
-  multiMessage?: {
-    enabled: boolean;
-    maxBubbles: number;
-    interBubbleDelayMs: number;
-    debounceWindowMs: number;
-    debounceMaxWaitMs: number;
-  };
-  timezone?: string | null;
-  businessHours?: BusinessHours | null;
-  isActive: boolean;
-}
+// El perfil del negocio y la conducta del asistente dejaron de vivir acá en
+// ago-2026: el perfil es AccountBusinessProfile (una vez por cuenta) y la
+// conducta viaja adentro del nodo de IA del flujo.
 
 export type WeekDay =
   | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
@@ -613,13 +577,20 @@ export interface ImportContactsResult {
   skipped: Array<{ row: number; reason: string }>;
 }
 
-export interface AiAgentWithConfig {
-  id: string;
-  name: string;
-  type: "ai";
-  status: string;
-  activeCount: number;
-  config: AiAgentConfig;
+/**
+ * Datos del negocio de la cuenta: lo que los nodos de IA usan para armar su
+ * prompt. No confundir con WhatsAppBusinessProfile, que es lo que ve el cliente
+ * al tocar el nombre del chat en su teléfono.
+ */
+export interface AccountBusinessProfile {
+  vertical: "beauty" | "food" | "retail" | "generic";
+  businessName: string;
+  description: string;
+  address: string;
+  paymentMethods: string;
+  catalog: Array<{ name: string; price: string; description: string }>;
+  faqs: Array<{ question: string; answer: string }>;
+  extraNotes: string;
 }
 
 // ── Flujos ────────────────────────────────────────────────────────

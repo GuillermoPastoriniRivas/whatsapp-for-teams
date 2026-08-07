@@ -7,7 +7,6 @@ export type { ConversationRepository, ConversationFilters, PaginatedResult } fro
 export type { ConversationEventRepository } from './conversation-event.repository.js';
 export type { MessageRepository } from './message.repository.js';
 export type { RefreshTokenRepository } from './refresh-token.repository.js';
-export type { AiAgentConfigRepository } from './ai-agent-config.repository.js';
 export type { AiUsageRepository } from './ai-usage.repository.js';
 export type { SubscriptionRepository } from './subscription.repository.js';
 export type { BillingRecordRepository } from './billing-record.repository.js';

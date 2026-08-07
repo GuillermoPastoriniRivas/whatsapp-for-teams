@@ -5,8 +5,10 @@ import { PaginatedResult } from './conversation.repository.js';
 
 export type UpsertMessageInput = Omit<
   Message,
-  'id' | 'campaignId' | 'waErrorCode' | 'waErrorMessage' | 'interactiveReplyId' | 'contextWaMessageId' | 'interactivePayload' | 'mediaAssetId' | 'location'
+  'id' | 'campaignId' | 'waErrorCode' | 'waErrorMessage' | 'interactiveReplyId' | 'contextWaMessageId' | 'interactivePayload' | 'mediaAssetId' | 'location' | 'senderKind'
 > & {
+  /** Quién lo escribió. Omitido = desconocido (mensajes previos a ago-2026). */
+  senderKind?: import('../entities/message.entity.js').MessageSenderKind | null;
   campaignId?: string | null;
   interactiveReplyId?: string | null;
   contextWaMessageId?: string | null;

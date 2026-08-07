@@ -1,7 +1,6 @@
 import { SubscriptionRepository } from '../../../domain/repositories/subscription.repository.js';
 import { PhoneNumberRepository } from '../../../domain/repositories/phone-number.repository.js';
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
-import { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-config.repository.js';
 import { SubscriptionStatus } from '../../../domain/enums/subscription-status.enum.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 import { PhoneNumberStatus } from '../../../domain/enums/phone-number-status.enum.js';
@@ -12,7 +11,6 @@ export class EnforcePlanLimitsUseCase {
     private readonly subscriptionRepo: SubscriptionRepository,
     private readonly phoneRepo: PhoneNumberRepository,
     private readonly agentRepo: AgentRepository,
-    private readonly aiConfigRepo: AiAgentConfigRepository,
   ) {}
 
   async execute(tenantId: string): Promise<void> {
@@ -23,7 +21,6 @@ export class EnforcePlanLimitsUseCase {
       await Promise.all([
         this.enforcePhones(tenantId, 0),
         this.enforceHumanAgents(tenantId, 0),
-        this.enforceAiBots(tenantId, 0),
       ]);
       return;
     }
@@ -33,8 +30,9 @@ export class EnforcePlanLimitsUseCase {
     await Promise.all([
       this.enforcePhones(tenantId, limits.maxPhoneNumbers),
       this.enforceHumanAgents(tenantId, limits.maxHumanAgents),
-      this.enforceAiBots(tenantId, limits.maxAiBots),
     ]);
+    // Los bots ya no se congelan de a uno: un "bot" es una automatización
+    // publicada con IA, y el tope se aplica al publicar (ver PublishFlowUseCase).
   }
 
   private async enforcePhones(tenantId: string, max: number): Promise<void> {
@@ -97,32 +95,4 @@ export class EnforcePlanLimitsUseCase {
     }
   }
 
-  private async enforceAiBots(tenantId: string, max: number): Promise<void> {
-    const configs = await this.aiConfigRepo.findByTenantId(tenantId);
-    if (max === -1) {
-      // Unlimited — activate all
-      for (const config of configs) {
-        if (!config.isActive) {
-          await this.aiConfigRepo.update(config.agentId, { isActive: true });
-        }
-      }
-      return;
-    }
-
-    const active = configs.filter(c => c.isActive);
-    const inactive = configs.filter(c => !c.isActive);
-
-    if (active.length > max) {
-      const sorted = [...active].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      const toFreeze = sorted.slice(0, active.length - max);
-      for (const config of toFreeze) {
-        await this.aiConfigRepo.update(config.agentId, { isActive: false });
-      }
-    } else if (active.length < max) {
-      const toUnfreeze = inactive.slice(0, max - active.length);
-      for (const config of toUnfreeze) {
-        await this.aiConfigRepo.update(config.agentId, { isActive: true });
-      }
-    }
-  }
 }

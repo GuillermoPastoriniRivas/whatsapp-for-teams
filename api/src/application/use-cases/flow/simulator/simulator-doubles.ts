@@ -126,10 +126,10 @@ export class NoopNodeStats implements FlowNodeStatRepository {
   }
 }
 
-/** El uso de la prueba no descuenta del límite diario del bot. */
+/** El uso de la prueba no descuenta del tope diario de IA de la cuenta. */
 export class NoopAiUsage implements AiUsageRepository {
-  async incrementUsage(tenantId: string, aiAgentId: string, date: string): Promise<AiUsage> {
-    return { id: 'sim', tenantId, aiAgentId, date, messageCount: 0, tokenCount: 0 } as AiUsage;
+  async incrementUsage(tenantId: string, date: string, _messageDelta: number, _tokenDelta: number): Promise<AiUsage> {
+    return { id: 'sim', tenantId, date, messageCount: 0, tokenCount: 0 } as AiUsage;
   }
   async getUsage(): Promise<AiUsage | null> {
     return null;
@@ -192,6 +192,14 @@ export class InMemoryFlowExecutionRepository implements FlowExecutionRepository 
   }
 
   async cancelActiveByConversation(): Promise<FlowExecution | null> {
+    return null;
+  }
+  // El probador corre un turno completo de punta a punta: nadie escribe por el
+  // medio, así que el piloto nunca se apaga durante una simulación.
+  async pauseActiveByConversation(): Promise<FlowExecution | null> {
+    return null;
+  }
+  async resumePausedByConversation(): Promise<FlowExecution | null> {
     return null;
   }
   async cancelActiveByFlowId(): Promise<number> {

@@ -25,9 +25,9 @@ export interface FindOrCreateResult {
 }
 
 export interface ConversationRepository {
-  create(conversation: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount'>): Promise<Conversation>;
+  create(conversation: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount' | 'autopilot'>): Promise<Conversation>;
   findOrCreateByContactAndPhone(
-    data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount'>,
+    data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount' | 'autopilot'>,
   ): Promise<FindOrCreateResult>;
   findById(id: string): Promise<Conversation | null>;
   findOpenByContactAndPhone(contactId: string, phoneNumberId: string): Promise<Conversation | null>;

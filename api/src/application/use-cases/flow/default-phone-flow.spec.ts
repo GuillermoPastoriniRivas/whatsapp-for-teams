@@ -12,7 +12,6 @@ const refs: FlowGraphRefs = {
   templates: new Map(),
   labelIds: new Set(),
   agentIds: new Set(),
-  aiAgentIds: new Set(['bot-1']),
   connectionIds: new Set(),
   phones: new Set(['linea-1']),
 };
@@ -24,7 +23,7 @@ describe('automatización base de un número', () => {
   });
 
   it('el grafo que entrega al bot publica sin errores', () => {
-    const graph = buildDefaultPhoneFlowGraph('linea-1', { kind: 'ai', aiAgentId: 'bot-1' });
+    const graph = buildDefaultPhoneFlowGraph('linea-1', { kind: 'ai', assistant: { name: 'Asistente' } });
     expect(validateFlowGraph(graph, refs).errors).toEqual([]);
   });
 
@@ -35,8 +34,6 @@ describe('automatización base de un número', () => {
     expect(trigger.data.phoneNumberIds).toEqual(['linea-1']);
     // Sin esto reasignaría en cada mensaje entrante, no solo al abrir el chat.
     expect(trigger.data.onlyNewConversations).toBe(true);
-    // Un humano que ya está atendiendo no puede ser pisado por la base.
-    expect(trigger.data.ignoreIfAssignedToHuman).toBe(true);
   });
 });
 
@@ -133,11 +130,15 @@ describe('red de seguridad del router', () => {
       autoAssign as any,
     );
 
-  const input = (created: boolean) =>
+  const input = (created: boolean, autopilotOn = true) =>
     ({
       tenantId: 't1',
       phoneId: 'linea-1',
-      conversation: { id: 'c1', agentId: null },
+      conversation: {
+        id: 'c1',
+        agentId: null,
+        autopilot: { enabled: autopilotOn, pausedReason: null, pausedAt: null },
+      },
       contact: { id: 'ct1' },
       message: { id: 'm1' },
       created,
@@ -162,5 +163,34 @@ describe('red de seguridad del router', () => {
     expect(result.handled).toBe(false);
     expect(result.fallbackAgent).toBeNull();
     expect(autoAssign.execute).not.toHaveBeenCalled();
+  });
+});
+
+describe('piloto automático apagado', () => {
+  it('ninguna automatización actúa, pero el chat nuevo igual se reparte', async () => {
+    // Esta es la regla que reemplazó a `ignoreIfAssignedToHuman`: alguien tomó
+    // el chat, así que los flujos no lo tocan hasta que vuelva a prenderse.
+    const autoAssign = { execute: jest.fn().mockResolvedValue({ id: 'agente-1' }) };
+    const execRepo = { findActiveByConversationId: jest.fn() };
+    const flowRepo = { findPublishedByTenantId: jest.fn() };
+    const router = new FlowInboundRouterUseCase(
+      flowRepo as any, {} as any, execRepo as any, {} as any, {} as any,
+      {} as any, {} as any, {} as any, {} as any, autoAssign as any,
+    );
+
+    const result = await router.route({
+      tenantId: 't1',
+      phoneId: 'linea-1',
+      conversation: { id: 'c1', agentId: null, autopilot: { enabled: false, pausedReason: 'agent_reply', pausedAt: new Date() } },
+      contact: { id: 'ct1' },
+      message: { id: 'm1' },
+      created: true,
+      promotedFromCampaign: false,
+    } as any);
+
+    expect(result.handled).toBe(false);
+    // Corta antes de mirar siquiera si hay flujos publicados.
+    expect(flowRepo.findPublishedByTenantId).not.toHaveBeenCalled();
+    expect(execRepo.findActiveByConversationId).not.toHaveBeenCalled();
   });
 });

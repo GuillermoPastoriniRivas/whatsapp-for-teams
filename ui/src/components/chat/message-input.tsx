@@ -19,6 +19,7 @@ import {
 import { MediaPickerDialog } from "@/components/media/media-picker-dialog";
 import { AttachmentPreview, type PendingAttachment } from "./attachment-preview";
 import { FlowComposerNote } from "./flow-chip";
+import { AutopilotComposerNote } from "./autopilot-control";
 import { FolderOpen, Paperclip, SendHorizontal, Smile, Upload, X } from "lucide-react";
 import type { MediaAsset } from "@/types";
 
@@ -122,6 +123,7 @@ export function MessageInput({ conversationId }: Props) {
   return (
     <>
       <FlowComposerNote conversationId={conversationId} />
+      <AutopilotComposerNote conversationId={conversationId} />
 
       {replyTo && (
         <div className="flex shrink-0 items-center gap-2 border-t border-border bg-[var(--asis-surface-header)] px-4 py-2 sm:px-6">

@@ -7,7 +7,7 @@ export class ConversationNoteMapper {
       doc._id.toHexString(),
       doc.conversationId.toHexString(),
       doc.tenantId.toHexString(),
-      doc.authorId,
+      doc.authorId ?? null,
       doc.authorName,
       doc.body,
       doc.createdAt,

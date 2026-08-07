@@ -105,6 +105,54 @@ export class MongoFlowExecutionRepository implements FlowExecutionRepository {
     return doc ? FlowExecutionMapper.toDomain(doc) : null;
   }
 
+  /**
+   * Congela la ejecución viva conservando su punto (currentNodeId, waitState,
+   * variables). El token rota, así que cualquier job en vuelo — un delay que
+   * está por vencer, un resume encolado — queda como no-op al llegar.
+   */
+  async pauseActiveByConversation(conversationId: string, reason: string): Promise<FlowExecution | null> {
+    const doc = await this.model.findOneAndUpdate(
+      { conversationId: new Types.ObjectId(conversationId), status: { $in: ACTIVE_STATUSES } },
+      {
+        $set: {
+          status: FlowExecutionStatus.PAUSED,
+          endReason: reason,
+          runningSince: null,
+          resumeToken: randomBytes(16).toString('hex'),
+        },
+      },
+      { returnDocument: 'after' },
+    );
+    return doc ? FlowExecutionMapper.toDomain(doc) : null;
+  }
+
+  /**
+   * Devuelve la ejecución a la vida. Vuelve siempre a WAITING cuando quedó
+   * esperando algo y a RUNNING si la pausamos a mitad de un paso; el caller
+   * decide qué job reencolar mirando el waitState.
+   */
+  async resumePausedByConversation(conversationId: string): Promise<FlowExecution | null> {
+    const paused = await this.model.findOne({
+      conversationId: new Types.ObjectId(conversationId),
+      status: FlowExecutionStatus.PAUSED,
+    });
+    if (!paused) return null;
+
+    const doc = await this.model.findOneAndUpdate(
+      { _id: paused._id, status: FlowExecutionStatus.PAUSED },
+      {
+        $set: {
+          status: paused.waitState ? FlowExecutionStatus.WAITING : FlowExecutionStatus.RUNNING,
+          endReason: null,
+          runningSince: paused.waitState ? null : new Date(),
+          resumeToken: randomBytes(16).toString('hex'),
+        },
+      },
+      { returnDocument: 'after' },
+    );
+    return doc ? FlowExecutionMapper.toDomain(doc) : null;
+  }
+
   async cancelActiveByFlowId(flowId: string, endReason: string): Promise<number> {
     const result = await this.model.updateMany(
       { flowId: new Types.ObjectId(flowId), status: { $in: ACTIVE_STATUSES } },

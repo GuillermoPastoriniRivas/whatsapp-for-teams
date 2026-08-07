@@ -130,7 +130,8 @@ export function defaultCopy(answers: AssistantAnswers): AssistantCopy {
 export function buildAssistantGraph(
   answers: AssistantAnswers,
   copy: AssistantCopy,
-  aiAgentId: string,
+  /** Config del asistente, embebida en los nodos de IA (ya no hay bot aparte). */
+  aiConfig: Record<string, unknown>,
 ): FlowGraph {
   const chosen = topicsFor(answers.vertical).filter(
     (topic) => answers.topics.includes(topic.id) || topic.id === 'humano',
@@ -154,7 +155,6 @@ export function buildAssistantGraph(
       keywords: [],
       keywordMode: 'contains',
       onlyNewConversations: false,
-      ignoreIfAssignedToHuman: true,
     },
   });
 
@@ -207,7 +207,7 @@ export function buildAssistantGraph(
         id: nodeId,
         type: 'action.handoff_ai',
         position: { x: 700, y },
-        data: { aiAgentId },
+        data: { ...aiConfig },
       });
     }
 
@@ -248,7 +248,7 @@ export function buildAssistantGraph(
       id: fallbackId,
       type: 'action.handoff_ai',
       position: { x: 700, y: fallbackY },
-      data: { aiAgentId },
+      data: { ...aiConfig },
     });
   }
 

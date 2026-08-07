@@ -15,4 +15,7 @@ export enum ConversationEventType {
   FLOW_COMPLETED = 'flow_completed',
   FLOW_FAILED = 'flow_failed',
   FLOW_STOPPED = 'flow_stopped',
+  /** Piloto automático del chat: prendido / apagado (ver SetAutopilotUseCase) */
+  AUTOPILOT_ON = 'autopilot_on',
+  AUTOPILOT_OFF = 'autopilot_off',
 }

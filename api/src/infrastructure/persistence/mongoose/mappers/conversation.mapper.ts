@@ -1,4 +1,4 @@
-import { Conversation } from '../../../../domain/entities/conversation.entity.js';
+import { Conversation, AUTOPILOT_ON, type AutopilotPausedReason } from '../../../../domain/entities/conversation.entity.js';
 import { ConversationStatus } from '../../../../domain/enums/conversation-status.enum.js';
 import { ConversationOrigin } from '../../../../domain/enums/conversation-origin.enum.js';
 import { ConversationDocument } from '../schemas/conversation.schema.js';
@@ -23,6 +23,14 @@ export class ConversationMapper {
       doc.hasReplied ?? true,
       doc.repliedAt ?? null,
       doc.unreadCount ?? 0,
+      doc.autopilot
+        ? {
+            enabled: doc.autopilot.enabled !== false,
+            pausedReason: (doc.autopilot.pausedReason as AutopilotPausedReason | null) ?? null,
+            pausedAt: doc.autopilot.pausedAt ?? null,
+            aiNode: doc.autopilot.aiNode ?? null,
+          }
+        : AUTOPILOT_ON,
     );
   }
 }

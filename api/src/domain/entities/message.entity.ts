@@ -3,6 +3,9 @@ import { MessageType } from '../enums/message-type.enum.js';
 import { MessageWaStatus } from '../enums/message-wa-status.enum.js';
 import { MessageLocation, formatLocation } from '../value-objects/message-location.js';
 
+/** Quién originó un mensaje saliente. */
+export type MessageSenderKind = 'agent' | 'ai' | 'flow' | 'campaign' | 'api';
+
 export class Message {
   constructor(
     public readonly id: string,
@@ -30,6 +33,14 @@ export class Message {
     public readonly mediaAssetId: string | null = null,
     /** Coordenadas de un mensaje `location`, para dibujar el mapa en el chat. */
     public readonly location: MessageLocation | null = null,
+    /**
+     * Quién escribió el saliente. Antes se deducía de `senderAgentId`, pero
+     * desde que el bot dejó de ser un agente los mensajes de IA y los de una
+     * automatización quedaron los dos en null y se volvieron indistinguibles —
+     * y de esa distinción depende el conteo de respuestas fallidas seguidas
+     * que dispara la derivación a un humano.
+     */
+    public readonly senderKind: MessageSenderKind | null = null,
   ) {}
 }
 

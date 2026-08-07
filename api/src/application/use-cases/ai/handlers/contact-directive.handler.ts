@@ -20,7 +20,8 @@ export class ContactDirectiveHandler {
     contactId: string,
     conversationId: string,
     tenantId: string,
-    performedBy: string,
+    /** Null cuando el cambio lo hizo el asistente y no una persona. */
+    performedBy: string | null,
   ): Promise<string> {
     const { field, value } = params;
     if (!field || !value) return 'No field or value provided';

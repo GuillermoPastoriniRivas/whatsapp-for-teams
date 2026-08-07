@@ -1,13 +1,14 @@
 import { SubscriptionRepository } from '../../../domain/repositories/subscription.repository.js';
 import { PhoneNumberRepository } from '../../../domain/repositories/phone-number.repository.js';
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
-import { AiAgentConfigRepository } from '../../../domain/repositories/ai-agent-config.repository.js';
 import { PhoneNumberStatus } from '../../../domain/enums/phone-number-status.enum.js';
 import { effectiveLimits } from './plan-resolution.util.js';
 import { Result, ok, err } from '../../common/result.js';
 import { DomainError } from '../../../domain/errors/domain-errors.js';
 
-export type ResourceType = 'phone_numbers' | 'human_agents' | 'ai_bots';
+// Los bots salieron: no son entidades que se prendan y apaguen, son nodos
+// de una automatización. El tope se aplica al publicarla.
+export type ResourceType = 'phone_numbers' | 'human_agents';
 
 export interface ToggleResourceInput {
   tenantId: string;
@@ -21,7 +22,6 @@ export class ToggleResourceUseCase {
     private readonly subscriptionRepo: SubscriptionRepository,
     private readonly phoneRepo: PhoneNumberRepository,
     private readonly agentRepo: AgentRepository,
-    private readonly aiConfigRepo: AiAgentConfigRepository,
   ) {}
 
   async execute(input: ToggleResourceInput): Promise<Result<{ activated: string; deactivated?: string }, DomainError>> {
@@ -33,8 +33,6 @@ export class ToggleResourceUseCase {
         return this.togglePhone(input, limits.maxPhoneNumbers);
       case 'human_agents':
         return this.toggleAgent(input, limits.maxHumanAgents);
-      case 'ai_bots':
-        return this.toggleAiBot(input, limits.maxAiBots);
     }
   }
 
@@ -80,23 +78,4 @@ export class ToggleResourceUseCase {
     return ok({ activated: input.activateId, deactivated: input.deactivateId });
   }
 
-  private async toggleAiBot(input: ToggleResourceInput, max: number): Promise<Result<{ activated: string; deactivated?: string }, DomainError>> {
-    if (max === -1) {
-      await this.aiConfigRepo.update(input.activateId, { isActive: true });
-      return ok({ activated: input.activateId });
-    }
-
-    if (input.deactivateId) {
-      await this.aiConfigRepo.update(input.deactivateId, { isActive: false });
-    } else {
-      const configs = await this.aiConfigRepo.findByTenantId(input.tenantId);
-      const activeCount = configs.filter(c => c.isActive).length;
-      if (activeCount >= max) {
-        return err(new DomainError('PLAN_LIMIT_EXCEEDED', `Cannot activate: ${activeCount}/${max} AI bots active. Deactivate one first.`));
-      }
-    }
-
-    await this.aiConfigRepo.update(input.activateId, { isActive: true });
-    return ok({ activated: input.activateId, deactivated: input.deactivateId });
-  }
 }

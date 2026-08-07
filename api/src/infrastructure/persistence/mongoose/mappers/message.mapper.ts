@@ -1,4 +1,4 @@
-import { Message } from '../../../../domain/entities/message.entity.js';
+import { Message, type MessageSenderKind } from '../../../../domain/entities/message.entity.js';
 import { MessageDirection } from '../../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../../domain/enums/message-wa-status.enum.js';
@@ -27,6 +27,7 @@ export class MessageMapper {
       doc.interactivePayload ?? null,
       doc.mediaAssetId?.toHexString() ?? null,
       doc.location ?? null,
+      (doc.senderKind as MessageSenderKind | null) ?? null,
     );
   }
 }

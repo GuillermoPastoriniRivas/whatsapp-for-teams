@@ -42,6 +42,10 @@ export class MessageModel {
   @Prop({ type: String, default: null })
   senderAgentName: string | null;
 
+  /** 'agent' | 'ai' | 'flow' | 'campaign' | 'api'. Null en los previos a ago-2026. */
+  @Prop({ type: String, default: null })
+  senderKind: string | null;
+
   @Prop({ type: Types.ObjectId, default: null })
   campaignId: Types.ObjectId | null;
 

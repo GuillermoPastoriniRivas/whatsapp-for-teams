@@ -6,7 +6,7 @@ import { CheckCircle2, Circle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { api } from "@/lib/api";
-import type { PhoneNumber } from "@/types";
+import type { PhoneNumber, FlowSummary } from "@/types";
 
 export function OnboardingChecklist() {
   const { t } = useTranslations();
@@ -19,13 +19,14 @@ export function OnboardingChecklist() {
     Promise.all([
       api.get<PhoneNumber[]>("/phone-numbers").catch(() => [] as PhoneNumber[]),
       api.get<{ data?: { role: string }[] } | { role: string }[]>("/agents").catch(() => []),
-      api.get<{ data?: unknown[] } | unknown[]>("/ai-agents").catch(() => []),
+      // "Tener IA" ahora es tener una automatización publicada con un nodo de IA.
+      api.get<FlowSummary[]>("/flows").catch(() => [] as FlowSummary[]),
     ]).then(([phonesRes, agentsRes, aiRes]) => {
       setPhones(Array.isArray(phonesRes) ? phonesRes : []);
       const agents = Array.isArray(agentsRes) ? agentsRes : (agentsRes as { data?: { role: string }[] }).data ?? [];
       setAgentCount(agents.filter((a: { role: string }) => a.role === "agent").length);
-      const ais = Array.isArray(aiRes) ? aiRes : (aiRes as { data?: unknown[] }).data ?? [];
-      setAiCount(ais.length);
+      const flows = Array.isArray(aiRes) ? aiRes : [];
+      setAiCount(flows.filter((f) => f.status === "published").length);
       setLoaded(true);
     });
   }, []);
@@ -57,7 +58,7 @@ export function OnboardingChecklist() {
     {
       label: hasAi ? t.onboarding.checklistAi : t.onboarding.checklistAiCta,
       done: hasAi,
-      link: hasAi ? null : "/agents",
+      link: hasAi ? null : "/flows",
     },
   ];
 

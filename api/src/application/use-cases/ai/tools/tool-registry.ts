@@ -5,7 +5,8 @@ export interface ToolContext {
   contactId: string;
   phoneNumberId: string;
   tenantId: string;
-  agentId: string;
+  /** Null cuando actúa el asistente y no una persona. */
+  agentId: string | null;
   agentName: string;
 }
 

@@ -19,7 +19,8 @@ export const DEFAULT_FLOW_PRIORITY = 1_000_000;
 /** Quién atiende cuando ninguna otra automatización agarró el mensaje. */
 export type DefaultResponder =
   | { kind: 'team' }
-  | { kind: 'ai'; aiAgentId: string };
+  /** El nodo lleva la conducta del asistente adentro: no hay bot al que apuntar. */
+  | { kind: 'ai'; assistant: Record<string, unknown> };
 
 export function defaultFlowName(phoneLabel: string): string {
   return `Atención de ${phoneLabel}`.substring(0, 80);
@@ -36,7 +37,7 @@ export const DEFAULT_FLOW_DESCRIPTION =
 export function buildDefaultPhoneFlowGraph(phoneNumberId: string, responder: DefaultResponder): FlowGraph {
   const handoff =
     responder.kind === 'ai'
-      ? { type: 'action.handoff_ai', data: { aiAgentId: responder.aiAgentId } as Record<string, unknown> }
+      ? { type: 'action.handoff_ai', data: { ...responder.assistant } as Record<string, unknown> }
       : { type: 'action.handoff_human', data: { note: '' } as Record<string, unknown> };
 
   return {
@@ -52,7 +53,6 @@ export function buildDefaultPhoneFlowGraph(phoneNumberId: string, responder: Def
           keywords: [],
           keywordMode: 'contains',
           onlyNewConversations: true,
-          ignoreIfAssignedToHuman: true,
         },
       },
       {

@@ -9,7 +9,8 @@
 
 import { Logger } from '@nestjs/common';
 import type { AiCompletionPort } from '../../../ports/ai-completion.port.js';
-import { CreateAiAgentUseCase } from '../../ai/create-ai-agent.use-case.js';
+import type { TenantRepository } from '../../../../domain/repositories/tenant.repository.js';
+import { EMPTY_BUSINESS_PROFILE } from '../../../../domain/value-objects/business-profile.js';
 import { CreateFlowUseCase } from '../create-flow.use-case.js';
 import { UpdateFlowUseCase } from '../update-flow.use-case.js';
 import { PublishFlowUseCase } from '../publish-flow.use-case.js';
@@ -27,7 +28,6 @@ export interface SetupAssistantInput extends AssistantAnswers {
 }
 
 export interface SetupAssistantOutput {
-  aiAgentId: string;
   flowId: string;
   published: boolean;
   /** Motivo por el que no se pudo publicar, si aplica */
@@ -38,7 +38,7 @@ export class SetupAssistantUseCase {
   private readonly logger = new Logger(SetupAssistantUseCase.name);
 
   constructor(
-    private readonly createAiAgent: CreateAiAgentUseCase,
+    private readonly tenantRepo: TenantRepository,
     private readonly createFlow: CreateFlowUseCase,
     private readonly updateFlow: UpdateFlowUseCase,
     private readonly publishFlow: PublishFlowUseCase,
@@ -46,24 +46,28 @@ export class SetupAssistantUseCase {
   ) {}
 
   async execute(input: SetupAssistantInput): Promise<Result<SetupAssistantOutput, DomainError>> {
-    // 1. El asistente IA, con el perfil que sale de las respuestas.
-    const agentResult = await this.createAiAgent.execute({
-      tenantId: input.tenantId,
-      name: input.assistantName?.trim() || `Asistente de ${input.businessName}`.substring(0, 60),
+    // 1. Los datos del negocio van a la cuenta: son del negocio, no del bot,
+    // y todos los nodos de IA de todos los flujos los leen de ahí.
+    await this.tenantRepo.updateBusinessProfile(input.tenantId, {
       businessProfile: {
+        ...EMPTY_BUSINESS_PROFILE,
         vertical: input.vertical,
         businessName: input.businessName,
         description: input.description ?? '',
         address: input.address ?? '',
         extraNotes: `Horario de atención: ${describeSchedule(input.schedule)}.`,
       },
+      timezone: input.schedule.timezone,
+    });
+
+    // La conducta, en cambio, viaja adentro de los nodos de IA del grafo.
+    const aiConfig = {
+      name: input.assistantName?.trim() || `Asistente de ${input.businessName}`.substring(0, 60),
       behavior: {
         goal: 'Resolver la consulta del cliente y, si no podés, pasarlo con una persona del equipo.',
       },
       handoffRules: { onCustomerRequest: true, maxConsecutiveFailures: 3 },
-    } as any);
-    if (!agentResult.ok) return err(agentResult.error);
-    const aiAgentId = agentResult.value.agent.id;
+    };
 
     // 2. Los textos: la IA los personaliza, pero nunca bloquea el alta.
     const copy = await this.writeCopy(input);
@@ -78,7 +82,7 @@ export class SetupAssistantUseCase {
     if (!flowResult.ok) return err(flowResult.error);
     const flowId = flowResult.value.id;
 
-    const graph = buildAssistantGraph(input, copy, aiAgentId);
+    const graph = buildAssistantGraph(input, copy, aiConfig);
     const updated = await this.updateFlow.execute({
       tenantId: input.tenantId,
       flowId,
@@ -90,7 +94,7 @@ export class SetupAssistantUseCase {
     // borrador y se le dice por qué: nunca se pierde el trabajo.
     const publishResult = await this.publishFlow.execute(input.tenantId, flowId, input.createdByAgentId);
     if (publishResult.ok) {
-      return ok({ aiAgentId, flowId, published: true, publishBlockedReason: null });
+      return ok({ flowId, published: true, publishBlockedReason: null });
     }
 
     const reason =
@@ -98,7 +102,7 @@ export class SetupAssistantUseCase {
         ? publishResult.error.errors.map((e) => e.message).join(' ')
         : publishResult.error.message;
     this.logger.warn(`Alta guiada: el flujo ${flowId} quedó en borrador — ${reason}`);
-    return ok({ aiAgentId, flowId, published: false, publishBlockedReason: reason });
+    return ok({ flowId, published: false, publishBlockedReason: reason });
   }
 
   /**

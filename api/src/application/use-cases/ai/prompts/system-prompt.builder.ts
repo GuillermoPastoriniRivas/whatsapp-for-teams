@@ -1,4 +1,5 @@
-import type { BusinessProfile, BotBehavior } from '../../../../domain/entities/ai-agent-config.entity.js';
+import type { BusinessProfile } from '../../../../domain/value-objects/business-profile.js';
+import type { BotBehavior } from '../../../../domain/value-objects/ai-persona.js';
 import { getVerticalTemplate } from './vertical-templates.js';
 
 export interface SystemPromptContext {

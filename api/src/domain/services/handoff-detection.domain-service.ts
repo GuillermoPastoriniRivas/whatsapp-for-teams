@@ -1,4 +1,4 @@
-import type { HandoffRules } from '../entities/ai-agent-config.entity.js';
+import type { HandoffRules } from '../value-objects/ai-persona.js';
 
 export interface HandoffResult {
   trigger: boolean;

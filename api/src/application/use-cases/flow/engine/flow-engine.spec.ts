@@ -114,7 +114,6 @@ describe('flow-graph.validator', () => {
     templates: new Map(),
     labelIds: new Set(),
     agentIds: new Set(),
-    aiAgentIds: new Set(['bot1']),
     connectionIds: new Set(),
     phones: new Set(['p1']),
   };
@@ -123,7 +122,7 @@ describe('flow-graph.validator', () => {
     id: 't',
     type: 'trigger.inbound_message',
     position: { x: 0, y: 0 },
-    data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: false, ignoreIfAssignedToHuman: true },
+    data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: false },
   };
 
   it('acepta un flujo mínimo válido', () => {
@@ -200,7 +199,7 @@ describe('flow-graph.validator', () => {
     expect(errors).toEqual([]);
   });
 
-  it('exige fallback conectado en ai_route y valida referencias', () => {
+  it('exige la rama de fallback conectada en ai_route', () => {
     const graph: FlowGraph = {
       nodes: [
         trigger,
@@ -208,13 +207,15 @@ describe('flow-graph.validator', () => {
           id: 'r',
           type: 'logic.ai_route',
           position: { x: 1, y: 0 },
-          data: { aiAgentId: 'inexistente', options: [{ key: 'a', label: 'A' }, { key: 'b', label: 'B' }] },
+          data: { options: [{ key: 'a', label: 'A' }, { key: 'b', label: 'B' }] },
         },
       ],
       edges: [{ id: 'e1', source: 't', sourceHandle: 'out', target: 'r' }],
     };
     const { errors } = validateFlowGraph(graph, refs);
-    expect(errors.some((e) => e.code === 'bad_ai_agent')).toBe(true);
+    // Sin la salida "no se pudo clasificar" conectada, una respuesta que la IA
+    // no reconoce corta la ejecución sin contestar ni derivar.
+    expect(errors.some((e) => e.code === 'ai_route_fallback')).toBe(true);
   });
 
   it('bloquea una plantilla que pertenece a otro número', () => {
@@ -330,7 +331,6 @@ describe('flow-graph.validator — ubicación y botón con link', () => {
     templates: new Map(),
     labelIds: new Set(),
     agentIds: new Set(),
-    aiAgentIds: new Set(),
     connectionIds: new Set(),
     phones: new Set(['p1']),
   };
@@ -339,7 +339,7 @@ describe('flow-graph.validator — ubicación y botón con link', () => {
     id: 't',
     type: 'trigger.inbound_message',
     position: { x: 0, y: 0 },
-    data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: false, ignoreIfAssignedToHuman: true },
+    data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: false },
   };
 
   const graphWith = (node: Record<string, unknown>): FlowGraph => ({

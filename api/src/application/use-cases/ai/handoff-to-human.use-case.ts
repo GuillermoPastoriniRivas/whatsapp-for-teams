@@ -1,5 +1,4 @@
 import { ConversationRepository } from '../../../domain/repositories/conversation.repository.js';
-import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { ConversationNoteRepository } from '../../../domain/repositories/conversation-note.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
@@ -9,7 +8,8 @@ import { ConversationStatus } from '../../../domain/enums/conversation-status.en
 
 export interface HandoffInput {
   conversationId: string;
-  aiAgentId: string;
+  /** Nombre con el que se presentó el asistente; solo para la nota y el evento. */
+  aiName: string;
   tenantId: string;
   reason: string;
   summary?: string;
@@ -18,7 +18,6 @@ export interface HandoffInput {
 export class HandoffToHumanUseCase {
   constructor(
     private readonly conversationRepo: ConversationRepository,
-    private readonly agentRepo: AgentRepository,
     private readonly noteRepo: ConversationNoteRepository,
     private readonly eventRepo: ConversationEventRepository,
     private readonly gateway: RealtimeGatewayPort,
@@ -29,8 +28,7 @@ export class HandoffToHumanUseCase {
     const conversation = await this.conversationRepo.findById(input.conversationId);
     if (!conversation) return;
 
-    const aiAgent = await this.agentRepo.findById(input.aiAgentId);
-    const aiName = aiAgent?.name ?? 'AI Agent';
+    const aiName = input.aiName || 'Asistente';
 
     // Add note with handoff context
     const noteBody = input.summary
@@ -40,7 +38,7 @@ export class HandoffToHumanUseCase {
     await this.noteRepo.create({
       conversationId: input.conversationId,
       tenantId: input.tenantId,
-      authorId: input.aiAgentId,
+      authorId: null,
       authorName: aiName,
       body: noteBody,
     });
@@ -50,18 +48,19 @@ export class HandoffToHumanUseCase {
       conversationId: input.conversationId,
       tenantId: input.tenantId,
       type: ConversationEventType.HANDOFF,
-      performedBy: input.aiAgentId,
+      performedBy: null,
       data: { reason: input.reason, aiAgentName: aiName },
     });
     this.gateway.emitToConversation(input.conversationId, 'conversation.event', event);
 
-    // Decrement AI agent's active count
-    await this.agentRepo.incrementActiveCount(input.aiAgentId, -1);
-
-    // Set conversation to unassigned so auto-assign can pick a human
+    // El bot suelta la conversación: se limpia el puntero del piloto para que
+    // ningún job de IA pendiente le siga hablando al cliente por encima del
+    // humano que va a tomarla.
     await this.conversationRepo.update(input.conversationId, {
       agentId: null,
       status: ConversationStatus.UNASSIGNED,
+      pendingAiSince: null,
+      autopilot: { enabled: true, pausedReason: null, pausedAt: null, aiNode: null },
     } as any);
 
     // El reparto nunca devuelve bots, así que esto no puede rebotar al mismo
