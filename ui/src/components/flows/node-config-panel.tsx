@@ -15,11 +15,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { NODE_BY_TYPE, CATEGORY_STYLES } from "@/lib/flows/node-catalog";
 import { useTranslations } from "@/lib/i18n/use-translations";
-import type { FlowNode, FlowEdge, Label, AiAgentWithConfig, Agent, PhoneNumber, MessageTemplate } from "@/types";
+import type { FlowNode, FlowEdge, Label, Agent, PhoneNumber, MessageTemplate } from "@/types";
 
 export interface BuilderRefs {
   labels: Label[];
-  aiAgents: AiAgentWithConfig[];
   agents: Agent[];
   phones: PhoneNumber[];
   templates: MessageTemplate[];
@@ -161,19 +160,11 @@ function renderForm(
     case "action.ask":
       return <AskForm data={data} set={set} />;
     case "action.ai_reply":
-      return (
-        <>
-          <AiAgentField data={data} set={set} refs={refs} />
-          <div>
-            <FieldLabel>Instrucciones extra (opcional)</FieldLabel>
-            <Textarea rows={3} value={data.instructions ?? ""} placeholder="Ej: respondé solo consultas de horarios y precios" onChange={(e) => set({ instructions: e.target.value })} />
-          </div>
-        </>
-      );
+      return <AiPersonaFields data={data} set={set} persistent={false} />;
     case "logic.ai_route":
-      return <AiRouteForm data={data} set={set} refs={refs} />;
+      return <AiRouteForm data={data} set={set} />;
     case "action.handoff_ai":
-      return <AiAgentField data={data} set={set} refs={refs} />;
+      return <AiPersonaFields data={data} set={set} persistent />;
     case "action.handoff_human":
       return (
         <div>
@@ -407,20 +398,99 @@ function SaveAsField({ data, set, label = "Guardar respuesta como variable" }: {
   );
 }
 
-function AiAgentField({ data, set, refs }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs }) {
-  // El validador solo acepta asistentes activos; se conserva el ya elegido
-  // aunque esté inactivo para no blanquear la config en silencio.
-  const options = refs.aiAgents
-    .filter((a) => a.config?.isActive || a.id === data.aiAgentId)
-    .map((a) => ({ value: a.id, label: a.config?.isActive ? a.name : `${a.name} (inactivo)` }));
+/**
+ * La conducta del asistente, adentro del nodo.
+ *
+ * Antes acá se elegía un "agente IA" de una lista y la config vivía en otra
+ * pantalla. Ahora no hay bot al que apuntar: lo que define cómo contesta está
+ * en este nodo, y los datos del negocio (catálogo, horarios, FAQs) salen del
+ * perfil de la cuenta — se cargan una vez en Ajustes, no por flujo.
+ */
+function AiPersonaFields({
+  data,
+  set,
+  persistent,
+}: {
+  data: Record<string, any>;
+  set: (p: Record<string, unknown>) => void;
+  /** El nodo deja al bot atendiendo de corrido: aplican derivación y burbujas. */
+  persistent: boolean;
+}) {
+  const behavior = (data.behavior ?? {}) as Record<string, any>;
+  const handoff = (data.handoffRules ?? {}) as Record<string, any>;
+  const setBehavior = (patch: Record<string, unknown>) => set({ behavior: { ...behavior, ...patch } });
+  const setHandoff = (patch: Record<string, unknown>) => set({ handoffRules: { ...handoff, ...patch } });
+
   return (
-    <SelectField
-      label="Asistente IA"
-      value={data.aiAgentId ?? ""}
-      placeholder="Elegí un asistente…"
-      options={options}
-      onChange={(value) => set({ aiAgentId: value })}
-    />
+    <>
+      <Field label="Nombre del asistente" hint="Aparece en el historial del chat y en las notas de derivación.">
+        <Input
+          value={data.name ?? ""}
+          placeholder="Ej: Sofía"
+          onChange={(e) => set({ name: e.target.value })}
+        />
+      </Field>
+
+      <div>
+        <FieldLabel>Objetivo de la conversación</FieldLabel>
+        <Textarea
+          rows={2}
+          value={behavior.goal ?? ""}
+          placeholder="Ej: resolver la consulta y, si no podés, pasarlo con una persona"
+          onChange={(e) => setBehavior({ goal: e.target.value })}
+        />
+      </div>
+
+      <SelectField
+        label="Tono"
+        value={behavior.formality ?? "informal"}
+        options={[
+          { value: "informal", label: "Cercano (de vos)" },
+          { value: "formal", label: "Formal (de usted)" },
+        ]}
+        onChange={(value) => setBehavior({ formality: value })}
+      />
+
+      <ToggleField
+        label="Usar emojis"
+        checked={behavior.useEmojis !== false}
+        onChange={(v) => setBehavior({ useEmojis: v })}
+      />
+
+      <div>
+        <FieldLabel>Instrucciones extra (opcional)</FieldLabel>
+        <Textarea
+          rows={3}
+          value={behavior.customInstructions ?? ""}
+          placeholder="Ej: no des precios de mayorista sin preguntar el volumen"
+          onChange={(e) => setBehavior({ customInstructions: e.target.value })}
+        />
+      </div>
+
+      {persistent && (
+        <>
+          <div>
+            <FieldLabel>Palabras que derivan a una persona</FieldLabel>
+            <Input
+              value={(handoff.keywords ?? []).join(", ")}
+              placeholder="hablar con humano, agente, persona real"
+              onChange={(e) =>
+                setHandoff({ keywords: e.target.value.split(",").map((k) => k.trim()).filter(Boolean) })
+              }
+            />
+          </div>
+          <ToggleField
+            label="Derivar si el cliente lo pide"
+            checked={handoff.onCustomerRequest !== false}
+            onChange={(v) => setHandoff({ onCustomerRequest: v })}
+          />
+        </>
+      )}
+
+      <p className="text-xs text-muted-foreground">
+        El catálogo, las FAQs y los horarios salen del perfil del negocio de la cuenta, en Ajustes.
+      </p>
+    </>
   );
 }
 
@@ -477,7 +547,6 @@ function TriggerMessageForm({ data, set, refs, onChangeTriggerType }: { data: Re
         </>
       )}
       <ToggleField label="Solo conversaciones nuevas" checked={data.onlyNewConversations === true} onChange={(v) => set({ onlyNewConversations: v })} />
-      <ToggleField label="No interrumpir si atiende un humano" checked={data.ignoreIfAssignedToHuman !== false} onChange={(v) => set({ ignoreIfAssignedToHuman: v })} />
     </>
   );
 }
@@ -958,11 +1027,12 @@ function AskForm({ data, set }: { data: Record<string, any>; set: (p: Record<str
 
 // ── IA / equipo / lógica / HTTP ──────────────────────────────────
 
-function AiRouteForm({ data, set, refs }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs }) {
+function AiRouteForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
   const options: Array<{ key: string; label: string }> = Array.isArray(data.options) ? data.options : [];
+  // Clasificar no habla con el cliente: no necesita nombre ni tono, solo las
+  // intenciones a distinguir.
   return (
     <>
-      <AiAgentField data={data} set={set} refs={refs} />
       <div>
         <FieldLabel>Qué clasificar (opcional)</FieldLabel>
         <Input value={data.question ?? ""} placeholder="La intención del último mensaje" onChange={(e) => set({ question: e.target.value })} />
