@@ -133,10 +133,16 @@ function AssetTile({ asset, onSelect }: { asset: MediaAsset; onSelect: () => voi
         !asset.available && "opacity-50"
       )}
     >
-      <span className="flex aspect-square w-full items-center justify-center bg-muted/60">
+      {/* Imagen fuera del flujo: ver el comentario en media-card.tsx. */}
+      <span className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-muted/60">
         {isVisual && asset.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={asset.thumbnailUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+          <img
+            src={asset.thumbnailUrl}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
         ) : (
           <KindIcon kind={asset.kind} />
         )}

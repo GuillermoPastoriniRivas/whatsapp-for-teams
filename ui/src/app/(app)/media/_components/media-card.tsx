@@ -42,10 +42,16 @@ export function MediaCard({ asset, storageEnabled, onOpen, onToggleLibrary, onDe
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-xl border transition-colors hover:border-primary/50">
+      {/*
+        `relative` + imagen en `absolute`: un <img> como flex item tiene
+        min-height auto y se niega a achicarse por debajo de su alto
+        intrinseco, asi que estiraba el cuadrado. Y como la grilla es
+        align-items: stretch, esa card arrastraba a toda la fila.
+      */}
       <button
         type="button"
         onClick={() => onOpen(asset)}
-        className="flex aspect-square w-full items-center justify-center bg-muted/60"
+        className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-muted/60"
       >
         {asset.processing ? (
           <Spinner size="lg" />
@@ -57,7 +63,7 @@ export function MediaCard({ asset, storageEnabled, onOpen, onToggleLibrary, onDe
             src={asset.thumbnailUrl}
             alt={asset.filename ?? ""}
             loading="lazy"
-            className="h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
           <KindIcon kind={asset.kind} />
