@@ -14,62 +14,8 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { ChevronRight} from "lucide-react";
-import type { Conversation, MessageTemplate, PaginatedResponse, TemplateComponent } from "@/types";
-
-const PLACEHOLDER_REGEX = /\{\{([a-z0-9_]+)\}\}/gi;
-
-interface Placeholder {
-  /** Clave canónica que espera el backend: body.1, header.link, button.0.1 */
-  key: string;
-  label: string;
-  isLink: boolean;
-}
-
-// Espeja listTemplatePlaceholders del backend (template-variable.resolver.ts)
-function listPlaceholders(components: TemplateComponent[]): Placeholder[] {
-  const found: Placeholder[] = [];
-  const extract = (text: string) =>
-    [...text.matchAll(PLACEHOLDER_REGEX)].map((m) => m[1]);
-
-  for (const c of components) {
-    if (c.type === "BODY" && c.text) {
-      for (const pos of extract(c.text)) {
-        found.push({ key: `body.${pos}`, label: `{{${pos}}}`, isLink: false });
-      }
-    } else if (c.type === "HEADER") {
-      if (c.format === "TEXT" && c.text) {
-        for (const pos of extract(c.text)) {
-          found.push({ key: `header.${pos}`, label: `Header {{${pos}}}`, isLink: false });
-        }
-      } else if (c.format && c.format !== "TEXT") {
-        found.push({ key: "header.link", label: c.format, isLink: true });
-      }
-    } else if (c.type === "BUTTONS") {
-      (c.buttons ?? []).forEach((b, i) => {
-        if (b.type === "URL" && b.url) {
-          for (const pos of extract(b.url)) {
-            found.push({ key: `button.${i}.${pos}`, label: `${b.text} {{${pos}}}`, isLink: false });
-          }
-        } else if (b.type === "COPY_CODE") {
-          found.push({ key: `button.${i}.code`, label: b.text, isLink: false });
-        }
-      });
-    }
-  }
-  // sin duplicados (el mismo placeholder puede repetirse en el texto)
-  return found.filter((p, i) => found.findIndex((q) => q.key === p.key) === i);
-}
-
-function templateBody(template: MessageTemplate): string {
-  return template.components.find((c) => c.type === "BODY")?.text ?? "";
-}
-
-function renderPreview(template: MessageTemplate, variables: Record<string, string>): string {
-  return templateBody(template).replace(
-    PLACEHOLDER_REGEX,
-    (match, pos) => variables[`body.${pos}`] || match,
-  );
-}
+import { listPlaceholders, renderPreview, templateBody } from "@/lib/template-placeholders";
+import type { Conversation, MessageTemplate, PaginatedResponse } from "@/types";
 
 interface Props {
   conversation: Conversation;

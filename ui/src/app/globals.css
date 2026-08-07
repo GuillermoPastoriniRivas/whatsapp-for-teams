@@ -161,6 +161,15 @@
   --asis-surface-panel: #F8FAFB;
 
   /*
+   * Panel de marca de login/registro. Tiene tokens propios porque `--primary`
+   * se invierte entre temas: en oscuro es un turquesa claro, y usarlo de fondo
+   * dejaba media pantalla encendida al lado de un formulario negro.
+   */
+  --asis-auth-panel: oklch(0.600 0.130 175);
+  --asis-auth-panel-foreground: oklch(0.985 0 0);
+  --asis-auth-panel-chip: oklch(1 0 0 / 15%);
+
+  /*
    * Escala de apilado. Única fuente de verdad: quien necesite un z-index usa
    * `z-(--z-*)` y nunca un número suelto, así el orden entre capas se lee acá
    * en vez de deducirse comparando archivos.
@@ -225,6 +234,11 @@
   --asis-bubble-inbound: #1E293B;
   --asis-surface-header: #1E293B;
   --asis-surface-panel: #0F172A;
+
+  /* Turquesa profundo: se lee como superficie de marca sin encandilar. */
+  --asis-auth-panel: oklch(0.255 0.055 178);
+  --asis-auth-panel-foreground: oklch(0.960 0.010 180);
+  --asis-auth-panel-chip: oklch(1 0 0 / 10%);
 
   --scrollbar-thumb: oklch(1 0 0 / 22%);
   color-scheme: dark;

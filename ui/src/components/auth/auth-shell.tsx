@@ -67,8 +67,10 @@ export function AuthShell({
 
   return (
     <div className="flex min-h-dvh">
+      {/* El panel usa superficie propia y no `bg-primary`: en oscuro el primary
+          es claro y dejaba media pantalla encendida al lado del formulario. */}
       {brandPanel && (
-        <aside className="hidden w-1/2 flex-col justify-between bg-primary p-10 text-primary-foreground md:flex lg:p-14">
+        <aside className="hidden w-1/2 flex-col justify-between bg-(--asis-auth-panel) p-10 text-(--asis-auth-panel-foreground) md:flex lg:p-14">
           <div className="flex items-center gap-2">
             <AsisLogo size={44} className="text-primary" />
             <span className="-ml-1 text-xl font-bold">
@@ -90,7 +92,7 @@ export function AuthShell({
               <ul className="space-y-5">
                 {brandFeatures.map(({ icon: Icon, label }) => (
                   <li key={label} className="flex items-center gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-foreground/15">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--asis-auth-panel-chip)">
                       <Icon className="size-5" />
                     </div>
                     <span className="text-base opacity-90">{label}</span>

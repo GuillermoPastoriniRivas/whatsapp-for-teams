@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LayoutTemplate,  MoreHorizontal, Plus, RefreshCw, Search} from "lucide-react";
+import { LayoutTemplate,  MoreHorizontal, Plus, RefreshCw, Search, Send} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import {
 import { RightPanel } from "@/components/layout/right-panel";
 import { InlineNotice } from "@/components/shared/inline-notice";
 import { TemplateEditorPanel } from "./_components/template-editor-panel";
+import { SendTemplateDialog } from "./_components/send-template-dialog";
 import {
   TemplateQualityIndicator,
   TemplateStatusBadge,
@@ -67,6 +68,9 @@ export default function TemplatesPage() {
   const [notice, setNotice] = useState<{ variant: "success" | "error"; text: string } | null>(null);
   const [editing, setEditing] = useState<MessageTemplate | null>(null);
   const [creating, setCreating] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
+  // Sin plantilla, el diálogo la deja elegir; con una, viene desde la fila.
+  const [sendTemplate, setSendTemplate] = useState<MessageTemplate | undefined>(undefined);
 
   useEffect(() => {
     fetch();
@@ -137,18 +141,32 @@ export default function TemplatesPage() {
           title={t.templates.title}
           subtitle={t.templates.subtitle}
           actions={
-            isAdmin && (
-              <>
+            <>
+              {isAdmin && (
                 <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing || phones.length === 0}>
                   {syncing ? <Spinner size="sm" /> : <RefreshCw className="size-4" />}
                   <span className="hidden sm:inline">{syncing ? t.templates.syncing : t.templates.syncWithMeta}</span>
                 </Button>
+              )}
+              <Button
+                variant={isAdmin ? "outline" : "default"}
+                size="sm"
+                onClick={() => {
+                  setSendTemplate(undefined);
+                  setSendOpen(true);
+                }}
+                disabled={phones.length === 0}
+              >
+                <Send className="size-4" />
+                {t.templates.newSend}
+              </Button>
+              {isAdmin && (
                 <Button size="sm" onClick={() => setCreating(true)}>
                   <Plus className="size-4" />
                   {t.templates.newTemplate}
                 </Button>
-              </>
-            )
+              )}
+            </>
           }
         >
           {STATUS_TABS.map((status) => (
@@ -213,7 +231,7 @@ export default function TemplatesPage() {
                       <TableHead>{t.templates.status}</TableHead>
                       <TableHead>{t.templates.quality}</TableHead>
                       <TableHead>{t.templates.updated}</TableHead>
-                      {isAdmin && <TableHead className="w-10" />}
+                      <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -248,15 +266,18 @@ export default function TemplatesPage() {
                         <TableCell className="text-xs text-muted-foreground">
                           {new Date(template.updatedAt).toLocaleDateString()}
                         </TableCell>
-                        {isAdmin && (
-                          <TableCell>
-                            <TemplateActions
-                              template={template}
-                              onEdit={() => setEditing(template)}
-                              onDelete={() => handleDelete(template)}
-                            />
-                          </TableCell>
-                        )}
+                        <TableCell>
+                          <TemplateActions
+                            template={template}
+                            isAdmin={isAdmin}
+                            onSend={() => {
+                              setSendTemplate(template);
+                              setSendOpen(true);
+                            }}
+                            onEdit={() => setEditing(template)}
+                            onDelete={() => handleDelete(template)}
+                          />
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -281,13 +302,16 @@ export default function TemplatesPage() {
                           }
                         </p>
                       </div>
-                      {isAdmin && (
-                        <TemplateActions
-                          template={template}
-                          onEdit={() => setEditing(template)}
-                          onDelete={() => handleDelete(template)}
-                        />
-                      )}
+                      <TemplateActions
+                        template={template}
+                        isAdmin={isAdmin}
+                        onSend={() => {
+                          setSendTemplate(template);
+                          setSendOpen(true);
+                        }}
+                        onEdit={() => setEditing(template)}
+                        onDelete={() => handleDelete(template)}
+                      />
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       <TemplateStatusBadge status={template.status} />
@@ -319,21 +343,35 @@ export default function TemplatesPage() {
           />
         )}
       </RightPanel>
+
+      <SendTemplateDialog
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        phones={phones}
+        template={sendTemplate}
+      />
     </div>
   );
 }
 
 function TemplateActions({
   template,
+  isAdmin,
+  onSend,
   onEdit,
   onDelete,
 }: {
   template: MessageTemplate;
+  isAdmin: boolean;
+  onSend: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const { t } = useTranslations();
-  const canEdit = EDITABLE_STATUSES.includes(template.status);
+  const canEdit = isAdmin && EDITABLE_STATUSES.includes(template.status);
+  // Enviar no es privilegio de admin: cualquier agente escribe a un cliente.
+  // Solo tiene sentido con la plantilla ya aprobada por Meta.
+  const canSend = template.status === "approved";
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -342,10 +380,13 @@ function TemplateActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {canSend && <DropdownMenuItem onSelect={onSend}>{t.templates.sendToNumber}</DropdownMenuItem>}
         {canEdit && <DropdownMenuItem onSelect={onEdit}>{t.templates.edit}</DropdownMenuItem>}
-        <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-          {t.templates.delete}
-        </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+            {t.templates.delete}
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
