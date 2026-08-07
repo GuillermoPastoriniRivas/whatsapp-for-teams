@@ -259,6 +259,19 @@ async function seedDemo() {
     label: 'WhatsApp Demo',
     webhookSecret: 'demo-secret',
     status: 'active',
+    // Perfil de negocio: es lo que ve el cliente al tocar el nombre del chat.
+    // Con el proveedor demo no hay API atrás, así que esta copia es la fuente.
+    // La foto queda en null: subirla necesita un proveedor real.
+    businessProfile: {
+      about: 'Ropa urbana · Envíos a todo el país',
+      address: 'Av. Santa Fe 1234, Palermo, CABA',
+      description:
+        'Tienda de ropa urbana, minorista y mayorista. Envíos a todo el país en 24-72hs y retiro en el local de Palermo.',
+      email: 'hola@demostore.com.ar',
+      vertical: 'APPAREL',
+      websites: ['https://demostore.com.ar', 'https://instagram.com/demostore'],
+      profilePictureUrl: null,
+    },
   });
   console.log(`+ Phone "${phone.label}"`);
 

@@ -155,6 +155,24 @@ export class TemplateProviderError extends DomainError {
   }
 }
 
+export class ProviderFeatureNotSupportedError extends DomainError {
+  constructor(feature: string, provider: string) {
+    super('PROVIDER_FEATURE_NOT_SUPPORTED', `${feature} is not available for provider "${provider}".`);
+  }
+}
+
+export class BusinessProfileProviderError extends DomainError {
+  constructor(detail?: string) {
+    super('BUSINESS_PROFILE_PROVIDER_ERROR', detail ?? 'The messaging provider rejected the business profile operation.');
+  }
+}
+
+export class InvalidBusinessProfileError extends DomainError {
+  constructor(detail: string) {
+    super('INVALID_BUSINESS_PROFILE', detail);
+  }
+}
+
 export class WabaNotConfiguredError extends DomainError {
   constructor() {
     super('WABA_NOT_CONFIGURED', 'The phone number has no WhatsApp Business Account (wabaId) configured.');

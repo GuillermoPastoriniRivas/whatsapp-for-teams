@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Field } from "@/components/ui/field";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PhoneProfileForm } from "@/components/admin/phone-profile-form";
 import { Spinner } from "@/components/ui/spinner";
 import { StatusPill } from "@/components/ui/status-pill";
 import { InlineNotice } from "@/components/shared/inline-notice";
@@ -112,83 +114,97 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
         </div>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4 px-4 py-4">
-        <PhoneAccessSection mode="phone" phoneId={phone.id} />
+      {/* El perfil es lo que ve el cliente; la conexión es plumbing del admin.
+          Van separados para que uno no tenga que pasar por el otro. */}
+      <Tabs defaultValue="profile" className="gap-0">
+        <TabsList className="mx-4 mt-4">
+          <TabsTrigger value="profile">{t.admin.tabProfile}</TabsTrigger>
+          <TabsTrigger value="connection">{t.admin.tabConnection}</TabsTrigger>
+        </TabsList>
 
-        <Field label={t.admin.provider}>
-          <Input value={provider} disabled />
-        </Field>
+        <TabsContent value="profile">
+          <PhoneProfileForm phone={phone} onUpdated={onUpdated} />
+        </TabsContent>
 
-        <div className="space-y-3 rounded-xl border p-3">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            {t.admin.providerConfig}
-          </p>
-          {fields.map((field) => (
-            <Field key={field.key} label={field.label}>
+        <TabsContent value="connection">
+          <form onSubmit={handleSubmit} className="space-y-4 px-4 py-4">
+            <PhoneAccessSection mode="phone" phoneId={phone.id} />
+
+            <Field label={t.admin.provider}>
+              <Input value={provider} disabled />
+            </Field>
+
+            <div className="space-y-3 rounded-xl border p-3">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                {t.admin.providerConfig}
+              </p>
+              {fields.map((field) => (
+                <Field key={field.key} label={field.label}>
+                  <Input
+                    value={providerConfig[field.key] || ""}
+                    onChange={(e) => handleConfigChange(field.key, e.target.value)}
+                    placeholder={field.label}
+                  />
+                </Field>
+              ))}
+            </div>
+
+            <Field label="WABA ID">
+              <Input value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="WABA ID" />
+            </Field>
+
+            <Field label={t.admin.portfolioId} hint={t.admin.portfolioIdHint}>
               <Input
-                value={providerConfig[field.key] || ""}
-                onChange={(e) => handleConfigChange(field.key, e.target.value)}
-                placeholder={field.label}
+                value={portfolioId}
+                onChange={(e) => setPortfolioId(e.target.value)}
+                placeholder={t.admin.portfolioIdPlaceholder}
               />
             </Field>
-          ))}
-        </div>
 
-        <Field label="WABA ID">
-          <Input value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="WABA ID" />
-        </Field>
+            <Field label="Phone Number ID">
+              <Input
+                value={phoneNumberId}
+                onChange={(e) => setPhoneNumberId(e.target.value)}
+                placeholder="Phone Number ID"
+              />
+            </Field>
 
-        <Field label={t.admin.portfolioId} hint={t.admin.portfolioIdHint}>
-          <Input
-            value={portfolioId}
-            onChange={(e) => setPortfolioId(e.target.value)}
-            placeholder={t.admin.portfolioIdPlaceholder}
-          />
-        </Field>
+            <Field label={t.admin.displayPhone}>
+              <Input
+                value={displayPhone}
+                onChange={(e) => setDisplayPhone(e.target.value)}
+                placeholder={t.admin.displayPhonePlaceholder}
+              />
+            </Field>
 
-        <Field label="Phone Number ID">
-          <Input
-            value={phoneNumberId}
-            onChange={(e) => setPhoneNumberId(e.target.value)}
-            placeholder="Phone Number ID"
-          />
-        </Field>
+            <Field label={t.admin.phoneLabel}>
+              <Input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder={t.admin.phoneLabelPlaceholder}
+              />
+            </Field>
 
-        <Field label={t.admin.displayPhone}>
-          <Input
-            value={displayPhone}
-            onChange={(e) => setDisplayPhone(e.target.value)}
-            placeholder={t.admin.displayPhonePlaceholder}
-          />
-        </Field>
+            <Field label={t.admin.webhookSecret} hint={webhookHint}>
+              <Input
+                value={webhookSecret}
+                onChange={(e) => setWebhookSecret(e.target.value)}
+                placeholder={t.admin.webhookSecretKeep}
+              />
+            </Field>
 
-        <Field label={t.admin.phoneLabel}>
-          <Input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder={t.admin.phoneLabelPlaceholder}
-          />
-        </Field>
+            {error && <InlineNotice variant="error">{error}</InlineNotice>}
+            {!error && success && <InlineNotice variant="success">{success}</InlineNotice>}
 
-        <Field label={t.admin.webhookSecret} hint={webhookHint}>
-          <Input
-            value={webhookSecret}
-            onChange={(e) => setWebhookSecret(e.target.value)}
-            placeholder={t.admin.webhookSecretKeep}
-          />
-        </Field>
-
-        {error && <InlineNotice variant="error">{error}</InlineNotice>}
-        {!error && success && <InlineNotice variant="success">{success}</InlineNotice>}
-
-        <div className="flex justify-end pt-2">
-          <Button type="submit" size="sm" disabled={loading}>
-            {loading && <Spinner size="sm" />}
-            {loading ? t.common.saving : t.common.save}
-          </Button>
-        </div>
-      </form>
+            <div className="flex justify-end pt-2">
+              <Button type="submit" size="sm" disabled={loading}>
+                {loading && <Spinner size="sm" />}
+                {loading ? t.common.saving : t.common.save}
+              </Button>
+            </div>
+          </form>
+        </TabsContent>
+      </Tabs>
     </>
   );
 }

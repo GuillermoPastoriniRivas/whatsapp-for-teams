@@ -186,6 +186,33 @@ export interface PhoneNumber {
   displayPhone: string;
   label: string;
   status: "active" | "inactive";
+  /** Copia del perfil que sirve el proveedor. Null si nunca se consultó. */
+  businessProfile?: WhatsAppBusinessProfile | null;
+}
+
+/**
+ * Perfil de negocio de WhatsApp: lo que ve el cliente al tocar el nombre del
+ * chat en su teléfono. Ojo: `BusinessProfile` (sin prefijo) es otra cosa — el
+ * perfil que se le carga a un asistente de IA para armar su prompt.
+ */
+export interface WhatsAppBusinessProfile {
+  about: string | null;
+  address: string | null;
+  description: string | null;
+  email: string | null;
+  vertical: string | null;
+  websites: string[];
+  /** La sirve el proveedor; se cambia subiendo una imagen, no pegando una URL. */
+  profilePictureUrl: string | null;
+}
+
+export interface WhatsAppBusinessProfileView {
+  profile: WhatsAppBusinessProfile;
+  editable: boolean;
+  canChangePicture: boolean;
+  /** La lectura vino de la copia local porque el proveedor no respondió. */
+  stale: boolean;
+  staleReason: string | null;
 }
 
 export interface Label {

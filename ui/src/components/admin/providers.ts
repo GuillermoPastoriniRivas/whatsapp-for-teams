@@ -15,7 +15,12 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
  * de su API (Meta, Twilio…), así que no se traducen.
  */
 export const PROVIDER_CONFIG_FIELDS: Record<Provider, { key: string; label: string }[]> = {
-  meta: [{ key: "accessToken", label: "Access Token" }],
+  // El App ID solo hace falta para cambiar la foto del perfil: la subida
+  // reanudable de Meta cuelga de la app dueña del token. El resto funciona sin él.
+  meta: [
+    { key: "accessToken", label: "Access Token" },
+    { key: "appId", label: "App ID" },
+  ],
   twilio: [
     { key: "accountSid", label: "Account SID" },
     { key: "authToken", label: "Auth Token" },

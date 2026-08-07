@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { MessagingProvider } from '../../../../domain/enums/messaging-provider.enum.js';
 import { PhoneNumberStatus } from '../../../../domain/enums/phone-number-status.enum.js';
+import type { WhatsAppBusinessProfile } from '../../../../domain/entities/whatsapp-business-profile.entity.js';
 
 export type PhoneNumberDocument = HydratedDocument<PhoneNumberModel>;
 
@@ -40,6 +41,14 @@ export class PhoneNumberModel {
 
   @Prop({ required: true, enum: PhoneNumberStatus, default: PhoneNumberStatus.ACTIVE })
   status: string;
+
+  /**
+   * Copia del perfil de negocio del proveedor (about, dirección, rubro, foto).
+   * Es caché para pintar la pantalla sin esperar a Meta; con el proveedor demo
+   * pasa a ser la fuente, porque ahí no hay API atrás. `null` = nunca se leyó.
+   */
+  @Prop({ type: Object, default: null })
+  businessProfile: WhatsAppBusinessProfile | null;
 
   createdAt: Date;
 }

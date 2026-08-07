@@ -1,5 +1,6 @@
 import { MessagingProvider } from '../enums/messaging-provider.enum.js';
 import { PhoneNumberStatus } from '../enums/phone-number-status.enum.js';
+import type { WhatsAppBusinessProfile } from './whatsapp-business-profile.entity.js';
 
 export class PhoneNumber {
   constructor(
@@ -21,6 +22,12 @@ export class PhoneNumber {
      * nunca fusiona contactos de portfolios distintos.
      */
     public readonly portfolioId: string | null = null,
+    /**
+     * Copia del perfil de negocio que sirve el proveedor. Es caché, no fuente:
+     * se refresca en cada lectura y se pisa después de cada escritura exitosa.
+     * `null` = todavía no se consultó.
+     */
+    public readonly businessProfile: WhatsAppBusinessProfile | null = null,
   ) {}
 
   /** Scope con el que se resuelven los BSUID recibidos por este número. */

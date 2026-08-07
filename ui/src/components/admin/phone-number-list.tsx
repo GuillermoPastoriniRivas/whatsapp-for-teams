@@ -126,12 +126,22 @@ export function PhoneNumberList({ onPanelChange, onPanelClose, createRef }: Prop
                 phone.status === "inactive" && "opacity-50"
               )}
             >
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <Phone className="size-5" />
+              {/* La foto del perfil de WhatsApp cuando el número la tiene:
+                  es la que ve el cliente, así que identifica mejor que el ícono. */}
+              <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-muted-foreground">
+                {phone.businessProfile?.profilePictureUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={phone.businessProfile.profilePictureUrl} alt="" className="size-full object-cover" />
+                ) : (
+                  <Phone className="size-5" />
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{phone.label}</p>
-                <p className="truncate text-xs text-muted-foreground">{phone.displayPhone}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {phone.displayPhone}
+                  {phone.businessProfile?.about ? ` · ${phone.businessProfile.about}` : ""}
+                </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <Badge variant="outline" className="capitalize">

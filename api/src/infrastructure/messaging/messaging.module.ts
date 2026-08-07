@@ -9,6 +9,9 @@ import { TemplateManagementStrategyService } from './template-management-strateg
 import { KapsoMediaApiService, MetaMediaApiService } from './meta-media-api.service.js';
 import { TwilioMediaApiService } from './twilio-media-api.service.js';
 import { MediaProviderStrategyService } from './media-provider-strategy.service.js';
+import { KapsoBusinessProfileApiService, MetaBusinessProfileApiService } from './meta-business-profile-api.service.js';
+import { DemoBusinessProfileApiService } from './demo-business-profile-api.service.js';
+import { BusinessProfileStrategyService } from './business-profile-strategy.service.js';
 
 @Module({
   providers: [
@@ -24,10 +27,15 @@ import { MediaProviderStrategyService } from './media-provider-strategy.service.
     KapsoMediaApiService,
     TwilioMediaApiService,
     MediaProviderStrategyService,
+    MetaBusinessProfileApiService,
+    KapsoBusinessProfileApiService,
+    DemoBusinessProfileApiService,
+    BusinessProfileStrategyService,
     { provide: 'MessagingApiPort', useExisting: MessagingApiStrategyService },
     { provide: 'TemplateManagementPort', useExisting: TemplateManagementStrategyService },
     { provide: 'MediaProviderPort', useExisting: MediaProviderStrategyService },
+    { provide: 'BusinessProfilePort', useExisting: BusinessProfileStrategyService },
   ],
-  exports: ['MessagingApiPort', 'TemplateManagementPort', 'MediaProviderPort'],
+  exports: ['MessagingApiPort', 'TemplateManagementPort', 'MediaProviderPort', 'BusinessProfilePort'],
 })
 export class MessagingModule {}
