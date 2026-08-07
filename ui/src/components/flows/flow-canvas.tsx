@@ -75,7 +75,17 @@ function CanvasInner(props: FlowCanvasProps) {
     >
       <Background gap={16} size={1} />
       <Controls showInteractive={false} />
-      <MiniMap pannable zoomable className="!bg-background" />
+      {/* Los colores por defecto del minimapa son grises fijos: el velo de la
+          zona fuera de vista es casi blanco y en modo oscuro quedaba un recuadro
+          claro sobre el canvas. Van con tokens para seguir al tema. */}
+      <MiniMap
+        pannable
+        zoomable
+        className="!bg-background"
+        maskColor="color-mix(in oklab, var(--foreground) 10%, transparent)"
+        nodeColor="color-mix(in oklab, var(--muted-foreground) 60%, transparent)"
+        nodeStrokeColor="var(--border)"
+      />
     </ReactFlow>
   );
 }
