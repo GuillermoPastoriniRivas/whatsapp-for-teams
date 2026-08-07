@@ -14,8 +14,12 @@ import type {
   MetaTemplateStatusValue,
   MetaTemplateCategoryValue,
   MetaUserIdUpdateValue,
+  MetaAccountEventValue,
+  MetaUserPreferenceValue,
   ParsedTemplateEvent,
   ParsedUserIdUpdate,
+  ParsedAccountEvent,
+  ParsedUserPreference,
 } from './meta-webhook.types.js';
 
 // ── Intermediate type after flattening ───────────────────────────
@@ -43,6 +47,8 @@ const SUPPORTED_TYPES: Record<string, string> = {
   // Tarjeta de contacto: es lo que llega cuando el usuario toca
   // `REQUEST_CONTACT_INFO` y comparte su número.
   contacts: 'contacts',
+  // Reacción con emoji a un mensaje nuestro.
+  reaction: 'reaction',
 };
 
 const MEDIA_TYPES = new Set(['image', 'audio', 'video', 'document', 'sticker']);
@@ -65,16 +71,35 @@ const TEMPLATE_EVENT_FIELDS = new Set([
   'template_category_update',
 ]);
 
+/**
+ * Campos de salud de la cuenta y del número. Son los que avisan que algo se
+ * rompió —baneo, violación de política, caída de calidad, verificación del
+ * nombre— y sin ellos el primero en enterarse es siempre el cliente.
+ */
+const ACCOUNT_EVENT_FIELDS = new Set([
+  'account_update',
+  'account_alerts',
+  'account_review_update',
+  'business_capability_update',
+  'phone_number_quality_update',
+  'phone_number_name_update',
+  'message_template_components_update',
+]);
+
 export function parseMetaWebhook(payload: MetaWebhookPayload): {
   messages: ParsedMetaMessage[];
   statuses: MetaWebhookStatus[];
   templateEvents: ParsedTemplateEvent[];
   userIdUpdates: ParsedUserIdUpdate[];
+  accountEvents: ParsedAccountEvent[];
+  userPreferences: ParsedUserPreference[];
 } {
   const messages: ParsedMetaMessage[] = [];
   const statuses: MetaWebhookStatus[] = [];
   const templateEvents: ParsedTemplateEvent[] = [];
   const userIdUpdates: ParsedUserIdUpdate[] = [];
+  const accountEvents: ParsedAccountEvent[] = [];
+  const userPreferences: ParsedUserPreference[] = [];
 
   for (const entry of payload.entry ?? []) {
     for (const change of entry.changes ?? []) {
@@ -84,6 +109,24 @@ export function parseMetaWebhook(payload: MetaWebhookPayload): {
           field: change.field,
           value: change.value as unknown as ParsedTemplateEvent['value'],
         });
+        continue;
+      }
+
+      if (ACCOUNT_EVENT_FIELDS.has(change.field)) {
+        const value = change.value as unknown as MetaAccountEventValue;
+        accountEvents.push({
+          wabaId: entry.id,
+          field: change.field,
+          displayPhoneNumber: normalizePhone(value.display_phone_number),
+          value,
+        });
+        continue;
+      }
+
+      if (change.field === 'user_preferences') {
+        userPreferences.push(
+          ...parseUserPreferences(entry.id, change.value as unknown as Record<string, unknown>),
+        );
         continue;
       }
 
@@ -108,7 +151,51 @@ export function parseMetaWebhook(payload: MetaWebhookPayload): {
     }
   }
 
-  return { messages, statuses, templateEvents, userIdUpdates };
+  return { messages, statuses, templateEvents, userIdUpdates, accountEvents, userPreferences };
+}
+
+/** Deja el teléfono en dígitos, como lo guardamos. */
+function normalizePhone(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 8 && digits.length <= 15 ? digits : null;
+}
+
+/**
+ * `user_preferences` puede traer una lista o un único objeto según el evento.
+ * Solo interesa la categoría de marketing: el resto se ignora sin ruido.
+ */
+function parseUserPreferences(wabaId: string, value: Record<string, unknown>): ParsedUserPreference[] {
+  const raw = value?.user_preferences;
+  const entries: MetaUserPreferenceValue[] = Array.isArray(raw)
+    ? (raw as MetaUserPreferenceValue[])
+    : [value as MetaUserPreferenceValue];
+
+  const parsed: ParsedUserPreference[] = [];
+
+  for (const entry of entries) {
+    const category = String(entry?.category ?? '').toLowerCase();
+    // Vacío también entra: hay eventos que no repiten la categoría.
+    if (category && !category.includes('marketing')) continue;
+
+    const decision = String(entry?.value ?? '').toLowerCase();
+    if (decision !== 'stop' && decision !== 'resume') continue;
+
+    const phone = normalizePhone(entry?.wa_id);
+    const bsuid = typeof entry?.user_id === 'string' ? entry.user_id : null;
+    if (!phone && !bsuid) continue;
+
+    const seconds = Number(entry?.timestamp);
+    parsed.push({
+      wabaId,
+      phone,
+      bsuid,
+      optedOut: decision === 'stop',
+      timestamp: Number.isFinite(seconds) && seconds > 0 ? new Date(seconds * 1000) : new Date(),
+    });
+  }
+
+  return parsed;
 }
 
 /**
@@ -162,6 +249,10 @@ export function mapMetaMessageToInbound(
   const messageType = SUPPORTED_TYPES[msg.type];
   if (!messageType) return null; // unsupported type — caller should log & skip
 
+  // Quitar una reacción llega como una reacción de emoji vacío. No es un
+  // mensaje que valga una burbuja: se ignora.
+  if (msg.type === 'reaction' && !msg.reaction?.emoji) return null;
+
   const bsuid = msg.from_user_id ?? contact?.user_id;
   const phone = msg.from ?? contact?.wa_id;
 
@@ -188,7 +279,8 @@ export function mapMetaMessageToInbound(
     mediaSha256: media?.sha256,
     timestamp: new Date(parseInt(msg.timestamp, 10) * 1000),
     interactiveReplyId: extractInteractiveReplyId(msg),
-    contextWaMessageId: msg.context?.id,
+    // La reacción no usa `context`: apunta a su objetivo por su propio campo.
+    contextWaMessageId: msg.type === 'reaction' ? msg.reaction?.message_id : msg.context?.id,
     location: msg.type === 'location' && msg.location ? toMessageLocation(msg.location) : null,
   };
 }
@@ -259,6 +351,9 @@ function extractBody(msg: MetaWebhookMessage): string | undefined {
       return [msg.location?.name, msg.location?.address].filter(Boolean).join(': ') || undefined;
     case 'interactive':
       return msg.interactive?.button_reply?.title ?? msg.interactive?.list_reply?.title;
+    // El emoji ES el contenido de la reacción.
+    case 'reaction':
+      return msg.reaction?.emoji || undefined;
     case 'button':
       return msg.button?.text;
     case 'contacts': {

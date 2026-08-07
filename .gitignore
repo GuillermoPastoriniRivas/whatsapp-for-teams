@@ -1,2 +1,15 @@
 webhooks
 client_secret_google.json
+
+# Config local de agentes: .mcp.json lleva la API key del vault en texto plano.
+.mcp.json
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Proyectos hermanos del monorepo: se versionan aparte, no entran en el deploy
+# de asis (api + ui), que es lo único que construye el CI.
+mdvault/
+aloe-village/
+quiero-menu/
+turnos/
+PROYECTO-HOTEL.md

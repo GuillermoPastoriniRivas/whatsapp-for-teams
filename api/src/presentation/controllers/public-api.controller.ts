@@ -42,7 +42,7 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   INVALID_RECIPIENT: 422,
   INVALID_PHONE: 422,
   AUTH_TEMPLATE_REQUIRES_PHONE: 422,
-  BSUID_NOT_SUPPORTED: 422,
+  MARKETING_OPT_OUT: 422,
   MISSING_MESSAGE_CONTENT: 422,
   PHONE_NUMBER_AMBIGUOUS: 422,
   PHONE_NUMBER_INACTIVE: 422,
@@ -151,7 +151,9 @@ export class PublicApiController {
   @ApiOperation({
     summary: 'Send a message to a phone number',
     description:
-      'Sends a WhatsApp message to any number, creating the contact and conversation if needed. Free-form `body` requires the 24h customer service window; `templateId` (an approved template) works anytime.',
+      'Sends a WhatsApp message to any number, creating the contact and conversation if needed. ' +
+      'Free-form content (`body`, `location`, `contacts`, `interactive`, `reaction`) requires the 24h customer service window; ' +
+      '`templateId` (an approved template) works anytime.',
   })
   async sendMessage(
     @ApiPrincipal() principal: ApiKeyPrincipal,
@@ -165,6 +167,12 @@ export class PublicApiController {
       body: body.body,
       templateId: body.templateId,
       variables: body.variables,
+      location: body.location,
+      contacts: body.contacts,
+      interactive: body.interactive,
+      reaction: body.reaction,
+      replyToWaMessageId: body.replyToWaMessageId,
+      marketingLite: body.marketingLite,
     });
     if (!result.ok) this.fail(result.error as DomainError);
     return result.value;

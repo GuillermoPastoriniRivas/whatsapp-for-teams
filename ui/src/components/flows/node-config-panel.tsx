@@ -135,6 +135,10 @@ function renderForm(
       return <TriggerCampaignReplyForm data={data} set={set} refs={refs} onChangeTriggerType={onChangeTriggerType} />;
     case "action.send_media":
       return <SendMediaForm data={data} set={set} />;
+    case "action.send_location":
+      return <SendLocationForm data={data} set={set} />;
+    case "action.send_cta_url":
+      return <SendCtaUrlForm data={data} set={set} />;
     case "action.set_variable":
       return <SetVariableForm data={data} set={set} />;
     case "action.emit_event":
@@ -267,6 +271,62 @@ function SelectField(props: {
   );
 }
 
+/**
+ * Sobre qué líneas actúa el disparador.
+ *
+ * Antes esto era una lista de toggles con la regla "ninguno = todos" escrita
+ * entre paréntesis: no se podía distinguir "quiero todos" de "todavía no elegí",
+ * y las dos publicaban. Ahora se elige primero el alcance y recién ahí aparecen
+ * los números; "solo estos" sin ninguno tildado no publica.
+ */
+function PhoneScopeField({ data, set, refs }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs }) {
+  const phoneIds: string[] = Array.isArray(data.phoneNumberIds) ? data.phoneNumberIds : [];
+  const scope: "all" | "specific" =
+    data.phoneScope === "all" || data.phoneScope === "specific"
+      ? data.phoneScope
+      : phoneIds.length > 0
+        ? "specific"
+        : "all";
+
+  return (
+    <>
+      <SelectField
+        label="Números donde aplica"
+        value={scope}
+        options={[
+          { value: "specific", label: "Solo los números que elija" },
+          { value: "all", label: "Todos los números de la cuenta" },
+        ]}
+        onChange={(value) =>
+          set({ phoneScope: value, ...(value === "all" ? { phoneNumberIds: [] } : {}) })
+        }
+      />
+
+      {scope === "specific" && (
+        <div>
+          <div className="space-y-1">
+            {refs.phones.map((phone) => (
+              <ToggleField
+                key={phone.id}
+                label={phone.label || phone.displayPhone || phone.phoneNumberId}
+                checked={phoneIds.includes(phone.id)}
+                onChange={(checked) =>
+                  set({ phoneNumberIds: checked ? [...phoneIds, phone.id] : phoneIds.filter((id) => id !== phone.id) })
+                }
+              />
+            ))}
+          </div>
+          {phoneIds.length === 0 && (
+            <p className="mt-1 text-xs text-destructive">
+              Elegí al menos un número: así como está, el disparador no se activa nunca.
+            </p>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 function ToggleField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
@@ -382,25 +442,10 @@ function TriggerTypeSwitch({ current, onChangeTriggerType }: { current: string; 
 }
 
 function TriggerMessageForm({ data, set, refs, onChangeTriggerType }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs; onChangeTriggerType: (t: string) => void }) {
-  const phoneIds: string[] = Array.isArray(data.phoneNumberIds) ? data.phoneNumberIds : [];
   return (
     <>
       <TriggerTypeSwitch current="trigger.inbound_message" onChangeTriggerType={onChangeTriggerType} />
-      <div>
-        <FieldLabel>Números donde aplica (ninguno = todos)</FieldLabel>
-        <div className="space-y-1">
-          {refs.phones.map((phone) => (
-            <ToggleField
-              key={phone.id}
-              label={phone.label || phone.displayPhone || phone.phoneNumberId}
-              checked={phoneIds.includes(phone.id)}
-              onChange={(checked) =>
-                set({ phoneNumberIds: checked ? [...phoneIds, phone.id] : phoneIds.filter((id) => id !== phone.id) })
-              }
-            />
-          ))}
-        </div>
-      </div>
+      <PhoneScopeField data={data} set={set} refs={refs} />
       <SelectField
         label="Cuándo dispara"
         value={data.match ?? "any"}
@@ -466,25 +511,10 @@ function TriggerWebhookForm({ data, set, refs, onChangeTriggerType }: { data: Re
 
 function TriggerCampaignReplyForm({ data, set, refs, onChangeTriggerType }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs; onChangeTriggerType: (t: string) => void }) {
   const campaignIds: string[] = Array.isArray(data.campaignIds) ? data.campaignIds : [];
-  const phoneIds: string[] = Array.isArray(data.phoneNumberIds) ? data.phoneNumberIds : [];
   return (
     <>
       <TriggerTypeSwitch current="trigger.campaign_reply" onChangeTriggerType={onChangeTriggerType} />
-      <div>
-        <FieldLabel>Números donde aplica (ninguno = todos)</FieldLabel>
-        <div className="space-y-1">
-          {refs.phones.map((phone) => (
-            <ToggleField
-              key={phone.id}
-              label={phone.label || phone.displayPhone || phone.phoneNumberId}
-              checked={phoneIds.includes(phone.id)}
-              onChange={(checked) =>
-                set({ phoneNumberIds: checked ? [...phoneIds, phone.id] : phoneIds.filter((id) => id !== phone.id) })
-              }
-            />
-          ))}
-        </div>
-      </div>
+      <PhoneScopeField data={data} set={set} refs={refs} />
       <div>
         <FieldLabel>Campañas (ninguna = todas)</FieldLabel>
         <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -580,6 +610,91 @@ function SendMediaForm({ data, set }: { data: Record<string, any>; set: (p: Reco
       <div>
         <FieldLabel>Texto que acompaña (opcional)</FieldLabel>
         <Textarea rows={2} value={data.caption ?? ""} onChange={(e) => set({ caption: e.target.value })} />
+      </div>
+      <WindowPolicyField data={data} set={set} />
+    </>
+  );
+}
+
+/**
+ * Ubicación fija: el local, el punto de retiro, la sucursal. Las coordenadas
+ * aceptan variables, así que un flujo puede mandar la sucursal que eligió el
+ * cliente en un paso anterior.
+ */
+function SendLocationForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <FieldLabel>Latitud</FieldLabel>
+          <Input
+            value={String(data.latitude ?? "")}
+            placeholder="-34.6037"
+            onChange={(e) => set({ latitude: e.target.value })}
+          />
+        </div>
+        <div>
+          <FieldLabel>Longitud</FieldLabel>
+          <Input
+            value={String(data.longitude ?? "")}
+            placeholder="-58.3816"
+            onChange={(e) => set({ longitude: e.target.value })}
+          />
+        </div>
+      </div>
+      <div>
+        <FieldLabel>Nombre del lugar</FieldLabel>
+        <Input
+          value={String(data.name ?? "")}
+          placeholder="Aloe Village"
+          onChange={(e) => set({ name: e.target.value })}
+        />
+      </div>
+      <div>
+        <FieldLabel>Dirección</FieldLabel>
+        <Input
+          value={String(data.address ?? "")}
+          placeholder="La Paloma, Rocha"
+          onChange={(e) => set({ address: e.target.value })}
+        />
+      </div>
+      <WindowPolicyField data={data} set={set} />
+    </>
+  );
+}
+
+/**
+ * Botón con link sin plantilla. Sólo funciona dentro de la ventana de 24 h,
+ * que es justamente donde una plantilla sería un desperdicio.
+ */
+function SendCtaUrlForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  return (
+    <>
+      <BodyField data={data} set={set} label="Mensaje" max={1024} />
+      <div>
+        <FieldLabel>Texto del botón</FieldLabel>
+        <Input
+          value={String(data.buttonText ?? "")}
+          maxLength={20}
+          placeholder="Abrir"
+          onChange={(e) => set({ buttonText: e.target.value })}
+        />
+      </div>
+      <div>
+        <FieldLabel>Link</FieldLabel>
+        <Input
+          value={String(data.url ?? "")}
+          placeholder="https://..."
+          onChange={(e) => set({ url: e.target.value })}
+        />
+      </div>
+      <div>
+        <FieldLabel>Pie (opcional)</FieldLabel>
+        <Input
+          value={String(data.footer ?? "")}
+          maxLength={60}
+          onChange={(e) => set({ footer: e.target.value })}
+        />
       </div>
       <WindowPolicyField data={data} set={set} />
     </>

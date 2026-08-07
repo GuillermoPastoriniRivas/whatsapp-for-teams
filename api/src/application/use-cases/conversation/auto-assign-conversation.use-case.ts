@@ -10,10 +10,12 @@ import { ConversationEventType } from '../../../domain/enums/conversation-event-
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
 
-export interface AutoAssignOptions {
-  excludeAi?: boolean;
-}
-
+/**
+ * Reparto de una conversación entre las personas del equipo con acceso al
+ * número, por carga. Nunca asigna bots: desde que el ruteo entrante pasa por
+ * automatizaciones, un bot solo toma una conversación si un flujo lo dice
+ * explícitamente (nodo "Entregar al asistente IA"). Ver FlowInboundRouterUseCase.
+ */
 export class AutoAssignConversationUseCase {
   constructor(
     private readonly conversationRepo: ConversationRepository,
@@ -24,7 +26,7 @@ export class AutoAssignConversationUseCase {
     private readonly devEvents: DeveloperEventsPort,
   ) {}
 
-  async execute(conversationId: string, options?: AutoAssignOptions): Promise<Agent | null> {
+  async execute(conversationId: string): Promise<Agent | null> {
     const conversation = await this.conversationRepo.findById(conversationId);
     if (!conversation) return null;
 
@@ -38,8 +40,7 @@ export class AutoAssignConversationUseCase {
     const agentIds = accessList.map((a) => a.agentId);
 
     // Atomic: find least-loaded available agent and increment
-    const excludeType = options?.excludeAi ? AgentType.AI : undefined;
-    const agent = await this.agentRepo.findAvailableByIdsAndIncrementLoad(agentIds, excludeType);
+    const agent = await this.agentRepo.findAvailableByIdsAndIncrementLoad(agentIds, AgentType.AI);
 
     if (!agent) {
       await this.conversationRepo.update(conversationId, {

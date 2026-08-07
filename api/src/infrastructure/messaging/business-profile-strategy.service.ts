@@ -6,17 +6,13 @@ import type {
   BusinessProfileUpdate,
 } from '../../application/ports/business-profile.port.js';
 import type { WhatsAppBusinessProfile } from '../../domain/entities/whatsapp-business-profile.entity.js';
-import {
-  KapsoBusinessProfileApiService,
-  MetaBusinessProfileApiService,
-} from './meta-business-profile-api.service.js';
+import { MetaBusinessProfileApiService } from './meta-business-profile-api.service.js';
 import { DemoBusinessProfileApiService } from './demo-business-profile-api.service.js';
 
 @Injectable()
 export class BusinessProfileStrategyService implements BusinessProfilePort {
   constructor(
     private readonly metaService: MetaBusinessProfileApiService,
-    private readonly kapsoService: KapsoBusinessProfileApiService,
     private readonly demoService: DemoBusinessProfileApiService,
   ) {}
 
@@ -36,8 +32,6 @@ export class BusinessProfileStrategyService implements BusinessProfilePort {
     switch (provider) {
       case MessagingProvider.META:
         return this.metaService;
-      case MessagingProvider.KAPSO:
-        return this.kapsoService;
       case MessagingProvider.DEMO:
         return this.demoService;
       default:

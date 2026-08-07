@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Phone, AtSign, Clock, StickyNote, Tag } from "lucide-react";
+import { User, Phone, AtSign, BellOff, Clock, StickyNote, Tag } from "lucide-react";
 import { api } from "@/lib/api";
 import { displayIdentity, identityHandle, identitySubtitle, formatPhone } from "@/lib/identity";
 import { useTranslations } from "@/lib/i18n/use-translations";
@@ -72,6 +72,14 @@ export function ContactInfoPanel({ conversation }: Props) {
               </>
             )}
           </div>
+          {/* El opt-out lo decidió el cliente en WhatsApp: el agente tiene que
+              verlo antes de intentar mandarle una plantilla de marketing. */}
+          {contact?.marketingOptOutAt && (
+            <Badge variant="outline" className="gap-1" title={t.admin.optedOutMarketingHint}>
+              <BellOff className="h-3 w-3" />
+              {t.admin.optedOutMarketing}
+            </Badge>
+          )}
           {contact?.id && (
             <ContactFields
               contact={{

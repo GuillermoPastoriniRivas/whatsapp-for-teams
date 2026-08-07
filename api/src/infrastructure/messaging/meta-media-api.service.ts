@@ -25,9 +25,9 @@ const MEDIA_USER_AGENT = 'asis.chat/1.0 (+https://asis.chat)';
  * le echemos la culpa a WhatsApp.
  *
  * Por eso solo cuenta la señal explícita de Meta: code 100 + subcode 33
- * ("Object does not exist"). Un 400 o un 404 pelados NO alcanzan — Kapso
- * responde 404 cuando no puede resolver la config del número, y eso se arregla
- * reintentando bien, no dando el archivo por muerto.
+ * ("Object does not exist"). Un 400 o un 404 pelados NO alcanzan: un 404 de un
+ * proxy o un gateway en el camino significa que la petición salió mal, no que
+ * el archivo no exista, y eso se arregla reintentando bien.
  */
 export function classifyMediaDownloadError(mediaId: string, status: number, text: string): Error {
   let body: MetaErrorBody | null = null;
@@ -51,12 +51,6 @@ interface MetaMediaMetadata {
   sha256: string;
   file_size: number;
   id: string;
-  /**
-   * Extensión de Kapso, no existe en Meta. La `url` de Meta apunta a
-   * lookaside.fbsbx.com y exige el Bearer del negocio —que con Kapso no
-   * tenemos—, así que ellos exponen su propio proxy acá.
-   */
-  download_url?: string;
 }
 
 @Injectable()
@@ -91,11 +85,8 @@ export class MetaMediaApiService {
       params.phoneNumberId,
     );
 
-    // `download_url` (Kapso) primero: su `url` es la de Meta y responde 401 sin
-    // el Bearer del negocio. En Meta el campo no existe y se usa `url`.
-    const binaryUrl = metadata.download_url ?? metadata.url;
-
-    const response = await fetch(binaryUrl, {
+    // La `url` apunta a lookaside.fbsbx.com y exige el mismo Bearer del negocio.
+    const response = await fetch(metadata.url, {
       headers: { ...headers, 'User-Agent': MEDIA_USER_AGENT },
     });
 
@@ -183,30 +174,5 @@ export class MetaMediaApiService {
       // cuerpo no-JSON (proxy/HTML): se clasifica solo por el status
     }
     return classifyMetaError(status, body);
-  }
-}
-
-/**
- * Kapso reenvía la API de Meta con su propia base y auth por API key.
- *
- * Dos diferencias en media, ambas descubiertas probando contra su API:
- *
- * 1. La metadata **exige** `?phone_number_id=`. Sin eso responde
- *    `404 {"error":"WhatsApp configuration not found"}` — que no significa que
- *    el archivo no exista, sino que no sabe de qué número le hablás.
- * 2. Devuelve un campo extra `download_url` que apunta a su propio proxy. La
- *    `url` de Meta (lookaside.fbsbx.com) responde 401 porque espera el Bearer
- *    del negocio, que con Kapso no tenemos.
- */
-@Injectable()
-export class KapsoMediaApiService extends MetaMediaApiService {
-  protected override baseUrl(): string {
-    return 'https://api.kapso.ai/meta/whatsapp/v24.0';
-  }
-
-  protected override authHeaders(providerConfig: Record<string, string>): Record<string, string> {
-    const apiKey = providerConfig.apiKey;
-    if (!apiKey) throw new Error('Kapso: falta apiKey en providerConfig');
-    return { 'X-API-Key': apiKey };
   }
 }

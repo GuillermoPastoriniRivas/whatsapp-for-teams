@@ -5,7 +5,7 @@ export interface TemplateSendComponent {
   sub_type?: 'quick_reply' | 'url' | 'copy_code';
   index?: number;
   parameters: Array<{
-    type: 'text' | 'image' | 'video' | 'document' | 'payload' | 'coupon_code';
+    type: 'text' | 'image' | 'video' | 'document' | 'payload' | 'coupon_code' | 'location';
     /** Required by Meta for named (non-positional) template parameters. */
     parameter_name?: string;
     text?: string;
@@ -14,6 +14,8 @@ export interface TemplateSendComponent {
     image?: { link: string };
     video?: { link: string };
     document?: { link: string };
+    /** Header `LOCATION`: coordenadas, no link. */
+    location?: { latitude: string; longitude: string; name?: string; address?: string };
   }>;
 }
 
@@ -23,16 +25,41 @@ export interface TemplateSendPayload {
   components?: TemplateSendComponent[];
 }
 
+/**
+ * Mensaje interactivo. Se modela como un objeto con `kind` y campos opcionales
+ * —no como unión— porque se persiste tal cual en `Message.interactivePayload` y
+ * la UI lo lee sin discriminar.
+ */
 export interface InteractiveSendPayload {
-  kind: 'buttons' | 'list';
+  kind: 'buttons' | 'list' | 'cta_url' | 'location_request' | 'address_message';
   body: string;
   footer?: string;
+  /** Encabezado de texto, para los tipos que lo admiten. */
+  header?: string;
   /** kind 'buttons': 1–3 botones (title ≤ 20 chars) */
   buttons?: Array<{ id: string; title: string }>;
-  /** kind 'list': texto del botón que abre la lista (≤ 20 chars) */
+  /** kind 'list': texto del botón que abre la lista. kind 'cta_url': texto del CTA. */
   buttonText?: string;
   /** kind 'list': 1–10 filas (title ≤ 24, description ≤ 72) */
   rows?: Array<{ id: string; title: string; description?: string }>;
+  /**
+   * kind 'cta_url': el link que abre el botón. Es la forma de mandar un botón
+   * con URL **dentro de la ventana de 24 h sin plantilla**.
+   */
+  url?: string;
+  /**
+   * kind 'address_message': país en ISO-2. Meta sólo habilita el formulario de
+   * dirección en algunos mercados (India y Singapur), y lo exige.
+   */
+  country?: string;
+}
+
+/** Tarjeta de contacto saliente. Meta exige al menos `name.formatted_name`. */
+export interface OutboundContactCard {
+  name: { formatted_name: string; first_name?: string; last_name?: string };
+  phones?: Array<{ phone: string; type?: string; wa_id?: string }>;
+  emails?: Array<{ email: string; type?: string }>;
+  org?: { company?: string; department?: string; title?: string };
 }
 
 export interface SendMessageParams {
@@ -60,21 +87,51 @@ export interface SendMessageParams {
   filename?: string;
   template?: TemplateSendPayload;
   interactive?: InteractiveSendPayload;
+  /** type 'location' */
+  location?: { latitude: number; longitude: number; name?: string; address?: string };
+  /** type 'contacts' */
+  contacts?: OutboundContactCard[];
+  /**
+   * type 'reaction'. Un `emoji` vacío **quita** la reacción, que es como lo
+   * modela Meta. No lleva `contextWaMessageId`: apunta por su propio campo.
+   */
+  reaction?: { waMessageId: string; emoji: string };
+  /**
+   * Responder citando: wamid del mensaje al que se responde. Aplica a
+   * cualquier tipo menos `reaction`.
+   */
+  contextWaMessageId?: string;
+  /**
+   * Manda la plantilla por **Marketing Messages Lite** en vez del endpoint de
+   * mensajes. Es el canal que Meta optimiza para marketing; sólo aplica a
+   * plantillas de esa categoría y aparece aparte en analytics
+   * (`product_type=MARKETING_LITE`).
+   */
+  marketingLite?: boolean;
 }
 
 export interface SendMessageResult {
   waMessageId: string;
 }
 
-export interface TypingIndicatorParams {
+/**
+ * Acuse de lectura (tilde azul) y, opcionalmente, el "escribiendo…".
+ *
+ * En Meta el indicador de tipeo **no es un mensaje con destinatario**: viaja
+ * pegado al mark-as-read y se direcciona por el `message_id` del entrante, no
+ * por teléfono ni por BSUID. Por eso acá no hay `to`/`recipient`.
+ */
+export interface ReadReceiptParams {
   provider: MessagingProvider;
   providerConfig: Record<string, string>;
   phoneNumberId: string;
-  to?: string;
-  recipient?: string;
+  /** wamid del mensaje entrante que se marca como leído. */
+  waMessageId: string;
+  /** Además del tilde azul, mostrarle "escribiendo…" (lo baja Meta a los ~25 s). */
+  typing?: boolean;
 }
 
 export interface MessagingApiPort {
   sendMessage(params: SendMessageParams): Promise<SendMessageResult>;
-  sendTypingIndicator(params: TypingIndicatorParams): Promise<void>;
+  markAsRead(params: ReadReceiptParams): Promise<void>;
 }

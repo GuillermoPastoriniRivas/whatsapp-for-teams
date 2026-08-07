@@ -3,6 +3,7 @@ import { HydratedDocument, Types } from 'mongoose';
 import { MessagingProvider } from '../../../../domain/enums/messaging-provider.enum.js';
 import { PhoneNumberStatus } from '../../../../domain/enums/phone-number-status.enum.js';
 import type { WhatsAppBusinessProfile } from '../../../../domain/entities/whatsapp-business-profile.entity.js';
+import type { PhoneNumberHealth } from '../../../../domain/entities/phone-number.entity.js';
 
 export type PhoneNumberDocument = HydratedDocument<PhoneNumberModel>;
 
@@ -49,6 +50,13 @@ export class PhoneNumberModel {
    */
   @Prop({ type: Object, default: null })
   businessProfile: WhatsAppBusinessProfile | null;
+
+  /**
+   * Calidad, throughput, verificación del nombre y estado de la cuenta según
+   * Meta. Lo escriben los webhooks de salud; `null` = nunca llegó ninguno.
+   */
+  @Prop({ type: Object, default: null })
+  health: PhoneNumberHealth | null;
 
   createdAt: Date;
 }

@@ -22,6 +22,7 @@ export class PhoneNumberMapper {
       doc.createdAt,
       doc.portfolioId ?? null,
       doc.businessProfile ?? null,
+      doc.health ?? null,
     );
   }
 }

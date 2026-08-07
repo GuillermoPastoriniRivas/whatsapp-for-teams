@@ -10,8 +10,10 @@ export const NODE_TYPES = [
   ...TRIGGER_TYPES,
   'action.send_text',
   'action.send_media',
+  'action.send_location',
   'action.send_buttons',
   'action.send_list',
+  'action.send_cta_url',
   'action.send_template',
   'action.ask',
   'action.ai_reply',
@@ -36,6 +38,24 @@ export function isTrigger(type: string): boolean {
   return type.startsWith('trigger.');
 }
 
+/** Sobre qué líneas actúa un disparador. */
+export type PhoneScope = 'all' | 'specific';
+
+/**
+ * El alcance de líneas de un disparador.
+ *
+ * Antes esto se deducía del largo de la lista — vacía significaba "todas" —, y
+ * era imposible distinguir "quiero todas" de "todavía no elegí ninguna": las
+ * dos se veían igual y las dos publicaban. Ahora la intención se guarda
+ * explícita en `phoneScope`; los flujos publicados antes del cambio no lo
+ * tienen, así que para esos se sigue deduciendo como antes.
+ */
+export function phoneScopeOf(data: Record<string, any>): PhoneScope {
+  if (data.phoneScope === 'all' || data.phoneScope === 'specific') return data.phoneScope;
+  const ids = Array.isArray(data.phoneNumberIds) ? data.phoneNumberIds : [];
+  return ids.length > 0 ? 'specific' : 'all';
+}
+
 /** Nodos que entran en estado de espera (cortan cualquier ciclo) */
 export function isWaitNode(type: string): boolean {
   return (
@@ -57,8 +77,10 @@ export function isSessionSend(type: string): boolean {
   return (
     type === 'action.send_text' ||
     type === 'action.send_media' ||
+    type === 'action.send_location' ||
     type === 'action.send_buttons' ||
     type === 'action.send_list' ||
+    type === 'action.send_cta_url' ||
     type === 'action.ask' ||
     type === 'action.ai_reply'
   );
@@ -74,6 +96,10 @@ export function outputHandles(node: FlowNode): string[] {
       return ['out'];
     case 'action.send_text':
     case 'action.send_media':
+    case 'action.send_location':
+    // El botón con link abre el navegador: no vuelve como respuesta, así que
+    // no abre ramas ni entra en espera.
+    case 'action.send_cta_url':
       return ['out', 'error'];
     case 'action.send_buttons': {
       const buttons: unknown[] = Array.isArray(data.buttons) ? data.buttons : [];

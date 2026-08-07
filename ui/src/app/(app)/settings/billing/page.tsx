@@ -15,6 +15,7 @@ import { PageShell, PageContent } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { InlineNotice } from "@/components/shared/inline-notice";
 import { PlanCard, PLAN_ICONS, usePlanNames } from "@/components/shared/plan-card";
+import { PlanComparison } from "@/components/shared/plan-comparison";
 import {
   Table,
   TableBody,
@@ -81,6 +82,52 @@ export default function BillingPage() {
     } finally {
       setPendingPlan(null);
     }
+  };
+
+  /** El CTA de un plan. Lo comparten la tabla de escritorio y las cards de mobile. */
+  const planAction = (tierKey: PlanTier) => {
+    if (tierKey === plan) {
+      return (
+        <div className="flex h-10 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-medium text-primary md:h-8">
+          {t.billing.currentBadge}
+        </div>
+      );
+    }
+    if (subscription?.scheduledPlan === tierKey) {
+      return (
+        <div className="flex h-10 w-full items-center justify-center rounded-lg bg-accent/10 text-sm font-medium text-accent md:h-8">
+          {t.billing.scheduled}
+        </div>
+      );
+    }
+    if (tierKey === "agencies") {
+      return (
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => window.open("https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies", "_blank")}
+        >
+          {t.billing.contactUs}
+        </Button>
+      );
+    }
+    const isUpgrade = PLAN_ORDER.indexOf(tierKey) > PLAN_ORDER.indexOf(plan);
+    return (
+      <Button
+        variant={isUpgrade ? "default" : "outline"}
+        className="w-full"
+        disabled={pendingPlan !== null}
+        onClick={() => handlePlanAction(tierKey)}
+      >
+        {pendingPlan === tierKey ? (
+          <Spinner size="sm" className="text-current" />
+        ) : isUpgrade ? (
+          t.billing.upgrade
+        ) : (
+          t.billing.downgrade
+        )}
+      </Button>
+    );
   };
 
   const formatLimit = (current: number, limit: number) => {
@@ -245,59 +292,29 @@ export default function BillingPage() {
           {/* Selector de plan */}
           <section className="space-y-4">
             <h2 className="text-base font-semibold">{t.billing.changePlan}</h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {PLAN_ORDER.map((tierKey) => {
-                const isCurrent = tierKey === plan;
-                const isScheduled = subscription?.scheduledPlan === tierKey;
-                const isUpgrade = PLAN_ORDER.indexOf(tierKey) > PLAN_ORDER.indexOf(plan);
 
-                const action = isCurrent ? (
-                  <div className="flex h-10 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-medium text-primary md:h-8">
-                    {t.billing.currentBadge}
-                  </div>
-                ) : isScheduled ? (
-                  <div className="flex h-10 w-full items-center justify-center rounded-lg bg-accent/10 text-sm font-medium text-accent md:h-8">
-                    {t.billing.scheduled}
-                  </div>
-                ) : tierKey === "agencies" ? (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => window.open("https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies", "_blank")}
-                  >
-                    {t.billing.contactUs}
-                  </Button>
-                ) : (
-                  <Button
-                    variant={isUpgrade ? "default" : "outline"}
-                    className="w-full"
-                    disabled={pendingPlan !== null}
-                    onClick={() => handlePlanAction(tierKey)}
-                  >
-                    {pendingPlan === tierKey ? (
-                      <Spinner size="sm" className="text-current" />
-                    ) : isUpgrade ? (
-                      t.billing.upgrade
-                    ) : (
-                      t.billing.downgrade
-                    )}
-                  </Button>
-                );
+            {/* Escritorio: tabla comparativa — cinco columnas no entran antes de
+                `lg`. Mobile: las mismas filas, apiladas en cards. */}
+            <PlanComparison
+              className="hidden lg:block"
+              current={plan}
+              action={planAction}
+            />
 
-                return (
-                  <PlanCard
-                    key={tierKey}
-                    tier={tierKey}
-                    current={isCurrent}
-                    action={action}
-                    className={
-                      isScheduled && !isCurrent
-                        ? "border-accent/40 bg-accent/5 ring-1 ring-accent/20"
-                        : undefined
-                    }
-                  />
-                );
-              })}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
+              {PLAN_ORDER.map((tierKey) => (
+                <PlanCard
+                  key={tierKey}
+                  tier={tierKey}
+                  current={tierKey === plan}
+                  action={planAction(tierKey)}
+                  className={
+                    subscription?.scheduledPlan === tierKey && tierKey !== plan
+                      ? "border-accent/40 bg-accent/5 ring-1 ring-accent/20"
+                      : undefined
+                  }
+                />
+              ))}
             </div>
           </section>
 

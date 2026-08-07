@@ -139,11 +139,21 @@
   --border: oklch(0.900 0.010 250);
   --input: oklch(0.900 0.010 250);
   --ring: oklch(0.600 0.130 175);
+  /*
+   * Serie categórica de los gráficos, en orden fijo: una serie nunca cambia de
+   * color porque cambió su posición. Los tres últimos slots eran los grises que
+   * trae shadcn de fábrica y no servían como categorías (leen como "sin dato" y
+   * en oscuro no llegaban al contraste mínimo).
+   *
+   * Estos valores están validados: banda de luminosidad, piso de croma,
+   * separación para daltonismo (protan/deutan/tritan) y contraste contra la
+   * superficie. Si se tocan, hay que volver a validarlos — no se eligen a ojo.
+   */
   --chart-1: oklch(0.600 0.130 175);
   --chart-2: oklch(0.580 0.200 45);
-  --chart-3: oklch(0.439 0.010 250);
-  --chart-4: oklch(0.371 0.010 250);
-  --chart-5: oklch(0.269 0.010 250);
+  --chart-3: oklch(0.520 0.160 285);
+  --chart-4: oklch(0.560 0.170 350);
+  --chart-5: oklch(0.650 0.140 130);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0.005 250);
   --sidebar-foreground: oklch(0.145 0.015 260);
@@ -215,11 +225,16 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.795 0.115 182);
-  --chart-1: oklch(0.795 0.115 182);
-  --chart-2: oklch(0.750 0.170 50);
-  --chart-3: oklch(0.439 0.010 250);
-  --chart-4: oklch(0.371 0.010 250);
-  --chart-5: oklch(0.269 0.010 250);
+  /*
+   * El oscuro no es un reflejo automático del claro: son pasos propios,
+   * validados contra la superficie oscura. Los del claro quedaban demasiado
+   * luminosos acá y vibraban sobre el fondo.
+   */
+  --chart-1: oklch(0.660 0.120 180);
+  --chart-2: oklch(0.660 0.150 50);
+  --chart-3: oklch(0.620 0.150 285);
+  --chart-4: oklch(0.630 0.150 350);
+  --chart-5: oklch(0.660 0.130 130);
   --sidebar: oklch(0.170 0.020 260);
   --sidebar-foreground: oklch(0.950 0 0);
   --sidebar-primary: oklch(0.795 0.115 182);

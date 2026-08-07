@@ -96,7 +96,7 @@ async function bootstrap() {
     .addTag('Conversations', 'Conversation listing, messaging & lifecycle')
     .addTag('Contacts', 'Contact details & updates')
     .addTag('Tenants', 'Tenant management')
-    .addTag('Webhooks', 'Inbound webhook receivers (Meta, Twilio)')
+    .addTag('Webhooks', 'Inbound webhook receivers (Meta Cloud API)')
     .addTag('Public API (v1)', 'REST API for developers (API key auth)')
     .addTag('Developer Platform', 'API keys & webhook endpoints management')
     .addTag('Payment Webhooks', 'Payment provider webhook receivers (Lemon Squeezy)')

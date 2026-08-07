@@ -8,14 +8,13 @@ import {
   TemplateProviderContext,
   UpdateTemplateParams,
 } from '../../application/ports/template-management.port.js';
-import { KapsoTemplateApiService, MetaTemplateApiService } from './meta-template-api.service.js';
+import { MetaTemplateApiService } from './meta-template-api.service.js';
 import { DemoTemplateApiService } from './demo-template-api.service.js';
 
 @Injectable()
 export class TemplateManagementStrategyService implements TemplateManagementPort {
   constructor(
     private readonly metaService: MetaTemplateApiService,
-    private readonly kapsoService: KapsoTemplateApiService,
     private readonly demoService: DemoTemplateApiService,
   ) {}
 
@@ -31,6 +30,10 @@ export class TemplateManagementStrategyService implements TemplateManagementPort
     return this.resolve(params.provider).deleteTemplate(params);
   }
 
+  async deleteTemplates(params: TemplateProviderContext, metaTemplateIds: string[]): Promise<void> {
+    return this.resolve(params.provider).deleteTemplates(params, metaTemplateIds);
+  }
+
   async listTemplates(params: TemplateProviderContext): Promise<RemoteTemplate[]> {
     return this.resolve(params.provider).listTemplates(params);
   }
@@ -39,8 +42,6 @@ export class TemplateManagementStrategyService implements TemplateManagementPort
     switch (provider) {
       case MessagingProvider.META:
         return this.metaService;
-      case MessagingProvider.KAPSO:
-        return this.kapsoService;
       case MessagingProvider.DEMO:
         return this.demoService;
       default:

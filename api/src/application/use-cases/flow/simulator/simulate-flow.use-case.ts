@@ -368,6 +368,9 @@ export class SimulateFlowUseCase {
       findById: repo.findById.bind(repo),
       findByTenantId: repo.findByTenantId.bind(repo),
       findPublishedByTenantId: repo.findPublishedByTenantId.bind(repo),
+      // El simulador corre un flujo concreto: nunca resuelve la base de un
+      // número, así que no hace falta llegar hasta la base de datos.
+      findDefaultByPhoneNumberId: async () => null,
       update: async () => null,
       transitionStatus: async () => null,
       incrementStats: async () => {},

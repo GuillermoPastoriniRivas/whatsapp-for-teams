@@ -6,15 +6,17 @@
 // Nada de "elegí un disparador" ni "definí una variable": esa traducción la
 // hace el generador del backend.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, ArrowLeft, ArrowRight, Check, MessageSquare, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
+import { SimpleSelect } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { InlineNotice } from "@/components/shared/inline-notice";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import type { PhoneNumber } from "@/types";
 
 type Vertical = "beauty" | "food" | "retail" | "generic";
 type Fallback = "ai" | "human" | "message";
@@ -94,10 +96,21 @@ export function AssistantSetup({ onDone, onCancel }: Props) {
   const [days, setDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [from, setFrom] = useState("09:00");
   const [to, setTo] = useState("18:00");
+  const [phones, setPhones] = useState<PhoneNumber[]>([]);
+  const [phoneId, setPhoneId] = useState("");
+
+  useEffect(() => {
+    void api.get<PhoneNumber[]>("/phone-numbers").then(setPhones).catch(() => setPhones([]));
+  }, []);
+
+  // Con una sola línea no hay nada que preguntar. Con varias, se elige: un
+  // asistente que contesta en todos los números sin que nadie lo haya pedido
+  // es de las cosas que más caro salen de descubrir tarde.
+  const targetPhoneId = phones.length === 1 ? phones[0].id : phoneId;
 
   const available = TOPICS[vertical];
   const canContinue = [
-    businessName.trim().length > 0,
+    businessName.trim().length > 0 && !!targetPhoneId,
     true, // los temas son opcionales: siempre queda "hablar con alguien"
     true,
     days.length > 0 && !!from && !!to,
@@ -113,6 +126,7 @@ export function AssistantSetup({ onDone, onCancel }: Props) {
         address: address.trim() || undefined,
         topics,
         fallback,
+        phoneNumberIds: targetPhoneId ? [targetPhoneId] : [],
         schedule: {
           days,
           from,
@@ -170,6 +184,16 @@ export function AssistantSetup({ onDone, onCancel }: Props) {
               onChange={(e) => setAddress(e.target.value)}
             />
           </Field>
+          {phones.length > 1 && (
+            <Field label="¿En qué número va a atender?">
+              <SimpleSelect
+                value={phoneId}
+                onChange={setPhoneId}
+                placeholder="Elegí un número"
+                options={phones.map((p) => ({ value: p.id, label: p.label || p.displayPhone }))}
+              />
+            </Field>
+          )}
         </div>
       ),
     },

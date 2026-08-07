@@ -8,8 +8,7 @@ import {
   MediaUploadParams,
   MediaUploadResult,
 } from '../../application/ports/media-provider.port.js';
-import { KapsoMediaApiService, MetaMediaApiService } from './meta-media-api.service.js';
-import { TwilioMediaApiService } from './twilio-media-api.service.js';
+import { MetaMediaApiService } from './meta-media-api.service.js';
 
 /** 1x1 PNG transparente — el tenant demo nunca toca una API real. */
 const DEMO_PIXEL = Buffer.from(
@@ -19,20 +18,12 @@ const DEMO_PIXEL = Buffer.from(
 
 @Injectable()
 export class MediaProviderStrategyService implements MediaProviderPort {
-  constructor(
-    private readonly meta: MetaMediaApiService,
-    private readonly kapso: KapsoMediaApiService,
-    private readonly twilio: TwilioMediaApiService,
-  ) {}
+  constructor(private readonly meta: MetaMediaApiService) {}
 
   async download(params: MediaDownloadParams): Promise<MediaDownloadResult> {
     switch (params.provider) {
       case MessagingProvider.META:
         return this.meta.download(params);
-      case MessagingProvider.KAPSO:
-        return this.kapso.download(params);
-      case MessagingProvider.TWILIO:
-        return this.twilio.download(params);
       case MessagingProvider.DEMO:
         return {
           buffer: DEMO_PIXEL,
@@ -49,8 +40,6 @@ export class MediaProviderStrategyService implements MediaProviderPort {
     switch (params.provider) {
       case MessagingProvider.META:
         return this.meta.upload(params);
-      case MessagingProvider.KAPSO:
-        return this.kapso.upload(params);
       case MessagingProvider.DEMO:
         return { providerMediaId: `demo-media-${randomUUID()}` };
       default:

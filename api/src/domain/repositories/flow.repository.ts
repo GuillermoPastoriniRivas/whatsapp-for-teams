@@ -21,6 +21,8 @@ export interface FlowRepository {
   findByTenantId(tenantId: string): Promise<Flow[]>;
   /** Flujos publicados del tenant, ordenados por priority asc (matching de triggers) */
   findPublishedByTenantId(tenantId: string): Promise<Flow[]>;
+  /** La automatización base de un número, en cualquier estado. Null si no la tiene. */
+  findDefaultByPhoneNumberId(phoneNumberId: string): Promise<Flow | null>;
   update(id: string, patch: UpdateFlowInput): Promise<Flow | null>;
   /** Transición CAS de estado (patrón transitionStatus de Campaign) */
   transitionStatus(id: string, from: FlowStatus[], to: FlowStatus, extra?: UpdateFlowInput): Promise<Flow | null>;

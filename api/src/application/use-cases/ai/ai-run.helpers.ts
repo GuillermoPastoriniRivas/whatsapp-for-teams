@@ -120,6 +120,22 @@ export function buildAgentSystemPrompt(params: {
   });
 }
 
+/**
+ * Último mensaje entrante de un lote, por timestamp.
+ *
+ * A propósito no asume el orden del repositorio: hay dos llamadores de
+ * `findByConversationId` que lo interpretan al revés entre sí, y de acá sale el
+ * wamid del que cuelgan el acuse de lectura y el "escribiendo…".
+ */
+export function lastInboundOf(messages: Message[]): Message | null {
+  let latest: Message | null = null;
+  for (const message of messages) {
+    if (message.direction !== MessageDirection.INBOUND) continue;
+    if (!latest || message.timestamp > latest.timestamp) latest = message;
+  }
+  return latest;
+}
+
 export interface SendBubblesParams {
   messagingApi: MessagingApiPort;
   messageRepo: MessageRepository;
@@ -131,6 +147,11 @@ export interface SendBubblesParams {
   senderAgentName: string | null;
   bubbles: string[];
   interBubbleDelayMs: number;
+  /**
+   * wamid del entrante que se está contestando. Meta cuelga el "escribiendo…"
+   * de un mensaje concreto, así que sin esto no hay indicador entre burbujas.
+   */
+  replyToWaMessageId?: string | null;
   /** Si están presentes, cada burbuja emite message.sent al webhook de desarrolladores */
   devEvents?: DeveloperEventsPort;
   tenantId?: string;
@@ -139,16 +160,19 @@ export interface SendBubblesParams {
 /** Envía burbujas de texto con typing + delay entre burbujas, persiste y emite WS */
 export async function sendBubbles(params: SendBubblesParams): Promise<void> {
   const { messagingApi, messageRepo, gateway, phone, recipient, conversationId } = params;
-  const typingParams = {
-    provider: phone.provider,
-    providerConfig: phone.providerConfig,
-    phoneNumberId: phone.phoneNumberId,
-    ...recipient,
-  };
+  const typingParams = params.replyToWaMessageId
+    ? {
+        provider: phone.provider,
+        providerConfig: phone.providerConfig,
+        phoneNumberId: phone.phoneNumberId,
+        waMessageId: params.replyToWaMessageId,
+        typing: true,
+      }
+    : null;
 
   for (let i = 0; i < params.bubbles.length; i++) {
     if (i > 0) {
-      messagingApi.sendTypingIndicator(typingParams).catch(() => {});
+      if (typingParams) messagingApi.markAsRead(typingParams).catch(() => {});
       await new Promise((r) => setTimeout(r, params.interBubbleDelayMs));
     }
 

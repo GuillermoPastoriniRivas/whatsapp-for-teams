@@ -8,7 +8,7 @@ import {
   TemplateProviderContext,
   UpdateTemplateParams,
 } from '../../application/ports/template-management.port.js';
-import { classifyMetaError, MetaErrorBody } from './meta-api-error.js';
+import { classifyMetaError, MetaApiError, MetaErrorBody } from './meta-api-error.js';
 
 interface MetaTemplateItem {
   id: string;
@@ -26,6 +26,12 @@ interface MetaTemplateListResponse {
   paging?: { next?: string };
 }
 
+/** Tope de páginas del listado (100 por página): corta un `next` que se repita. */
+const MAX_TEMPLATE_PAGES = 50;
+
+/** Tope de Meta para el borrado masivo por `hsm_ids`. */
+const MAX_BULK_DELETE = 100;
+
 @Injectable()
 export class MetaTemplateApiService {
   protected readonly logger = new Logger(this.constructor.name);
@@ -35,12 +41,12 @@ export class MetaTemplateApiService {
     this.apiVersion = configService.get<string>('META_API_VERSION', 'v21.0');
   }
 
-  /** Base Graph API URL — Kapso overrides this with its Meta-proxy host. */
+  /** Base Graph API URL. */
   protected graphBaseUrl(): string {
     return `https://graph.facebook.com/${this.apiVersion}`;
   }
 
-  /** Auth headers — Meta uses a Bearer token; Kapso overrides with X-API-Key. */
+  /** Auth headers — el business token de la WABA, como Bearer. */
   protected authHeaders(providerConfig: Record<string, string>): Record<string, string> {
     if (!providerConfig.accessToken) {
       throw new Error('Meta Template API: missing accessToken in providerConfig');
@@ -50,13 +56,48 @@ export class MetaTemplateApiService {
 
   async createTemplate(params: CreateTemplateParams): Promise<{ metaTemplateId: string; status: string }> {
     const url = `${this.graphBaseUrl()}/${params.wabaId}/message_templates`;
-    const data = await this.request<{ id: string; status: string }>(url, params.providerConfig, 'POST', {
-      name: params.name,
-      language: params.language,
-      category: params.category.toUpperCase(),
-      components: params.components,
-    });
-    return { metaTemplateId: data.id, status: data.status };
+    try {
+      const data = await this.request<{ id: string; status: string }>(url, params.providerConfig, 'POST', {
+        name: params.name,
+        language: params.language,
+        category: params.category.toUpperCase(),
+        components: params.components,
+        ...(params.messageSendTtlSeconds
+          ? { message_send_ttl_seconds: params.messageSendTtlSeconds }
+          : {}),
+      });
+      return { metaTemplateId: data.id, status: data.status };
+    } catch (error) {
+      throw this.explainWabaEdgeError(error, params.wabaId);
+    }
+  }
+
+  /**
+   * El error 100 sobre el borde `message_templates` casi siempre significa que
+   * el ID guardado no es una WABA. El caso típico: pegar el ID del **portafolio
+   * de negocio** (Business Manager), que también existe y también se deja leer,
+   * así que el mensaje crudo de Meta —"does not exist, cannot be loaded due to
+   * missing permissions, or does not support this operation"— manda a buscar un
+   * problema de permisos que no es.
+   */
+  private explainWabaEdgeError(error: unknown, wabaId: string): unknown {
+    const message = error instanceof Error ? error.message : '';
+    // "Unsupported post request" al crear, "Unsupported get request" al sincronizar.
+    const looksLikeWrongNode =
+      message.includes('Unsupported') || message.includes('does not exist');
+    if (!(error instanceof MetaApiError) || error.code !== 100 || !looksLikeWrongNode) return error;
+
+    return new MetaApiError(
+      error.code,
+      error.subcode,
+      `Meta no acepta plantillas en la cuenta "${wabaId}". Suele pasar cuando ahí está cargado el ID ` +
+        'del portafolio de negocio en lugar del de la cuenta de WhatsApp (WABA). En el Administrador ' +
+        'comercial de Meta, WhatsApp → Cuentas de WhatsApp Business, copiá el ID de la cuenta que ' +
+        'contiene este número y cargalo en el número.',
+      false,
+      error.severity,
+      error.httpStatus,
+    );
   }
 
   async updateTemplate(params: UpdateTemplateParams): Promise<void> {
@@ -74,19 +115,38 @@ export class MetaTemplateApiService {
     await this.request(url, params.providerConfig, 'DELETE');
   }
 
+  /**
+   * Borrado masivo. Meta acepta hasta 100 ids por request en `hsm_ids`; se
+   * mandan en tandas para que borrar una lista larga no falle entera.
+   */
+  async deleteTemplates(params: TemplateProviderContext, metaTemplateIds: string[]): Promise<void> {
+    const ids = metaTemplateIds.filter(Boolean);
+    for (let offset = 0; offset < ids.length; offset += MAX_BULK_DELETE) {
+      const chunk = ids.slice(offset, offset + MAX_BULK_DELETE);
+      const query = new URLSearchParams({ hsm_ids: JSON.stringify(chunk) });
+      const url = `${this.graphBaseUrl()}/${params.wabaId}/message_templates?${query}`;
+      await this.request(url, params.providerConfig, 'DELETE');
+    }
+  }
+
   async listTemplates(params: TemplateProviderContext): Promise<RemoteTemplate[]> {
     const fields = 'id,name,language,status,category,quality_score,components,rejected_reason';
     let url: string | undefined =
       `${this.graphBaseUrl()}/${params.wabaId}/message_templates?fields=${fields}&limit=100`;
 
+    // `paging.next` es una URL absoluta que viene en la respuesta, y a cada
+    // request le pegamos el access token: si apuntara a otro host le estaríamos
+    // mandando la credencial del cliente. Solo se sigue dentro del mismo origen.
+    const origin = new URL(this.graphBaseUrl()).origin;
     const templates: RemoteTemplate[] = [];
-    while (url) {
-      const page: MetaTemplateListResponse = await this.request<MetaTemplateListResponse>(
-        url,
-        params.providerConfig,
-        'GET',
-      );
-      for (const item of page.data ?? []) {
+    for (let page = 0; url && page < MAX_TEMPLATE_PAGES; page++) {
+      let body: MetaTemplateListResponse;
+      try {
+        body = await this.request<MetaTemplateListResponse>(url, params.providerConfig, 'GET');
+      } catch (error) {
+        throw this.explainWabaEdgeError(error, params.wabaId);
+      }
+      for (const item of body.data ?? []) {
         templates.push({
           metaTemplateId: item.id,
           name: item.name,
@@ -98,9 +158,25 @@ export class MetaTemplateApiService {
           rejectionReason: item.rejected_reason ?? null,
         });
       }
-      url = page.paging?.next;
+      url = this.sameOrigin(body.paging?.next, origin);
     }
     return templates;
+  }
+
+  /** Devuelve la URL solo si es del mismo origen que la API; si no, corta el paginado. */
+  private sameOrigin(next: string | undefined, origin: string): string | undefined {
+    if (!next) return undefined;
+    let parsed: URL;
+    try {
+      parsed = new URL(next);
+    } catch {
+      return undefined;
+    }
+    if (parsed.origin !== origin) {
+      this.logger.warn(`Se descarta paging.next hacia ${parsed.origin}: no es el origen de la API`);
+      return undefined;
+    }
+    return parsed.toString();
   }
 
   private async request<T = unknown>(
@@ -131,24 +207,5 @@ export class MetaTemplateApiService {
     }
 
     return (await response.json()) as T;
-  }
-}
-
-/**
- * Kapso proxies the Meta Graph API verbatim (same paths and payloads) at
- * api.kapso.ai/meta/whatsapp, authenticating with the project API key.
- * Template endpoints work identically, so this only swaps host + auth.
- */
-@Injectable()
-export class KapsoTemplateApiService extends MetaTemplateApiService {
-  protected graphBaseUrl(): string {
-    return 'https://api.kapso.ai/meta/whatsapp/v24.0';
-  }
-
-  protected authHeaders(providerConfig: Record<string, string>): Record<string, string> {
-    if (!providerConfig.apiKey) {
-      throw new Error('Kapso Template API: missing apiKey in providerConfig');
-    }
-    return { 'X-API-Key': providerConfig.apiKey };
   }
 }

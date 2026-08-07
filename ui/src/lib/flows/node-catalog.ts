@@ -8,6 +8,7 @@ import {
   MessageSquareText, SquareMousePointer, List, LayoutTemplate, MessageCircleQuestion,
   Sparkles, Split, Bot, Users, UserPlus, Tag, ContactRound, StickyNote,
   GitBranch, Clock, Globe, Zap, Webhook, Megaphone, Paperclip, Variable, CalendarClock, Radio,
+  MapPin, ExternalLink,
 } from "lucide-react";
 
 export type NodeCategory = "trigger" | "message" | "ai" | "team" | "logic" | "integration";
@@ -47,7 +48,7 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     description: "Se activa cuando un cliente escribe",
     category: "trigger",
     icon: Zap,
-    defaultData: { phoneNumberIds: [], match: "any", keywords: [], keywordMode: "contains", onlyNewConversations: false, ignoreIfAssignedToHuman: true },
+    defaultData: { phoneScope: "all", phoneNumberIds: [], match: "any", keywords: [], keywordMode: "contains", onlyNewConversations: false, ignoreIfAssignedToHuman: true },
   },
   {
     type: "trigger.webhook",
@@ -63,7 +64,7 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     description: "Se activa cuando alguien responde una campaña",
     category: "trigger",
     icon: Megaphone,
-    defaultData: { phoneNumberIds: [], campaignIds: [] },
+    defaultData: { phoneScope: "all", phoneNumberIds: [], campaignIds: [] },
   },
   {
     type: "action.send_text",
@@ -80,6 +81,22 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     category: "message",
     icon: Paperclip,
     defaultData: { mediaType: "image", mediaAssetId: "", mediaAssetName: "", mediaUrl: "", caption: "", filename: "", windowPolicy: "error" },
+  },
+  {
+    type: "action.send_location",
+    label: "Enviar ubicación",
+    description: "El pin del local, el punto de retiro, la sucursal",
+    category: "message",
+    icon: MapPin,
+    defaultData: { latitude: "", longitude: "", name: "", address: "", windowPolicy: "error" },
+  },
+  {
+    type: "action.send_cta_url",
+    label: "Botón con link",
+    description: "Un botón que abre una URL, sin necesidad de plantilla",
+    category: "message",
+    icon: ExternalLink,
+    defaultData: { body: "", footer: "", buttonText: "Abrir", url: "", windowPolicy: "error" },
   },
   {
     type: "action.send_buttons",
@@ -245,6 +262,10 @@ export function nodeHandles(node: FlowNode): Array<{ id: string; label: string; 
       return [{ id: "out", label: "", kind: "normal" }];
     case "action.send_text":
     case "action.send_media":
+    case "action.send_location":
+    // El botón con link abre el navegador: no vuelve como respuesta, así que
+    // no abre ramas.
+    case "action.send_cta_url":
       return [
         { id: "out", label: "", kind: "normal" },
         { id: "error", label: "Error", kind: "error" },
@@ -342,6 +363,11 @@ export function nodeSummary(node: FlowNode): string {
         : "Cualquier campaña";
     case "action.send_media":
       return `${data.mediaType === "document" ? "PDF/archivo" : "Imagen"}${data.caption ? ` · ${truncate(String(data.caption), 30)}` : ""}`;
+    case "action.send_location":
+      return String(data.name || data.address || "").trim() ||
+        (data.latitude && data.longitude ? `${data.latitude}, ${data.longitude}` : "Sin coordenadas");
+    case "action.send_cta_url":
+      return data.url ? `${data.buttonText || "Abrir"} → ${truncate(String(data.url), 30)}` : "Sin link";
     case "action.set_variable": {
       const modes: Record<string, string> = {
         text: "texto", number: "número", increment: "contador", random_code: "código aleatorio",

@@ -17,6 +17,7 @@ import {
 import { CampaignStatus } from '../../../domain/enums/campaign-status.enum.js';
 import { CampaignRecipientStatus } from '../../../domain/enums/campaign-recipient-status.enum.js';
 import { TemplateStatus } from '../../../domain/enums/template-status.enum.js';
+import { TemplateCategory } from '../../../domain/enums/template-category.enum.js';
 import { resolveVariables } from './helpers/template-variable.resolver.js';
 import { templateRequiresPhone } from '../../../domain/value-objects/recipient-identity.js';
 
@@ -111,13 +112,22 @@ export class StartCampaignUseCase {
       // quemar un intento por cada uno contra la API.
       const needsPhone = !contact.phone && templateRequiresPhone(template.category);
 
+      // El opt-out de marketing lo declara el usuario desde WhatsApp (webhook
+      // `user_preferences`) y sólo alcanza a esa categoría: las plantillas de
+      // utilidad y de autenticación se siguen pudiendo mandar. Ignorarlo quema
+      // la calidad del número y termina en suspensión de la cuenta.
+      const optedOut =
+        template.category === TemplateCategory.MARKETING && contact.marketingOptedOut;
+
       const skipReason = !contact.phone && !contact.bsuid
         ? 'Contact has no phone number or business-scoped user ID'
-        : needsPhone
-          ? 'Authentication templates require a phone number; this contact only shared a WhatsApp username'
-          : resolved.ok
-            ? null
-            : `Missing variables: ${resolved.missing.join(', ')}`;
+        : optedOut
+          ? 'Contact opted out of marketing messages on WhatsApp'
+          : needsPhone
+            ? 'Authentication templates require a phone number; this contact only shared a WhatsApp username'
+            : resolved.ok
+              ? null
+              : `Missing variables: ${resolved.missing.join(', ')}`;
 
       batch.push({
         campaignId: campaign.id,

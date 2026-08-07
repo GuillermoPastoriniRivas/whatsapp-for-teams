@@ -5,6 +5,7 @@ import { ContactRepository } from '../../../domain/repositories/contact.reposito
 import { PhoneNumberRepository } from '../../../domain/repositories/phone-number.repository.js';
 import { MessageTemplateRepository } from '../../../domain/repositories/message-template.repository.js';
 import { ConversationEventRepository } from '../../../domain/repositories/conversation-event.repository.js';
+import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
@@ -14,11 +15,16 @@ import {
   ConversationWindowExpiredError,
   RecipientNotReachableError,
   AuthTemplateRequiresPhoneError,
+  MarketingOptOutError,
 } from '../../../domain/errors/domain-errors.js';
+import { TemplateCategory } from '../../../domain/enums/template-category.enum.js';
 import { normalizePhone } from '../contact/normalize-phone.js';
+import { toMessageLocation } from '../../../domain/value-objects/message-location.js';
+import type { InteractiveSendPayload, OutboundContactCard } from '../../ports/messaging-api.port.js';
 import { Contact } from '../../../domain/entities/contact.entity.js';
 import { isBsuidOnly, recipientIdentityOf, templateRequiresPhone } from '../../../domain/value-objects/recipient-identity.js';
 import { listTemplatePlaceholders, buildTemplatePayload, TemplatePlaceholder } from '../campaign/helpers/template-variable.resolver.js';
+import { templateBelongsToPhone } from '../template/helpers/template-scope.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
 import { ConversationOrigin } from '../../../domain/enums/conversation-origin.enum.js';
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
@@ -52,6 +58,30 @@ export interface SendApiMessageInput {
   body?: string;
   templateId?: string;
   variables?: Record<string, string>;
+  /** Ubicación a mandar (`type: location`). */
+  location?: { latitude: number; longitude: number; name?: string; address?: string };
+  /** Tarjetas de contacto (`type: contacts`). */
+  contacts?: OutboundContactCard[];
+  /** Botones, lista, botón con link, pedido de ubicación o de dirección. */
+  interactive?: InteractiveSendPayload;
+  /** Emoji sobre otro mensaje. Vacío lo quita. */
+  reaction?: { waMessageId: string; emoji: string };
+  /** Responder citando: wamid de un mensaje de la conversación. */
+  replyToWaMessageId?: string;
+  /** Mandar la plantilla por Marketing Messages Lite en vez del canal normal. */
+  marketingLite?: boolean;
+  /**
+   * Agente que manda, cuando no es la API pública sino una persona desde el
+   * panel (envío suelto de plantilla). Sin esto el mensaje queda firmado
+   * como "API".
+   */
+  sender?: { agentId: string };
+}
+
+/** Cómo queda firmado el mensaje saliente. */
+interface SenderAttribution {
+  agentId: string | null;
+  name: string;
 }
 
 export interface SendApiMessageOutput {
@@ -84,11 +114,19 @@ export class SendApiMessageUseCase {
     private readonly gateway: RealtimeGatewayPort,
     private readonly devEvents: DeveloperEventsPort,
     private readonly cancelActiveFlow: CancelActiveFlowExecutionUseCase,
+    private readonly agentRepo: AgentRepository,
   ) {}
 
   async execute(input: SendApiMessageInput): Promise<Result<SendApiMessageOutput, DomainError>> {
-    if (!input.body && !input.templateId) {
-      return err(new DomainError('MISSING_MESSAGE_CONTENT', 'Provide either `body` (free-form text) or `templateId` (approved template).'));
+    const hasFreeForm =
+      !!input.body || !!input.location || !!input.contacts?.length || !!input.interactive || !!input.reaction;
+    if (!hasFreeForm && !input.templateId) {
+      return err(
+        new DomainError(
+          'MISSING_MESSAGE_CONTENT',
+          'Provide `templateId` (approved template) or free-form content: `body`, `location`, `contacts`, `interactive` or `reaction`.',
+        ),
+      );
     }
 
     // Resolver el número emisor del tenant
@@ -136,36 +174,65 @@ export class SendApiMessageUseCase {
       repliedAt: null,
     });
 
+    const sender = await this.resolveSender(input.sender);
+
     let message: Message;
     if (input.templateId) {
-      const sent = await this.sendTemplate(input, phone, contact, conversation.id);
+      const sent = await this.sendTemplate(input, phone, contact, conversation.id, sender);
       if (!sent.ok) return sent;
       message = sent.value;
     } else {
       const elapsed = Date.now() - conversation.lastInboundAt.getTime();
       if (elapsed >= TWENTY_FOUR_HOURS_MS) return err(new ConversationWindowExpiredError());
 
+      // El tipo lo define el contenido que vino. El orden importa: `reaction`
+      // primero porque es el único que no admite `context`.
+      const messageType = input.reaction
+        ? MessageType.REACTION
+        : input.location
+          ? MessageType.LOCATION
+          : input.contacts?.length
+            ? MessageType.CONTACTS
+            : input.interactive
+              ? MessageType.INTERACTIVE
+              : MessageType.TEXT;
+
       const { waMessageId } = await this.messagingApi.sendMessage({
         provider: phone.provider,
         providerConfig: phone.providerConfig,
         phoneNumberId: phone.phoneNumberId,
         ...recipientIdentityOf(contact),
-        type: MessageType.TEXT,
-        body: input.body!,
+        type: messageType,
+        body: input.body,
+        location: input.location,
+        contacts: input.contacts,
+        interactive: input.interactive,
+        reaction: input.reaction,
+        contextWaMessageId: input.replyToWaMessageId,
       });
 
       message = await this.messageRepo.upsertByWaMessageId({
         conversationId: conversation.id,
         direction: MessageDirection.OUTBOUND,
-        messageType: MessageType.TEXT,
-        body: input.body!,
+        messageType,
+        body: input.reaction?.emoji ?? input.body ?? null,
         mediaUrl: null,
         mimeType: null,
         waMessageId,
         waStatus: MessageWaStatus.SENT,
         timestamp: new Date(),
-        senderAgentId: null,
-        senderAgentName: API_SENDER_NAME,
+        senderAgentId: sender.agentId,
+        senderAgentName: sender.name,
+        location: input.location
+          ? toMessageLocation({
+              latitude: input.location.latitude,
+              longitude: input.location.longitude,
+              name: input.location.name,
+              address: input.location.address,
+            })
+          : null,
+        interactivePayload: (input.interactive as unknown as Record<string, unknown>) ?? null,
+        contextWaMessageId: input.reaction?.waMessageId ?? input.replyToWaMessageId ?? null,
       });
     }
 
@@ -176,7 +243,11 @@ export class SendApiMessageUseCase {
     // dos le hablan al cliente y el flujo se come como respuesta a su menú lo
     // que el cliente contestó al mensaje de la API. Va después del envío: un
     // intento fallido no llegó al cliente y no debe matar la automatización.
-    await this.cancelActiveFlow.execute(conversation.id, 'api_takeover');
+    await this.cancelActiveFlow.execute(
+      conversation.id,
+      input.sender ? 'agent_takeover' : 'api_takeover',
+      input.sender?.agentId ?? null,
+    );
 
     if (created) {
       const createdEvent = await this.eventRepo.create({
@@ -184,7 +255,7 @@ export class SendApiMessageUseCase {
         tenantId: input.tenantId,
         type: ConversationEventType.CREATED,
         performedBy: null,
-        data: { contactName: contact.name, contactPhone: contact.phone, via: 'api' },
+        data: { contactName: contact.name, contactPhone: contact.phone, via: input.sender ? 'agent' : 'api' },
       });
       this.gateway.emitToConversation(conversation.id, 'conversation.event', createdEvent);
       this.devEvents.emit(input.tenantId, DeveloperEventType.CONVERSATION_CREATED, {
@@ -199,7 +270,7 @@ export class SendApiMessageUseCase {
     this.devEvents.emit(input.tenantId, DeveloperEventType.MESSAGE_SENT, {
       message: serializeMessage(message),
       conversationId: conversation.id,
-      via: 'api',
+      via: input.sender ? 'agent' : 'api',
     });
 
     return ok({
@@ -208,6 +279,13 @@ export class SendApiMessageUseCase {
       contactId: contact.id,
       conversationCreated: created,
     });
+  }
+
+  /** Firma del mensaje: el agente que lo mandó desde el panel, o "API". */
+  private async resolveSender(sender?: { agentId: string }): Promise<SenderAttribution> {
+    if (!sender) return { agentId: null, name: API_SENDER_NAME };
+    const agent = await this.agentRepo.findById(sender.agentId);
+    return { agentId: sender.agentId, name: agent?.name ?? API_SENDER_NAME };
   }
 
   private async resolvePhone(tenantId: string, phoneNumberId?: string) {
@@ -237,9 +315,10 @@ export class SendApiMessageUseCase {
 
   private async sendTemplate(
     input: SendApiMessageInput,
-    phone: { id: string; provider: any; providerConfig: any; phoneNumberId: string },
+    phone: { id: string; provider: any; providerConfig: any; phoneNumberId: string; wabaId?: string | null },
     contact: Contact,
     conversationId: string,
+    sender: SenderAttribution,
   ): Promise<Result<Message, DomainError>> {
     const template = await this.templateRepo.findById(input.templateId!);
     if (!template || template.tenantId !== input.tenantId) {
@@ -248,12 +327,17 @@ export class SendApiMessageUseCase {
     if (template.status !== TemplateStatus.APPROVED) {
       return err(new DomainError('TEMPLATE_NOT_APPROVED', 'Only approved templates can be sent.'));
     }
-    if (template.phoneNumberId !== phone.id) {
-      return err(new DomainError('TEMPLATE_PHONE_MISMATCH', 'Template belongs to a different phone number.'));
+    if (!templateBelongsToPhone(template, phone)) {
+      return err(new DomainError('TEMPLATE_PHONE_MISMATCH', 'Template belongs to a different WhatsApp account.'));
     }
     // Meta rechaza las plantillas de autenticación dirigidas a un BSUID (131062).
     if (isBsuidOnly(recipientIdentityOf(contact)) && templateRequiresPhone(template.category)) {
       return err(new AuthTemplateRequiresPhoneError());
+    }
+    // El opt-out de marketing lo declaró el usuario en WhatsApp: sólo bloquea
+    // esa categoría, las de utilidad y autenticación siguen pasando.
+    if (template.category === TemplateCategory.MARKETING && contact.marketingOptedOut) {
+      return err(new MarketingOptOutError());
     }
 
     const variables = input.variables ?? {};
@@ -278,6 +362,9 @@ export class SendApiMessageUseCase {
         language: template.language,
         components: built.components,
       },
+      // MM Lite sólo aplica a marketing; pedirlo en otra categoría lo rechaza
+      // Meta, así que se ignora en vez de romper el envío.
+      marketingLite: input.marketingLite && template.category === TemplateCategory.MARKETING,
     });
 
     const message = await this.messageRepo.upsertByWaMessageId({
@@ -290,8 +377,8 @@ export class SendApiMessageUseCase {
       waMessageId,
       waStatus: MessageWaStatus.SENT,
       timestamp: new Date(),
-      senderAgentId: null,
-      senderAgentName: API_SENDER_NAME,
+      senderAgentId: sender.agentId,
+      senderAgentName: sender.name,
     });
 
     return ok(message);

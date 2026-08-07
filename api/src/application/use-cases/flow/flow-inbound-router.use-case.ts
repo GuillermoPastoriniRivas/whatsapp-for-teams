@@ -1,6 +1,10 @@
 // ── Router de mensajes entrantes (paso 5c del pipeline) ──────────
-// Decide si un flujo consume el mensaje. Si devuelve true, el caller
-// suprime auto-assign y el enqueue del bot IA para este mensaje.
+// El único que decide quién atiende un mensaje entrante. Primero busca una
+// automatización que lo consuma (ejecución viva, espera o trigger nuevo). Si
+// ninguna lo agarra y la conversación recién nace, reparte al equipo él mismo:
+// esa es la red de seguridad para el número que se quedó sin automatización
+// base. Antes ese reparto vivía suelto en el webhook, y por eso convivían dos
+// caminos que decidían lo mismo.
 
 import { Logger } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
@@ -16,6 +20,8 @@ import type { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
 import { Conversation } from '../../../domain/entities/conversation.entity.js';
 import { Contact } from '../../../domain/entities/contact.entity.js';
+import { Agent } from '../../../domain/entities/agent.entity.js';
+import type { AutoAssignConversationUseCase } from '../conversation/auto-assign-conversation.use-case.js';
 import { Message, messageToText } from '../../../domain/entities/message.entity.js';
 import type { FlowVersion } from '../../../domain/entities/flow-version.entity.js';
 import { FlowExecutionStatus } from '../../../domain/enums/flow-execution-status.enum.js';
@@ -38,6 +44,17 @@ export interface FlowRouteInput {
   promotedFromCampaign: boolean;
 }
 
+export interface FlowRouteResult {
+  /** Una automatización se quedó con el mensaje: el bot IA no debe responderlo */
+  handled: boolean;
+  /**
+   * Agente que quedó atendiendo por el reparto de respaldo. Solo puede venir
+   * cargado cuando `handled` es false: si un flujo agarró el mensaje, la
+   * asignación la hace el flujo y el caller no tiene nada que mirar.
+   */
+  fallbackAgent: Agent | null;
+}
+
 export class FlowInboundRouterUseCase {
   private readonly logger = new Logger(FlowInboundRouterUseCase.name);
 
@@ -51,9 +68,31 @@ export class FlowInboundRouterUseCase {
     private readonly gateway: RealtimeGatewayPort,
     private readonly jobQueue: JobQueuePort,
     private readonly devEvents: DeveloperEventsPort,
+    private readonly autoAssign: AutoAssignConversationUseCase,
   ) {}
 
-  async route(input: FlowRouteInput): Promise<boolean> {
+  async route(input: FlowRouteInput): Promise<FlowRouteResult> {
+    const handled = await this.routeToFlow(input);
+    if (handled) return { handled: true, fallbackAgent: null };
+    return { handled: false, fallbackAgent: await this.fallbackAssign(input) };
+  }
+
+  /**
+   * Reparto de respaldo: solo corre cuando ninguna automatización agarró el
+   * mensaje Y la conversación acaba de nacer. En un número con su
+   * automatización base publicada esto no se alcanza nunca; existe para que un
+   * número que se quedó sin ella no deje de repartir chats en silencio.
+   */
+  private async fallbackAssign(input: FlowRouteInput): Promise<Agent | null> {
+    if (!input.created) return null;
+    this.logger.warn(
+      `Ninguna automatización agarró el chat nuevo ${input.conversation.id} del número ${input.phoneId}: ` +
+        'se reparte al equipo. Revisá que el número tenga su automatización base publicada.',
+    );
+    return this.autoAssign.execute(input.conversation.id);
+  }
+
+  private async routeToFlow(input: FlowRouteInput): Promise<boolean> {
     // A/B: ¿hay una ejecución viva en esta conversación?
     const active = await this.execRepo.findActiveByConversationId(input.conversation.id);
     if (active) return this.handleActive(active, input);

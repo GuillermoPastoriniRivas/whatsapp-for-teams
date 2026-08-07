@@ -57,15 +57,16 @@ import { MessageType } from '../../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../../domain/enums/message-wa-status.enum.js';
 import { TemplateStatus } from '../../../../domain/enums/template-status.enum.js';
 import { HandoffDetectionDomainService } from '../../../../domain/services/handoff-detection.domain-service.js';
-import { getProviderCapabilities } from '../../../../domain/constants/provider-capabilities.js';
 import { buildTemplatePayload } from '../../campaign/helpers/template-variable.resolver.js';
 import {
   buildAgentSystemPrompt,
   buildChatHistory,
+  lastInboundOf,
   parseMultiMessageResponse,
   sendBubbles,
   stripTimestampPrefixes,
 } from '../../ai/ai-run.helpers.js';
+import { toMessageLocation, type MessageLocation } from '../../../../domain/value-objects/message-location.js';
 import { FLOW_EXECUTE_JOB, FLOW_RESUME_JOB, FlowResumeJobData } from '../flow-jobs.constants.js';
 import { renderTemplate, renderJsonTemplate, resolvePath, normalizeText, FlowVariableContext } from './flow-variable.resolver.js';
 import { matchReply, validateAnswer, parseLatamNumber } from './flow-reply.matcher.js';
@@ -498,6 +499,10 @@ export class FlowEngineService {
         return this.execSendText(ctx, data);
       case 'action.send_media':
         return this.execSendMedia(ctx, data);
+      case 'action.send_location':
+        return this.execSendLocation(ctx, data);
+      case 'action.send_cta_url':
+        return this.execSendCtaUrl(ctx, data);
       case 'action.set_variable':
         return this.execSetVariable(ctx, data);
       case 'action.emit_event':
@@ -773,35 +778,28 @@ export class FlowEngineService {
       if (key && !(key in textMap)) textMap[key] = `${handlePrefix}:${idx}`;
     });
 
-    const capabilities = getProviderCapabilities(ctx.phone.provider);
     const sentAt = new Date();
 
-    if (capabilities.interactive) {
-      const interactive: InteractiveSendPayload =
-        kind === 'buttons'
-          ? {
-              kind: 'buttons',
-              body: body.substring(0, 1024),
-              footer,
-              buttons: options.map((option, idx) => ({ id: `fl:${node.id}:${idx}`, title: option.title.substring(0, 20) })),
-            }
-          : {
-              kind: 'list',
-              body: body.substring(0, 4096),
-              footer,
-              buttonText: String(data.buttonText ?? 'Ver opciones').substring(0, 20),
-              rows: options.map((option, idx) => ({
-                id: `fl:${node.id}:${idx}`,
-                title: option.title.substring(0, 24),
-                description: option.description?.substring(0, 72),
-              })),
-            };
-      await this.sendSessionMessage(ctx, body, interactive);
-    } else {
-      // Degradación (Twilio): menú numerado; el matcher resuelve por ordinal/título.
-      const menu = options.map((option, idx) => `${idx + 1}. ${option.title}`).join('\n');
-      await this.sendSessionMessage(ctx, `${body}\n\n${menu}`.substring(0, 4096));
-    }
+    const interactive: InteractiveSendPayload =
+      kind === 'buttons'
+        ? {
+            kind: 'buttons',
+            body: body.substring(0, 1024),
+            footer,
+            buttons: options.map((option, idx) => ({ id: `fl:${node.id}:${idx}`, title: option.title.substring(0, 20) })),
+          }
+        : {
+            kind: 'list',
+            body: body.substring(0, 4096),
+            footer,
+            buttonText: String(data.buttonText ?? 'Ver opciones').substring(0, 20),
+            rows: options.map((option, idx) => ({
+              id: `fl:${node.id}:${idx}`,
+              title: option.title.substring(0, 24),
+              description: option.description?.substring(0, 72),
+            })),
+          };
+    await this.sendSessionMessage(ctx, body, interactive);
 
     const timeoutMs = Math.min(durationToMs(data.timeout) ?? DEFAULT_REPLY_TIMEOUT_MS, MAX_WAIT_MS);
     return {
@@ -813,8 +811,8 @@ export class FlowEngineService {
         timeoutAt: new Date(Date.now() + timeoutMs),
         waitingSince: new Date(),
         saveAs: typeof data.saveAs === 'string' && data.saveAs ? data.saveAs : null,
-        // Siempre poblado: en proveedores sin interactivos nunca llega un tap,
-        // pero el mapa define el orden de las opciones para los ordinales.
+        // Siempre poblado: además del tap, el mapa define el orden de las
+        // opciones para cuando el cliente responde con el ordinal o el título.
         optionMap,
         textMap,
         attempts: 0,
@@ -830,9 +828,6 @@ export class FlowEngineService {
     // La plantilla vive en una WABA concreta: mandarla por otra línea la rechaza Meta.
     if (template.phoneNumberId !== ctx.phone.id) {
       return { kind: 'error', message: 'La plantilla pertenece a otro número de WhatsApp' };
-    }
-    if (!getProviderCapabilities(ctx.phone.provider).templates) {
-      return { kind: 'error', message: 'El proveedor de este número no soporta plantillas' };
     }
     // Meta rechaza las plantillas de autenticación dirigidas a un BSUID (131062).
     if (isBsuidOnly(recipientIdentityOf(ctx.contact)) && templateRequiresPhone(template.category)) {
@@ -970,6 +965,7 @@ export class FlowEngineService {
       senderAgentName: agent.name,
       bubbles,
       interBubbleDelayMs: config.multiMessage?.interBubbleDelayMs ?? 1200,
+      replyToWaMessageId: lastInboundOf(history)?.waMessageId ?? null,
     });
 
     await this.conversationRepo.update(ctx.conversation.id, { lastMessageAt: new Date() } as any);
@@ -1061,7 +1057,7 @@ export class FlowEngineService {
       await this.agentRepo.incrementActiveCount(ctx.conversation.agentId, -1);
       await this.conversationRepo.update(ctx.conversation.id, { agentId: null, status: ConversationStatus.UNASSIGNED } as any);
     }
-    const agent = await this.autoAssign.execute(ctx.conversation.id, { excludeAi: true });
+    const agent = await this.autoAssign.execute(ctx.conversation.id);
     return { kind: 'end', endReason: 'handoff', note: agent ? agent.name : 'sin agentes disponibles' };
   }
 
@@ -1100,7 +1096,7 @@ export class FlowEngineService {
       return { kind: 'advance', handle: 'out', note: assigned };
     }
 
-    const agent = await this.autoAssign.execute(ctx.conversation.id, { excludeAi: true });
+    const agent = await this.autoAssign.execute(ctx.conversation.id);
     ctx.conversation = (await this.conversationRepo.findById(ctx.conversation.id)) ?? ctx.conversation;
     if (!agent) return { kind: 'advance', handle: 'unassigned' };
     return { kind: 'advance', handle: 'out', note: agent.name };
@@ -1446,6 +1442,62 @@ export class FlowEngineService {
     return { policy: policy === 'skip' ? 'skip' : 'error' };
   }
 
+  /**
+   * Manda una ubicación fija: la del negocio, la del punto de retiro. Las
+   * coordenadas admiten variables, así que un flujo puede mandar la sucursal
+   * que eligió el cliente.
+   */
+  private async execSendLocation(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const varCtx = this.varCtx(ctx);
+    const latitude = Number(renderTemplate(String(data.latitude ?? ''), varCtx).text.trim());
+    const longitude = Number(renderTemplate(String(data.longitude ?? ''), varCtx).text.trim());
+
+    // Meta rechaza una ubicación a medias y se pierde el mensaje entero.
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return { kind: 'error', message: 'La ubicación no tiene coordenadas válidas' };
+    }
+
+    const name = renderTemplate(String(data.name ?? ''), varCtx).text.trim();
+    const address = renderTemplate(String(data.address ?? ''), varCtx).text.trim();
+    const location = { latitude, longitude, name: name || undefined, address: address || undefined };
+
+    const { waMessageId } = await this.messagingApi.sendMessage({
+      provider: ctx.phone.provider,
+      providerConfig: ctx.phone.providerConfig,
+      phoneNumberId: ctx.phone.phoneNumberId,
+      ...recipientIdentityOf(ctx.contact),
+      type: MessageType.LOCATION,
+      location,
+    });
+
+    await this.persistOutbound(ctx, waMessageId, MessageType.LOCATION, [name, address].filter(Boolean).join(': '), null, toMessageLocation(location));
+    return { kind: 'advance', handle: 'out' };
+  }
+
+  /**
+   * Botón con link **sin plantilla**. Sólo vale dentro de la ventana de 24 h,
+   * que es justamente donde una plantilla sería un desperdicio.
+   */
+  private async execSendCtaUrl(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const varCtx = this.varCtx(ctx);
+    const body = renderTemplate(String(data.body ?? ''), varCtx).text.trim();
+    const url = renderTemplate(String(data.url ?? ''), varCtx).text.trim();
+
+    if (!body) return { kind: 'error', message: 'El mensaje del botón está vacío' };
+    if (!/^https?:\/\//i.test(url)) return { kind: 'error', message: 'El link del botón no es una URL válida' };
+
+    const interactive: InteractiveSendPayload = {
+      kind: 'cta_url',
+      body: body.substring(0, 1024),
+      footer: renderTemplate(String(data.footer ?? ''), varCtx).text.trim() || undefined,
+      buttonText: (renderTemplate(String(data.buttonText ?? ''), varCtx).text.trim() || 'Abrir').substring(0, 20),
+      url,
+    };
+
+    await this.sendSessionMessage(ctx, body, interactive);
+    return { kind: 'advance', handle: 'out' };
+  }
+
   private async sendSessionMessage(ctx: RunCtx, body: string, interactive?: InteractiveSendPayload): Promise<void> {
     const { waMessageId } = await this.messagingApi.sendMessage({
       provider: ctx.phone.provider,
@@ -1471,6 +1523,7 @@ export class FlowEngineService {
     messageType: MessageType,
     body: string,
     interactivePayload: Record<string, unknown> | null,
+    location: MessageLocation | null = null,
   ): Promise<void> {
     const message = await this.messageRepo.upsertByWaMessageId({
       conversationId: ctx.conversation.id,
@@ -1485,6 +1538,7 @@ export class FlowEngineService {
       senderAgentId: null,
       senderAgentName: ctx.flow.name,
       interactivePayload,
+      location,
     });
     this.gateway.emitToConversation(ctx.conversation.id, 'message.new', message);
     this.gateway.emitToTenant(ctx.tenantId, 'conversation.updated', { conversationId: ctx.conversation.id });
@@ -1636,7 +1690,7 @@ export class FlowEngineService {
     if (failed) {
       const conversation = await this.conversationRepo.findById(exec.conversationId);
       if (conversation && !conversation.agentId) {
-        await this.autoAssign.execute(exec.conversationId, { excludeAi: true }).catch(() => null);
+        await this.autoAssign.execute(exec.conversationId).catch(() => null);
       }
     }
 

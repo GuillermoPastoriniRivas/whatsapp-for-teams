@@ -39,9 +39,8 @@ interface Props {
  * Perfil de negocio del número: la foto, el "about", la descripción y los datos
  * de contacto que el cliente ve al tocar el nombre del chat.
  *
- * El dato vive en el proveedor, no acá: se lee al abrir y se escribe al
- * guardar. Los proveedores que no lo exponen (Twilio, 360dialog) devuelven 400
- * y la sección se reemplaza por un aviso.
+ * El dato vive en Meta, no acá: se lee al abrir y se escribe al guardar. Si la
+ * API no lo expone se devuelve 400 y la sección se reemplaza por un aviso.
  */
 export function PhoneProfileForm({ phone, onUpdated }: Props) {
   const { t } = useTranslations();

@@ -55,9 +55,14 @@ export function listTemplatePlaceholders(components: MessageTemplateComponent[])
         for (const position of extractPlaceholders(component.text)) {
           placeholders.push({ component: 'header', position });
         }
-      } else if (component.format && component.format !== 'TEXT') {
+      } else if (component.format && LINK_HEADER_FORMATS.has(component.format)) {
         // Media headers need a link supplied at send time.
         placeholders.push({ component: 'header', position: 'link' });
+      } else if (component.format === 'LOCATION') {
+        // Un header de ubicación no se resuelve con un link: son coordenadas.
+        // `name` y `address` son opcionales para Meta, así que no se exigen.
+        placeholders.push({ component: 'header', position: 'latitude' });
+        placeholders.push({ component: 'header', position: 'longitude' });
       }
     } else if (component.type === 'BUTTONS') {
       (component.buttons ?? []).forEach((button, index) => {
@@ -133,6 +138,23 @@ function isPositional(position: string): boolean {
   return /^\d+$/.test(position);
 }
 
+/**
+ * Meta mapea los parámetros posicionales por su lugar en el array, no por el
+ * número: `parameters[0]` es `{{1}}`. Si el texto los usa fuera de orden
+ * ("Hola {{2}}, te escribe {{1}}"), mandarlos en orden de aparición manda los
+ * valores cruzados. Los nombrados viajan con `parameter_name`, así que su orden
+ * no importa y se deja como está.
+ */
+function orderedPositions(text: string): string[] {
+  const positions = [...new Set(extractPlaceholders(text))];
+  return positions.every(isPositional)
+    ? positions.sort((a, b) => Number(a) - Number(b))
+    : positions;
+}
+
+/** Formatos de header con media que Meta acepta como parámetro `{ link }`. */
+const LINK_HEADER_FORMATS = new Set(['IMAGE', 'VIDEO', 'DOCUMENT']);
+
 /** Phase 2: build the Meta send payload + rendered preview text from a variable snapshot. */
 export function buildTemplatePayload(
   components: MessageTemplateComponent[],
@@ -144,7 +166,7 @@ export function buildTemplatePayload(
   for (const component of components) {
     if (component.type === 'BODY' && component.text) {
       renderedBody = substitute(component.text, 'body', variables);
-      const positions = [...new Set(extractPlaceholders(component.text))];
+      const positions = orderedPositions(component.text);
       if (positions.length > 0) {
         sendComponents.push({
           type: 'body',
@@ -157,7 +179,7 @@ export function buildTemplatePayload(
       }
     } else if (component.type === 'HEADER') {
       if (component.format === 'TEXT' && component.text) {
-        const positions = [...new Set(extractPlaceholders(component.text))];
+        const positions = orderedPositions(component.text);
         if (positions.length > 0) {
           sendComponents.push({
             type: 'header',
@@ -168,7 +190,7 @@ export function buildTemplatePayload(
             })),
           });
         }
-      } else if (component.format && component.format !== 'TEXT') {
+      } else if (component.format && LINK_HEADER_FORMATS.has(component.format)) {
         const link = variables['header.link'];
         if (link) {
           const mediaType = component.format.toLowerCase() as 'image' | 'video' | 'document';
@@ -177,11 +199,32 @@ export function buildTemplatePayload(
             parameters: [{ type: mediaType, [mediaType]: { link } } as TemplateSendComponent['parameters'][number]],
           });
         }
+      } else if (component.format === 'LOCATION') {
+        const latitude = variables['header.latitude'];
+        const longitude = variables['header.longitude'];
+        // Sin coordenadas no se manda el componente: Meta rechaza una ubicación
+        // a medias, y mandarla vacía perdería el mensaje entero.
+        if (latitude && longitude) {
+          sendComponents.push({
+            type: 'header',
+            parameters: [
+              {
+                type: 'location',
+                location: {
+                  latitude,
+                  longitude,
+                  ...(variables['header.name'] ? { name: variables['header.name'] } : {}),
+                  ...(variables['header.address'] ? { address: variables['header.address'] } : {}),
+                },
+              } as TemplateSendComponent['parameters'][number],
+            ],
+          });
+        }
       }
     } else if (component.type === 'BUTTONS') {
       (component.buttons ?? []).forEach((button, index) => {
         if (button.type === 'URL' && button.url) {
-          const positions = extractPlaceholders(button.url);
+          const positions = orderedPositions(button.url);
           if (positions.length > 0) {
             sendComponents.push({
               type: 'button',

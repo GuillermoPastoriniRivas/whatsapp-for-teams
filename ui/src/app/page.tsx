@@ -31,7 +31,9 @@ import {
 import { AsisLogo } from "@/components/brand/asis-logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { PlanCard } from "@/components/shared/plan-card";
+import { PlanComparison } from "@/components/shared/plan-comparison";
 import { PLAN_ORDER } from "@/lib/plans";
+import type { PlanTier } from "@/types";
 import { legalEntityLine } from "@/lib/legal-entity";
 
 const FOOTER_LINK = "text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground";
@@ -83,6 +85,41 @@ export default function LandingPage() {
 
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+
+  /** El CTA de un plan. Lo comparten la tabla de escritorio y las cards de mobile. */
+  const planAction = (tier: PlanTier) => {
+    const isFree = tier === "free";
+    const isPopular = tier === "pro";
+    const isAgencies = tier === "agencies";
+    return (
+      <Button
+        size="lg"
+        // El plan gratis va en oscuro para que el CTA pago siga siendo el que resalta.
+        className={`w-full ${isFree ? "bg-foreground text-background hover:bg-foreground/90" : ""}`}
+        variant={isPopular || isFree ? "default" : "outline"}
+        onClick={() => {
+          if (isAgencies) {
+            window.open(
+              "https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies",
+              "_blank",
+            );
+            return;
+          }
+          if (agent) {
+            router.push("/settings/billing");
+          } else {
+            router.push("/signup");
+          }
+        }}
+      >
+        {isAgencies
+          ? t.billing.contactUs
+          : isFree
+          ? t.billing.getStarted
+          : t.billing.subscribe}
+      </Button>
+    );
+  };
 
   // Automatizaciones y API son las dos patas que la landing no mostraba.
   const automationItems = [
@@ -630,48 +667,27 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {PLAN_ORDER.map((tier) => {
-              const isFree = tier === "free";
-              const isPopular = tier === "pro";
-              const isAgencies = tier === "agencies";
-              return (
-                <PlanCard
-                  key={tier}
-                  tier={tier}
-                  highlighted={isPopular}
-                  className="hover:shadow-xl hover:shadow-primary/5"
-                  action={
-                    <Button
-                      size="lg"
-                      // El plan gratis va en oscuro para que el CTA pago siga siendo el que resalta.
-                      className={`w-full ${isFree ? "bg-foreground text-background hover:bg-foreground/90" : ""}`}
-                      variant={isPopular || isFree ? "default" : "outline"}
-                      onClick={() => {
-                        if (isAgencies) {
-                          window.open(
-                            "https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies",
-                            "_blank",
-                          );
-                          return;
-                        }
-                        if (agent) {
-                          router.push("/settings/billing");
-                        } else {
-                          router.push("/signup");
-                        }
-                      }}
-                    >
-                      {isAgencies
-                        ? t.billing.contactUs
-                        : isFree
-                        ? t.billing.getStarted
-                        : t.billing.subscribe}
-                    </Button>
-                  }
-                />
-              );
-            })}
+          {/* Escritorio: tabla comparativa — los planes se venden comparándose,
+              y cuatro listas paralelas obligan a saltar de una a otra para
+              contestar "¿qué me da Pro que no me da Free?". Mobile: las mismas
+              filas apiladas, que cinco columnas no entran. */}
+          <PlanComparison
+            className="mx-auto hidden max-w-6xl lg:block"
+            highlighted="pro"
+            action={planAction}
+            caption={t.landing.pricingTitle}
+          />
+
+          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-2 lg:hidden">
+            {PLAN_ORDER.map((tier) => (
+              <PlanCard
+                key={tier}
+                tier={tier}
+                highlighted={tier === "pro"}
+                className="hover:shadow-xl hover:shadow-primary/5"
+                action={planAction(tier)}
+              />
+            ))}
           </div>
         </div>
       </section>

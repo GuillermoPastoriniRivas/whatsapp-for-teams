@@ -2,8 +2,8 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 
 /**
  * Cifrado en reposo de las credenciales de proveedor que viven en
- * `phone_numbers.providerConfig` (el accessToken de Meta, el authToken de
- * Twilio, las apiKey de 360dialog y Kapso).
+ * `phone_numbers.providerConfig` (el accessToken de Meta y, cuando está, el
+ * appId que necesita la subida de la foto de perfil).
  *
  * Mismo esquema que `FlowSecretsService` — AES-256-GCM con formato
  * `base64(iv).base64(tag).base64(ciphertext)` — y **la misma key**

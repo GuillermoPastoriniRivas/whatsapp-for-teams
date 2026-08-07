@@ -14,8 +14,7 @@ const refs: FlowGraphRefs = {
   agentIds: new Set(),
   aiAgentIds: new Set(),
   connectionIds: new Set(),
-  // Una línea Meta: soporta interactivos y plantillas.
-  phones: new Map([['linea-meta', { interactive: true, templates: true }]]),
+  phones: new Set(['linea-meta']),
 };
 
 describe('galería de plantillas de flujos', () => {

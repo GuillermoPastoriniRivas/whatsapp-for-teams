@@ -10,8 +10,25 @@ import {
   isTrigger,
   isWaitNode,
   outputHandles,
+  phoneScopeOf,
   MAX_WAIT_MS,
 } from './flow-node-types.js';
+
+/**
+ * "Solo estos números" sin ninguno tildado no dispara nunca. Antes se publicaba
+ * sin chistar porque la lista vacía se leía como "todos", así que el flujo
+ * hacía lo contrario de lo que decía la pantalla.
+ */
+function lintPhoneScope(
+  data: Record<string, any>,
+  id: string,
+  err: (code: string, message: string, nodeId?: string) => void,
+): void {
+  const ids = Array.isArray(data.phoneNumberIds) ? data.phoneNumberIds : [];
+  if (phoneScopeOf(data) === 'specific' && ids.length === 0) {
+    err('no_phone_selected', 'Elegí al menos un número, o cambiá el disparador a "Todos los números".', id);
+  }
+}
 
 export interface FlowGraphIssue {
   nodeId?: string;
@@ -28,8 +45,8 @@ export interface FlowGraphRefs {
   /** agentes IA activos */
   aiAgentIds: Set<string>;
   connectionIds: Set<string>;
-  /** líneas del tenant: id → capacidades del proveedor */
-  phones: Map<string, { interactive: boolean; templates: boolean }>;
+  /** ids de las líneas del tenant */
+  phones: Set<string>;
 }
 
 export interface FlowGraphValidation {
@@ -127,8 +144,8 @@ export function validateFlowGraph(graph: FlowGraph, refs: FlowGraphRefs): FlowGr
     }
   }
 
-  // ── Capacidades del proveedor ──────────────────────────────────
-  lintProviderCapabilities(nodes, trigger, refs, err, warn);
+  // ── Plantillas × líneas del disparador ─────────────────────────
+  lintTemplatePhones(nodes, trigger, refs, err);
 
   // ── Ciclos sin espera ──────────────────────────────────────────
   // Se remueven los nodos de espera; si el resto tiene un ciclo, el flujo
@@ -175,6 +192,7 @@ function validateNodeConfig(
 
   switch (node.type) {
     case 'trigger.inbound_message': {
+      lintPhoneScope(data, id, err);
       if (data.match === 'keywords') {
         const keywords: unknown[] = Array.isArray(data.keywords) ? data.keywords : [];
         if (keywords.length === 0) err('missing_keywords', 'Agregá al menos una palabra clave.', id);
@@ -193,6 +211,37 @@ function validateNodeConfig(
     case 'action.send_text':
       requireText('body', 'el mensaje');
       break;
+    case 'action.send_location': {
+      // Meta rechaza una ubicación a medias y se pierde el mensaje entero, así
+      // que las coordenadas se exigen en publicación y no en runtime.
+      for (const [field, label, limit] of [
+        ['latitude', 'la latitud', 90],
+        ['longitude', 'la longitud', 180],
+      ] as const) {
+        const raw = String(data[field] ?? '').trim();
+        if (!raw) {
+          err('missing_field', `Falta ${label}.`, id);
+        } else if (!raw.includes('{{')) {
+          // Con una variable no se puede validar acá: se resuelve al enviar.
+          const value = Number(raw);
+          if (!Number.isFinite(value) || Math.abs(value) > limit) {
+            err('bad_coordinates', `${label} tiene que estar entre -${limit} y ${limit}.`, id);
+          }
+        }
+      }
+      break;
+    }
+    case 'action.send_cta_url': {
+      requireText('body', 'el mensaje', 1024);
+      const url = String(data.url ?? '').trim();
+      if (!/^https?:\/\//i.test(url) && !url.includes('{{')) {
+        err('bad_cta_url', 'El botón necesita un link que empiece con https://', id);
+      }
+      if (String(data.buttonText ?? '').length > 20) {
+        err('field_too_long', 'El texto del botón supera los 20 caracteres.', id);
+      }
+      break;
+    }
     case 'action.send_media': {
       const url = String(data.mediaUrl ?? '');
       // Con un archivo de la biblioteca no hace falta URL: lo subimos nosotros.
@@ -234,6 +283,7 @@ function validateNodeConfig(
       break;
     }
     case 'trigger.campaign_reply': {
+      lintPhoneScope(data, id, err);
       // Sin campañas elegidas dispara con cualquiera: es válido y es el default.
       if (data.campaignIds !== undefined && !Array.isArray(data.campaignIds)) {
         err('bad_campaigns', 'Selección de campañas inválida.', id);
@@ -383,17 +433,14 @@ function validateTimeout(
 }
 
 /**
- * Las líneas donde puede correr el flujo × lo que cada proveedor soporta.
- * Una plantilla sobre Twilio se enviaría vacía (el adapter ignora `template`),
- * así que se bloquea en publicación; los interactivos degradan a menú numerado
- * y solo avisan.
+ * Las líneas donde puede correr el flujo × las plantillas que manda.
+ * Una plantilla vive en una línea concreta: enviarla por otra la rechaza Meta.
  */
-function lintProviderCapabilities(
+function lintTemplatePhones(
   nodes: FlowNode[],
   trigger: FlowNode | undefined,
   refs: FlowGraphRefs,
   err: (code: string, message: string, nodeId?: string) => void,
-  warn: (code: string, message: string, nodeId?: string) => void,
 ): void {
   if (!trigger) return;
 
@@ -404,40 +451,21 @@ function lintProviderCapabilities(
       ? [String(data.phoneNumberId)]
       : [];
   // Vacío = todas las líneas del tenant.
-  const targetIds = configured.length > 0 ? configured : [...refs.phones.keys()];
+  const targetIds = configured.length > 0 ? configured : [...refs.phones];
   if (targetIds.length === 0) return;
 
-  const noTemplates = targetIds.filter((id) => refs.phones.get(id)?.templates === false);
-  const noInteractive = targetIds.filter((id) => refs.phones.get(id)?.interactive === false);
-
   for (const node of nodes) {
-    if (node.type === 'action.send_template') {
-      if (noTemplates.length > 0) {
-        err(
-          'template_unsupported_provider',
-          'Alguno de los números de este flujo usa un proveedor que no soporta plantillas. Elegí números de Meta/Kapso en el disparador.',
-          node.id,
-        );
-      }
-      // La plantilla vive en una línea concreta: enviarla por otra la rechaza Meta.
-      const templateId = (node.data as Record<string, any>)?.templateId;
-      const template = typeof templateId === 'string' ? refs.templates.get(templateId) : undefined;
-      // Debe coincidir con TODAS las líneas donde puede correr: con el
-      // disparador en "todos los números" (el default), alcanza con que una no
-      // sea la de la plantilla para que el envío falle en runtime.
-      if (template && targetIds.some((id) => id !== template.phoneNumberId)) {
-        err(
-          'template_wrong_phone',
-          'La plantilla es de otro número. Restringí el disparador al número de la plantilla o elegí otra plantilla.',
-          node.id,
-        );
-      }
-    }
+    if (node.type !== 'action.send_template') continue;
 
-    if ((node.type === 'action.send_buttons' || node.type === 'action.send_list') && noInteractive.length > 0) {
-      warn(
-        'interactive_degraded',
-        'Alguno de los números usa un proveedor sin botones nativos: ahí este mensaje se envía como menú numerado (el cliente responde con el número).',
+    const templateId = (node.data as Record<string, any>)?.templateId;
+    const template = typeof templateId === 'string' ? refs.templates.get(templateId) : undefined;
+    // Debe coincidir con TODAS las líneas donde puede correr: con el
+    // disparador en "todos los números" (el default), alcanza con que una no
+    // sea la de la plantilla para que el envío falle en runtime.
+    if (template && targetIds.some((id) => id !== template.phoneNumberId)) {
+      err(
+        'template_wrong_phone',
+        'La plantilla es de otro número. Restringí el disparador al número de la plantilla o elegí otra plantilla.',
         node.id,
       );
     }

@@ -14,7 +14,7 @@ const REFS: FlowGraphRefs = {
   agentIds: new Set(),
   aiAgentIds: new Set([AI_AGENT_ID]),
   connectionIds: new Set(),
-  phones: new Map([['p1', { interactive: true, templates: true }]]),
+  phones: new Set(['p1']),
 };
 
 const BASE: AssistantAnswers = {

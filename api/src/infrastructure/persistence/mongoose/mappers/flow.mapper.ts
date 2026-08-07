@@ -19,6 +19,7 @@ export class FlowMapper {
       doc.createdByAgentId.toHexString(),
       doc.createdAt,
       doc.updatedAt,
+      doc.defaultForPhoneNumberId?.toHexString() ?? null,
     );
   }
 }

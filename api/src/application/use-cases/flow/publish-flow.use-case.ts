@@ -11,7 +11,6 @@ import { FlowTriggerIndex } from '../../../domain/entities/flow-version.entity.j
 import { FlowStatus } from '../../../domain/enums/flow-status.enum.js';
 import { TemplateStatus } from '../../../domain/enums/template-status.enum.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
-import { getProviderCapabilities } from '../../../domain/constants/provider-capabilities.js';
 import { Result, ok, err } from '../../common/result.js';
 import { DomainError, FlowNotFoundError, FlowInvalidGraphError, FlowInvalidStateError, PlanLimitExceededError } from '../../../domain/errors/domain-errors.js';
 import { CheckPlanLimitUseCase } from '../billing/check-plan-limit.use-case.js';
@@ -45,7 +44,9 @@ export class PublishFlowUseCase {
 
     // Gate de plan solo al PUBLICAR un flujo que no estaba publicado
     // (re-publicar uno ya activo no debe chocar contra su propio conteo).
-    if (flow.status !== FlowStatus.PUBLISHED) {
+    // Las automatizaciones base quedan fuera: son el ruteo del número, no un
+    // flujo que el tenant decidió armar, y sin ellas nadie contesta.
+    if (flow.status !== FlowStatus.PUBLISHED && !flow.defaultForPhoneNumberId) {
       const usage = await this.checkPlanLimit.checkResource(tenantId, 'flows');
       if (!usage.allowed) return err(new PlanLimitExceededError('flows'));
     }
@@ -125,19 +126,13 @@ export class PublishFlowUseCase {
       }
     }
 
-    const phoneMap = new Map<string, { interactive: boolean; templates: boolean }>();
-    for (const phone of phones) {
-      const capabilities = getProviderCapabilities(phone.provider);
-      phoneMap.set(phone.id, capabilities);
-    }
-
     return {
       templates: templateMap,
       labelIds: new Set(labels.map((l) => l.id)),
       agentIds: new Set(agents.filter((a) => a.type === AgentType.HUMAN).map((a) => a.id)),
       aiAgentIds: new Set(aiConfigs.filter((c: any) => c.isActive).map((c: any) => c.agentId)),
       connectionIds: new Set(connections.filter((c) => c && c.tenantId === tenantId).map((c) => c!.id)),
-      phones: phoneMap,
+      phones: new Set(phones.map((phone) => phone.id)),
     };
   }
 }

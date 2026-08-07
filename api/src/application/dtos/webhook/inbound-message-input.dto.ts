@@ -23,7 +23,8 @@ export interface InboundMessageInput {
   profilePicUrl?: string;
   messageType: string;
   body?: string;
-  /** URL pública del archivo. Solo Twilio la manda; Meta manda un id. */
+  /** URL pública del archivo. Meta manda un id, no una URL: queda por si un
+   * origen interno (simulador, demo) inyecta un mensaje ya resuelto. */
   mediaUrl?: string;
   /** Id de media del proveedor. Con esto se baja el archivo (30 días de vida). */
   mediaId?: string;

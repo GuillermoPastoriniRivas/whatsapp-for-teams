@@ -64,7 +64,10 @@ export class CheckPlanLimitUseCase {
       }
       case 'flows': {
         const published = await this.flowRepo.findPublishedByTenantId(tenantId);
-        current = published.length;
+        // La automatización base de cada número no se eligió: la crea el alta
+        // del número y es la que decide quién atiende. Cobrarla contra la cuota
+        // dejaría a un plan Free sin poder armar ni un flujo propio.
+        current = published.filter((f) => !f.defaultForPhoneNumberId).length;
         limit = limits.maxActiveFlows;
         break;
       }

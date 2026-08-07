@@ -30,7 +30,20 @@ export class Contact {
     public readonly username: string | null = null,
     /** Portfolio bajo el que se emitió `bsuid`. Sin esto el BSUID es ambiguo. */
     public readonly portfolioId: string | null = null,
+    /**
+     * Cuándo el usuario pidió no recibir más mensajes de marketing (webhook
+     * `user_preferences`). Null = nunca lo pidió, o lo reactivó.
+     *
+     * No es una preferencia nuestra: la decide el usuario desde WhatsApp y
+     * mandarle marketing igual quema la calidad del número.
+     */
+    public readonly marketingOptOutAt: Date | null = null,
   ) {}
+
+  /** `true` = no se le pueden mandar campañas ni plantillas de marketing. */
+  get marketingOptedOut(): boolean {
+    return this.marketingOptOutAt !== null;
+  }
 
   /**
    * Etiqueta legible para notificaciones y previews. Nunca cae en el BSUID

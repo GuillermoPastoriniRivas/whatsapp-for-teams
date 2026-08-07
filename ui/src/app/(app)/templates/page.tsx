@@ -49,8 +49,6 @@ import type { TemplateRealtimeEvent } from "@/stores/template.store";
 const STATUS_TABS: (TemplateStatus | "")[] = ["", "approved", "pending", "rejected", "paused", "draft", "disabled"];
 // Templates in these states can be edited on Meta (a save sends them back to review)
 const EDITABLE_STATUSES: TemplateStatus[] = ["approved", "rejected", "paused"];
-// Providers that support Meta template management (twilio/360dialog don't)
-export const TEMPLATE_CAPABLE_PROVIDERS = new Set(["meta", "kapso", "demo"]);
 
 export default function TemplatesPage() {
   const { templates, meta, statusFilter, isLoading, fetch, setStatusFilter, setSearch, setPhoneNumberId, remove, sync, applyRealtime } =
@@ -76,7 +74,7 @@ export default function TemplatesPage() {
     fetch();
     api
       .get<PhoneNumber[]>("/phone-numbers")
-      .then((list) => setPhones(list.filter((p) => TEMPLATE_CAPABLE_PROVIDERS.has(p.provider) && p.status === "active")))
+      .then((list) => setPhones(list.filter((p) => p.status === "active")))
       .catch(() => {});
   }, [fetch]);
 

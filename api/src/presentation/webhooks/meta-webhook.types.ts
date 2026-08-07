@@ -147,3 +147,61 @@ export interface ParsedUserIdUpdate {
   newBsuid: string;
   phone: string | null;
 }
+
+// ── Salud de la cuenta y del número ──────────────────────────────
+// Todos llegan a nivel WABA (`entry.id` = wabaId). Algunos traen además el
+// número al que aplican; los que no, valen para todos los números de la WABA.
+
+export interface MetaAccountEventValue {
+  /** `phone_number_quality_update`, `phone_number_name_update`. */
+  display_phone_number?: string;
+  /** Nivel de throughput del número: STANDARD / HIGH / NOT_APPLICABLE. */
+  current_limit?: string;
+  /** GREEN | YELLOW | RED | UNKNOWN */
+  event?: string;
+  /** `phone_number_name_update`: APPROVED | REJECTED. */
+  decision?: string;
+  requested_verified_name?: string;
+  reject_reason?: string;
+  /** `account_update`: PARTNER_ADDED, ACCOUNT_VIOLATION, ACCOUNT_RESTRICTION… */
+  ban_info?: { waba_ban_state?: string; waba_ban_date?: string };
+  restriction_info?: Array<{ restriction_type?: string; expiration?: string }>;
+  violation_info?: { violation_type?: string };
+  [key: string]: unknown;
+}
+
+export interface ParsedAccountEvent {
+  wabaId: string;
+  field: string;
+  /** Número al que aplica, si el evento lo trae. Null = toda la WABA. */
+  displayPhoneNumber: string | null;
+  value: MetaAccountEventValue;
+}
+
+/**
+ * Campo `user_preferences`: el usuario prendió o apagó los mensajes de
+ * marketing. Respetarlo no es opcional — ignorarlo quema la calidad del número
+ * y termina en suspensión.
+ *
+ * Meta documenta `category: 'marketing_messages'` y `value: 'stop' | 'resume'`.
+ * Se leen alias plausibles porque el shape no está publicado con precisión, y
+ * se descarta lo que no se pueda resolver.
+ */
+export interface MetaUserPreferenceValue {
+  wa_id?: string;
+  user_id?: string;
+  category?: string;
+  value?: string;
+  detail?: string;
+  timestamp?: string | number;
+  [key: string]: unknown;
+}
+
+export interface ParsedUserPreference {
+  wabaId: string;
+  phone: string | null;
+  bsuid: string | null;
+  /** `true` = el usuario pidió NO recibir más marketing. */
+  optedOut: boolean;
+  timestamp: Date;
+}

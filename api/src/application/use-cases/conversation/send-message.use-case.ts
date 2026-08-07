@@ -86,6 +86,17 @@ export class SendMessageUseCase {
       ({ mediaId } = await this.mediaAccess.resolveSendRef(asset, phone));
     }
 
+    // Citar sólo se acepta dentro de la misma conversación: un wamid de otro
+    // hilo lo rechaza Meta y filtraría que existe.
+    let contextWaMessageId: string | undefined;
+    if (input.replyToMessageId) {
+      const quoted = await this.messageRepo.findById(input.replyToMessageId);
+      if (!quoted || quoted.conversationId !== conversation.id) {
+        return err(new DomainError('QUOTED_MESSAGE_NOT_FOUND', 'The quoted message is not part of this conversation.'));
+      }
+      contextWaMessageId = quoted.waMessageId;
+    }
+
     const { waMessageId } = await this.messagingApi.sendMessage({
       provider: phone.provider,
       providerConfig: phone.providerConfig,
@@ -95,6 +106,7 @@ export class SendMessageUseCase {
       body: input.body,
       mediaId,
       filename: asset?.filename ?? undefined,
+      contextWaMessageId,
     });
 
     const message = await this.messageRepo.upsertByWaMessageId({
@@ -110,6 +122,7 @@ export class SendMessageUseCase {
       senderAgentId: input.agentId,
       senderAgentName: agent?.name ?? null,
       mediaAssetId: asset?.id ?? null,
+      contextWaMessageId: contextWaMessageId ?? null,
     });
 
     // El asset no se toca: uno de biblioteca se manda a muchos contactos, así

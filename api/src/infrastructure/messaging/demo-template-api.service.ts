@@ -26,6 +26,10 @@ export class DemoTemplateApiService {
     return;
   }
 
+  async deleteTemplates(_params: TemplateProviderContext, _metaTemplateIds: string[]): Promise<void> {
+    return;
+  }
+
   async listTemplates(_params: TemplateProviderContext): Promise<RemoteTemplate[]> {
     return [];
   }

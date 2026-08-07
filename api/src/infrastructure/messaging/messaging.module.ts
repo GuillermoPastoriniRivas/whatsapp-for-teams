@@ -1,41 +1,53 @@
 import { Module } from '@nestjs/common';
 import { MetaCloudApiService } from './meta-cloud-api.service.js';
-import { TwilioWhatsAppService } from './twilio-whatsapp.service.js';
-import { KapsoWhatsAppService } from './kapso-whatsapp.service.js';
 import { MessagingApiStrategyService } from './messaging-api-strategy.service.js';
-import { KapsoTemplateApiService, MetaTemplateApiService } from './meta-template-api.service.js';
+import { MetaTemplateApiService } from './meta-template-api.service.js';
 import { DemoTemplateApiService } from './demo-template-api.service.js';
 import { TemplateManagementStrategyService } from './template-management-strategy.service.js';
-import { KapsoMediaApiService, MetaMediaApiService } from './meta-media-api.service.js';
-import { TwilioMediaApiService } from './twilio-media-api.service.js';
+import { MetaMediaApiService } from './meta-media-api.service.js';
 import { MediaProviderStrategyService } from './media-provider-strategy.service.js';
-import { KapsoBusinessProfileApiService, MetaBusinessProfileApiService } from './meta-business-profile-api.service.js';
+import { MetaBusinessProfileApiService } from './meta-business-profile-api.service.js';
 import { DemoBusinessProfileApiService } from './demo-business-profile-api.service.js';
 import { BusinessProfileStrategyService } from './business-profile-strategy.service.js';
+import { MetaPhoneAdminApiService } from './meta-phone-admin-api.service.js';
+import { DemoPhoneAdminApiService } from './demo-phone-admin-api.service.js';
+import { PhoneAdminStrategyService } from './phone-admin-strategy.service.js';
+import { MetaAnalyticsApiService } from './meta-analytics-api.service.js';
+import { DemoAnalyticsApiService } from './demo-analytics-api.service.js';
+import { AnalyticsStrategyService } from './analytics-strategy.service.js';
 
 @Module({
   providers: [
     MetaCloudApiService,
-    TwilioWhatsAppService,
-    KapsoWhatsAppService,
     MessagingApiStrategyService,
     MetaTemplateApiService,
-    KapsoTemplateApiService,
     DemoTemplateApiService,
     TemplateManagementStrategyService,
     MetaMediaApiService,
-    KapsoMediaApiService,
-    TwilioMediaApiService,
     MediaProviderStrategyService,
     MetaBusinessProfileApiService,
-    KapsoBusinessProfileApiService,
     DemoBusinessProfileApiService,
     BusinessProfileStrategyService,
+    MetaPhoneAdminApiService,
+    DemoPhoneAdminApiService,
+    PhoneAdminStrategyService,
+    MetaAnalyticsApiService,
+    DemoAnalyticsApiService,
+    AnalyticsStrategyService,
     { provide: 'MessagingApiPort', useExisting: MessagingApiStrategyService },
     { provide: 'TemplateManagementPort', useExisting: TemplateManagementStrategyService },
     { provide: 'MediaProviderPort', useExisting: MediaProviderStrategyService },
     { provide: 'BusinessProfilePort', useExisting: BusinessProfileStrategyService },
+    { provide: 'PhoneAdminPort', useExisting: PhoneAdminStrategyService },
+    { provide: 'WhatsAppAnalyticsPort', useExisting: AnalyticsStrategyService },
   ],
-  exports: ['MessagingApiPort', 'TemplateManagementPort', 'MediaProviderPort', 'BusinessProfilePort'],
+  exports: [
+    'MessagingApiPort',
+    'TemplateManagementPort',
+    'MediaProviderPort',
+    'BusinessProfilePort',
+    'PhoneAdminPort',
+    'WhatsAppAnalyticsPort',
+  ],
 })
 export class MessagingModule {}

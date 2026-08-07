@@ -114,9 +114,12 @@ type BillingCopy = Translations["billing"];
 const amount = (n: number, unlimited: string) =>
   n === -1 ? unlimited : n.toLocaleString("es-AR");
 
+// Un guión, no un `false`: si esta fila se dibujara como check/cruz caería en la
+// lista de sí/no y las tarjetas dejarían de tener las mismas filas en el mismo
+// orden — que es lo único que hace que cuatro planes se lean como comparación.
 const storageValue = (spec: PlanSpec, t: BillingCopy) => {
   if (spec.storageBytes === -1) return t.storageCustom;
-  if (spec.storageBytes === 0) return false;
+  if (spec.storageBytes === 0) return "—";
   return `${Math.round(spec.storageBytes / GB)} GB`;
 };
 
@@ -157,6 +160,50 @@ export function planFeatures(tier: PlanTier, t: BillingCopy): PlanFeature[] {
     { label: t.whiteLabel, value: spec.whiteLabel },
     { label: t.support, value: supportValue(spec, t) },
   ];
+}
+
+/** Una fila de la tabla comparativa: la misma característica en los cuatro planes. */
+export interface PlanComparisonRow {
+  label: string;
+  values: Record<PlanTier, string | boolean>;
+  hints: Partial<Record<PlanTier, string>>;
+}
+
+/**
+ * Da vuelta `planFeatures` de "una lista por plan" a "una fila por
+ * característica", que es como se compara.
+ *
+ * Aparte separa las filas donde los cuatro planes dicen lo mismo (`common`):
+ * no aportan nada a la comparación y solo agregan ruido. Van a una línea suelta
+ * abajo de la tabla, no a cuatro celdas idénticas.
+ */
+export function planComparison(t: BillingCopy): {
+  rows: PlanComparisonRow[];
+  common: PlanFeature[];
+} {
+  const byTier = PLAN_ORDER.map((tier) => [tier, planFeatures(tier, t)] as const);
+  const reference = byTier[0][1];
+
+  const all: PlanComparisonRow[] = reference.map((feature, index) => {
+    const values = {} as Record<PlanTier, string | boolean>;
+    const hints: Partial<Record<PlanTier, string>> = {};
+    for (const [tier, features] of byTier) {
+      values[tier] = features[index].value;
+      if (features[index].hint) hints[tier] = features[index].hint;
+    }
+    return { label: feature.label, values, hints };
+  });
+
+  const varies = (row: PlanComparisonRow) =>
+    new Set(PLAN_ORDER.map((tier) => String(row.values[tier]))).size > 1 ||
+    Object.keys(row.hints).length > 0;
+
+  return {
+    rows: all.filter(varies),
+    common: all
+      .filter((row) => !varies(row))
+      .map((row) => ({ label: row.label, value: row.values.free })),
+  };
 }
 
 /** Precio mensual formateado: "Gratis", "$49", o "A medida" para agencies. */

@@ -35,6 +35,11 @@ import { WebhookController } from './controllers/webhook.controller.js';
 import { ContactController } from './controllers/contact.controller.js';
 import { TemplateController } from './controllers/template.controller.js';
 import { CampaignController } from './controllers/campaign.controller.js';
+import { AnalyticsController } from './controllers/analytics.controller.js';
+import {
+  GetTemplateAnalyticsUseCase,
+  GetWhatsAppAnalyticsUseCase,
+} from '../application/use-cases/analytics/get-whatsapp-analytics.use-case.js';
 
 // Use Cases — Auth
 import { LoginUseCase } from '../application/use-cases/auth/login.use-case.js';
@@ -67,6 +72,18 @@ import { UpdatePhoneNumberUseCase } from '../application/use-cases/phone-number/
 import { GetBusinessProfileUseCase } from '../application/use-cases/phone-number/get-business-profile.use-case.js';
 import { UpdateBusinessProfileUseCase } from '../application/use-cases/phone-number/update-business-profile.use-case.js';
 import { UpdateProfilePictureUseCase } from '../application/use-cases/phone-number/update-profile-picture.use-case.js';
+import {
+  GetConversationalComponentsUseCase,
+  UpdateConversationalComponentsUseCase,
+} from '../application/use-cases/phone-number/conversational-components.use-case.js';
+import {
+  RegisterPhoneNumberOnMetaUseCase,
+  SyncPhoneNumberUseCase,
+} from '../application/use-cases/phone-number/phone-registration.use-case.js';
+import {
+  BlockUsersUseCase,
+  ListBlockedUsersUseCase,
+} from '../application/use-cases/phone-number/blocked-users.use-case.js';
 
 // Use Cases — Conversation
 import { ListConversationsUseCase } from '../application/use-cases/conversation/list-conversations.use-case.js';
@@ -75,6 +92,7 @@ import { GetConversationMessagesUseCase } from '../application/use-cases/convers
 import { SendMessageUseCase } from '../application/use-cases/conversation/send-message.use-case.js';
 import { SendTemplateMessageUseCase } from '../application/use-cases/conversation/send-template-message.use-case.js';
 import { MarkConversationReadUseCase } from '../application/use-cases/conversation/mark-conversation-read.use-case.js';
+import { ReactToMessageUseCase } from '../application/use-cases/conversation/react-to-message.use-case.js';
 import { AssignConversationUseCase } from '../application/use-cases/conversation/assign-conversation.use-case.js';
 import { AutoAssignConversationUseCase } from '../application/use-cases/conversation/auto-assign-conversation.use-case.js';
 import { GetConversationEventsUseCase } from '../application/use-cases/conversation/get-conversation-events.use-case.js';
@@ -118,6 +136,8 @@ import { GetTenantUseCase } from '../application/use-cases/tenant/get-tenant.use
 // Use Cases — Webhook
 import { HandleInboundMessageUseCase } from '../application/use-cases/webhook/handle-inbound-message.use-case.js';
 import { HandleUserIdUpdateUseCase } from '../application/use-cases/webhook/handle-user-id-update.use-case.js';
+import { HandleAccountEventUseCase } from '../application/use-cases/webhook/handle-account-event.use-case.js';
+import { HandleUserPreferenceUseCase } from '../application/use-cases/webhook/handle-user-preference.use-case.js';
 import { ResolveContactIdentityUseCase } from '../application/use-cases/contact/resolve-contact-identity.use-case.js';
 import { HandleStatusUpdateUseCase } from '../application/use-cases/webhook/handle-status-update.use-case.js';
 import { HandleTemplateStatusUpdateUseCase } from '../application/use-cases/webhook/handle-template-status-update.use-case.js';
@@ -218,6 +238,7 @@ import { ListFlowsUseCase } from '../application/use-cases/flow/list-flows.use-c
 import { GetFlowUseCase } from '../application/use-cases/flow/get-flow.use-case.js';
 import { UpdateFlowUseCase } from '../application/use-cases/flow/update-flow.use-case.js';
 import { PublishFlowUseCase } from '../application/use-cases/flow/publish-flow.use-case.js';
+import { EnsureDefaultPhoneFlowUseCase } from '../application/use-cases/flow/ensure-default-phone-flow.use-case.js';
 import {
   PauseFlowUseCase, ActivateFlowUseCase, ArchiveFlowUseCase, RegenerateWebhookTokenUseCase,
 } from '../application/use-cases/flow/flow-lifecycle.use-cases.js';
@@ -355,8 +376,8 @@ const useCaseProviders = [
   // Phone Number
   {
     provide: 'RegisterPhoneNumberUseCase',
-    useFactory: (phoneRepo: any) => new RegisterPhoneNumberUseCase(phoneRepo),
-    inject: ['PhoneNumberRepository'],
+    useFactory: (phoneRepo: any, ensureDefaultFlow: any) => new RegisterPhoneNumberUseCase(phoneRepo, ensureDefaultFlow),
+    inject: ['PhoneNumberRepository', 'EnsureDefaultPhoneFlowUseCase'],
   },
   {
     provide: 'ListPhoneNumbersUseCase',
@@ -382,6 +403,49 @@ const useCaseProviders = [
     provide: 'UpdateProfilePictureUseCase',
     useFactory: (phoneRepo: any, profileApi: any) => new UpdateProfilePictureUseCase(phoneRepo, profileApi),
     inject: ['PhoneNumberRepository', 'BusinessProfilePort'],
+  },
+  {
+    provide: 'GetConversationalComponentsUseCase',
+    useFactory: (phoneRepo: any, admin: any) => new GetConversationalComponentsUseCase(phoneRepo, admin),
+    inject: ['PhoneNumberRepository', 'PhoneAdminPort'],
+  },
+  {
+    provide: 'UpdateConversationalComponentsUseCase',
+    useFactory: (phoneRepo: any, admin: any) => new UpdateConversationalComponentsUseCase(phoneRepo, admin),
+    inject: ['PhoneNumberRepository', 'PhoneAdminPort'],
+  },
+  {
+    provide: 'SyncPhoneNumberUseCase',
+    useFactory: (phoneRepo: any, admin: any) => new SyncPhoneNumberUseCase(phoneRepo, admin),
+    inject: ['PhoneNumberRepository', 'PhoneAdminPort'],
+  },
+  {
+    provide: 'RegisterPhoneNumberOnMetaUseCase',
+    useFactory: (phoneRepo: any, admin: any, sync: any) =>
+      new RegisterPhoneNumberOnMetaUseCase(phoneRepo, admin, sync),
+    inject: ['PhoneNumberRepository', 'PhoneAdminPort', 'SyncPhoneNumberUseCase'],
+  },
+  {
+    provide: 'GetWhatsAppAnalyticsUseCase',
+    useFactory: (phoneRepo: any, analytics: any) => new GetWhatsAppAnalyticsUseCase(phoneRepo, analytics),
+    inject: ['PhoneNumberRepository', 'WhatsAppAnalyticsPort'],
+  },
+  {
+    provide: 'GetTemplateAnalyticsUseCase',
+    useFactory: (phoneRepo: any, templateRepo: any, analytics: any) =>
+      new GetTemplateAnalyticsUseCase(phoneRepo, templateRepo, analytics),
+    inject: ['PhoneNumberRepository', 'MessageTemplateRepository', 'WhatsAppAnalyticsPort'],
+  },
+  {
+    provide: 'ListBlockedUsersUseCase',
+    useFactory: (phoneRepo: any, contactRepo: any, admin: any) =>
+      new ListBlockedUsersUseCase(phoneRepo, contactRepo, admin),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'PhoneAdminPort'],
+  },
+  {
+    provide: 'BlockUsersUseCase',
+    useFactory: (phoneRepo: any, admin: any) => new BlockUsersUseCase(phoneRepo, admin),
+    inject: ['PhoneNumberRepository', 'PhoneAdminPort'],
   },
 
   // Conversation
@@ -409,8 +473,15 @@ const useCaseProviders = [
   },
   {
     provide: 'MarkConversationReadUseCase',
-    useFactory: (convRepo: any, gateway: any) => new MarkConversationReadUseCase(convRepo, gateway),
-    inject: ['ConversationRepository', 'RealtimeGatewayPort'],
+    useFactory: (convRepo: any, gateway: any, msgRepo: any, phoneRepo: any, messagingApi: any) =>
+      new MarkConversationReadUseCase(convRepo, gateway, msgRepo, phoneRepo, messagingApi),
+    inject: ['ConversationRepository', 'RealtimeGatewayPort', 'MessageRepository', 'PhoneNumberRepository', 'MessagingApiPort'],
+  },
+  {
+    provide: 'ReactToMessageUseCase',
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, messagingApi: any, gateway: any) =>
+      new ReactToMessageUseCase(convRepo, msgRepo, contactRepo, phoneRepo, agentRepo, messagingApi, gateway),
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'MessagingApiPort', 'RealtimeGatewayPort'],
   },
   {
     provide: 'SendTemplateMessageUseCase',
@@ -511,9 +582,9 @@ const useCaseProviders = [
   },
   {
     provide: 'FlowInboundRouterUseCase',
-    useFactory: (flowRepo: any, versionRepo: any, execRepo: any, agentRepo: any, msgRepo: any, eventRepo: any, gateway: any, jobQueue: any, devEvents: any) =>
-      new FlowInboundRouterUseCase(flowRepo, versionRepo, execRepo, agentRepo, msgRepo, eventRepo, gateway, jobQueue, devEvents),
-    inject: ['FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'AgentRepository', 'MessageRepository', 'ConversationEventRepository', 'RealtimeGatewayPort', 'JobQueuePort', 'DeveloperEventsPort'],
+    useFactory: (flowRepo: any, versionRepo: any, execRepo: any, agentRepo: any, msgRepo: any, eventRepo: any, gateway: any, jobQueue: any, devEvents: any, autoAssign: any) =>
+      new FlowInboundRouterUseCase(flowRepo, versionRepo, execRepo, agentRepo, msgRepo, eventRepo, gateway, jobQueue, devEvents, autoAssign),
+    inject: ['FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'AgentRepository', 'MessageRepository', 'ConversationEventRepository', 'RealtimeGatewayPort', 'JobQueuePort', 'DeveloperEventsPort', 'AutoAssignConversationUseCase'],
   },
   {
     provide: 'CancelActiveFlowExecutionUseCase',
@@ -552,6 +623,12 @@ const useCaseProviders = [
     useFactory: (flowRepo: any, versionRepo: any, connectionRepo: any, templateRepo: any, labelRepo: any, agentRepo: any, aiConfigRepo: any, phoneRepo: any, checkPlanLimit: any) =>
       new PublishFlowUseCase(flowRepo, versionRepo, connectionRepo, templateRepo, labelRepo, agentRepo, aiConfigRepo, phoneRepo, checkPlanLimit),
     inject: ['FlowRepository', 'FlowVersionRepository', 'FlowConnectionRepository', 'MessageTemplateRepository', 'LabelRepository', 'AgentRepository', 'AiAgentConfigRepository', 'PhoneNumberRepository', 'CheckPlanLimitUseCase'],
+  },
+  {
+    provide: 'EnsureDefaultPhoneFlowUseCase',
+    useFactory: (flowRepo: any, agentRepo: any, createFlow: any, publishFlow: any) =>
+      new EnsureDefaultPhoneFlowUseCase(flowRepo, agentRepo, createFlow, publishFlow),
+    inject: ['FlowRepository', 'AgentRepository', 'CreateFlowUseCase', 'PublishFlowUseCase'],
   },
   {
     provide: 'PauseFlowUseCase',
@@ -651,9 +728,9 @@ const useCaseProviders = [
   // Webhook
   {
     provide: 'HandleInboundMessageUseCase',
-    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, autoAssign: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any, sendPush: any, accessRepo: any, flowRouter: any, devEvents: any, registerMedia: any, mediaEnricher: any, resolveIdentity: any) =>
-      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, autoAssign, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply, sendPush, accessRepo, flowRouter, devEvents, registerMedia, mediaEnricher, resolveIdentity),
-    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'AutoAssignConversationUseCase', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase', 'AgentPhoneAccessRepository', 'FlowInboundRouterUseCase', 'DeveloperEventsPort', 'RegisterInboundMediaUseCase', 'MessageMediaEnricher', 'ResolveContactIdentityUseCase'],
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, gateway: any, eventRepo: any, agentRepo: any, jobQueue: any, aiConfigRepo: any, messagingApi: any, attributeReply: any, sendPush: any, accessRepo: any, flowRouter: any, devEvents: any, registerMedia: any, mediaEnricher: any, resolveIdentity: any) =>
+      new HandleInboundMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, gateway, eventRepo, agentRepo, jobQueue, aiConfigRepo, messagingApi, attributeReply, sendPush, accessRepo, flowRouter, devEvents, registerMedia, mediaEnricher, resolveIdentity),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'RealtimeGatewayPort', 'ConversationEventRepository', 'AgentRepository', 'JobQueuePort', 'AiAgentConfigRepository', 'MessagingApiPort', 'AttributeCampaignReplyUseCase', 'SendPushToAgentUseCase', 'AgentPhoneAccessRepository', 'FlowInboundRouterUseCase', 'DeveloperEventsPort', 'RegisterInboundMediaUseCase', 'MessageMediaEnricher', 'ResolveContactIdentityUseCase'],
   },
   {
     provide: 'ResolveContactIdentityUseCase',
@@ -665,6 +742,17 @@ const useCaseProviders = [
     useFactory: (phoneRepo: any, contactRepo: any, mergeRepo: any) =>
       new HandleUserIdUpdateUseCase(phoneRepo, contactRepo, mergeRepo),
     inject: ['PhoneNumberRepository', 'ContactRepository', 'ContactMergeRepository'],
+  },
+  {
+    provide: 'HandleAccountEventUseCase',
+    useFactory: (phoneRepo: any, gateway: any) => new HandleAccountEventUseCase(phoneRepo, gateway),
+    inject: ['PhoneNumberRepository', 'RealtimeGatewayPort'],
+  },
+  {
+    provide: 'HandleUserPreferenceUseCase',
+    useFactory: (contactRepo: any, phoneRepo: any, gateway: any) =>
+      new HandleUserPreferenceUseCase(contactRepo, phoneRepo, gateway),
+    inject: ['ContactRepository', 'PhoneNumberRepository', 'RealtimeGatewayPort'],
   },
   {
     provide: 'HandleStatusUpdateUseCase',
@@ -710,8 +798,8 @@ const useCaseProviders = [
   },
   {
     provide: 'ListTemplatesUseCase',
-    useFactory: (templateRepo: any) => new ListTemplatesUseCase(templateRepo),
-    inject: ['MessageTemplateRepository'],
+    useFactory: (templateRepo: any, phoneRepo: any) => new ListTemplatesUseCase(templateRepo, phoneRepo),
+    inject: ['MessageTemplateRepository', 'PhoneNumberRepository'],
   },
   {
     provide: 'GetTemplateUseCase',
@@ -1015,9 +1103,9 @@ const useCaseProviders = [
   },
   {
     provide: 'SendApiMessageUseCase',
-    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, templateRepo: any, eventRepo: any, messagingApi: any, gateway: any, devEvents: any, cancelFlow: any) =>
-      new SendApiMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, templateRepo, eventRepo, messagingApi, gateway, devEvents, cancelFlow),
-    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'MessageTemplateRepository', 'ConversationEventRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'DeveloperEventsPort', 'CancelActiveFlowExecutionUseCase'],
+    useFactory: (phoneRepo: any, contactRepo: any, convRepo: any, msgRepo: any, templateRepo: any, eventRepo: any, messagingApi: any, gateway: any, devEvents: any, cancelFlow: any, agentRepo: any) =>
+      new SendApiMessageUseCase(phoneRepo, contactRepo, convRepo, msgRepo, templateRepo, eventRepo, messagingApi, gateway, devEvents, cancelFlow, agentRepo),
+    inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'MessageTemplateRepository', 'ConversationEventRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'DeveloperEventsPort', 'CancelActiveFlowExecutionUseCase', 'AgentRepository'],
   },
 
   // Notifications (web push)
@@ -1120,6 +1208,7 @@ const useCaseProviders = [
     ContactController,
     TemplateController,
     CampaignController,
+    AnalyticsController,
     AiAgentController,
     LabelController,
     BillingController,

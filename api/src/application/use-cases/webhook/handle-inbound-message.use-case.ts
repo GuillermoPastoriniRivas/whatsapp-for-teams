@@ -17,7 +17,6 @@ import { serializeMessage, serializeConversation, serializeContact } from '../de
 import { InboundMessageInput } from '../../dtos/webhook/inbound-message-input.dto.js';
 import { ResolveContactIdentityUseCase } from '../contact/resolve-contact-identity.use-case.js';
 import { recipientIdentityOf } from '../../../domain/value-objects/recipient-identity.js';
-import { AutoAssignConversationUseCase } from '../conversation/auto-assign-conversation.use-case.js';
 import { AttributeCampaignReplyUseCase } from '../campaign/attribute-campaign-reply.use-case.js';
 import { FlowInboundRouterUseCase } from '../flow/flow-inbound-router.use-case.js';
 import { SendPushToAgentUseCase } from '../notification/send-push-to-agent.use-case.js';
@@ -42,7 +41,6 @@ export class HandleInboundMessageUseCase {
     private readonly conversationRepo: ConversationRepository,
     private readonly messageRepo: MessageRepository,
     private readonly gateway: RealtimeGatewayPort,
-    private readonly autoAssign: AutoAssignConversationUseCase,
     private readonly eventRepo: ConversationEventRepository,
     private readonly agentRepo: AgentRepository,
     private readonly jobQueue: JobQueuePort,
@@ -83,7 +81,6 @@ export class HandleInboundMessageUseCase {
 
     // 3. Atomic find-or-create Conversation (prevents race condition duplicates)
     const now = new Date();
-    let needsAssignment = false;
 
     const { conversation: foundConversation, created } = await this.conversationRepo.findOrCreateByContactAndPhone({
       tenantId,
@@ -114,8 +111,6 @@ export class HandleInboundMessageUseCase {
         conversation: serializeConversation(conversation),
         contact: serializeContact(contact),
       });
-
-      needsAssignment = true;
     }
 
     // 4. Upsert Message (idempotent by waMessageId)
@@ -172,12 +167,15 @@ export class HandleInboundMessageUseCase {
     // 5b. Attribute this reply to any open campaign sends for the contact
     await this.attributeCampaignReply.execute(contact.id, now);
 
-    // 5c. Router de flujos: si un flujo consume el mensaje (resume de una
-    // espera, ejecución activa o trigger nuevo) se suprime el auto-assign y
-    // el bot IA para este mensaje. Sin flujos publicados: no-op.
+    // 5c. Router de flujos: el único que decide quién atiende. Si una
+    // automatización consume el mensaje (resume de una espera, ejecución activa
+    // o trigger nuevo) también suprime el bot IA legado para este mensaje; si
+    // ninguna lo agarra y el chat recién nace, el propio router reparte al
+    // equipo y devuelve a quién le tocó.
     let flowHandled = false;
+    let assignedAgent: Agent | null = null;
     try {
-      flowHandled = await this.flowRouter.route({
+      const routed = await this.flowRouter.route({
         tenantId,
         phoneId: phone.id,
         conversation,
@@ -186,6 +184,8 @@ export class HandleInboundMessageUseCase {
         created,
         promotedFromCampaign,
       });
+      flowHandled = routed.handled;
+      assignedAgent = routed.fallbackAgent;
     } catch (error: any) {
       // El router nunca puede tumbar el pipeline entrante.
       this.logger.error(`Flow router failed for conversation ${conversation.id}: ${error?.message}`, error?.stack);
@@ -197,12 +197,6 @@ export class HandleInboundMessageUseCase {
     // próximo turno del bot colapsaría su ventana contra el tope duro.
     if (flowHandled && conversation.pendingAiSince) {
       await this.conversationRepo.update(conversation.id, { pendingAiSince: null } as any);
-    }
-
-    // 6. If needs assignment (new or reopened) → auto-assign
-    let assignedAgent: Agent | null = null;
-    if (needsAssignment && !flowHandled) {
-      assignedAgent = await this.autoAssign.execute(conversation.id);
     }
 
     // 6b. Contador de no leídos persistido; se resetea al abrir la conversación
@@ -239,7 +233,7 @@ export class HandleInboundMessageUseCase {
       } else {
         humanAgent = assignedAgent;
       }
-    } else if (!needsAssignment && conversation.agentId) {
+    } else if (!created && conversation.agentId) {
       const currentAgent = await this.agentRepo.findById(conversation.agentId);
       if (currentAgent && currentAgent.type === AgentType.AI) {
         aiAgent = currentAgent;
@@ -249,7 +243,7 @@ export class HandleInboundMessageUseCase {
     }
 
     if (aiAgent && !flowHandled) {
-      await this.enqueueAiResponse(aiAgent, conversation.id, phone, contact);
+      await this.enqueueAiResponse(aiAgent, conversation.id, phone, input.waMessageId);
     }
 
     // 9. Web push (fire-and-forget; the SW suppresses it when the app is
@@ -298,6 +292,7 @@ export class HandleInboundMessageUseCase {
       case MessageType.STICKER: return '🩷 Sticker';
       case MessageType.LOCATION: return '📍 Ubicación';
       case MessageType.CONTACTS: return '👤 Contacto';
+      case MessageType.REACTION: return 'Reaccionó a un mensaje';
       default: return 'Nuevo mensaje';
     }
   }
@@ -306,7 +301,7 @@ export class HandleInboundMessageUseCase {
     agent: Agent,
     conversationId: string,
     phone: { provider: any; providerConfig: any; phoneNumberId: string },
-    contact: { phone: string | null; bsuid: string | null },
+    waMessageId: string,
   ): Promise<void> {
     const config = await this.aiConfigRepo.findByAgentId(agent.id);
     const multiMessage = config?.multiMessage;
@@ -317,12 +312,14 @@ export class HandleInboundMessageUseCase {
       return;
     }
 
-    // Send typing indicator immediately so user sees activity
-    this.messagingApi.sendTypingIndicator({
+    // Tilde azul + "escribiendo…" ya mismo: el bot lo va a contestar, así que
+    // marcarlo leído acá es honesto y le da señal de vida al cliente.
+    this.messagingApi.markAsRead({
       provider: phone.provider,
       providerConfig: phone.providerConfig,
       phoneNumberId: phone.phoneNumberId,
-      ...recipientIdentityOf(contact),
+      waMessageId,
+      typing: true,
     }).catch(() => {});
 
     // Set pendingAiSince if not already set (first unanswered message)

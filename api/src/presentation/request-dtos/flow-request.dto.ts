@@ -30,6 +30,12 @@ export const CreateFlowRequestSchema = z.object({
   name: z.string().min(1).max(80),
   description: z.string().max(300).optional(),
   templateId: z.string().max(60).optional(),
+  /**
+   * Números donde va a actuar. Lista vacía = todos, pero solo si viene
+   * `phoneScope: 'all'`: se elige al crear, no se deduce del largo de la lista.
+   */
+  phoneNumberIds: z.array(z.string().max(60)).max(50).optional(),
+  phoneScope: z.enum(['all', 'specific']).optional(),
 });
 export type CreateFlowRequestDto = z.infer<typeof CreateFlowRequestSchema>;
 
@@ -70,6 +76,8 @@ export const SetupAssistantRequestSchema = z.object({
   assistantName: z.string().max(60).optional(),
   topics: z.array(z.enum(['horarios', 'ubicacion', 'precios', 'turno', 'pedido', 'stock', 'humano'])).max(7),
   fallback: z.enum(['ai', 'human', 'message']),
+  /** Líneas donde va a atender. Vacío = todas, elegido en el alta. */
+  phoneNumberIds: z.array(z.string().max(60)).max(50).optional(),
   schedule: z.object({
     days: z.array(z.number().int().min(0).max(6)).max(7),
     from: z.string().regex(/^\d{2}:\d{2}$/),

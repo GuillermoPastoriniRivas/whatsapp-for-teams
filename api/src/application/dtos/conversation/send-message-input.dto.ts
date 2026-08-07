@@ -9,4 +9,6 @@ export interface SendMessageInput {
   messageType?: MessageType;
   /** Archivo de la biblioteca o recién subido. Define el tipo del mensaje. */
   mediaAssetId?: string;
+  /** Id **nuestro** del mensaje que se está citando al responder. */
+  replyToMessageId?: string;
 }

@@ -128,6 +128,97 @@ describe('buildTemplatePayload', () => {
     ]);
   });
 
+  // Meta lee los posicionales por su lugar en el array (parameters[0] = {{1}}),
+  // así que si el texto los usa fuera de orden hay que reordenarlos antes de
+  // mandarlos o el cliente recibe los valores cruzados.
+  it('orders positional body parameters numerically, not by order of appearance', () => {
+    const { components, renderedBody } = buildTemplatePayload(
+      [{ type: 'BODY', text: 'Hola {{2}}, te escribe {{1}} por tu pedido.' }],
+      { 'body.1': 'Asis', 'body.2': 'Ana' },
+    );
+    expect(components).toEqual([
+      { type: 'body', parameters: [{ type: 'text', text: 'Asis' }, { type: 'text', text: 'Ana' }] },
+    ]);
+    expect(renderedBody).toBe('Hola Ana, te escribe Asis por tu pedido.');
+  });
+
+  it('orders positional header parameters numerically', () => {
+    const { components } = buildTemplatePayload(
+      [{ type: 'HEADER', format: 'TEXT', text: '{{2}} - {{1}}' }],
+      { 'header.1': 'uno', 'header.2': 'dos' },
+    );
+    expect(components).toEqual([
+      { type: 'header', parameters: [{ type: 'text', text: 'uno' }, { type: 'text', text: 'dos' }] },
+    ]);
+  });
+
+  // Los nombrados viajan con parameter_name, así que el orden es indistinto:
+  // se respeta el del texto para no reordenar de gratis.
+  it('keeps named parameters in the order they appear', () => {
+    const { components } = buildTemplatePayload(
+      [{ type: 'BODY', text: 'Hola {{nombre}}, tu pedido {{pedido}} salió.' }],
+      { 'body.nombre': 'Ana', 'body.pedido': 'A-12' },
+    );
+    expect(components).toEqual([
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: 'Ana', parameter_name: 'nombre' },
+          { type: 'text', text: 'A-12', parameter_name: 'pedido' },
+        ],
+      },
+    ]);
+  });
+
+  // Un header LOCATION no se resuelve con un link: son coordenadas, y viajan
+  // en un parámetro `location` propio.
+  describe('header LOCATION', () => {
+    const components: MessageTemplateComponent[] = [
+      { type: 'HEADER', format: 'LOCATION' },
+      { type: 'BODY', text: 'Te esperamos.' },
+    ];
+
+    it('pide latitud y longitud, no un link', () => {
+      expect(listTemplatePlaceholders(components)).toEqual([
+        { component: 'header', position: 'latitude' },
+        { component: 'header', position: 'longitude' },
+      ]);
+    });
+
+    it('arma el parámetro de ubicación con el nombre y la dirección opcionales', () => {
+      const built = buildTemplatePayload(components, {
+        'header.latitude': '-34.9011',
+        'header.longitude': '-56.1645',
+        'header.name': 'Aloe Village',
+        'header.address': 'La Paloma, Rocha',
+      });
+      expect(built.components).toEqual([
+        {
+          type: 'header',
+          parameters: [
+            {
+              type: 'location',
+              location: {
+                latitude: '-34.9011',
+                longitude: '-56.1645',
+                name: 'Aloe Village',
+                address: 'La Paloma, Rocha',
+              },
+            },
+          ],
+        },
+      ]);
+    });
+
+    /**
+     * Media ubicación la rechaza Meta y se pierde el mensaje entero, así que
+     * sin coordenadas no se emite el componente.
+     */
+    it('no emite el componente si faltan las coordenadas', () => {
+      expect(buildTemplatePayload(components, { 'header.name': 'Aloe Village' }).components).toEqual([]);
+    });
+  });
+
   it('emits no body component when the template has no placeholders', () => {
     const { components, renderedBody } = buildTemplatePayload([{ type: 'BODY', text: 'Hola!' }], {});
     expect(components).toEqual([]);

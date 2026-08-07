@@ -13,12 +13,14 @@ import { serializeMessage } from '../developer/developer-payloads.util.js';
 import { Result, ok, err } from '../../common/result.js';
 import { DomainError, ConversationNotFoundError, AgentNotAssignedError } from '../../../domain/errors/domain-errors.js';
 import { listTemplatePlaceholders, buildTemplatePayload, TemplatePlaceholder } from '../campaign/helpers/template-variable.resolver.js';
+import { templateBelongsToPhone } from '../template/helpers/template-scope.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
 import { TemplateStatus } from '../../../domain/enums/template-status.enum.js';
 import { isBsuidOnly, recipientIdentityOf, templateRequiresPhone } from '../../../domain/value-objects/recipient-identity.js';
-import { AuthTemplateRequiresPhoneError } from '../../../domain/errors/domain-errors.js';
+import { AuthTemplateRequiresPhoneError, MarketingOptOutError } from '../../../domain/errors/domain-errors.js';
+import { TemplateCategory } from '../../../domain/enums/template-category.enum.js';
 
 export interface SendTemplateMessageInput {
   conversationId: string;
@@ -62,6 +64,11 @@ export class SendTemplateMessageUseCase {
       return err(new AgentNotAssignedError());
     }
 
+    const phone = await this.phoneRepo.findById(conversation.phoneNumberId);
+    if (!phone || phone.status !== 'active') {
+      return err(new DomainError('PHONE_NUMBER_INACTIVE', 'This phone number is currently inactive.'));
+    }
+
     const template = await this.templateRepo.findById(input.templateId);
     if (!template || template.tenantId !== conversation.tenantId) {
       return err(new DomainError('TEMPLATE_NOT_FOUND', 'Template not found'));
@@ -69,8 +76,8 @@ export class SendTemplateMessageUseCase {
     if (template.status !== TemplateStatus.APPROVED) {
       return err(new DomainError('TEMPLATE_NOT_APPROVED', 'Only approved templates can be sent'));
     }
-    if (template.phoneNumberId !== conversation.phoneNumberId) {
-      return err(new DomainError('TEMPLATE_PHONE_MISMATCH', 'Template belongs to a different phone number'));
+    if (!templateBelongsToPhone(template, phone)) {
+      return err(new DomainError('TEMPLATE_PHONE_MISMATCH', 'Template belongs to a different WhatsApp account'));
     }
 
     const missing = listTemplatePlaceholders(template.components)
@@ -89,10 +96,10 @@ export class SendTemplateMessageUseCase {
     if (isBsuidOnly(identity) && templateRequiresPhone(template.category)) {
       return err(new AuthTemplateRequiresPhoneError());
     }
-
-    const phone = await this.phoneRepo.findById(conversation.phoneNumberId);
-    if (!phone || phone.status !== 'active') {
-      return err(new DomainError('PHONE_NUMBER_INACTIVE', 'This phone number is currently inactive.'));
+    // El opt-out de marketing lo declaró el usuario en WhatsApp: sólo bloquea
+    // esa categoría, las de utilidad y autenticación siguen pasando.
+    if (template.category === TemplateCategory.MARKETING && contact.marketingOptedOut) {
+      return err(new MarketingOptOutError());
     }
 
     const agent = await this.agentRepo.findById(input.agentId);

@@ -30,17 +30,16 @@ const SEED = {
   },
   // Set to null to skip phone number creation
   phoneNumber: {
-    provider: 'twilio',
+    provider: 'meta',
     providerConfig: {
-      accountSid: process.env.TWILIO_ACCOUNT_SID ?? '',
-      authToken: process.env.TWILIO_AUTH_TOKEN ?? '',
-      fromNumber: '+14155238886', // Twilio sandbox number
+      accessToken: process.env.META_ACCESS_TOKEN ?? '',
+      appId: process.env.META_APP_ID ?? '',
     },
-    wabaId: 'twilio',
-    phoneNumberId: '+14155238886',
-    displayPhone: '+14155238886',
-    label: 'WhatsApp Sandbox',
-    webhookSecret: 'twilio-webhook-secret',
+    wabaId: process.env.META_WABA_ID ?? '',
+    phoneNumberId: process.env.META_PHONE_NUMBER_ID ?? '',
+    displayPhone: '+59891935507',
+    label: 'WhatsApp',
+    webhookSecret: 'meta-webhook-secret',
   } as typeof SEED.phoneNumber | null,
 };
 

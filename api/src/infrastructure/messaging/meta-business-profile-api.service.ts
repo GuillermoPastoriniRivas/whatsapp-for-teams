@@ -145,7 +145,11 @@ export class MetaBusinessProfileApiService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      this.logger.error(`Business profile API error: ${method} ${response.status} ${errorText}`);
+      // El cuerpo va al log: Meta contesta 131000 ("Something went wrong") sin
+      // decir qué campo le molestó, y sin ver lo que mandamos no hay forma de
+      // saberlo. Son datos del perfil público, no credenciales.
+      const sent = body ? ` payload=${JSON.stringify(body)}` : '';
+      this.logger.error(`Business profile API error: ${method} ${response.status} ${errorText}${sent}`);
       throw this.toError(response.status, errorText);
     }
 
@@ -160,27 +164,5 @@ export class MetaBusinessProfileApiService {
       // cuerpo no-JSON (proxy/HTML): se clasifica solo por el status
     }
     return classifyMetaError(status, errorBody);
-  }
-}
-
-/**
- * Kapso proxea el Graph API de Meta con las mismas rutas y payloads; solo
- * cambian el host y la autenticación.
- */
-@Injectable()
-export class KapsoBusinessProfileApiService extends MetaBusinessProfileApiService {
-  protected graphBaseUrl(): string {
-    return 'https://api.kapso.ai/meta/whatsapp/v24.0';
-  }
-
-  protected authHeaders(providerConfig: Record<string, string>): Record<string, string> {
-    if (!providerConfig.apiKey) {
-      throw new Error('Kapso Business Profile API: falta apiKey en providerConfig');
-    }
-    return { 'X-API-Key': providerConfig.apiKey };
-  }
-
-  protected uploadAuthHeaders(providerConfig: Record<string, string>): Record<string, string> {
-    return this.authHeaders(providerConfig);
   }
 }

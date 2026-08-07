@@ -1,4 +1,5 @@
 import {
+  ChartLine,
   Code2,
   Contact,
   CreditCard,
@@ -47,6 +48,7 @@ const PHONE_ADMIN: NavItem = {
   tabLabelKey: "numbers",
   adminOnly: true,
 }
+const ANALYTICS: NavItem = { href: "/analytics", icon: ChartLine, labelKey: "analytics", adminOnly: true }
 const TEAM: NavItem = { href: "/agents", icon: Users, labelKey: "team", adminOnly: true }
 const DEVELOPERS: NavItem = { href: "/developers", icon: Code2, labelKey: "developers", adminOnly: true }
 const BILLING: NavItem = { href: "/settings/billing", icon: CreditCard, labelKey: "billing", adminOnly: true }
@@ -60,7 +62,7 @@ export interface NavSection {
 /** Agrupado por intención, no por permiso. Configuración al final: se toca una vez. */
 export const NAV_SECTIONS: NavSection[] = [
   { titleKey: "sectionInbox", items: [CONVERSATIONS, CONTACTS] },
-  { titleKey: "sectionMarketing", items: [TEMPLATES, CAMPAIGNS, MEDIA, FLOWS] },
+  { titleKey: "sectionMarketing", items: [TEMPLATES, CAMPAIGNS, MEDIA, FLOWS, ANALYTICS] },
   { titleKey: "sectionSetup", items: [PHONE_ADMIN, TEAM, DEVELOPERS] },
 ]
 
@@ -74,7 +76,7 @@ export const NAV_BOTTOM: NavItem[] = [BILLING, SETTINGS]
  */
 const MOBILE_TABS: NavItem[] = [CONVERSATIONS, CONTACTS, PHONE_ADMIN, SETTINGS]
 
-const MOBILE_MORE: NavItem[] = [TEMPLATES, CAMPAIGNS, MEDIA, FLOWS, TEAM, DEVELOPERS, BILLING]
+const MOBILE_MORE: NavItem[] = [TEMPLATES, CAMPAIGNS, MEDIA, FLOWS, ANALYTICS, TEAM, DEVELOPERS, BILLING]
 
 export function visibleItems(items: NavItem[], isAdmin: boolean): NavItem[] {
   return items.filter((item) => !item.adminOnly || isAdmin)

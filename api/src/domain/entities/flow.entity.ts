@@ -49,5 +49,11 @@ export class Flow {
     public readonly createdByAgentId: string,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
+    /**
+     * Número del que este flujo es la automatización base: la que decide quién
+     * atiende cuando ninguna otra matchea. Se crea sola al dar de alta el
+     * número y siempre evalúa última. `null` = flujo común, hecho a mano.
+     */
+    public readonly defaultForPhoneNumberId: string | null = null,
   ) {}
 }

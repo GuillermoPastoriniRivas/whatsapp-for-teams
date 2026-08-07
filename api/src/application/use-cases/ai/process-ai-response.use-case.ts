@@ -26,6 +26,7 @@ import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js
 import {
   buildAgentSystemPrompt,
   buildChatHistory,
+  lastInboundOf,
   parseMultiMessageResponse,
   sendBubbles,
   stripTimestampPrefixes,
@@ -191,13 +192,21 @@ export class ProcessAiResponseUseCase {
     const sendContact = contact ?? await this.contactRepo.findById(conversation.contactId);
     if (!sendContact) return;
 
-    const typingParams = {
-      provider: phone.provider,
-      providerConfig: phone.providerConfig,
-      phoneNumberId: phone.phoneNumberId,
-      ...recipientIdentityOf(sendContact),
-    };
-    const typingLoop = this.startTypingLoop(typingParams);
+    // El "escribiendo…" de Meta cuelga del wamid del entrante, no del contacto.
+    // Sin un entrante que citar no hay indicador posible (p. ej. una corrida
+    // disparada por una campaña): ahí el loop queda en no-op.
+    const lastInbound = lastInboundOf(messages);
+    const typingLoop = this.startTypingLoop(
+      lastInbound?.waMessageId
+        ? {
+            provider: phone.provider,
+            providerConfig: phone.providerConfig,
+            phoneNumberId: phone.phoneNumberId,
+            waMessageId: lastInbound.waMessageId,
+            typing: true,
+          }
+        : null,
+    );
 
     // ── Tool call loop ──────────────────────────────────────────────────
     let finalContent: string | null = null;
@@ -335,6 +344,7 @@ export class ProcessAiResponseUseCase {
       senderAgentName: agent.name,
       bubbles,
       interBubbleDelayMs: config.multiMessage?.interBubbleDelayMs ?? 1200,
+      replyToWaMessageId: lastInbound?.waMessageId ?? null,
       devEvents: this.devEvents,
       tenantId: conversation.tenantId,
     });
@@ -356,8 +366,12 @@ export class ProcessAiResponseUseCase {
 
   // ── Helpers ───────────────────────────────────────────────────────────
 
-  private startTypingLoop(params: import('../../ports/messaging-api.port.js').TypingIndicatorParams): { stop: () => void; refresh: () => void } {
-    const send = () => { this.messagingApi.sendTypingIndicator(params).catch(() => {}); };
+  private startTypingLoop(
+    params: import('../../ports/messaging-api.port.js').ReadReceiptParams | null,
+  ): { stop: () => void; refresh: () => void } {
+    if (!params) return { stop: () => {}, refresh: () => {} };
+
+    const send = () => { this.messagingApi.markAsRead(params).catch(() => {}); };
     send();
     let timer: ReturnType<typeof setInterval> = setInterval(send, 20_000);
     return {

@@ -6,10 +6,9 @@ import { Public } from '../decorators/public.decorator.js';
 import { WebhookSignatureGuard } from '../guards/webhook-signature.guard.js';
 import { parseMetaWebhook, mapMetaMessageToInbound, mapMetaStatusToUpdate, mapTemplateEventToInput, mapUserIdUpdateToInput } from '../webhooks/meta-webhook.parser.js';
 import type { MetaWebhookPayload } from '../webhooks/meta-webhook.types.js';
-import { toMessageLocation } from '../../domain/value-objects/message-location.js';
 import type { PhoneNumber } from '../../domain/entities/phone-number.entity.js';
 import type { JobQueuePort } from '../../application/ports/job-queue.port.js';
-import { INBOUND_MESSAGE_JOB, STATUS_UPDATE_JOB, TEMPLATE_EVENT_JOB, USER_ID_UPDATE_JOB } from '../../infrastructure/queue/webhook-job.processor.js';
+import { ACCOUNT_EVENT_JOB, INBOUND_MESSAGE_JOB, STATUS_UPDATE_JOB, TEMPLATE_EVENT_JOB, USER_ID_UPDATE_JOB, USER_PREFERENCE_JOB } from '../../infrastructure/queue/webhook-job.processor.js';
 
 @Public()
 @ApiTags('Webhooks')
@@ -56,13 +55,15 @@ export class WebhookController {
   async receiveWhatsApp(@Req() req: Request, @Body() body: MetaWebhookPayload) {
     const phoneNumber = (req as any).phoneNumber as PhoneNumber;
 
-    const { messages, statuses, templateEvents, userIdUpdates } = parseMetaWebhook(body);
+    const { messages, statuses, templateEvents, userIdUpdates, accountEvents, userPreferences } =
+      parseMetaWebhook(body);
 
     // Enqueue inbound messages
     for (const parsed of messages) {
       const input = mapMetaMessageToInbound(parsed, phoneNumber.phoneNumberId);
       if (!input) {
-        this.logger.warn(`Unsupported Meta message type: ${parsed.message.type} (id=${parsed.message.id})`);
+        // Tipo que no soportamos, o una reacción que el usuario quitó.
+        this.logger.warn(`Mensaje entrante ignorado (tipo ${parsed.message.type}, id=${parsed.message.id})`);
         continue;
       }
       await this.queue.enqueue(INBOUND_MESSAGE_JOB, input);
@@ -83,117 +84,17 @@ export class WebhookController {
       await this.queue.enqueue(TEMPLATE_EVENT_JOB, mapTemplateEventToInput(event));
     }
 
-    return { status: 'ok' };
-  }
-
-  // ── Kapso (Meta webhook forwarding) ────────────────────
-
-  @Post('kapso')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Receive webhook (Kapso)', description: 'Kapso Meta-forwarded webhook receiver for messages and status updates' })
-  @ApiResponse({ status: 200, description: 'Webhook processed' })
-  async receiveKapso(@Req() req: Request, @Body() body: MetaWebhookPayload) {
-    // Kapso forwards the exact Meta payload — extract phone_number_id the same way
-    const phoneNumberId = body?.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
-    if (!phoneNumberId) {
-      this.logger.warn('Kapso webhook: cannot determine phone_number_id');
-      return { status: 'ignored' };
+    // Salud de la cuenta y del número: baneos, calidad, throughput, nombre.
+    for (const event of accountEvents) {
+      await this.queue.enqueue(ACCOUNT_EVENT_JOB, event);
     }
 
-    const { messages, statuses, userIdUpdates } = parseMetaWebhook(body);
-
-    for (const parsed of messages) {
-      const input = mapMetaMessageToInbound(parsed, phoneNumberId);
-      if (!input) {
-        this.logger.warn(`Unsupported Kapso message type: ${parsed.message.type} (id=${parsed.message.id})`);
-        continue;
-      }
-      await this.queue.enqueue(INBOUND_MESSAGE_JOB, input);
-    }
-
-    for (const update of userIdUpdates) {
-      await this.queue.enqueue(USER_ID_UPDATE_JOB, mapUserIdUpdateToInput(update));
-    }
-
-    for (const status of statuses) {
-      await this.queue.enqueue(STATUS_UPDATE_JOB, mapMetaStatusToUpdate(status));
+    // Opt-out de marketing: hay que respetarlo antes de la próxima campaña.
+    for (const preference of userPreferences) {
+      await this.queue.enqueue(USER_PREFERENCE_JOB, preference);
     }
 
     return { status: 'ok' };
   }
 
-  // ── Twilio ────────────────────────────────────────────
-
-  @Post('twilio')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Receive webhook (Twilio)', description: 'Twilio WhatsApp inbound webhook receiver for messages and status callbacks' })
-  @ApiResponse({ status: 200, description: 'Webhook processed' })
-  async receiveTwilio(@Body() body: Record<string, string>) {
-    this.logger.log(`Twilio webhook: ${body.MessageSid} from ${body.From}`);
-
-    const smsStatus = body.SmsStatus;
-
-    // Status callback (sent, delivered, read, etc.)
-    if (smsStatus && smsStatus !== 'received') {
-      await this.queue.enqueue(STATUS_UPDATE_JOB, {
-        waMessageId: body.MessageSid,
-        status: this.mapTwilioStatus(smsStatus),
-        timestamp: new Date(),
-      });
-      return { status: 'ok' };
-    }
-
-    // Inbound message
-    const toNumber = body.To?.replace('whatsapp:', '');
-    const fromNumber = body.WaId || body.From?.replace('whatsapp:+', '');
-
-    await this.queue.enqueue(INBOUND_MESSAGE_JOB, {
-      phoneNumberId: toNumber,
-      waMessageId: body.MessageSid,
-      from: fromNumber,
-      contactName: body.ProfileName || fromNumber,
-      messageType: this.mapTwilioMessageType(body),
-      body: body.Body || undefined,
-      // En Twilio el "id" del media es la URL del recurso: se baja con Basic
-      // auth de la cuenta, no es pública.
-      mediaId: body.MediaUrl0 || undefined,
-      mimeType: body.MediaContentType0 || undefined,
-      location: toMessageLocation({
-        latitude: body.Latitude,
-        longitude: body.Longitude,
-        name: body.Label,
-        address: body.Address,
-      }),
-      timestamp: new Date(),
-    });
-
-    return { status: 'ok' };
-  }
-
-  private mapTwilioStatus(status: string): string {
-    const map: Record<string, string> = {
-      queued: 'sent',
-      sent: 'sent',
-      delivered: 'delivered',
-      read: 'read',
-      failed: 'failed',
-      undelivered: 'failed',
-    };
-    return map[status] ?? 'sent';
-  }
-
-  private mapTwilioMessageType(body: Record<string, string>): string {
-    // Twilio no manda un `type`: la ubicación se reconoce por las coordenadas.
-    if (body.Latitude && body.Longitude) return 'location';
-
-    const numMedia = parseInt(body.NumMedia || '0', 10);
-    if (numMedia > 0) {
-      const contentType = body.MediaContentType0 || '';
-      if (contentType.startsWith('image/')) return 'image';
-      if (contentType.startsWith('audio/')) return 'audio';
-      if (contentType.startsWith('video/')) return 'video';
-      return 'document';
-    }
-    return 'text';
-  }
 }

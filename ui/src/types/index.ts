@@ -42,6 +42,8 @@ export interface Conversation {
     company: string | null;
     notes: string | null;
     customFields: Record<string, string>;
+    /** Pidió no recibir marketing desde WhatsApp. Null = puede recibirlo. */
+    marketingOptOutAt?: string | null;
   } | null;
 }
 
@@ -64,6 +66,11 @@ export interface Contact {
   company: string | null;
   notes: string | null;
   customFields: Record<string, string>;
+  /**
+   * Cuándo el usuario apagó los mensajes de marketing desde WhatsApp. No es una
+   * preferencia nuestra: mandarle campañas igual quema la calidad del número.
+   */
+  marketingOptOutAt?: string | null;
 }
 
 export type MediaKind = "image" | "video" | "audio" | "document" | "sticker";
@@ -147,7 +154,18 @@ export interface Message {
   id: string;
   conversationId: string;
   direction: "inbound" | "outbound";
-  messageType: "text" | "image" | "audio" | "video" | "document" | "sticker" | "location" | "template" | "interactive";
+  messageType:
+    | "text"
+    | "image"
+    | "audio"
+    | "video"
+    | "document"
+    | "sticker"
+    | "location"
+    | "template"
+    | "interactive"
+    | "contacts"
+    | "reaction";
   body: string | null;
   mediaUrl: string | null;
   mimeType: string | null;
@@ -161,6 +179,11 @@ export interface Message {
   senderAgentName: string | null;
   /** Respuesta a un interactivo: id del botón/fila elegido */
   interactiveReplyId?: string | null;
+  /**
+   * `waMessageId` del mensaje citado al responder. En un `reaction` es el
+   * mensaje al que apunta la reacción.
+   */
+  contextWaMessageId?: string | null;
   /** Outbound interactivo: definición de botones/lista para renderizar */
   interactivePayload?: {
     kind: "buttons" | "list";
@@ -177,7 +200,7 @@ export interface Message {
 export interface PhoneNumber {
   id: string;
   tenantId: string;
-  provider: "meta" | "twilio" | "360dialog" | "kapso" | "demo";
+  provider: "meta" | "demo";
   providerConfig: Record<string, string>;
   wabaId: string;
   /** Portfolio que scopea los BSUID. Null ⇒ se usa `wabaId`. */
@@ -188,6 +211,39 @@ export interface PhoneNumber {
   status: "active" | "inactive";
   /** Copia del perfil que sirve el proveedor. Null si nunca se consultó. */
   businessProfile?: WhatsAppBusinessProfile | null;
+  /** Lo que Meta reporta del número. Null si nunca llegó un aviso. */
+  health?: PhoneNumberHealth | null;
+}
+
+/**
+ * Salud del número según Meta. La alimentan los webhooks de cuenta y la
+ * sincronización; nosotros no la escribimos.
+ */
+export interface PhoneNumberHealth {
+  /** GREEN | YELLOW | RED | UNKNOWN */
+  qualityRating: string | null;
+  /** STANDARD | HIGH | NOT_APPLICABLE */
+  throughputLevel: string | null;
+  /** APPROVED | REJECTED | PENDING */
+  nameStatus: string | null;
+  /** Baneo o restricción de la WABA, cuando Meta lo informa. */
+  accountStatus: string | null;
+  updatedAt: string | null;
+}
+
+/** Lo que el cliente ve antes de escribir: accesos rápidos y comandos. */
+export interface ConversationalComponents {
+  enabled: boolean;
+  /** Hasta 4, de 80 caracteres, sin emojis. */
+  iceBreakers: string[];
+  /** Hasta 30. Nombre ≤ 32, descripción ≤ 256, sin emojis. */
+  commands: Array<{ commandName: string; commandDescription: string }>;
+}
+
+export interface BlockedUser {
+  waId: string;
+  contactId: string | null;
+  name: string | null;
 }
 
 /**
@@ -589,6 +645,15 @@ export interface FlowGraph {
 
 export type FlowStatus = "draft" | "published" | "paused" | "archived";
 
+/**
+ * Sobre qué líneas va a actuar una automatización. Se elige al crearla; no se
+ * deduce de una lista vacía, que es lo que antes hacía que "todavía no elegí"
+ * y "quiero todas" fueran indistinguibles.
+ */
+export type PhoneScopeChoice =
+  | { phoneScope: "all" }
+  | { phoneScope: "specific"; phoneNumberIds: string[] };
+
 export interface FlowSummary {
   id: string;
   name: string;
@@ -599,6 +664,14 @@ export interface FlowSummary {
   stats: { started: number; completed: number; failed: number; cancelled: number };
   hasWebhookTrigger: boolean;
   updatedAt: string;
+  /**
+   * Número del que esta automatización es la base: la que decide quién atiende
+   * cuando ninguna otra agarra el chat. Se crea sola al dar de alta el número
+   * y siempre evalúa última. Null = automatización común.
+   */
+  defaultForPhoneNumberId: string | null;
+  /** Números donde actúa el disparador. Vacío = todos los del tenant. */
+  triggerPhoneNumberIds: string[];
 }
 
 export interface Flow {

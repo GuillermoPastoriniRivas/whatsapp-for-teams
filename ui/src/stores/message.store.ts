@@ -7,6 +7,12 @@ import type { Message, PaginatedResponse } from "@/types";
 interface MessageState {
   messages: Record<string, Message[]>;
   isLoading: boolean;
+  /**
+   * Mensaje que se está citando al responder. Vive en el store y no en el
+   * input porque lo elige la burbuja y lo consume el compositor.
+   */
+  replyTo: Message | null;
+  setReplyTo: (message: Message | null) => void;
   fetch: (conversationId: string, page?: number) => Promise<void>;
   appendMessage: (conversationId: string, message: Message) => void;
   updateStatus: (waMessageId: string, waStatus: string) => void;
@@ -15,6 +21,8 @@ interface MessageState {
     body: string,
     mediaAssetId?: string
   ) => Promise<Message | undefined>;
+  /** Reacciona con un emoji a un mensaje. Vacío quita la reacción. */
+  react: (conversationId: string, messageId: string, emoji: string) => Promise<void>;
   /** Un archivo terminó de bajarse: se refresca el mensaje que lo lleva. */
   applyMediaUpdate: (assetId: string) => Promise<void>;
 }
@@ -22,6 +30,9 @@ interface MessageState {
 export const useMessageStore = create<MessageState>((set, get) => ({
   messages: {},
   isLoading: false,
+  replyTo: null,
+
+  setReplyTo: (message) => set({ replyTo: message }),
 
   fetch: async (conversationId, page = 1) => {
     set({ isLoading: true });
@@ -94,11 +105,27 @@ export const useMessageStore = create<MessageState>((set, get) => ({
     }
   },
 
+  react: async (conversationId, messageId, emoji) => {
+    const message = await api.post<Message>(
+      `/conversations/${conversationId}/messages/${messageId}/reaction`,
+      { emoji }
+    );
+    get().appendMessage(conversationId, message);
+  },
+
   send: async (conversationId, body, mediaAssetId) => {
+    const replyToMessageId = get().replyTo?.id;
     const message = await api.post<Message>(
       `/conversations/${conversationId}/messages`,
-      { body, ...(mediaAssetId ? { mediaAssetId } : {}) }
+      {
+        body,
+        ...(mediaAssetId ? { mediaAssetId } : {}),
+        ...(replyToMessageId ? { replyToMessageId } : {}),
+      }
     );
+    // La cita se consume con el envío: dejarla puesta haría que el siguiente
+    // mensaje cite lo mismo sin que el agente lo haya pedido.
+    set({ replyTo: null });
     get().appendMessage(conversationId, message);
 
     // Trigger mock AI reply in demo mode

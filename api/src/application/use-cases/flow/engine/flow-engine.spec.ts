@@ -116,7 +116,7 @@ describe('flow-graph.validator', () => {
     agentIds: new Set(),
     aiAgentIds: new Set(['bot1']),
     connectionIds: new Set(),
-    phones: new Map([['p1', { interactive: true, templates: true }]]),
+    phones: new Set(['p1']),
   };
 
   const trigger = {
@@ -217,31 +217,11 @@ describe('flow-graph.validator', () => {
     expect(errors.some((e) => e.code === 'bad_ai_agent')).toBe(true);
   });
 
-  it('bloquea plantillas en líneas cuyo proveedor no las soporta', () => {
-    const twilioRefs: FlowGraphRefs = {
-      ...refs,
-      templates: new Map([['tpl1', { approved: true, phoneNumberId: 'tw1' }]]),
-      phones: new Map([['tw1', { interactive: false, templates: false }]]),
-    };
-    const graph: FlowGraph = {
-      nodes: [
-        trigger,
-        { id: 'tpl', type: 'action.send_template', position: { x: 1, y: 0 }, data: { templateId: 'tpl1', variables: {} } },
-      ],
-      edges: [{ id: 'e1', source: 't', sourceHandle: 'out', target: 'tpl' }],
-    };
-    const { errors } = validateFlowGraph(graph, twilioRefs);
-    expect(errors.some((e) => e.code === 'template_unsupported_provider')).toBe(true);
-  });
-
   it('bloquea una plantilla que pertenece a otro número', () => {
     const twoLineRefs: FlowGraphRefs = {
       ...refs,
       templates: new Map([['tpl1', { approved: true, phoneNumberId: 'lineaA' }]]),
-      phones: new Map([
-        ['lineaA', { interactive: true, templates: true }],
-        ['lineaB', { interactive: true, templates: true }],
-      ]),
+      phones: new Set(['lineaA', 'lineaB']),
     };
     const graph: FlowGraph = {
       nodes: [
@@ -252,23 +232,6 @@ describe('flow-graph.validator', () => {
     };
     const { errors } = validateFlowGraph(graph, twoLineRefs);
     expect(errors.some((e) => e.code === 'template_wrong_phone')).toBe(true);
-  });
-
-  it('avisa (sin bloquear) que los botones degradan en proveedores sin interactivos', () => {
-    const twilioRefs: FlowGraphRefs = {
-      ...refs,
-      phones: new Map([['tw1', { interactive: false, templates: false }]]),
-    };
-    const graph: FlowGraph = {
-      nodes: [
-        trigger,
-        { id: 'b', type: 'action.send_buttons', position: { x: 1, y: 0 }, data: { body: 'elegí', buttons: [{ title: 'Sí' }] } },
-      ],
-      edges: [{ id: 'e1', source: 't', sourceHandle: 'out', target: 'b' }],
-    };
-    const { errors, warnings } = validateFlowGraph(graph, twilioRefs);
-    expect(errors).toEqual([]);
-    expect(warnings.some((w) => w.code === 'interactive_degraded')).toBe(true);
   });
 
   it('exige nombre de variable y valor en Guardar valor', () => {
@@ -359,5 +322,70 @@ describe('flow-graph.validator', () => {
     const { errors, warnings } = validateFlowGraph(graph, refs);
     expect(errors).toEqual([]);
     expect(warnings.some((w) => w.code === 'window_after_delay')).toBe(true);
+  });
+});
+
+describe('flow-graph.validator — ubicación y botón con link', () => {
+  const refs: FlowGraphRefs = {
+    templates: new Map(),
+    labelIds: new Set(),
+    agentIds: new Set(),
+    aiAgentIds: new Set(),
+    connectionIds: new Set(),
+    phones: new Set(['p1']),
+  };
+
+  const trigger = {
+    id: 't',
+    type: 'trigger.inbound_message',
+    position: { x: 0, y: 0 },
+    data: { phoneNumberIds: [], match: 'any', keywords: [], keywordMode: 'contains', onlyNewConversations: false, ignoreIfAssignedToHuman: true },
+  };
+
+  const graphWith = (node: Record<string, unknown>): FlowGraph => ({
+    nodes: [trigger, { id: 'n', position: { x: 1, y: 0 }, ...node } as FlowGraph['nodes'][number]],
+    edges: [{ id: 'e1', source: 't', sourceHandle: 'out', target: 'n' }],
+  });
+
+  it('acepta una ubicación con coordenadas válidas', () => {
+    const { errors } = validateFlowGraph(
+      graphWith({ type: 'action.send_location', data: { latitude: '-34.9011', longitude: '-56.1645' } }),
+      refs,
+    );
+    expect(errors).toEqual([]);
+  });
+
+  /** Media ubicación la rechaza Meta y se pierde el mensaje entero. */
+  it('bloquea una ubicación sin longitud', () => {
+    const { errors } = validateFlowGraph(
+      graphWith({ type: 'action.send_location', data: { latitude: '-34.9011', longitude: '' } }),
+      refs,
+    );
+    expect(errors.some((e) => e.code === 'missing_field')).toBe(true);
+  });
+
+  it('bloquea coordenadas fuera de rango', () => {
+    const { errors } = validateFlowGraph(
+      graphWith({ type: 'action.send_location', data: { latitude: '120', longitude: '0' } }),
+      refs,
+    );
+    expect(errors.some((e) => e.code === 'bad_coordinates')).toBe(true);
+  });
+
+  /** Con variable no se puede validar al publicar: se resuelve al enviar. */
+  it('deja pasar coordenadas que son variables', () => {
+    const { errors } = validateFlowGraph(
+      graphWith({ type: 'action.send_location', data: { latitude: '{{vars.lat}}', longitude: '{{vars.lng}}' } }),
+      refs,
+    );
+    expect(errors).toEqual([]);
+  });
+
+  it('exige un link en el botón con link', () => {
+    const { errors } = validateFlowGraph(
+      graphWith({ type: 'action.send_cta_url', data: { body: 'Pagá acá', url: 'no-es-una-url' } }),
+      refs,
+    );
+    expect(errors.some((e) => e.code === 'bad_cta_url')).toBe(true);
   });
 });

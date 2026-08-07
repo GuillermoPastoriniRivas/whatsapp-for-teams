@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { api } from "@/lib/api";
-import type { FlowSummary, FlowTemplateDef, FlowConnection } from "@/types";
+import type { FlowSummary, FlowTemplateDef, FlowConnection, PhoneScopeChoice } from "@/types";
 
 interface FlowState {
   flows: FlowSummary[];
@@ -13,7 +13,7 @@ interface FlowState {
   fetch: (force?: boolean) => Promise<void>;
   fetchTemplates: () => Promise<void>;
   fetchConnections: () => Promise<void>;
-  createFlow: (name: string, templateId?: string) => Promise<{ id: string }>;
+  createFlow: (name: string, templateId?: string, scope?: PhoneScopeChoice) => Promise<{ id: string }>;
   archiveFlow: (id: string) => Promise<void>;
   pauseFlow: (id: string) => Promise<void>;
   activateFlow: (id: string) => Promise<void>;
@@ -59,8 +59,12 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     }
   },
 
-  createFlow: async (name, templateId) => {
-    const flow = await api.post<{ id: string }>("/flows", { name, ...(templateId ? { templateId } : {}) });
+  createFlow: async (name, templateId, scope) => {
+    const flow = await api.post<{ id: string }>("/flows", {
+      name,
+      ...(templateId ? { templateId } : {}),
+      ...(scope ?? {}),
+    });
     await get().fetch(true);
     return flow;
   },

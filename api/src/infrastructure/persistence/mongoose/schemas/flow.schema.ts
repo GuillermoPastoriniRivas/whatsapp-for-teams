@@ -40,6 +40,9 @@ export class FlowModel {
   @Prop({ type: Types.ObjectId, required: true })
   createdByAgentId: Types.ObjectId;
 
+  @Prop({ type: Types.ObjectId, default: null })
+  defaultForPhoneNumberId: Types.ObjectId | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,3 +51,10 @@ export const FlowSchema = SchemaFactory.createForClass(FlowModel);
 
 FlowSchema.index({ tenantId: 1, status: 1, priority: 1 });
 FlowSchema.index({ tenantId: 1, updatedAt: -1 });
+// Un solo flujo base por número: el índice hace de guardia contra la carrera
+// entre el alta del número y el script de migración. Parcial porque los flujos
+// comunes tienen el campo en null y no deben colisionar entre sí.
+FlowSchema.index(
+  { defaultForPhoneNumberId: 1 },
+  { unique: true, partialFilterExpression: { defaultForPhoneNumberId: { $type: 'objectId' } } },
+);

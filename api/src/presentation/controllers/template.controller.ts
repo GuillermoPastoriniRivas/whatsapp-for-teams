@@ -9,6 +9,7 @@ import { DeleteTemplateUseCase } from '../../application/use-cases/template/dele
 import { ListTemplatesUseCase } from '../../application/use-cases/template/list-templates.use-case.js';
 import { GetTemplateUseCase } from '../../application/use-cases/template/get-template.use-case.js';
 import { SyncTemplatesUseCase } from '../../application/use-cases/template/sync-templates.use-case.js';
+import { SendApiMessageUseCase } from '../../application/use-cases/developer/send-api-message.use-case.js';
 import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { Roles } from '../decorators/roles.decorator.js';
@@ -22,6 +23,8 @@ import type {
   CreateTemplateRequestDto,
   UpdateTemplateRequestDto,
 } from '../request-dtos/create-template-request.dto.js';
+import { SendTemplateToNumberRequestSchema } from '../request-dtos/send-template-to-number-request.dto.js';
+import type { SendTemplateToNumberRequestDto } from '../request-dtos/send-template-to-number-request.dto.js';
 import { TemplateQueryParamsSchema } from '../request-dtos/template-query-params.dto.js';
 import type { TemplateQueryParamsDto } from '../request-dtos/template-query-params.dto.js';
 import type { MessageTemplateComponent } from '../../domain/entities/message-template.entity.js';
@@ -38,6 +41,9 @@ export class TemplateController {
     @Inject('ListTemplatesUseCase') private readonly listTemplates: ListTemplatesUseCase,
     @Inject('GetTemplateUseCase') private readonly getTemplate: GetTemplateUseCase,
     @Inject('SyncTemplatesUseCase') private readonly syncTemplates: SyncTemplatesUseCase,
+    // Mismo caso de uso que la API pública: resuelve contacto y conversación a
+    // partir del número destino. Acá se firma con el agente que lo mandó.
+    @Inject('SendApiMessageUseCase') private readonly sendTemplateToNumber: SendApiMessageUseCase,
   ) {}
 
   @Get()
@@ -127,6 +133,35 @@ export class TemplateController {
   async sync(@Body() body: { phoneNumberId?: string }, @CurrentAgent() agent: RequestAgent) {
     if (!body?.phoneNumberId) throw new BadRequestException('phoneNumberId is required');
     const result = await this.syncTemplates.execute(agent.tenantId, body.phoneNumberId);
+    if (!result.ok) this.throwMapped(result.error);
+    return result.value;
+  }
+
+  @Post(':id/send')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Send template to a phone number',
+    description:
+      'Send an approved template to any phone number, creating the contact and conversation if they do not exist. ' +
+      'Templates are the only way to write to someone outside the 24h window.',
+  })
+  @ApiParam({ name: 'id', description: 'Template ID' })
+  @ApiResponse({ status: 200, description: 'Template sent' })
+  @ApiResponse({ status: 400, description: 'Invalid number, template not approved or missing variables' })
+  async send(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(SendTemplateToNumberRequestSchema)) body: SendTemplateToNumberRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.sendTemplateToNumber.execute({
+      tenantId: agent.tenantId,
+      to: body.to,
+      phoneNumberId: body.phoneNumberId,
+      contactName: body.contactName,
+      templateId: id,
+      variables: body.variables,
+      sender: { agentId: agent._id },
+    });
     if (!result.ok) this.throwMapped(result.error);
     return result.value;
   }

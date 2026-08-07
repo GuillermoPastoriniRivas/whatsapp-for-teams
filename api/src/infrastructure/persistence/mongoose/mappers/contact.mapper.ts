@@ -19,6 +19,7 @@ export class ContactMapper {
       doc.parentBsuid ?? null,
       doc.username ?? null,
       doc.portfolioId ?? null,
+      doc.marketingOptOutAt ?? null,
     );
   }
 }

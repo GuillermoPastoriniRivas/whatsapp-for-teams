@@ -5,6 +5,12 @@ import { PaginatedResult } from './conversation.repository.js';
 export interface MessageTemplateFilters {
   tenantId: string;
   phoneNumberId?: string;
+  /**
+   * En Meta las plantillas son de la WABA, no de un número: varios números de
+   * la misma cuenta comparten las mismas. Filtrar por acá y no por
+   * `phoneNumberId` es lo que refleja esa realidad.
+   */
+  wabaId?: string;
   status?: TemplateStatus;
   search?: string;
   page: number;

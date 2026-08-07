@@ -7,6 +7,8 @@ export const SendMessageRequestSchema = z
     body: z.string().max(4096).optional().default(''),
     messageType: z.nativeEnum(MessageType).optional(),
     mediaAssetId: z.string().optional(),
+    /** Responder citando: id del mensaje de esta misma conversación. */
+    replyToMessageId: z.string().optional(),
   })
   .refine((value) => value.body.trim().length > 0 || !!value.mediaAssetId, {
     message: 'Escribí un mensaje o adjuntá un archivo.',

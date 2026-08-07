@@ -47,6 +47,16 @@ import { SimulateFlowUseCase } from '../../application/use-cases/flow/simulator/
 import { SetupAssistantUseCase } from '../../application/use-cases/flow/assistant/setup-assistant.use-case.js';
 import { FlowInvalidGraphError, DomainError } from '../../domain/errors/domain-errors.js';
 import { FlowExecutionStatus } from '../../domain/enums/flow-execution-status.enum.js';
+import { isTrigger } from '../../application/use-cases/flow/engine/flow-node-types.js';
+import type { FlowGraph } from '../../domain/entities/flow.entity.js';
+
+/** Líneas sobre las que actúa el disparador. Vacío = todas las del tenant. */
+function triggerPhoneNumberIds(graph: FlowGraph): string[] {
+  const data = graph.nodes.find((n) => isTrigger(n.type))?.data as Record<string, any> | undefined;
+  if (!data) return [];
+  if (Array.isArray(data.phoneNumberIds)) return data.phoneNumberIds.map(String);
+  return data.phoneNumberId ? [String(data.phoneNumberId)] : [];
+}
 
 function throwMapped(error: DomainError): never {
   if (error instanceof FlowInvalidGraphError) {
@@ -110,6 +120,10 @@ export class FlowController {
       stats: flow.stats,
       hasWebhookTrigger: !!flow.webhookToken,
       updatedAt: flow.updatedAt,
+      // Para que la lista y la ficha del número puedan mostrar sobre qué
+      // líneas actúa cada automatización sin abrir el canvas.
+      defaultForPhoneNumberId: flow.defaultForPhoneNumberId,
+      triggerPhoneNumberIds: triggerPhoneNumberIds(flow.draftGraph),
     }));
   }
 
@@ -125,6 +139,8 @@ export class FlowController {
       name: body.name,
       description: body.description,
       templateId: body.templateId,
+      phoneScope: body.phoneScope,
+      phoneNumberIds: body.phoneNumberIds,
     });
     if (!result.ok) throwMapped(result.error);
     return result.value;

@@ -277,22 +277,23 @@ export class FeatureNotInPlanError extends DomainError {
   }
 }
 
-export class RecipientNotReachableError extends DomainError {
-  constructor(detail?: string) {
-    super('INVALID_RECIPIENT', detail ?? 'The destination phone number is not valid.');
+/**
+ * El usuario apagó los mensajes de marketing desde WhatsApp (webhook
+ * `user_preferences`). No es una preferencia nuestra y no se puede saltear:
+ * mandar igual quema la calidad del número y termina en suspensión.
+ */
+export class MarketingOptOutError extends DomainError {
+  constructor() {
+    super(
+      'MARKETING_OPT_OUT',
+      'This contact turned off marketing messages on WhatsApp. Only utility or authentication templates can be sent.',
+    );
   }
 }
 
-/**
- * El contacto solo tiene BSUID y el proveedor del número emisor no sabe
- * direccionar por `recipient` (Twilio, 360dialog).
- */
-export class BsuidNotSupportedByProviderError extends DomainError {
-  constructor(provider: string) {
-    super(
-      'BSUID_NOT_SUPPORTED',
-      `This contact only shared a WhatsApp username, and the '${provider}' provider cannot address business-scoped user IDs. Move this number to Meta or Kapso, or ask the contact for their phone number.`,
-    );
+export class RecipientNotReachableError extends DomainError {
+  constructor(detail?: string) {
+    super('INVALID_RECIPIENT', detail ?? 'The destination phone number is not valid.');
   }
 }
 

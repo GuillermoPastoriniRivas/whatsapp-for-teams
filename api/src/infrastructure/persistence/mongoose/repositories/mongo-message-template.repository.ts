@@ -34,7 +34,8 @@ export class MongoMessageTemplateRepository implements MessageTemplateRepository
 
   async findByFilters(filters: MessageTemplateFilters): Promise<PaginatedResult<MessageTemplate>> {
     const query: Record<string, unknown> = { tenantId: new Types.ObjectId(filters.tenantId) };
-    if (filters.phoneNumberId) query.phoneNumberId = new Types.ObjectId(filters.phoneNumberId);
+    if (filters.wabaId) query.wabaId = filters.wabaId;
+    else if (filters.phoneNumberId) query.phoneNumberId = new Types.ObjectId(filters.phoneNumberId);
     if (filters.status) query.status = filters.status;
     if (filters.search) query.name = { $regex: filters.search, $options: 'i' };
 

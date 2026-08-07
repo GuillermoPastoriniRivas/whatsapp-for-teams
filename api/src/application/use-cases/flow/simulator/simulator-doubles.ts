@@ -83,8 +83,8 @@ export class RecordingMessagingApi implements MessagingApiPort {
     return { waMessageId: `sim-${randomUUID()}` };
   }
 
-  async sendTypingIndicator(): Promise<void> {
-    // En la prueba no hay a quién mostrarle "escribiendo…".
+  async markAsRead(): Promise<void> {
+    // En la prueba no hay a quién marcarle nada.
   }
 }
 
@@ -309,6 +309,10 @@ export class InMemoryContactRepository implements ContactRepository {
     return this.contact;
   }
   async findByBsuid(): Promise<Contact | null> {
+    return this.contact;
+  }
+  async setMarketingOptOut(): Promise<Contact | null> {
+    // La simulación no manda marketing: no hay preferencia que guardar.
     return this.contact;
   }
   async findByTenantId(): Promise<PaginatedResult<Contact>> {

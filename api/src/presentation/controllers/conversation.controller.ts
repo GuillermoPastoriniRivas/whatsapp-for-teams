@@ -22,6 +22,9 @@ import { SendMessageRequestSchema } from '../request-dtos/send-message-request.d
 import type { SendMessageRequestDto } from '../request-dtos/send-message-request.dto.js';
 import { SendTemplateMessageUseCase } from '../../application/use-cases/conversation/send-template-message.use-case.js';
 import { MarkConversationReadUseCase } from '../../application/use-cases/conversation/mark-conversation-read.use-case.js';
+import { ReactToMessageUseCase } from '../../application/use-cases/conversation/react-to-message.use-case.js';
+import { ReactToMessageRequestSchema } from '../request-dtos/react-to-message-request.dto.js';
+import type { ReactToMessageRequestDto } from '../request-dtos/react-to-message-request.dto.js';
 import { SendTemplateRequestSchema } from '../request-dtos/send-template-request.dto.js';
 import type { SendTemplateRequestDto } from '../request-dtos/send-template-request.dto.js';
 import { AssignConversationRequestSchema } from '../request-dtos/assign-conversation-request.dto.js';
@@ -52,6 +55,7 @@ export class ConversationController {
     @Inject('SendMessageUseCase') private readonly sendMessage: SendMessageUseCase,
     @Inject('SendTemplateMessageUseCase') private readonly sendTemplateMessage: SendTemplateMessageUseCase,
     @Inject('MarkConversationReadUseCase') private readonly markConversationRead: MarkConversationReadUseCase,
+    @Inject('ReactToMessageUseCase') private readonly reactToMessage: ReactToMessageUseCase,
     @Inject('AssignConversationUseCase') private readonly assignConversation: AssignConversationUseCase,
     @Inject('GetConversationEventsUseCase') private readonly getConversationEvents: GetConversationEventsUseCase,
     @Inject('AddConversationNoteUseCase') private readonly addNote: AddConversationNoteUseCase,
@@ -180,6 +184,9 @@ export class ConversationController {
             company: contact.company,
             notes: contact.notes,
             customFields: contact.customFields,
+            // El agente tiene que ver que este contacto pidió no recibir
+            // marketing antes de intentar mandarle una plantilla de campaña.
+            marketingOptOutAt: contact.marketingOptOutAt,
           }
         : null,
       agentName: assignedAgent?.name ?? null,
@@ -237,6 +244,7 @@ export class ConversationController {
       properties: {
         body: { type: 'string', example: 'Hello! How can I help you?' },
         messageType: { type: 'string', enum: ['text', 'image', 'audio', 'video', 'document', 'location'], description: 'Defaults to text' },
+        replyToMessageId: { type: 'string', description: 'Quote a message of this conversation when replying' },
       },
     },
   })
@@ -256,6 +264,45 @@ export class ConversationController {
       body: body.body,
       messageType: body.messageType,
       mediaAssetId: body.mediaAssetId,
+      replyToMessageId: body.replyToMessageId,
+    });
+    if (!result.ok) {
+      const error = result.error as DomainError;
+      if (error.code === 'CONVERSATION_WINDOW_EXPIRED') throw new ForbiddenException(error.message);
+      if (error.code === 'AGENT_NOT_ASSIGNED') throw new ForbiddenException(error.message);
+      throw new NotFoundException(error.message);
+    }
+    return result.value;
+  }
+
+  @Post(':id/messages/:messageId/reaction')
+  @ApiOperation({
+    summary: 'React to a message',
+    description: 'Send an emoji reaction to a message of the conversation. An empty emoji removes the reaction.',
+  })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiParam({ name: 'messageId', description: 'Message ID to react to' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['emoji'],
+      properties: { emoji: { type: 'string', example: '❤️', description: 'Empty string removes the reaction' } },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Reaction sent' })
+  @ApiResponse({ status: 403, description: 'Conversation window expired or agent not assigned' })
+  async react(
+    @Param('id') id: string,
+    @Param('messageId') messageId: string,
+    @Body(new ZodValidationPipe(ReactToMessageRequestSchema)) body: ReactToMessageRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    await this.verifyTenantAccess(id, agent.tenantId);
+    const result = await this.reactToMessage.execute({
+      conversationId: id,
+      messageId,
+      emoji: body.emoji,
+      agentId: agent._id,
     });
     if (!result.ok) {
       const error = result.error as DomainError;

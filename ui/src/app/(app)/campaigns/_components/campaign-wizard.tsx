@@ -84,14 +84,12 @@ export function CampaignWizard({ draft, onDone, onCancel }: CampaignWizardProps)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // Load phone numbers once (only providers that support Meta templates)
+  // Load phone numbers once
   useEffect(() => {
     api
       .get<PhoneNumber[]>("/phone-numbers")
       .then((list) => {
-        const capable = list.filter(
-          (p) => ["meta", "kapso", "demo"].includes(p.provider) && p.status === "active"
-        );
+        const capable = list.filter((p) => p.status === "active");
         setPhones(capable);
         if (!draft && capable.length > 0) setPhoneNumberId((prev) => prev || capable[0].id);
       })

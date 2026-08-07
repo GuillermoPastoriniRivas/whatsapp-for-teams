@@ -48,6 +48,13 @@ export class ContactModel {
   @Prop({ type: Object, default: {} })
   customFields: Record<string, string>;
 
+  /**
+   * Opt-out de marketing declarado por el usuario en WhatsApp (webhook
+   * `user_preferences`). Null = puede recibir campañas.
+   */
+  @Prop({ type: Date, default: null })
+  marketingOptOutAt: Date | null;
+
   createdAt: Date;
 }
 

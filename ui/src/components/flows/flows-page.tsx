@@ -21,7 +21,25 @@ import { toast } from "@/lib/toast";
 import { useAuthStore } from "@/stores/auth.store";
 import { useFlowStore } from "@/stores/flow.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
-import type { FlowSummary } from "@/types";
+import { api } from "@/lib/api";
+import { Field } from "@/components/ui/field";
+import { SimpleSelect } from "@/components/ui/select";
+import type { FlowSummary, PhoneNumber, PhoneScopeChoice } from "@/types";
+
+/**
+ * Sobre qué líneas actúa una automatización, en palabras. El disparador guarda
+ * una lista vacía cuando aplica a todas, que es lo que menos se adivina desde
+ * afuera: por eso se dice explícito.
+ */
+function describeScope(flow: FlowSummary, phones: PhoneNumber[], allLabel: string): string {
+  const ids = flow.triggerPhoneNumberIds;
+  if (ids.length === 0) return allLabel;
+  const names = ids.map((id) => {
+    const phone = phones.find((p) => p.id === id);
+    return phone ? phone.label || phone.displayPhone : "—";
+  });
+  return names.join(" · ");
+}
 
 export function FlowsPage() {
   const router = useRouter();
@@ -33,6 +51,7 @@ export function FlowsPage() {
   const [showSetup, setShowSetup] = useState(false);
   const [showConnections, setShowConnections] = useState(false);
   const [creating, setCreating] = useState<string | null>(null);
+  const [phones, setPhones] = useState<PhoneNumber[]>([]);
 
   useEffect(() => {
     if (agent?.role !== "admin") {
@@ -41,13 +60,16 @@ export function FlowsPage() {
     }
     void fetch();
     void fetchTemplates();
+    // Los nombres de las líneas, para poder decir sobre cuáles actúa cada
+    // automatización sin obligar a abrir el canvas.
+    void api.get<PhoneNumber[]>("/phone-numbers").then(setPhones).catch(() => setPhones([]));
   }, [agent?.role, fetch, fetchTemplates, router]);
 
-  const handleCreate = async (templateId?: string, name?: string) => {
+  const handleCreate = async (scope: PhoneScopeChoice, templateId?: string, name?: string) => {
     setCreating(templateId ?? "blank");
     try {
       const template = templates.find((tp) => tp.id === templateId);
-      const flow = await createFlow(name ?? template?.name ?? t.flows.newFlowDefaultName, templateId);
+      const flow = await createFlow(name ?? template?.name ?? t.flows.newFlowDefaultName, templateId, scope);
       router.push(`/flows/${flow.id}`);
     } catch (error) {
       setCreating(null);
@@ -56,8 +78,15 @@ export function FlowsPage() {
   };
 
   const move = async (flow: FlowSummary, direction: -1 | 1) => {
-    const ordered = [...flows].sort((a, b) => a.priority - b.priority);
+    // Las base quedan fuera del reordenamiento: son el último recurso de su
+    // número y tienen que evaluar después de todo lo demás. Sin este filtro,
+    // bajar la última automatización común la intercambiaría con una base y le
+    // daría una prioridad normal.
+    const ordered = [...flows]
+      .filter((f) => f.defaultForPhoneNumberId === null)
+      .sort((a, b) => a.priority - b.priority);
     const index = ordered.findIndex((f) => f.id === flow.id);
+    if (index === -1) return;
     const swapWith = ordered[index + direction];
     if (!swapWith) return;
     await Promise.all([
@@ -132,8 +161,11 @@ export function FlowsPage() {
                 <FlowRow
                   key={flow.id}
                   flow={flow}
+                  phones={phones}
                   isFirst={index === 0}
-                  isLast={index === ordered.length - 1}
+                  // La última movible es la última que no es base: las base van
+                  // siempre al fondo y no participan del reordenamiento.
+                  isLast={ordered.slice(index + 1).every((f) => f.defaultForPhoneNumberId !== null)}
                   onOpen={() => router.push(`/flows/${flow.id}`)}
                   onMoveUp={() => void move(flow, -1)}
                   onMoveDown={() => void move(flow, 1)}
@@ -149,10 +181,11 @@ export function FlowsPage() {
       <TemplateGallery
         open={showGallery}
         templates={templates}
+        phones={phones}
         creating={creating}
         onOpenChange={setShowGallery}
-        onPick={(templateId) => void handleCreate(templateId)}
-        onBlank={() => void handleCreate(undefined)}
+        onPick={(templateId, scope) => void handleCreate(scope, templateId)}
+        onBlank={(scope) => void handleCreate(scope)}
       />
 
       <ResponsiveDialog
@@ -189,6 +222,7 @@ function FlowRow(props: {
   flow: FlowSummary;
   isFirst: boolean;
   isLast: boolean;
+  phones: PhoneNumber[];
   onOpen: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -198,12 +232,16 @@ function FlowRow(props: {
 }) {
   const { flow } = props;
   const { t } = useTranslations();
+  // La base evalúa siempre última: dejarla mover rompería su razón de ser.
+  const isDefault = flow.defaultForPhoneNumberId !== null;
+  const scope = describeScope(flow, props.phones, t.flows.allNumbers);
+
   return (
     <div className="flex items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-muted/50">
       <div className="flex flex-col gap-0.5">
         <button
           className="text-muted-foreground hover:text-foreground disabled:opacity-20"
-          disabled={props.isFirst}
+          disabled={props.isFirst || isDefault}
           onClick={props.onMoveUp}
           aria-label={t.flows.movePriorityUp}
         >
@@ -211,7 +249,7 @@ function FlowRow(props: {
         </button>
         <button
           className="text-muted-foreground hover:text-foreground disabled:opacity-20"
-          disabled={props.isLast}
+          disabled={props.isLast || isDefault}
           onClick={props.onMoveDown}
           aria-label={t.flows.movePriorityDown}
         >
@@ -222,11 +260,17 @@ function FlowRow(props: {
         <div className="flex flex-wrap items-center gap-2">
           <span className="truncate text-sm font-medium">{flow.name}</span>
           <FlowStatusPill status={flow.status} />
+          {isDefault && (
+            <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+              {t.flows.baseAutomation}
+            </span>
+          )}
           {flow.publishedVersion != null && (
             <span className="text-xs text-muted-foreground">v{flow.publishedVersion}</span>
           )}
           {flow.hasWebhookTrigger && <Webhook className="size-3.5 text-muted-foreground" />}
         </div>
+        <div className="mt-0.5 text-xs text-muted-foreground">{scope}</div>
         <div className="mt-0.5 text-xs text-muted-foreground">
           {flow.stats.started} {t.flows.started} · {flow.stats.completed} {t.flows.completed} · {flow.stats.failed} {t.flows.failed}
         </div>
@@ -250,15 +294,28 @@ function FlowRow(props: {
   );
 }
 
+/** Valor del selector que representa "todos los números", explícito. */
+const ALL_PHONES = "__all__";
+
 function TemplateGallery(props: {
   open: boolean;
   templates: Array<{ id: string; name: string; description: string }>;
+  phones: PhoneNumber[];
   creating: string | null;
   onOpenChange: (open: boolean) => void;
-  onPick: (templateId: string) => void;
-  onBlank: () => void;
+  onPick: (templateId: string, scope: PhoneScopeChoice) => void;
+  onBlank: (scope: PhoneScopeChoice) => void;
 }) {
   const { t } = useTranslations();
+  // Con una sola línea no hay nada que preguntar. Con varias sí, y hasta que no
+  // se elija no se puede crear: es justo lo que antes quedaba implícito.
+  const [target, setTarget] = useState<string>("");
+  const only = props.phones.length === 1 ? props.phones[0].id : "";
+  const chosen = target || only;
+  const scope: PhoneScopeChoice =
+    chosen === ALL_PHONES ? { phoneScope: "all" } : { phoneScope: "specific", phoneNumberIds: [chosen] };
+  const blocked = !chosen || props.creating !== null;
+
   return (
     <ResponsiveDialog
       open={props.open}
@@ -266,27 +323,41 @@ function TemplateGallery(props: {
       title={t.flows.newFlow}
       size="lg"
       footer={
-        <Button variant="outline" disabled={props.creating !== null} onClick={props.onBlank}>
+        <Button variant="outline" disabled={blocked} onClick={() => props.onBlank(scope)}>
           {props.creating === "blank" ? <Spinner size="sm" /> : null}
           {t.flows.fromScratch}
         </Button>
       }
     >
-      <div className="grid gap-3 sm:grid-cols-2">
-        {props.templates.map((template) => (
-          <button
-            key={template.id}
-            className="rounded-xl border p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50"
-            disabled={props.creating !== null}
-            onClick={() => props.onPick(template.id)}
-          >
-            <div className="mb-1 flex items-center gap-2 text-sm font-medium">
-              {template.name}
-              {props.creating === template.id && <Spinner size="sm" />}
-            </div>
-            <div className="text-xs text-muted-foreground">{template.description}</div>
-          </button>
-        ))}
+      <div className="space-y-4">
+        <Field label={t.flows.whichNumber} hint={t.flows.whichNumberHint}>
+          <SimpleSelect
+            value={chosen}
+            onChange={setTarget}
+            placeholder={t.flows.pickNumber}
+            options={[
+              ...props.phones.map((p) => ({ value: p.id, label: p.label || p.displayPhone })),
+              { value: ALL_PHONES, label: t.flows.allNumbers },
+            ]}
+          />
+        </Field>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {props.templates.map((template) => (
+            <button
+              key={template.id}
+              className="rounded-xl border p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50"
+              disabled={blocked}
+              onClick={() => props.onPick(template.id, scope)}
+            >
+              <div className="mb-1 flex items-center gap-2 text-sm font-medium">
+                {template.name}
+                {props.creating === template.id && <Spinner size="sm" />}
+              </div>
+              <div className="text-xs text-muted-foreground">{template.description}</div>
+            </button>
+          ))}
+        </div>
       </div>
     </ResponsiveDialog>
   );

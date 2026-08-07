@@ -145,4 +145,35 @@ export class MongoContactRepository implements ContactRepository {
   async delete(id: string): Promise<void> {
     await this.model.findByIdAndDelete(id);
   }
+
+  async setMarketingOptOut(
+    tenantId: string,
+    identity: ContactIdentity,
+    at: Date | null,
+  ): Promise<Contact | null> {
+    // El BSUID manda: es el único eje que Meta garantiza. El teléfono queda de
+    // respaldo para las cuentas que todavía no adoptaron username.
+    const filters: Record<string, unknown>[] = [];
+    if (identity.bsuid) {
+      filters.push({
+        tenantId: new Types.ObjectId(tenantId),
+        bsuid: identity.bsuid,
+        ...(identity.portfolioId ? { portfolioId: identity.portfolioId } : {}),
+      });
+    }
+    if (identity.phone) {
+      filters.push({ tenantId: new Types.ObjectId(tenantId), phone: identity.phone });
+    }
+
+    for (const filter of filters) {
+      const doc = await this.model.findOneAndUpdate(
+        filter,
+        { $set: { marketingOptOutAt: at } },
+        { returnDocument: 'after' },
+      );
+      if (doc) return ContactMapper.toDomain(doc);
+    }
+
+    return null;
+  }
 }

@@ -19,8 +19,17 @@ export class MongoFlowRepository implements FlowRepository {
       tenantId: new Types.ObjectId(input.tenantId),
       publishedVersionId: input.publishedVersionId ? new Types.ObjectId(input.publishedVersionId) : null,
       createdByAgentId: new Types.ObjectId(input.createdByAgentId),
+      defaultForPhoneNumberId: input.defaultForPhoneNumberId
+        ? new Types.ObjectId(input.defaultForPhoneNumberId)
+        : null,
     });
     return FlowMapper.toDomain(doc);
+  }
+
+  async findDefaultByPhoneNumberId(phoneNumberId: string): Promise<Flow | null> {
+    if (!Types.ObjectId.isValid(phoneNumberId)) return null;
+    const doc = await this.model.findOne({ defaultForPhoneNumberId: new Types.ObjectId(phoneNumberId) });
+    return doc ? FlowMapper.toDomain(doc) : null;
   }
 
   async findById(id: string): Promise<Flow | null> {

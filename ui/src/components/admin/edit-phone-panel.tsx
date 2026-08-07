@@ -9,12 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Field } from "@/components/ui/field";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PhoneProfileForm } from "@/components/admin/phone-profile-form";
+import { PhoneChatForm } from "@/components/admin/phone-chat-form";
 import { Spinner } from "@/components/ui/spinner";
 import { StatusPill } from "@/components/ui/status-pill";
 import { InlineNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { PhoneAccessSection } from "@/components/admin/phone-access-section";
+import { WhoAnswersSection } from "@/components/admin/who-answers-section";
 import { useTranslations } from "@/lib/i18n/use-translations";
+import { toast } from "@/lib/toast";
 import { PROVIDER_CONFIG_FIELDS, type Provider } from "./providers";
 import type { PhoneNumber } from "@/types";
 
@@ -84,12 +87,7 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
     }
   };
 
-  const webhookHint =
-    provider === "meta"
-      ? t.admin.webhookHintMeta
-      : provider === "kapso"
-        ? t.admin.webhookHintKapso
-        : t.admin.webhookHintDefault;
+  const webhookHint = provider === "meta" ? t.admin.webhookHintMeta : t.admin.webhookHintDefault;
 
   return (
     <>
@@ -119,6 +117,7 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
       <Tabs defaultValue="profile" className="gap-0">
         <TabsList className="mx-4 mt-4">
           <TabsTrigger value="profile">{t.admin.tabProfile}</TabsTrigger>
+          <TabsTrigger value="chat">{t.admin.tabAutomation}</TabsTrigger>
           <TabsTrigger value="connection">{t.admin.tabConnection}</TabsTrigger>
         </TabsList>
 
@@ -126,8 +125,17 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
           <PhoneProfileForm phone={phone} onUpdated={onUpdated} />
         </TabsContent>
 
+        <TabsContent value="chat">
+          <PhoneChatForm phone={phone} onUpdated={onUpdated} />
+        </TabsContent>
+
         <TabsContent value="connection">
           <form onSubmit={handleSubmit} className="space-y-4 px-4 py-4">
+            {/* Quién atiende va primero: es la pregunta que trae a esta
+                pantalla. Los permisos de abajo dicen quién puede ver el
+                número, no quién contesta. */}
+            <WhoAnswersSection phoneId={phone.id} />
+
             <PhoneAccessSection mode="phone" phoneId={phone.id} />
 
             <Field label={t.admin.provider}>
@@ -203,8 +211,59 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
               </Button>
             </div>
           </form>
+
+          {/* Va fuera del <form> de arriba: es otra acción contra Meta, no una
+              edición de las credenciales guardadas. */}
+          <div className="border-t px-4 py-4">
+            <RegisterOnMetaSection phoneId={phone.id} onUpdated={onUpdated} />
+          </div>
         </TabsContent>
       </Tabs>
     </>
+  );
+}
+
+/**
+ * Registro del número en Cloud API con el PIN de verificación en dos pasos.
+ *
+ * Es el paso que faltaba en el alta: sin él el número no manda nada, por más
+ * que las credenciales estén bien.
+ */
+function RegisterOnMetaSection({ phoneId, onUpdated }: { phoneId: string; onUpdated: () => void }) {
+  const { t } = useTranslations();
+  const [pin, setPin] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const register = async () => {
+    setBusy(true);
+    try {
+      await api.post(`/phone-numbers/${phoneId}/register`, { pin });
+      setPin("");
+      toast.success(t.admin.registered);
+      onUpdated();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t.admin.saveError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">{t.admin.registerTitle}</p>
+      <p className="text-xs text-muted-foreground">{t.admin.registerHint}</p>
+      <div className="flex items-center gap-2">
+        <Input
+          value={pin}
+          inputMode="numeric"
+          maxLength={6}
+          placeholder={t.admin.registerPin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+        />
+        <Button type="button" variant="outline" disabled={busy || pin.length !== 6} onClick={register}>
+          {t.admin.registerAction}
+        </Button>
+      </div>
+    </div>
   );
 }

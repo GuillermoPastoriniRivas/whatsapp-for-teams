@@ -39,12 +39,17 @@ export class MongoPhoneNumberRepository implements PhoneNumberRepository {
     return doc ? PhoneNumberMapper.toDomain(doc) : null;
   }
 
+  async findAllByWabaId(wabaId: string): Promise<PhoneNumber[]> {
+    const docs = await this.model.find({ wabaId });
+    return docs.map(PhoneNumberMapper.toDomain);
+  }
+
   async findByTenantId(tenantId: string): Promise<PhoneNumber[]> {
     const docs = await this.model.find({ tenantId: new Types.ObjectId(tenantId) });
     return docs.map(PhoneNumberMapper.toDomain);
   }
 
-  async update(id: string, data: Partial<Pick<PhoneNumber, 'label' | 'status' | 'webhookSecret' | 'providerConfig' | 'wabaId' | 'phoneNumberId' | 'displayPhone' | 'portfolioId' | 'businessProfile'>>): Promise<PhoneNumber | null> {
+  async update(id: string, data: Partial<Pick<PhoneNumber, 'label' | 'status' | 'webhookSecret' | 'providerConfig' | 'wabaId' | 'phoneNumberId' | 'displayPhone' | 'portfolioId' | 'businessProfile' | 'health'>>): Promise<PhoneNumber | null> {
     const patch = data.providerConfig
       ? { ...data, providerConfig: encryptProviderConfig(data.providerConfig) }
       : data;

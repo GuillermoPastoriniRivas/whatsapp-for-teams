@@ -22,11 +22,11 @@ describe('classifyMediaDownloadError', () => {
   });
 
   /**
-   * El caso que rompió en producción: Kapso responde 404 cuando le falta el
-   * phone_number_id. Tomarlo como "expirado" daba por perdido un audio de hacía
-   * minutos y le echaba la culpa a WhatsApp.
+   * El caso que rompió en producción: un 404 que no viene de Meta sino de algo
+   * en el camino que no pudo resolver la petición. Tomarlo como "expirado" daba
+   * por perdido un audio de hacía minutos y le echaba la culpa a WhatsApp.
    */
-  it('el 404 de "WhatsApp configuration not found" de Kapso NO es un archivo perdido', () => {
+  it('un 404 sin el subcode de Meta NO es un archivo perdido', () => {
     const error = classifyMediaDownloadError(
       MEDIA_ID,
       404,

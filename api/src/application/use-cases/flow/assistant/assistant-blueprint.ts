@@ -33,6 +33,8 @@ export interface AssistantAnswers {
   topics: AssistantTopic[];
   fallback: AssistantFallback;
   schedule: { days: number[]; from: string; to: string; timezone: string };
+  /** Líneas donde va a atender. Vacío = todas, elegido explícitamente. */
+  phoneNumberIds?: string[];
 }
 
 /** Textos que la IA puede reescribir; si no está disponible, se usan estos. */
@@ -146,7 +148,8 @@ export function buildAssistantGraph(
     type: 'trigger.inbound_message',
     position: { x: 40, y: 220 },
     data: {
-      phoneNumberIds: [],
+      phoneScope: (answers.phoneNumberIds ?? []).length > 0 ? 'specific' : 'all',
+      phoneNumberIds: answers.phoneNumberIds ?? [],
       match: 'any',
       keywords: [],
       keywordMode: 'contains',

@@ -19,7 +19,7 @@ import {
 import { MediaPickerDialog } from "@/components/media/media-picker-dialog";
 import { AttachmentPreview, type PendingAttachment } from "./attachment-preview";
 import { FlowComposerNote } from "./flow-chip";
-import { FolderOpen, Paperclip, SendHorizontal, Smile, Upload } from "lucide-react";
+import { FolderOpen, Paperclip, SendHorizontal, Smile, Upload, X } from "lucide-react";
 import type { MediaAsset } from "@/types";
 
 interface Props {
@@ -36,6 +36,8 @@ export function MessageInput({ conversationId }: Props) {
   const [dragging, setDragging] = useState(false);
 
   const send = useMessageStore((s) => s.send);
+  const replyTo = useMessageStore((s) => s.replyTo);
+  const setReplyTo = useMessageStore((s) => s.setReplyTo);
   const { t } = useTranslations();
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -120,6 +122,28 @@ export function MessageInput({ conversationId }: Props) {
   return (
     <>
       <FlowComposerNote conversationId={conversationId} />
+
+      {replyTo && (
+        <div className="flex shrink-0 items-center gap-2 border-t border-border bg-[var(--asis-surface-header)] px-4 py-2 sm:px-6">
+          {/* La barra vertical es el lenguaje de la cita en WhatsApp. */}
+          <span className="h-8 w-0.5 shrink-0 rounded-full bg-primary" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-primary">{t.chat.replyingTo}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {replyTo.body || replyTo.media?.filename || t.chat.typePlaceholder}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t.chat.cancelReply}
+            className="shrink-0 text-muted-foreground"
+            onClick={() => setReplyTo(null)}
+          >
+            <X />
+          </Button>
+        </div>
+      )}
 
       {attachment && (
         <AttachmentPreview

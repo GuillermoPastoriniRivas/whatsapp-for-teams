@@ -43,6 +43,11 @@ export interface ContactRepository {
   bulkUpsertByPhone(tenantId: string, rows: BulkUpsertContactRow[]): Promise<{ inserted: number; updated: number }>;
   findByIds(ids: string[]): Promise<Contact[]>;
   delete(id: string): Promise<void>;
+  /**
+   * Marca (o levanta) el opt-out de marketing. `at: null` lo reactiva.
+   * Devuelve `null` si no hay un contacto con esa identidad en el tenant.
+   */
+  setMarketingOptOut(tenantId: string, identity: ContactIdentity, at: Date | null): Promise<Contact | null>;
 }
 
 /**

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SendMessageParams, SendMessageResult, TypingIndicatorParams } from '../../application/ports/messaging-api.port.js';
+import { ReadReceiptParams, SendMessageParams, SendMessageResult } from '../../application/ports/messaging-api.port.js';
 import { classifyMetaError, MetaErrorBody } from './meta-api-error.js';
 import { buildInteractivePayload } from './interactive-payload.builder.js';
 import { buildMediaPayload } from './media-payload.builder.js';
@@ -15,14 +15,20 @@ export class MetaCloudApiService {
     this.apiVersion = configService.get<string>('META_API_VERSION', 'v21.0');
   }
 
-  async sendTypingIndicator(params: TypingIndicatorParams): Promise<void> {
+  /**
+   * Marca un entrante como leído (tilde azul) y, si se pide, muestra
+   * "escribiendo…". Es best-effort: no rompe el flujo del que lo llama, pero
+   * **sí** loguea el fallo — `fetch` no tira en 4xx, así que sin esto los
+   * errores de la API pasaban en silencio.
+   */
+  async markAsRead(params: ReadReceiptParams): Promise<void> {
     const accessToken = params.providerConfig.accessToken;
-    if (!accessToken) return;
+    if (!accessToken || !params.waMessageId) return;
 
     const url = `https://graph.facebook.com/${this.apiVersion}/${params.phoneNumberId}/messages`;
 
     try {
-      await fetch(url, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -30,14 +36,20 @@ export class MetaCloudApiService {
         },
         body: JSON.stringify({
           messaging_product: 'whatsapp',
-          recipient_type: 'individual',
-          ...addressee(params),
-          type: 'typing_indicator',
-          typing_indicator: { type: 'text' },
+          status: 'read',
+          message_id: params.waMessageId,
+          ...(params.typing ? { typing_indicator: { type: 'text' } } : {}),
         }),
       });
+
+      if (!response.ok) {
+        const text = await response.text();
+        this.logger.warn(
+          `Mark-as-read falló para ${params.waMessageId}: ${response.status} ${text.slice(0, 200)}`,
+        );
+      }
     } catch (error: any) {
-      this.logger.warn(`Typing indicator failed: ${error.message}`);
+      this.logger.warn(`Mark-as-read falló para ${params.waMessageId}: ${error.message}`);
     }
   }
 
@@ -47,7 +59,10 @@ export class MetaCloudApiService {
       throw new Error('Meta Cloud API: missing accessToken in providerConfig');
     }
 
-    const url = `https://graph.facebook.com/${this.apiVersion}/${params.phoneNumberId}/messages`;
+    // MM Lite es otro endpoint, con el mismo cuerpo. Sólo tiene sentido para
+    // plantillas: el resto de los tipos no existen en ese canal.
+    const edge = params.marketingLite && params.type === 'template' ? 'marketing_messages' : 'messages';
+    const url = `https://graph.facebook.com/${this.apiVersion}/${params.phoneNumberId}/${edge}`;
 
     const body: Record<string, unknown> = {
       messaging_product: 'whatsapp',
@@ -69,6 +84,26 @@ export class MetaCloudApiService {
       };
     } else if (params.type === 'interactive' && params.interactive) {
       body.interactive = buildInteractivePayload(params.interactive);
+    } else if (params.type === 'location' && params.location) {
+      body.location = {
+        latitude: params.location.latitude,
+        longitude: params.location.longitude,
+        ...(params.location.name ? { name: params.location.name } : {}),
+        ...(params.location.address ? { address: params.location.address } : {}),
+      };
+    } else if (params.type === 'contacts' && params.contacts?.length) {
+      body.contacts = params.contacts;
+    } else if (params.type === 'reaction' && params.reaction) {
+      body.reaction = {
+        message_id: params.reaction.waMessageId,
+        emoji: params.reaction.emoji,
+      };
+    }
+
+    // Citar un mensaje anterior. La reacción se excluye: apunta a su objetivo
+    // por `reaction.message_id` y Meta rechaza el `context` redundante.
+    if (params.contextWaMessageId && params.type !== 'reaction') {
+      body.context = { message_id: params.contextWaMessageId };
     }
 
     const response = await fetch(url, {

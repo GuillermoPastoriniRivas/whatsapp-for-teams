@@ -8,11 +8,43 @@ import { TemplateStatus } from '../enums/template-status.enum.js';
  */
 export interface MessageTemplateComponent {
   type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS';
-  format?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT';
+  /**
+   * `LOCATION` no lleva link sino coordenadas, que se pasan al enviar. Los
+   * demás formatos de media se resuelven con un `{ link }`.
+   */
+  format?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION';
   text?: string;
   example?: Record<string, unknown>;
   buttons?: Array<{
-    type: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER' | 'COPY_CODE';
+    /**
+     * El juego completo que acepta Meta al crear, verificado contra la API:
+     * `QUICK_REPLY, URL, PHONE_NUMBER, OTP, MPM, CATALOG, FLOW, VOICE_CALL,
+     * VIDEO_CALL, POSTBACK, BOOKING_STATUS, PAYMENT_REQUEST,
+     * REQUEST_CONTACT_INFO`.
+     *
+     * `COPY_CODE` no está en ese enum de creación pero **sí llega al
+     * sincronizar** en las plantillas de cupón, así que se acepta igual: acá se
+     * guarda lo que Meta devuelve, no lo que ofrecemos crear.
+     *
+     * `REQUEST_CONTACT_INFO` es el de las plantillas que Meta autocrea para
+     * pedirle el teléfono a quien solo tiene username; su respuesta llega como
+     * mensaje `contacts`.
+     */
+    type:
+      | 'QUICK_REPLY'
+      | 'URL'
+      | 'PHONE_NUMBER'
+      | 'OTP'
+      | 'MPM'
+      | 'CATALOG'
+      | 'FLOW'
+      | 'VOICE_CALL'
+      | 'VIDEO_CALL'
+      | 'POSTBACK'
+      | 'BOOKING_STATUS'
+      | 'PAYMENT_REQUEST'
+      | 'REQUEST_CONTACT_INFO'
+      | 'COPY_CODE';
     text: string;
     url?: string;
     phone_number?: string;

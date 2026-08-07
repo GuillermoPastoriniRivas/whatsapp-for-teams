@@ -64,8 +64,8 @@ export class HandoffToHumanUseCase {
       status: ConversationStatus.UNASSIGNED,
     } as any);
 
-    // Auto-assign to human only (excludeAi=true)
-    await this.autoAssign.execute(input.conversationId, { excludeAi: true });
+    // El reparto nunca devuelve bots, así que esto no puede rebotar al mismo
+    await this.autoAssign.execute(input.conversationId);
 
     // Emit events
     this.gateway.emitToTenant(input.tenantId, 'conversation.updated', { conversationId: input.conversationId });

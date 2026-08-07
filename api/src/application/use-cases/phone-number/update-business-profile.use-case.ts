@@ -36,29 +36,39 @@ export class UpdateBusinessProfileUseCase {
     if (!phone) return err(new PhoneNumberNotFoundError());
     if (phone.tenantId !== input.tenantId) return err(new CrossTenantAccessError());
 
-    const capabilities = getProviderCapabilities(phone.provider);
-    if (!capabilities.businessProfile) {
-      return err(new ProviderFeatureNotSupportedError('Business profile', phone.provider));
-    }
-
     const invalid = this.validate(input);
     if (invalid) return err(invalid);
-
-    const update: BusinessProfileUpdate = {
-      about: clean(input.about),
-      address: clean(input.address),
-      description: clean(input.description),
-      email: clean(input.email),
-      vertical: input.vertical === undefined ? undefined : input.vertical || 'UNDEFINED',
-      websites: input.websites?.map((w) => w.trim()).filter(Boolean),
-      profilePictureHandle: input.profilePictureHandle,
-    };
 
     const ctx = {
       provider: phone.provider,
       providerConfig: phone.providerConfig,
       phoneNumberId: phone.phoneNumberId,
     };
+
+    // El formulario manda el perfil entero, cambie lo que cambie. Mandarle a
+    // Meta campos que ya valen lo mismo —`email: ""` cuando nunca hubo mail,
+    // `websites: []` sobre una lista vacía— le saca un 131000 "Something went
+    // wrong", sin decir cuál. Así que se manda únicamente lo que cambia.
+    //
+    // La comparación va contra lo que el proveedor tiene ahora, no contra la
+    // copia local, que puede haber quedado vieja si alguien tocó el perfil
+    // desde el Business Manager.
+    let current: WhatsAppBusinessProfile | null = phone.businessProfile ?? null;
+    try {
+      current = (await this.profileApi.getProfile(ctx)) ?? current;
+    } catch {
+      // Si no contesta se compara contra la copia local: peor es no poder guardar.
+    }
+
+    const update = this.diff(input, current);
+
+    // Sin cambios no se llama al proveedor: no hay nada que mandar y el
+    // intento vacío es justamente el que falla.
+    if (Object.keys(update).length === 0) {
+      const unchanged = current ?? this.merge(phone.businessProfile, {});
+      await this.phoneRepo.update(input.phoneId, { businessProfile: unchanged });
+      return ok(unchanged);
+    }
 
     try {
       await this.profileApi.updateProfile(ctx, update);
@@ -78,6 +88,51 @@ export class UpdateBusinessProfileUseCase {
 
     await this.phoneRepo.update(input.phoneId, { businessProfile: profile });
     return ok(profile);
+  }
+
+  /**
+   * Lo que hay que mandarle al proveedor: solo los campos que cambian de valor.
+   * Un campo ausente en el update es "no lo toques"; uno en cadena vacía es
+   * "borralo", y eso solo se manda si antes tenía algo.
+   */
+  private diff(
+    input: UpdateBusinessProfileInput,
+    current: WhatsAppBusinessProfile | null,
+  ): BusinessProfileUpdate {
+    const update: BusinessProfileUpdate = {};
+
+    const text = (
+      field: 'about' | 'address' | 'description' | 'email',
+    ) => {
+      const next = clean(input[field]);
+      if (next === undefined) return;
+      if (next === (current?.[field] ?? '')) return;
+      update[field] = next;
+    };
+
+    text('about');
+    text('address');
+    text('description');
+    text('email');
+
+    if (input.vertical !== undefined) {
+      const next = input.vertical || 'UNDEFINED';
+      if (next !== (current?.vertical || 'UNDEFINED')) update.vertical = next;
+    }
+
+    if (input.websites !== undefined) {
+      const next = input.websites.map((w) => w.trim()).filter(Boolean);
+      const previous = current?.websites ?? [];
+      if (next.join('\n') !== previous.join('\n')) update.websites = next;
+    }
+
+    // La foto siempre viaja: el handle es de un solo uso y solo llega cuando se
+    // subió una imagen nueva, así que nunca es redundante.
+    if (input.profilePictureHandle !== undefined) {
+      update.profilePictureHandle = input.profilePictureHandle;
+    }
+
+    return update;
   }
 
   private validate(input: UpdateBusinessProfileInput): DomainError | null {

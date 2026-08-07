@@ -8,13 +8,47 @@ import { LanguageToggle } from "@/components/layout/language-toggle";
 import { Button } from "@/components/ui/button";
 import { AsisLogo } from "@/components/brand/asis-logo";
 import { PlanCard } from "@/components/shared/plan-card";
+import { PlanComparison } from "@/components/shared/plan-comparison";
 import { ArrowLeft } from "lucide-react";
 import { PLAN_ORDER } from "@/lib/plans";
+import type { PlanTier } from "@/types";
 
 export default function PricingPage() {
   const router = useRouter();
   const agent = useAuthStore((s) => s.agent);
   const { t } = useTranslations();
+
+  /** El CTA de un plan. Lo comparten la tabla de escritorio y las cards de mobile. */
+  const planAction = (tier: PlanTier) => {
+    const isFree = tier === "free";
+    const isPopular = tier === "pro";
+    const contactSales = tier === "agencies";
+    return (
+      <Button
+        size="lg"
+        // El plan gratis va en oscuro para que el CTA pago siga siendo el que resalta.
+        className={`w-full ${isFree ? "bg-foreground text-background hover:bg-foreground/90" : ""}`}
+        variant={isPopular || isFree ? "default" : "outline"}
+        onClick={() => {
+          if (contactSales) {
+            window.open("https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies", "_blank");
+            return;
+          }
+          if (agent) {
+            router.push(`/settings/billing?plan=${tier}`);
+          } else {
+            router.push(`/signup?redirect=/settings/billing&plan=${tier}`);
+          }
+        }}
+      >
+        {contactSales
+          ? t.billing.contactUs
+          : isFree
+          ? t.billing.startTrial
+          : t.billing.subscribe}
+      </Button>
+    );
+  };
 
   return (
     <div className="min-h-dvh bg-gradient-to-b from-muted/40 to-background">
@@ -47,46 +81,24 @@ export default function PricingPage() {
         </p>
       </div>
 
-      {/* Plan Cards */}
-      <div className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {PLAN_ORDER.map((tier) => {
-            const isFree = tier === "free";
-            const isPopular = tier === "pro";
-            const contactSales = tier === "agencies";
-            return (
-              <PlanCard
-                key={tier}
-                tier={tier}
-                highlighted={isPopular}
-                action={
-                  <Button
-                    size="lg"
-                    // El plan gratis va en oscuro para que el CTA pago siga siendo el que resalta.
-                    className={`w-full ${isFree ? "bg-foreground text-background hover:bg-foreground/90" : ""}`}
-                    variant={isPopular || isFree ? "default" : "outline"}
-                    onClick={() => {
-                      if (contactSales) {
-                        window.open("https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies", "_blank");
-                        return;
-                      }
-                      if (agent) {
-                        router.push(`/settings/billing?plan=${tier}`);
-                      } else {
-                        router.push(`/signup?redirect=/settings/billing&plan=${tier}`);
-                      }
-                    }}
-                  >
-                    {contactSales
-                      ? t.billing.contactUs
-                      : isFree
-                      ? t.billing.startTrial
-                      : t.billing.subscribe}
-                  </Button>
-                }
-              />
-            );
-          })}
+      {/* Planes: tabla comparativa en escritorio, cards apiladas en mobile */}
+      <div className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:px-8">
+        <PlanComparison
+          className="hidden lg:block"
+          highlighted="pro"
+          action={planAction}
+          caption={t.billing.pricingTitle}
+        />
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:hidden">
+          {PLAN_ORDER.map((tier) => (
+            <PlanCard
+              key={tier}
+              tier={tier}
+              highlighted={tier === "pro"}
+              action={planAction(tier)}
+            />
+          ))}
         </div>
       </div>
 

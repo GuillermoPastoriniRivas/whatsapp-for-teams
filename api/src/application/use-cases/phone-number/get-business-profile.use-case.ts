@@ -38,9 +38,6 @@ export class GetBusinessProfileUseCase {
     if (phone.tenantId !== tenantId) return err(new CrossTenantAccessError());
 
     const capabilities = getProviderCapabilities(phone.provider);
-    if (!capabilities.businessProfile) {
-      return err(new ProviderFeatureNotSupportedError('Business profile', phone.provider));
-    }
 
     const base = {
       editable: true,

@@ -3,13 +3,9 @@ import { MessagingProvider } from '../../domain/enums/messaging-provider.enum.js
 export interface MediaDownloadParams {
   provider: MessagingProvider;
   providerConfig: Record<string, string>;
-  /** Id que devolvió el webhook (Meta) o URL completa (Twilio). */
+  /** Id de media que devolvió el webhook. */
   providerMediaId: string;
-  /**
-   * phone_number_id del proveedor. Meta lo acepta como parámetro opcional y
-   * Kapso lo necesita: sin él no sabe de qué WhatsApp config se trata y
-   * responde "WhatsApp configuration not found".
-   */
+  /** phone_number_id: Meta lo acepta como parámetro opcional al resolver el id. */
   phoneNumberId?: string;
 }
 
