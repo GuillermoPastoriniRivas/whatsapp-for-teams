@@ -30,6 +30,21 @@ function injectedTokens(source: string): string[] {
   return tokens;
 }
 
+/**
+ * Tokens que los controllers piden con `@Inject('X')`. Van aparte porque no
+ * aparecen en ningún `inject:` del módulo: así se coló un
+ * `SetupAssistantUseCase` sin provider y la API no arrancó.
+ */
+function decoratorInjectedTokens(source: string): string[] {
+  return [...source.matchAll(/@Inject\(\s*'([^']+)'\s*\)/g)].map((m) => m[1]);
+}
+
+function controllerFiles(dir: string): string[] {
+  return readdirSync(dir)
+    .filter((name) => name.endsWith('.controller.ts'))
+    .map((name) => join(dir, name));
+}
+
 function moduleFiles(dir: string): string[] {
   const found: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -62,7 +77,12 @@ describe('grafo de dependencias de PresentationModule', () => {
       for (const token of providedTokens(source)) provided.add(token);
     }
 
-    const missing = [...new Set(injectedTokens(presentationSource))].filter((token) => !provided.has(token));
+    const injected = injectedTokens(presentationSource);
+    for (const file of controllerFiles(join(SRC, 'presentation', 'controllers'))) {
+      injected.push(...decoratorInjectedTokens(read(file)));
+    }
+
+    const missing = [...new Set(injected)].filter((token) => !provided.has(token));
     expect(missing.sort()).toEqual([]);
   });
 

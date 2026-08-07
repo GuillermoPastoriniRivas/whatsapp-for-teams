@@ -604,6 +604,12 @@ const useCaseProviders = [
     inject: ['FlowRepository', 'FlowVersionRepository'],
   },
   {
+    provide: 'SetupAssistantUseCase',
+    useFactory: (createAi: any, createFlow: any, updateFlow: any, publishFlow: any, aiCompletion: any) =>
+      new SetupAssistantUseCase(createAi, createFlow, updateFlow, publishFlow, aiCompletion),
+    inject: ['CreateAiAgentUseCase', 'CreateFlowUseCase', 'UpdateFlowUseCase', 'PublishFlowUseCase', 'AiCompletionPort'],
+  },
+  {
     provide: 'SimulateFlowUseCase',
     useFactory: (
       flowRepo: any, versionRepo: any, connectionRepo: any, phoneRepo: any, agentRepo: any,
