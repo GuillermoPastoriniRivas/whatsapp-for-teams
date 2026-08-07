@@ -16,6 +16,7 @@ import {
   FlowStatsQuerySchema,
   CreateFlowConnectionRequestSchema,
   SimulateFlowRequestSchema,
+  SetupAssistantRequestSchema,
 } from '../request-dtos/flow-request.dto.js';
 import type {
   CreateFlowRequestDto,
@@ -24,6 +25,7 @@ import type {
   FlowStatsQueryDto,
   CreateFlowConnectionRequestDto,
   SimulateFlowRequestDto,
+  SetupAssistantRequestDto,
 } from '../request-dtos/flow-request.dto.js';
 import { CreateFlowUseCase } from '../../application/use-cases/flow/create-flow.use-case.js';
 import { ListFlowsUseCase } from '../../application/use-cases/flow/list-flows.use-case.js';
@@ -42,6 +44,7 @@ import {
 } from '../../application/use-cases/flow/flow-connections.use-cases.js';
 import { FLOW_TEMPLATES } from '../../application/use-cases/flow/flow-templates.js';
 import { SimulateFlowUseCase } from '../../application/use-cases/flow/simulator/simulate-flow.use-case.js';
+import { SetupAssistantUseCase } from '../../application/use-cases/flow/assistant/setup-assistant.use-case.js';
 import { FlowInvalidGraphError, DomainError } from '../../domain/errors/domain-errors.js';
 import { FlowExecutionStatus } from '../../domain/enums/flow-execution-status.enum.js';
 
@@ -84,6 +87,7 @@ export class FlowController {
     @Inject('GetFlowVersionsUseCase') private readonly getVersions: GetFlowVersionsUseCase,
     @Inject('GetFlowVersionUseCase') private readonly getVersion: GetFlowVersionUseCase,
     @Inject('SimulateFlowUseCase') private readonly simulateFlow: SimulateFlowUseCase,
+    @Inject('SetupAssistantUseCase') private readonly setupAssistant: SetupAssistantUseCase,
   ) {}
 
   @Get('templates')
@@ -121,6 +125,23 @@ export class FlowController {
       name: body.name,
       description: body.description,
       templateId: body.templateId,
+    });
+    if (!result.ok) throwMapped(result.error);
+    return result.value;
+  }
+
+  @Post('assistant-setup')
+  @ApiOperation({
+    summary: 'Guided setup: from a few closed answers to a live AI assistant + published flow',
+  })
+  async assistantSetup(
+    @Body(new ZodValidationPipe(SetupAssistantRequestSchema)) body: SetupAssistantRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.setupAssistant.execute({
+      ...body,
+      tenantId: agent.tenantId,
+      createdByAgentId: agent._id,
     });
     if (!result.ok) throwMapped(result.error);
     return result.value;

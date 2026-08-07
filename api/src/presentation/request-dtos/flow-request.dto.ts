@@ -60,6 +60,25 @@ export const CreateFlowConnectionRequestSchema = z.object({
 });
 export type CreateFlowConnectionRequestDto = z.infer<typeof CreateFlowConnectionRequestSchema>;
 
+// Alta guiada: las respuestas del wizard. Todo cerrado y acotado — el objetivo
+// es que no haya forma de mandar algo que genere un flujo inválido.
+export const SetupAssistantRequestSchema = z.object({
+  businessName: z.string().min(1).max(80),
+  vertical: z.enum(['beauty', 'food', 'retail', 'generic']),
+  description: z.string().max(500).optional(),
+  address: z.string().max(200).optional(),
+  assistantName: z.string().max(60).optional(),
+  topics: z.array(z.enum(['horarios', 'ubicacion', 'precios', 'turno', 'pedido', 'stock', 'humano'])).max(7),
+  fallback: z.enum(['ai', 'human', 'message']),
+  schedule: z.object({
+    days: z.array(z.number().int().min(0).max(6)).max(7),
+    from: z.string().regex(/^\d{2}:\d{2}$/),
+    to: z.string().regex(/^\d{2}:\d{2}$/),
+    timezone: z.string().min(1).max(60),
+  }),
+});
+export type SetupAssistantRequestDto = z.infer<typeof SetupAssistantRequestSchema>;
+
 // El estado de la simulación viaja al cliente y vuelve: se valida que sea un
 // objeto, pero la forma la define el motor (no se persiste nada).
 export const SimulateFlowRequestSchema = z.object({

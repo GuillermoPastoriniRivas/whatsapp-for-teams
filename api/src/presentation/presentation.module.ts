@@ -64,6 +64,9 @@ import { GetAgentPhoneAccessUseCase } from '../application/use-cases/agent/get-a
 import { RegisterPhoneNumberUseCase } from '../application/use-cases/phone-number/register-phone-number.use-case.js';
 import { ListPhoneNumbersUseCase } from '../application/use-cases/phone-number/list-phone-numbers.use-case.js';
 import { UpdatePhoneNumberUseCase } from '../application/use-cases/phone-number/update-phone-number.use-case.js';
+import { GetBusinessProfileUseCase } from '../application/use-cases/phone-number/get-business-profile.use-case.js';
+import { UpdateBusinessProfileUseCase } from '../application/use-cases/phone-number/update-business-profile.use-case.js';
+import { UpdateProfilePictureUseCase } from '../application/use-cases/phone-number/update-profile-picture.use-case.js';
 
 // Use Cases — Conversation
 import { ListConversationsUseCase } from '../application/use-cases/conversation/list-conversations.use-case.js';
@@ -206,6 +209,7 @@ import { FlowController, FlowExecutionController, FlowConnectionController } fro
 import { FlowWebhookController } from './controllers/flow-webhook.controller.js';
 import { FlowEngineService } from '../application/use-cases/flow/engine/flow-engine.service.js';
 import { SimulateFlowUseCase } from '../application/use-cases/flow/simulator/simulate-flow.use-case.js';
+import { SetupAssistantUseCase } from '../application/use-cases/flow/assistant/setup-assistant.use-case.js';
 import { FlowInboundRouterUseCase } from '../application/use-cases/flow/flow-inbound-router.use-case.js';
 import { CancelActiveFlowExecutionUseCase } from '../application/use-cases/flow/cancel-active-flow-execution.use-case.js';
 import { StartFlowFromWebhookUseCase } from '../application/use-cases/flow/start-flow-from-webhook.use-case.js';
@@ -363,6 +367,21 @@ const useCaseProviders = [
     provide: 'UpdatePhoneNumberUseCase',
     useFactory: (phoneRepo: any) => new UpdatePhoneNumberUseCase(phoneRepo),
     inject: ['PhoneNumberRepository'],
+  },
+  {
+    provide: 'GetBusinessProfileUseCase',
+    useFactory: (phoneRepo: any, profileApi: any) => new GetBusinessProfileUseCase(phoneRepo, profileApi),
+    inject: ['PhoneNumberRepository', 'BusinessProfilePort'],
+  },
+  {
+    provide: 'UpdateBusinessProfileUseCase',
+    useFactory: (phoneRepo: any, profileApi: any) => new UpdateBusinessProfileUseCase(phoneRepo, profileApi),
+    inject: ['PhoneNumberRepository', 'BusinessProfilePort'],
+  },
+  {
+    provide: 'UpdateProfilePictureUseCase',
+    useFactory: (phoneRepo: any, profileApi: any) => new UpdateProfilePictureUseCase(phoneRepo, profileApi),
+    inject: ['PhoneNumberRepository', 'BusinessProfilePort'],
   },
 
   // Conversation

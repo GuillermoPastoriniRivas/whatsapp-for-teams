@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Workflow, Plus, Pause, Play, Trash2, Webhook, ArrowUp, ArrowDown, KeyRound,
+  Workflow, Plus, Pause, Play, Trash2, Webhook, ArrowUp, ArrowDown, KeyRound, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AssistantSetup } from "./assistant-setup";
 import { LoadingState, Spinner } from "@/components/ui/spinner";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -29,6 +30,7 @@ export function FlowsPage() {
   const confirm = useConfirm();
   const { flows, isLoading, fetch, fetchTemplates, templates, createFlow, archiveFlow, pauseFlow, activateFlow, updatePriority } = useFlowStore();
   const [showGallery, setShowGallery] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
   const [showConnections, setShowConnections] = useState(false);
   const [creating, setCreating] = useState<string | null>(null);
 
@@ -86,9 +88,13 @@ export function FlowsPage() {
               <KeyRound className="size-4" />
               {t.flows.connections}
             </Button>
-            <Button size="sm" onClick={() => setShowGallery(true)}>
+            <Button variant="outline" size="sm" onClick={() => setShowGallery(true)}>
               <Plus className="size-4" />
               {t.flows.newFlow}
+            </Button>
+            <Button size="sm" onClick={() => setShowSetup(true)}>
+              <Sparkles className="size-4" />
+              Crear con asistente
             </Button>
           </>
         }
@@ -103,10 +109,18 @@ export function FlowsPage() {
             title={t.flows.emptyTitle}
             description={t.flows.emptyBody}
             action={
-              <Button onClick={() => setShowGallery(true)}>
-                <Plus className="size-4" />
-                {t.flows.newFlow}
-              </Button>
+              <div className="flex flex-col items-center gap-2">
+                <Button size="lg" onClick={() => setShowSetup(true)}>
+                  <Sparkles className="size-4" />
+                  Crear con asistente
+                </Button>
+                <button
+                  className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+                  onClick={() => setShowGallery(true)}
+                >
+                  o empezar desde una plantilla
+                </button>
+              </div>
             }
           />
         ) : (
@@ -140,6 +154,24 @@ export function FlowsPage() {
         onPick={(templateId) => void handleCreate(templateId)}
         onBlank={() => void handleCreate(undefined)}
       />
+
+      <ResponsiveDialog
+        open={showSetup}
+        onOpenChange={setShowSetup}
+        title="Crear con asistente"
+        hideHeader
+        size="lg"
+      >
+        <AssistantSetup
+          onCancel={() => setShowSetup(false)}
+          onDone={(result) => {
+            setShowSetup(false);
+            // Cae directo en el builder con el probador a mano: el objetivo es
+            // que lo vea funcionar, no que quede mirando una lista.
+            router.push(`/flows/${result.flowId}`);
+          }}
+        />
+      </ResponsiveDialog>
 
       <Sheet open={showConnections} onOpenChange={setShowConnections}>
         <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
