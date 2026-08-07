@@ -35,7 +35,7 @@ import { VersionsPanel } from "./versions-panel";
 import { FlowTester } from "./flow-tester";
 import type {
   FlowDetailResponse, FlowGraph, FlowNode, FlowGraphIssue, FlowNodeStatsSummary,
-  AiAgentWithConfig, Agent, PhoneNumber, MessageTemplate, PaginatedResponse,
+  Agent, PhoneNumber, MessageTemplate, PaginatedResponse,
 } from "@/types";
 import type { CanvasNodeData } from "./flow-node";
 
@@ -98,7 +98,7 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
   const [showTester, setShowTester] = useState(false);
   const [testingNodeId, setTestingNodeId] = useState<string | null>(null);
   const [stats, setStats] = useState<FlowNodeStatsSummary[]>([]);
-  const [refs, setRefs] = useState<BuilderRefs>({ labels: [], aiAgents: [], agents: [], phones: [], templates: [], connections: [], campaigns: [] });
+  const [refs, setRefs] = useState<BuilderRefs>({ labels: [], agents: [], phones: [], templates: [], connections: [], campaigns: [] });
 
   const loadedRef = useRef(false);
   const lastSavedRef = useRef<string>("");
@@ -132,12 +132,11 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
     };
   }, [agent?.role, flowId, router, setEdges, setNodes]);
 
-  // Referencias para los formularios de config (bots, agentes, líneas, plantillas, conexiones).
+  // Referencias para los formularios de config (agentes, líneas, plantillas, conexiones).
   useEffect(() => {
     void labelStore.fetch();
     (async () => {
-      const [aiAgents, agents, phones, templates, connections, campaigns] = await Promise.all([
-        api.get<AiAgentWithConfig[]>("/ai-agents").catch(() => []),
+      const [agents, phones, templates, connections, campaigns] = await Promise.all([
         api.get<Agent[]>("/agents").catch(() => []),
         api.get<PhoneNumber[]>("/phone-numbers").catch(() => []),
         api.get<PaginatedResponse<MessageTemplate>>("/templates?page=1&limit=100").catch(() => null),
@@ -146,7 +145,6 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
       ]);
       setRefs((prev) => ({
         ...prev,
-        aiAgents,
         agents: agents.filter((a) => a.type !== "ai"),
         phones,
         templates: templates?.data ?? [],
@@ -291,6 +289,25 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
     },
     [nodes, setEdges, setNodes],
   );
+
+  /**
+   * Cierra el panel del nodo.
+   *
+   * No alcanza con limpiar `selectedId`: React Flow lleva su propia marca
+   * `selected` en cada nodo, y de ahí sale `onSelectionChange`. Si se cierra el
+   * panel sin deseleccionar, el nodo sigue seleccionado para React Flow y
+   * volver a tocarlo no dispara ningún cambio — el panel no reabre nunca.
+   */
+  const closePanel = useCallback(() => {
+    setSelectedId(null);
+    setNodes((current) =>
+      // Sin nada seleccionado se devuelve el mismo array: recrearlo forzaría un
+      // repintado del canvas por nada.
+      current.some((n) => n.selected)
+        ? current.map((n) => (n.selected ? { ...n, selected: false } : n))
+        : current,
+    );
+  }, [setNodes]);
 
   const changeTriggerType = useCallback(
     (nodeId: string, newType: string) => {
@@ -631,7 +648,7 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
                 onChange={(config) => updateNodeConfig(selectedNode.id, config)}
                 onChangeTriggerType={(newType) => changeTriggerType(selectedNode.id, newType)}
                 onDelete={() => deleteNode(selectedNode.id)}
-                onClose={() => setSelectedId(null)}
+                onClose={closePanel}
               />
             </div>
           )}
