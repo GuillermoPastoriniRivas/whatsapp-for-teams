@@ -79,9 +79,11 @@ export function AuthShell({
                 colores de marca — sobre el verde el verde desaparece. Los dos
                 toman el foreground del panel, que ya está elegido para dar
                 contraste contra cada fondo. */}
-            <FluwsLogo size={44} variant="mono" />
-            {/* El wordmark toma `--asis-auth-panel-mark`, que invierte con el
-                tema: blanco cuando el panel es verde, verde cuando es negro. */}
+            {/* El símbolo y el wordmark toman `--asis-auth-panel-mark`, que
+                invierte con el tema: blanco cuando el panel es verde, verde
+                cuando es negro. El texto del panel NO lo usa — el verde queda
+                de acento, no de color de cuerpo. */}
+            <FluwsLogo size={44} variant="mono" className="text-(--asis-auth-panel-mark)" />
             <FluwsWordmark className="text-xl text-(--asis-auth-panel-mark)" tone="ink" />
           </div>
 
@@ -99,7 +101,11 @@ export function AuthShell({
               <ul className="space-y-5">
                 {brandFeatures.map(({ icon: Icon, label }) => (
                   <li key={label} className="flex items-center gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--asis-auth-panel-chip)">
+                    {/* El ícono toma el color de marca del panel: es el acento
+                        verde en oscuro y blanco en claro, igual que el wordmark.
+                        El texto de al lado se queda en el foreground, para que
+                        el verde puntúe y no inunde. */}
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--asis-auth-panel-chip) text-(--asis-auth-panel-mark)">
                       <Icon className="size-5" />
                     </div>
                     <span className="text-base opacity-90">{label}</span>
