@@ -114,11 +114,13 @@ function buildIco(pngs) {
       render(appSvg({ bleed: true }), 192),
       render(appSvg({ bleed: true, glyphScale: 0.86 }), 180),
       render(badgeSvg(), 72),
-      // El favicon lleva el glifo un poco más grande: a 16px el aire del
-      // contenedor se come el símbolo antes que el símbolo se empaste.
-      render(appSvg({ glyphScale: 1.14 }), 48),
-      render(appSvg({ glyphScale: 1.14 }), 32),
-      render(appSvg({ glyphScale: 1.14 }), 16),
+      // El favicon lleva el glifo un poco más chico que el nativo, para que
+      // respire dentro del cuadrado. Con 1.14 el margen más angosto quedaba en
+      // ~10% del lado y el símbolo se veía apretado contra el borde; con 0.95
+      // queda en ~17%, que es donde el radio del contenedor deja de comérselo.
+      render(appSvg({ glyphScale: 0.95 }), 48),
+      render(appSvg({ glyphScale: 0.95 }), 32),
+      render(appSvg({ glyphScale: 0.95 }), 16),
       render(markSvg(), 512),
     ]);
 

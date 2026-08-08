@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,6 +13,20 @@ const THEME_SCRIPT = `try{var t=localStorage.getItem("asis-theme")||"system";if(
 
 const inter = Inter({
   variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+/**
+ * Tipografía de marca: SOLO para el wordmark, no para la interfaz. La UI sigue
+ * en Inter, que es la que está pensada para leerse en tablas y formularios.
+ *
+ * Outfit es geométrica y de bocetos circulares, que es lo que rima con el
+ * anillo del símbolo. Para cambiarla, se toca acá y en `--font-brand` de
+ * globals.css; el componente del wordmark no se entera.
+ */
+const brandFont = Outfit({
+  variable: "--font-brand-family",
   subsets: ["latin"],
   display: "swap",
 });
@@ -51,7 +65,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${inter.variable} h-full antialiased`}
+      className={`${inter.variable} ${brandFont.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

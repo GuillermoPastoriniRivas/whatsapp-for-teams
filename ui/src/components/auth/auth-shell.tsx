@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Bot, MessageSquare, Users, type LucideIcon } from "lucide-react";
 
 import { FluwsLogo } from "@/components/brand/fluws-logo";
+import { FluwsWordmark } from "@/components/brand/fluws-wordmark";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
@@ -77,7 +78,7 @@ export function AuthShell({
                 La variante `mono` queda para fondos de color donde el verde sí
                 desaparecería. */}
             <FluwsLogo size={44} />
-            <span className="text-xl font-bold">fluws</span>
+            <FluwsWordmark className="text-xl" />
           </div>
 
           <div className="space-y-8">
@@ -126,9 +127,7 @@ export function AuthShell({
             {brandPanel && (
               <div className="flex items-center gap-1.5 md:hidden">
                 <FluwsLogo size={36} />
-                <span className="text-lg font-bold">
-                  fluws
-                </span>
+                <FluwsWordmark className="text-lg" />
               </div>
             )}
           </div>

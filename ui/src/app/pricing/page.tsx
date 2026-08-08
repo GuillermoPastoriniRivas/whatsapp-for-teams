@@ -7,6 +7,7 @@ import { useTranslations } from "@/lib/i18n/use-translations";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { Button } from "@/components/ui/button";
 import { FluwsLogo } from "@/components/brand/fluws-logo";
+import { FluwsWordmark } from "@/components/brand/fluws-wordmark";
 import { PlanCard } from "@/components/shared/plan-card";
 import { PlanComparison } from "@/components/shared/plan-comparison";
 import { ArrowLeft } from "lucide-react";
@@ -57,9 +58,7 @@ export default function PricingPage() {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-3">
             <FluwsLogo size={36} />
-            <span className="text-xl font-bold tracking-tight text-foreground">
-              fluws
-            </span>
+            <FluwsWordmark className="text-xl" />
           </Link>
           <div className="flex items-center gap-4">
             <LanguageToggle />

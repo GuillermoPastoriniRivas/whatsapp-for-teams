@@ -29,6 +29,7 @@ import {
   TerminalSquare,
 } from "lucide-react";
 import { FluwsLogo } from "@/components/brand/fluws-logo";
+import { FluwsWordmark } from "@/components/brand/fluws-wordmark";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { PlanCard } from "@/components/shared/plan-card";
 import { PlanComparison } from "@/components/shared/plan-comparison";
@@ -227,7 +228,7 @@ export default function LandingPage() {
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <FluwsLogo size={30} className="sm:hidden" />
             <FluwsLogo size={36} className="hidden sm:block" />
-            <span className="text-lg font-bold tracking-tight text-foreground sm:text-xl">fluws</span>
+            <FluwsWordmark className="text-lg sm:text-xl" />
           </div>
 
           <div className="hidden items-center gap-5 text-sm font-medium text-muted-foreground md:flex lg:gap-8">
@@ -720,7 +721,7 @@ export default function LandingPage() {
             <div className="space-y-8">
               <div className="flex items-center gap-2">
                  <FluwsLogo size={32} />
-                 <span className="text-xl font-bold text-foreground">fluws</span>
+                 <FluwsWordmark className="text-xl" />
               </div>
               <p className="max-w-xs text-sm leading-6 text-muted-foreground">
                 {t.landing.footerTagline}

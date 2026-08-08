@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FluwsLogo } from "@/components/brand/fluws-logo";
+import { FluwsWordmark } from "@/components/brand/fluws-wordmark";
 import { useAuthStore } from "@/stores/auth.store";
 import { StepWelcome } from "./steps/step-welcome";
 import { StepWhatsapp } from "./steps/step-whatsapp";
@@ -79,9 +80,7 @@ export function OnboardingWizard() {
       <header className="flex items-center justify-between border-b px-4 py-3 md:px-6">
         <div className="flex items-center gap-2">
           <FluwsLogo size={32} />
-          <span className="font-bold">
-            fluws
-          </span>
+          <FluwsWordmark />
         </div>
         {step < TOTAL_STEPS && (
           <span className="text-xs text-muted-foreground">

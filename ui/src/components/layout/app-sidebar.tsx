@@ -16,6 +16,7 @@ import { useBillingStore } from "@/stores/billing.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
 import { FluwsLogo } from "@/components/brand/fluws-logo";
+import { FluwsWordmark } from "@/components/brand/fluws-wordmark";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { AgentStatusToggle } from "@/components/agent/agent-status-toggle";
 import { NavBadge } from "@/components/layout/nav-badge";
@@ -180,7 +181,7 @@ export function AppSidebar({ className }: { className?: string }) {
       <div className={cn("mb-6 flex items-center gap-3", collapsed ? "justify-center px-0" : "px-4")}>
         <FluwsLogo size={40} className="shrink-0" />
         {!collapsed && (
-          <span className="text-lg font-bold tracking-tight">fluws</span>
+          <FluwsWordmark className="text-lg" />
         )}
       </div>
 
