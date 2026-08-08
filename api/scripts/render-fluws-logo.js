@@ -26,7 +26,7 @@ const sharp = require('sharp');
 const ORBIT_PATH = 'M310.3 124.8A142 142 0 1 1 201.7 124.8';
 const ORBIT_STROKE = 46;
 const CORE_R = 54;
-const TAIL_PATH = 'M179.3 383.7L94.9 411.6L125.7 328.2Z';
+const TAIL_PATH = 'M169.6 374.9L94.9 411.6L134.1 338.2Z';
 const TAIL_STROKE = ORBIT_STROKE;
 const MARK_VIEWBOX = '72 96 355 338';
 
