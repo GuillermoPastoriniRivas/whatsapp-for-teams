@@ -127,8 +127,8 @@
   --card-foreground: oklch(0.145 0.015 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0.015 260);
-  --primary: oklch(0.600 0.130 175);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.742 0.138 174.2);
+  --primary-foreground: oklch(0.167 0.012 254.2);
   --secondary: oklch(0.968 0.007 247);
   --secondary-foreground: oklch(0.280 0.020 260);
   --muted: oklch(0.968 0.007 247);
@@ -138,7 +138,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.900 0.010 250);
   --input: oklch(0.900 0.010 250);
-  --ring: oklch(0.600 0.130 175);
+  --ring: oklch(0.742 0.138 174.2);
   /*
    * Serie categórica de los gráficos, en orden fijo: una serie nunca cambia de
    * color porque cambió su posición. Los tres últimos slots eran los grises que
@@ -157,12 +157,12 @@
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0.005 250);
   --sidebar-foreground: oklch(0.145 0.015 260);
-  --sidebar-primary: oklch(0.600 0.130 175);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.600 0.130 175 / 10%);
-  --sidebar-accent-foreground: oklch(0.600 0.130 175);
+  --sidebar-primary: oklch(0.742 0.138 174.2);
+  --sidebar-primary-foreground: oklch(0.167 0.012 254.2);
+  --sidebar-accent: oklch(0.742 0.138 174.2 / 10%);
+  --sidebar-accent-foreground: oklch(0.742 0.138 174.2);
   --sidebar-border: oklch(0.900 0.010 250);
-  --sidebar-ring: oklch(0.600 0.130 175);
+  --sidebar-ring: oklch(0.742 0.138 174.2);
 
   /* asis.chat custom tokens */
   --asis-bubble-outbound: #DBEAFE;
@@ -171,11 +171,15 @@
   --asis-surface-panel: #F8FAFB;
 
   /*
-   * Panel de marca de login/registro. Tiene tokens propios porque `--primary`
-   * se invierte entre temas: en oscuro es un turquesa claro, y usarlo de fondo
+   * Panel de marca de login/registro: el negro de marca (#0B0F14) en los dos
+   * temas, con el símbolo verde encima. Es la composición del brand board.
+   *
+   * Sigue con tokens propios y no usa `--primary` de fondo por dos razones: el
+   * verde de marca da 2.15:1 contra texto blanco, así que no puede ser una
+   * superficie con texto encima; y `--primary` se invierte entre temas, lo que
    * dejaba media pantalla encendida al lado de un formulario negro.
    */
-  --asis-auth-panel: oklch(0.600 0.130 175);
+  --asis-auth-panel: oklch(0.167 0.012 254.2);
   --asis-auth-panel-foreground: oklch(0.985 0 0);
   --asis-auth-panel-chip: oklch(1 0 0 / 15%);
 
@@ -213,7 +217,7 @@
   --card-foreground: oklch(0.950 0 0);
   --popover: oklch(0.200 0.020 260);
   --popover-foreground: oklch(0.950 0 0);
-  --primary: oklch(0.795 0.115 182);
+  --primary: oklch(0.742 0.138 174.2);
   --primary-foreground: oklch(0.150 0.020 260);
   --secondary: oklch(0.240 0.020 260);
   --secondary-foreground: oklch(0.950 0 0);
@@ -224,7 +228,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.795 0.115 182);
+  --ring: oklch(0.742 0.138 174.2);
   /*
    * El oscuro no es un reflejo automático del claro: son pasos propios,
    * validados contra la superficie oscura. Los del claro quedaban demasiado
@@ -237,12 +241,12 @@
   --chart-5: oklch(0.660 0.130 130);
   --sidebar: oklch(0.170 0.020 260);
   --sidebar-foreground: oklch(0.950 0 0);
-  --sidebar-primary: oklch(0.795 0.115 182);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.795 0.115 182 / 12%);
-  --sidebar-accent-foreground: oklch(0.795 0.115 182);
+  --sidebar-primary: oklch(0.742 0.138 174.2);
+  --sidebar-primary-foreground: oklch(0.167 0.012 254.2);
+  --sidebar-accent: oklch(0.742 0.138 174.2 / 12%);
+  --sidebar-accent-foreground: oklch(0.742 0.138 174.2);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.795 0.115 182);
+  --sidebar-ring: oklch(0.742 0.138 174.2);
 
   /* asis.chat custom tokens */
   --asis-bubble-outbound: #1E3A5F;
@@ -250,8 +254,8 @@
   --asis-surface-header: #1E293B;
   --asis-surface-panel: #0F172A;
 
-  /* Turquesa profundo: se lee como superficie de marca sin encandilar. */
-  --asis-auth-panel: oklch(0.255 0.055 178);
+  /* Mismo negro de marca que en claro: el panel no cambia entre temas. */
+  --asis-auth-panel: oklch(0.167 0.012 254.2);
   --asis-auth-panel-foreground: oklch(0.960 0.010 180);
   --asis-auth-panel-chip: oklch(1 0 0 / 10%);
 

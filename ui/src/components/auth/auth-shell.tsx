@@ -72,10 +72,12 @@ export function AuthShell({
       {brandPanel && (
         <aside className="hidden w-1/2 flex-col justify-between bg-(--asis-auth-panel) p-10 text-(--asis-auth-panel-foreground) md:flex lg:p-14">
           <div className="flex items-center gap-2">
-            {/* El panel ya es teal: el degradado de marca desaparecería
-                contra el fondo, así que acá va la variante monocroma. */}
-            <FluwsLogo size={44} variant="mono" />
-            <span className="text-xl font-bold">Fluws</span>
+            {/* El panel es el negro de marca, así que acá va el símbolo en su
+                verde: 8.92:1 de contraste y es la composición del brand board.
+                La variante `mono` queda para fondos de color donde el verde sí
+                desaparecería. */}
+            <FluwsLogo size={44} />
+            <span className="text-xl font-bold">fluws</span>
           </div>
 
           <div className="space-y-8">
@@ -102,7 +104,7 @@ export function AuthShell({
             )}
           </div>
 
-          <p className="text-xs opacity-50">&copy; {year} Fluws</p>
+          <p className="text-xs opacity-50">&copy; {year} fluws</p>
         </aside>
       )}
 
@@ -125,7 +127,7 @@ export function AuthShell({
               <div className="flex items-center gap-1.5 md:hidden">
                 <FluwsLogo size={36} />
                 <span className="text-lg font-bold">
-                  Fluws
+                  fluws
                 </span>
               </div>
             )}
@@ -154,7 +156,7 @@ export function AuthShell({
 
             {!brandPanel && (
               <p className="mt-10 text-center text-xs text-muted-foreground">
-                &copy; {year} Fluws
+                &copy; {year} fluws
               </p>
             )}
           </div>

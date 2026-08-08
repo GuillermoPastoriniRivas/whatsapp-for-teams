@@ -18,7 +18,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Fluws",
+  title: "fluws",
   description:
     "Automatizá el WhatsApp de tu empresa: una IA que responde en segundos las 24 horas, bandeja compartida para tu equipo y campañas masivas.",
   icons: { icon: "/favicon.ico", apple: "/apple-icon.png" },
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     // iOS toma el nombre del ícono de acá, no del manifest.
-    title: "Fluws",
+    title: "fluws",
   },
 };
 

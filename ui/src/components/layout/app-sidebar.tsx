@@ -180,7 +180,7 @@ export function AppSidebar({ className }: { className?: string }) {
       <div className={cn("mb-6 flex items-center gap-3", collapsed ? "justify-center px-0" : "px-4")}>
         <FluwsLogo size={40} className="shrink-0" />
         {!collapsed && (
-          <span className="text-lg font-bold tracking-tight">Fluws</span>
+          <span className="text-lg font-bold tracking-tight">fluws</span>
         )}
       </div>
 

@@ -80,7 +80,7 @@ export function OnboardingWizard() {
         <div className="flex items-center gap-2">
           <FluwsLogo size={32} />
           <span className="font-bold">
-            Fluws
+            fluws
           </span>
         </div>
         {step < TOTAL_STEPS && (

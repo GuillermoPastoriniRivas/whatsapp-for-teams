@@ -13,3 +13,7 @@ aloe-village/
 quiero-menu/
 turnos/
 PROYECTO-HOTEL.md
+
+# Hojas de contacto de las exploraciones de marca: se regeneran con los
+# scripts de api/scripts/fluws-symbol-*.js
+api/scripts/out/

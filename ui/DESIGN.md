@@ -16,7 +16,8 @@ shadcn estilo radix-nova (`data-slot`, sin `forwardRef`), paquete unificado
    deliberadas: `status-pill.tsx` (paleta semántica de estados), los tokens
    `--asis-*` del lenguaje WhatsApp (chat y previsualizaciones de plantillas),
    el verde `#25D366` de la marca WhatsApp, el `themeColor` del `<head>` (es un
-   meta del navegador, no acepta variables) y el degradado del logo.
+   meta del navegador, no acepta variables) y los colores de marca del logo
+   (`FLUWS_GREEN` / `FLUWS_INK`), que no siguen al tema.
 3. **Un patrón por problema.** Si ya existe el componente, se usa; no se copia
    el markup a otra pantalla.
 

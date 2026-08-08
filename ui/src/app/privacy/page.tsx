@@ -19,7 +19,7 @@ export default function PrivacyPolicyPage() {
           <Link href="/" className="flex items-center gap-3">
             <FluwsLogo size={36} />
             <span className="text-xl font-bold tracking-tight text-foreground">
-              Fluws
+              fluws
             </span>
           </Link>
           <div className="flex items-center gap-4">
@@ -53,7 +53,7 @@ export default function PrivacyPolicyPage() {
       <footer className="border-t border-border bg-muted/40 py-8">
         <div className="mx-auto flex max-w-4xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} Fluws — {t.legal.allRightsReserved}
+            &copy; {new Date().getFullYear()} fluws — {t.legal.allRightsReserved}
             <br />
             <span className="text-xs">
               {t.legal.operatedBy} {legalEntityLine()}

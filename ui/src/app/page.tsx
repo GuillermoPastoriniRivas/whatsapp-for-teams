@@ -227,7 +227,7 @@ export default function LandingPage() {
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <FluwsLogo size={30} className="sm:hidden" />
             <FluwsLogo size={36} className="hidden sm:block" />
-            <span className="text-lg font-bold tracking-tight text-foreground sm:text-xl">Fluws</span>
+            <span className="text-lg font-bold tracking-tight text-foreground sm:text-xl">fluws</span>
           </div>
 
           <div className="hidden items-center gap-5 text-sm font-medium text-muted-foreground md:flex lg:gap-8">
@@ -720,7 +720,7 @@ export default function LandingPage() {
             <div className="space-y-8">
               <div className="flex items-center gap-2">
                  <FluwsLogo size={32} />
-                 <span className="text-xl font-bold text-foreground">Fluws</span>
+                 <span className="text-xl font-bold text-foreground">fluws</span>
               </div>
               <p className="max-w-xs text-sm leading-6 text-muted-foreground">
                 {t.landing.footerTagline}
@@ -768,7 +768,7 @@ export default function LandingPage() {
           </div>
           <div className="mt-16 border-t border-border pt-8 text-center sm:mt-20 lg:mt-24">
             <p className="text-sm leading-5 text-muted-foreground">
-              &copy; {new Date().getFullYear()} Fluws — {t.landing.footerRights} Construido por{" "}
+              &copy; {new Date().getFullYear()} fluws — {t.landing.footerRights} Construido por{" "}
               <a href="https://www.linkedin.com/in/guillermopastorini/" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground transition-colors hover:text-primary">Guillermo</a>.
             </p>
             {/* Nombre legal del titular: la verificacion de negocio de Meta

@@ -1,4 +1,4 @@
-/* Genera los íconos de Fluws desde la misma geometría que el componente SVG.
+/* Genera los íconos de fluws desde la misma geometría que el componente SVG.
    Correr desde api/ (sharp vive en api/node_modules):
 
      node scripts/render-fluws-logo.js            # escribe en ui/
@@ -16,65 +16,44 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
-/* Geometría LITERAL del boceto elegido (concepto B de fluws-logo-concepts.js).
-   Tiene que quedar idéntica a la del componente TSX. */
-const STROKE = 40;
-const NODE_IN = { cx: 136, cy: 256, r: 50 };
-const NODE_UP = { cx: 374, cy: 154, r: 44 };
-const NODE_DOWN = { cx: 374, cy: 358, r: 44 };
-const EDGE_UP = 'M186 256C248 256 262 178 330 162';
-const EDGE_DOWN = 'M186 256C248 256 262 334 330 350';
-const MARK_VIEWBOX = '80 104 344 304';
-/** Centro real del bbox; no es 256 en x (el nodo de origen es más grande). */
-const GLYPH_CENTER = { x: 252, y: 256 };
+/* Núcleo macizo + órbita de 320°, con la boca arriba. Color plano, como manda
+   el brand board. */
+const ORBIT_PATH = 'M304.6 122.6A142 142 0 1 1 207.4 122.6';
+const ORBIT_STROKE = 46;
+const CORE_R = 54;
+const MARK_VIEWBOX = '85 94 342 333';
 
-const TEAL_DARK = '#0FA292';
-const TEAL_MID = '#23C7A6';
-const TEAL_LIGHT = '#4AE4BC';
+const GREEN = '#18C7A5';
+const INK = '#0B0F14';
 
-/* Aristas de trazo, nodos macizos. Las aristas van primero para que los
-   círculos les tapen los caps redondos. */
-const node = (n, color) => `<circle cx="${n.cx}" cy="${n.cy}" r="${n.r}" fill="${color}"/>`;
+const glyph = (color) =>
+  `<path d="${ORBIT_PATH}" fill="none" stroke="${color}" stroke-width="${ORBIT_STROKE}" stroke-linecap="round"/>` +
+  `<circle cx="256" cy="256" r="${CORE_R}" fill="${color}"/>`;
 
-const strokes = (color) =>
-  `<g stroke="${color}" stroke-width="${STROKE}" stroke-linecap="round" fill="none">` +
-  `<path d="${EDGE_UP}"/><path d="${EDGE_DOWN}"/></g>` +
-  `${node(NODE_IN, color)}${node(NODE_UP, color)}${node(NODE_DOWN, color)}`;
-
-/** La horquilla sola, degradado teal, fondo transparente: el logo del arte. */
-const markSvg = () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARK_VIEWBOX}" fill="none">
-  <defs><linearGradient id="g" x1="0" y1="0.6" x2="1" y2="0.25">
-    <stop offset="0" stop-color="${TEAL_DARK}"/>
-    <stop offset="0.5" stop-color="${TEAL_MID}"/>
-    <stop offset="1" stop-color="${TEAL_LIGHT}"/>
-  </linearGradient></defs>
-  ${strokes('url(#g)')}
-</svg>`;
+/** El símbolo suelto, verde sobre transparente. */
+const markSvg = (color = GREEN) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARK_VIEWBOX}" fill="none">${glyph(color)}</svg>`;
 
 /**
- * El grafo blanco sobre el cuadrado teal.
+ * El símbolo blanco sobre el cuadrado verde.
  * @param bleed  El cuadrado va a sangre (radio 0). Es lo que necesitan los
  *   maskable y el apple-icon: iOS y Android aplican su propia máscara encima,
  *   así que una esquina transparente se ve recortada. Además el glifo va más
  *   chico, porque esas máscaras comen hasta un 10% de cada borde.
- * @param glyph  Escala del glifo dentro del cuadrado.
+ * @param glyphScale  Escala del glifo dentro del cuadrado (1 = tamaño nativo,
+ *   que ya deja el aire correcto para el radio del contenedor).
  */
-const appSvg = ({ bleed = false, glyph = bleed ? 0.58 : 0.72 } = {}) =>
+const appSvg = ({ bleed = false, glyphScale = bleed ? 0.8 : 1 } = {}) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0.72">
-    <stop offset="0" stop-color="${TEAL_LIGHT}"/>
-    <stop offset="1" stop-color="${TEAL_DARK}"/>
-  </linearGradient></defs>
-  <rect width="512" height="512" rx="${bleed ? 0 : 100}" fill="url(#g)"/>
-  <g transform="translate(256 256) scale(${glyph}) translate(${-GLYPH_CENTER.x} ${-GLYPH_CENTER.y})">${strokes('white')}</g>
+  <rect width="512" height="512" rx="${bleed ? 0 : 115}" fill="${GREEN}"/>
+  <g transform="translate(256 256) scale(${glyphScale}) translate(-256 -256)">${glyph('#FFFFFF')}</g>
 </svg>`;
 
 /* El badge de las notificaciones push: Android se queda SOLO con el canal alfa
    y pinta la silueta de un color propio. Por eso va el glifo suelto y no el
-   cuadrado teal — si no, en la barra de estado se ve un cuadrado macizo. */
-const badgeSvg = () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARK_VIEWBOX}" fill="none">
-  ${strokes('white')}
-</svg>`;
+   cuadrado verde — si no, en la barra de estado se ve un cuadrado macizo. */
+const badgeSvg = () =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARK_VIEWBOX}" fill="none">${glyph('#FFFFFF')}</svg>`;
 
 const render = (svg, size) =>
   sharp(Buffer.from(svg))
@@ -87,19 +66,17 @@ const render = (svg, size) =>
    cabecera de 6 bytes + una entrada de 16 por tamaño + los PNG concatenados. */
 function buildIco(pngs) {
   const header = Buffer.alloc(6);
-  header.writeUInt16LE(0, 0); // reservado
-  header.writeUInt16LE(1, 2); // 1 = ícono
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
   header.writeUInt16LE(pngs.length, 4);
 
   let offset = 6 + pngs.length * 16;
   const entries = pngs.map(({ size, data }) => {
     const e = Buffer.alloc(16);
-    e.writeUInt8(size >= 256 ? 0 : size, 0); // 0 significa 256
+    e.writeUInt8(size >= 256 ? 0 : size, 0);
     e.writeUInt8(size >= 256 ? 0 : size, 1);
-    e.writeUInt8(0, 2); // paleta
-    e.writeUInt8(0, 3); // reservado
-    e.writeUInt16LE(1, 4); // planos
-    e.writeUInt16LE(32, 6); // bits por pixel
+    e.writeUInt16LE(1, 4);
+    e.writeUInt16LE(32, 6);
     e.writeUInt32LE(data.length, 8);
     e.writeUInt32LE(offset, 12);
     offset += data.length;
@@ -119,24 +96,23 @@ function buildIco(pngs) {
     return file;
   };
 
-  const [
-    icon1024, icon512, icon192,
-    mask1024, mask512, mask192,
-    apple, badge,
-    fav48, fav32, fav16,
-  ] = await Promise.all([
-    render(appSvg(), 1024), render(appSvg(), 512), render(appSvg(), 192),
-    render(appSvg({ bleed: true }), 1024),
-    render(appSvg({ bleed: true }), 512),
-    render(appSvg({ bleed: true }), 192),
-    render(appSvg({ bleed: true, glyph: 0.66 }), 180),
-    render(badgeSvg(), 72),
-    // El favicon lleva el glifo más grande: al 72% se empasta y queda un
-    // cuadrado teal con una mancha blanca en el medio.
-    render(appSvg({ glyph: 0.9 }), 48),
-    render(appSvg({ glyph: 0.9 }), 32),
-    render(appSvg({ glyph: 0.9 }), 16),
-  ]);
+  const [icon1024, icon512, icon192, mask1024, mask512, mask192, apple, badge, fav48, fav32, fav16, mark] =
+    await Promise.all([
+      render(appSvg(), 1024),
+      render(appSvg(), 512),
+      render(appSvg(), 192),
+      render(appSvg({ bleed: true }), 1024),
+      render(appSvg({ bleed: true }), 512),
+      render(appSvg({ bleed: true }), 192),
+      render(appSvg({ bleed: true, glyphScale: 0.86 }), 180),
+      render(badgeSvg(), 72),
+      // El favicon lleva el glifo un poco más grande: a 16px el aire del
+      // contenedor se come el símbolo antes que el símbolo se empaste.
+      render(appSvg({ glyphScale: 1.14 }), 48),
+      render(appSvg({ glyphScale: 1.14 }), 32),
+      render(appSvg({ glyphScale: 1.14 }), 16),
+      render(markSvg(), 512),
+    ]);
 
   const ico = buildIco([
     { size: 16, data: fav16 },
@@ -155,8 +131,7 @@ function buildIco(pngs) {
     write('src/app/apple-icon.png', apple),
     write('src/app/favicon.ico', ico),
     write('public/favicon.ico', ico),
-    // Solo para revisar a ojo; no lo consume nadie.
-    write('public/icons/mark-512.png', await render(markSvg(), 512)),
+    write('public/icons/mark-512.png', mark),
   ];
 
   console.log(written.map((f) => '  ' + f).join('\n'));

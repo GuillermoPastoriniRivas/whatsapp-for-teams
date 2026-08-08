@@ -5,8 +5,8 @@ export default function manifest(): MetadataRoute.Manifest {
     // Nombre de la app instalada. `short_name` es el que va debajo del ícono
     // en el escritorio y en la pantalla de inicio: si se pone el dominio, ahí
     // se lee "fluws.com" en vez del nombre de la marca.
-    name: "Fluws",
-    short_name: "Fluws",
+    name: "fluws",
+    short_name: "fluws",
     description: "Atención por WhatsApp para equipos, con IA",
     id: "/",
     start_url: "/conversations",
@@ -15,9 +15,9 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     lang: "es",
     background_color: "#ffffff",
-    // Acompaña al --primary del tema claro. Va en hex porque el manifest lo lee
-    // el sistema operativo, no el navegador: no puede resolver var(--primary).
-    theme_color: "#00987c",
+    // El verde de marca. Va en hex porque el manifest lo lee el sistema
+    // operativo, no el navegador: no puede resolver var(--primary).
+    theme_color: "#18C7A5",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },

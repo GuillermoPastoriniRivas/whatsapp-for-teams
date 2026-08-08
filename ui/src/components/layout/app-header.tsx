@@ -14,7 +14,7 @@ export function AppHeader() {
       <div className="flex items-center gap-2 min-w-0">
         <FluwsLogo size={32} className="shrink-0" />
         <span className="font-semibold truncate">
-          Fluws
+          fluws
           <span className="hidden sm:inline text-muted-foreground font-normal"> · {agent.name}</span>
         </span>
       </div>

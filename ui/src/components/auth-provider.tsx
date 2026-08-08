@@ -16,7 +16,7 @@ function AppSplash() {
     <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 bg-background">
       <FluwsLogo size={88} className="animate-pulse" />
       <p className="text-sm font-semibold text-muted-foreground">
-        Fluws
+        fluws
       </p>
     </div>
   );

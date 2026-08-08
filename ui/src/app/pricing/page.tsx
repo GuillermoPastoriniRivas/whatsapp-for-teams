@@ -58,7 +58,7 @@ export default function PricingPage() {
           <Link href="/" className="flex items-center gap-3">
             <FluwsLogo size={36} />
             <span className="text-xl font-bold tracking-tight text-foreground">
-              Fluws
+              fluws
             </span>
           </Link>
           <div className="flex items-center gap-4">
@@ -105,7 +105,7 @@ export default function PricingPage() {
       {/* Footer */}
       <footer className="border-t border-border bg-background py-8">
         <div className="mx-auto max-w-7xl px-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Fluws — {t.landing.footerRights}
+          &copy; {new Date().getFullYear()} fluws — {t.landing.footerRights}
         </div>
       </footer>
     </div>
