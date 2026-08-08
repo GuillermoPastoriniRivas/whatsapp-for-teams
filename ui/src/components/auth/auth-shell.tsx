@@ -80,7 +80,9 @@ export function AuthShell({
                 toman el foreground del panel, que ya está elegido para dar
                 contraste contra cada fondo. */}
             <FluwsLogo size={44} variant="mono" />
-            <FluwsWordmark className="text-xl" tone="ink" />
+            {/* El wordmark toma `--asis-auth-panel-mark`, que invierte con el
+                tema: blanco cuando el panel es verde, verde cuando es negro. */}
+            <FluwsWordmark className="text-xl text-(--asis-auth-panel-mark)" tone="ink" />
           </div>
 
           <div className="space-y-8">
