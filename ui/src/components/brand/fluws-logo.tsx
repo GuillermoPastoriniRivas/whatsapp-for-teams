@@ -43,10 +43,21 @@ const TAIL_STROKE = 18;
    de 6. */
 const MARK_VIEWBOX = "70 96 357 340";
 
-/** Verde de marca del brand board. Va fijo y no como token: es el ícono de la
- *  marca y no cambia con el tema. Excepción deliberada a la regla de
- *  solo-tokens de DESIGN.md. */
-export const FLUWS_GREEN = "#027E5A";
+/**
+ * Verde del LOGO.
+ *
+ * OJO: ya NO coincide con el `--primary` de la interfaz, que es
+ * `oklch(0.525 0.110 165)` = `#027E5A`. Se despegaron a propósito: el logo tira
+ * más al teal, hacia el verde histórico de asis, y la interfaz se queda en el
+ * esmeralda más oscuro, que es el único que aguanta texto blanco encima.
+ *
+ * O sea que el logo va a verse un tono distinto de los botones, y está bien.
+ * Si alguien los "sincroniza", rompe una de las dos cosas.
+ *
+ * Va fijo y no como token: es el ícono de la marca y no cambia con el tema.
+ * Excepción deliberada a la regla de solo-tokens de DESIGN.md.
+ */
+export const FLUWS_GREEN = "#15A58A";
 /** Negro de marca. También el color del wordmark sobre fondo claro. */
 export const FLUWS_INK = "#0B0F14";
 

@@ -30,7 +30,7 @@ const TAIL_PATH = 'M185.6 388.4L84.8 421.3L123.6 326.4Z';
 const TAIL_STROKE = 18;
 const MARK_VIEWBOX = '70 96 357 340';
 
-const GREEN = '#027E5A';
+const GREEN = '#15A58A';
 const INK = '#0B0F14';
 
 const glyph = (color) =>
