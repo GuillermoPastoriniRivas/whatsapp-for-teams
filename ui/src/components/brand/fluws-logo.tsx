@@ -25,9 +25,23 @@ const ORBIT_PATH = "M304.6 122.6A142 142 0 1 1 207.4 122.6";
 const ORBIT_STROKE = 46;
 const CORE_R = 54;
 
-/* Bbox real con los caps: x 91→421, y 99.6→421. El viewBox de `mark` lo
-   encuadra con un respiro de 6. */
-const MARK_VIEWBOX = "85 94 342 333";
+/* La patita, abajo a la izquierda. Es un triángulo con la base APOYADA SOBRE LA
+ * BANDA del trazo de la órbita (los dos vértices de la base están a r=150, y la
+ * banda va de 119 a 165), así queda fundida con el anillo en vez de pegada.
+ *
+ * Vértices en polares desde el centro: base a 118° y 152° con r=150, punta a
+ * 136° con r=238.
+ *
+ * Se dibuja con relleno Y trazo del mismo color: es la forma más simple de
+ * redondearle las esquinas a un triángulo en SVG, y deja la patita con el mismo
+ * acabado que los caps redondos de la órbita. */
+const TAIL_PATH = "M185.6 388.4L84.8 421.3L123.6 326.4Z";
+const TAIL_STROKE = 18;
+
+/* Bbox real, contando los caps de la órbita y el trazo de la patita:
+   x 75.8→421, y 99.6→430.3. El viewBox de `mark` lo encuadra con un respiro
+   de 6. */
+const MARK_VIEWBOX = "70 94 357 343";
 
 /** Verde de marca del brand board. Va fijo y no como token: es el ícono de la
  *  marca y no cambia con el tema. Excepción deliberada a la regla de
@@ -60,6 +74,13 @@ function Glyph({ color }: { color: string }) {
         stroke={color}
         strokeWidth={ORBIT_STROKE}
         strokeLinecap="round"
+      />
+      <path
+        d={TAIL_PATH}
+        fill={color}
+        stroke={color}
+        strokeWidth={TAIL_STROKE}
+        strokeLinejoin="round"
       />
       <circle cx="256" cy="256" r={CORE_R} fill={color} />
     </>

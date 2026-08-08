@@ -16,18 +16,26 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
-/* Núcleo macizo + órbita de 320°, con la boca arriba. Color plano, como manda
-   el brand board. */
+/* Núcleo macizo + órbita de 320° con la boca arriba, más la patita abajo a la
+   izquierda. Color plano, como manda el brand board.
+
+   La base de la patita se apoya sobre la banda del trazo de la órbita para que
+   quede fundida con el anillo. Se dibuja con relleno Y trazo del mismo color:
+   así se le redondean las esquinas y queda con el mismo acabado que los caps
+   de la órbita. */
 const ORBIT_PATH = 'M304.6 122.6A142 142 0 1 1 207.4 122.6';
 const ORBIT_STROKE = 46;
 const CORE_R = 54;
-const MARK_VIEWBOX = '85 94 342 333';
+const TAIL_PATH = 'M185.6 388.4L84.8 421.3L123.6 326.4Z';
+const TAIL_STROKE = 18;
+const MARK_VIEWBOX = '70 94 357 343';
 
 const GREEN = '#18C7A5';
 const INK = '#0B0F14';
 
 const glyph = (color) =>
   `<path d="${ORBIT_PATH}" fill="none" stroke="${color}" stroke-width="${ORBIT_STROKE}" stroke-linecap="round"/>` +
+  `<path d="${TAIL_PATH}" fill="${color}" stroke="${color}" stroke-width="${TAIL_STROKE}" stroke-linejoin="round"/>` +
   `<circle cx="256" cy="256" r="${CORE_R}" fill="${color}"/>`;
 
 /** El símbolo suelto, verde sobre transparente. */
