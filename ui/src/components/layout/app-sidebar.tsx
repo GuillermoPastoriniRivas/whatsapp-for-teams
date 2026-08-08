@@ -180,9 +180,9 @@ export function AppSidebar({ className }: { className?: string }) {
       {/* App Logo + Brand */}
       <div className={cn("mb-6 flex items-center gap-3", collapsed ? "justify-center px-0" : "px-4")}>
         <FluwsLogo size={40} className="shrink-0" />
-        {!collapsed && (
-          <FluwsWordmark className="text-lg" />
-        )}
+        {/* `text-2xl` acompaña al símbolo de 40px: con `text-lg` el wordmark
+            quedaba chico al lado y el lockup se leía desbalanceado. */}
+        {!collapsed && <FluwsWordmark className="text-2xl" />}
       </div>
 
       {/* Nav items — el bloque de arriba scrollea, el de abajo queda anclado */}
