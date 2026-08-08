@@ -1,4 +1,4 @@
-/* Marca fluws: núcleo macizo + órbita de 312°.
+/* Marca fluws: núcleo macizo + órbita de 321°.
  *
  * La forma salió de una exploración larga y conviene saber qué NO volver a
  * proponer, porque cada una se descartó por un motivo concreto:
@@ -15,13 +15,13 @@ import { useId } from "react";
 
 /* Espacio de 512.
  *
- * La órbita barre 312° y deja la boca arriba, entre 246° y 294° (en SVG el
+ * La órbita barre 321° y deja la boca arriba, entre 250.5° y 289.5° (en SVG el
  * ángulo crece hacia abajo, así que 270° es arriba). Las puntas del arco caen
- * en (313.8, 126.3) y (198.2, 126.3).
+ * en (303.4, 122.2) y (208.6, 122.2).
  *
  * Casi cerrada a propósito: con la boca más ancha lee como anillo roto o como
  * spinner de carga, y cerrada del todo lee como el punto de grabar. */
-const ORBIT_PATH = "M313.8 126.3A142 142 0 1 1 198.2 126.3";
+const ORBIT_PATH = "M303.4 122.2A142 142 0 1 1 208.6 122.2";
 const ORBIT_STROKE = 46;
 const CORE_R = 54;
 
@@ -39,9 +39,9 @@ const TAIL_PATH = "M185.6 388.4L84.8 421.3L123.6 326.4Z";
 const TAIL_STROKE = 18;
 
 /* Bbox real, contando los caps de la órbita y el trazo de la patita:
-   x 75.8→421, y 103.3→430.3. El viewBox de `mark` lo encuadra con un respiro
+   x 75.8→421, y 99.2→430.3. El viewBox de `mark` lo encuadra con un respiro
    de 6. */
-const MARK_VIEWBOX = "70 97 357 339";
+const MARK_VIEWBOX = "70 93 357 343";
 
 /**
  * Verde del LOGO.
