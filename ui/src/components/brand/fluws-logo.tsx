@@ -25,23 +25,30 @@ const ORBIT_PATH = "M304.6 122.6A142 142 0 1 1 207.4 122.6";
 const ORBIT_STROKE = 46;
 const CORE_R = 54;
 
-/* La patita, abajo a la izquierda. Es un triángulo con la base APOYADA SOBRE LA
- * BANDA del trazo de la órbita (los dos vértices de la base están a r=150, y la
- * banda va de 119 a 165), así queda fundida con el anillo en vez de pegada.
+/* La patita, abajo a la izquierda. NO es un triángulo relleno: es el mismo
+ * trazo que sale del anillo, llega a la punta y vuelve. Lo que se ve adentro es
+ * el fondo, no una pieza. Por eso va con `fill="none"`.
  *
- * Vértices en polares desde el centro: base a 118° y 152° con r=150, punta a
- * 136° con r=238.
+ * Vértices en polares desde el centro: base a 109° y 159° con r=150 —dentro de
+ * la banda del trazo, que va de 119 a 165, para que quede fundida con el
+ * anillo— y punta a 134° con r=235.
  *
- * Se dibuja con relleno Y trazo del mismo color: es la forma más simple de
- * redondearle las esquinas a un triángulo en SVG, y deja la patita con el mismo
- * acabado que los caps redondos de la órbita. */
-const TAIL_PATH = "M185.6 388.4L84.8 421.3L123.6 326.4Z";
-const TAIL_STROKE = 18;
+ * Los brazos van MAS FINOS que la órbita (36 contra 46), y es un canje
+ * deliberado: al mismo grosor el hueco queda en una astilla y el efecto se
+ * pierde. Se prefirió que el hueco se lea antes que la uniformidad de peso.
+ *
+ * Se probó también agrandarla para que el hueco se viera más: queda un apéndice
+ * en V que compite con el anillo. Chica es la única manera. */
+const TAIL_PATH = "M207.2 397.8L92.7 425L115.9 309.8";
+const TAIL_STROKE = 36;
 
-/* Bbox real, contando los caps de la órbita y el trazo de la patita:
-   x 75.8→421, y 99.6→430.3. El viewBox de `mark` lo encuadra con un respiro
+/* Bbox real, contando los caps de la órbita y de la patita:
+   x 74.7→421, y 99.6→443. El viewBox de `mark` lo encuadra con un respiro
    de 6. */
-const MARK_VIEWBOX = "70 94 357 343";
+const MARK_VIEWBOX = "69 94 359 356";
+/** Centro real del bbox. No es (256,256): la patita corre el peso abajo a la
+ *  izquierda, y sin esto el glifo se descentra al escalarlo. */
+const GLYPH_CENTER = { x: 247.85, y: 271.3 };
 
 /** Verde de marca del brand board. Va fijo y no como token: es el ícono de la
  *  marca y no cambia con el tema. Excepción deliberada a la regla de
@@ -77,9 +84,10 @@ function Glyph({ color }: { color: string }) {
       />
       <path
         d={TAIL_PATH}
-        fill={color}
+        fill="none"
         stroke={color}
         strokeWidth={TAIL_STROKE}
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
       <circle cx="256" cy="256" r={CORE_R} fill={color} />
@@ -103,9 +111,14 @@ export function FluwsLogo({ size = 40, className, variant = "mark" }: FluwsLogoP
         className={className}
       >
         <rect width="512" height="512" rx="115" fill={FLUWS_GREEN} />
-        {/* Sin escalar: el glifo ocupa 91→421 de 512, que deja el aire justo
-            para que el radio del contenedor no se lo coma. */}
-        <Glyph color="#FFFFFF" />
+        {/* Recentrado, no escalado: el bbox del glifo no está en el centro del
+            lienzo porque la patita corre el peso abajo a la izquierda. Sin este
+            translate el símbolo queda pegado a esa esquina. */}
+        <g
+          transform={`translate(256 256) translate(${-GLYPH_CENTER.x} ${-GLYPH_CENTER.y})`}
+        >
+          <Glyph color="#FFFFFF" />
+        </g>
       </svg>
     );
   }

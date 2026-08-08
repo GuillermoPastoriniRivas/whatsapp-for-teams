@@ -26,16 +26,16 @@ const sharp = require('sharp');
 const ORBIT_PATH = 'M304.6 122.6A142 142 0 1 1 207.4 122.6';
 const ORBIT_STROKE = 46;
 const CORE_R = 54;
-const TAIL_PATH = 'M185.6 388.4L84.8 421.3L123.6 326.4Z';
-const TAIL_STROKE = 18;
-const MARK_VIEWBOX = '70 94 357 343';
+const TAIL_PATH = 'M207.2 397.8L92.7 425L115.9 309.8';
+const TAIL_STROKE = 36;
+const MARK_VIEWBOX = '69 94 359 356';
 
 const GREEN = '#027E5A';
 const INK = '#0B0F14';
 
 const glyph = (color) =>
   `<path d="${ORBIT_PATH}" fill="none" stroke="${color}" stroke-width="${ORBIT_STROKE}" stroke-linecap="round"/>` +
-  `<path d="${TAIL_PATH}" fill="${color}" stroke="${color}" stroke-width="${TAIL_STROKE}" stroke-linejoin="round"/>` +
+  `<path d="${TAIL_PATH}" fill="none" stroke="${color}" stroke-width="${TAIL_STROKE}" stroke-linecap="round" stroke-linejoin="round"/>` +
   `<circle cx="256" cy="256" r="${CORE_R}" fill="${color}"/>`;
 
 /** El símbolo suelto, verde sobre transparente. */
@@ -54,7 +54,7 @@ const markSvg = (color = GREEN) =>
 const appSvg = ({ bleed = false, glyphScale = bleed ? 0.8 : 1 } = {}) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <rect width="512" height="512" rx="${bleed ? 0 : 115}" fill="${GREEN}"/>
-  <g transform="translate(256 256) scale(${glyphScale}) translate(-256 -256)">${glyph('#FFFFFF')}</g>
+  <g transform="translate(256 256) scale(${glyphScale}) translate(-247.85 -271.3)">${glyph('#FFFFFF')}</g>
 </svg>`;
 
 /* El badge de las notificaciones push: Android se queda SOLO con el canal alfa
@@ -65,13 +65,13 @@ const badgeSvg = () =>
 
 /* El favicon va SIN cuadrado: el glifo verde sobre transparente.
    Al no haber contenedor que respetar, el glifo se escala para llenar el cuadro
-   con un margen chico. El bbox mide 345.2 × 330.7 y está centrado en
-   (248.4, 264.95) — no en (256,256), porque la patita corre el peso hacia
+   con un margen chico. El bbox mide 346.3 × 343.4 y está centrado en
+   (247.85, 271.3) — no en (256,256), porque la patita corre el peso hacia
    abajo y a la izquierda —, así que hay que recentrarlo además de escalarlo.
    Con 1.35 el glifo ocupa 466 de los 512 y quedan ~23 de aire por lado. */
 const faviconSvg = () =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <g transform="translate(256 256) scale(1.35) translate(-248.4 -264.95)">${glyph(GREEN)}</g>
+  <g transform="translate(256 256) scale(1.35) translate(-247.85 -271.3)">${glyph(GREEN)}</g>
 </svg>`;
 
 const render = (svg, size) =>
