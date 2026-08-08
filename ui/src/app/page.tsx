@@ -35,7 +35,6 @@ import { PlanCard } from "@/components/shared/plan-card";
 import { PlanComparison } from "@/components/shared/plan-comparison";
 import { PLAN_ORDER } from "@/lib/plans";
 import type { PlanTier } from "@/types";
-import { legalEntityLine } from "@/lib/legal-entity";
 
 const FOOTER_LINK = "text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground";
 
@@ -303,7 +302,7 @@ export default function LandingPage() {
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button
                 size="lg"
-                className="h-14 rounded-full px-8 text-base shadow-lg shadow-primary/30 transition-all hover:scale-105 hover:bg-primary/90"
+                className="h-14 rounded-full px-8 text-base font-semibold shadow-sm transition-transform hover:scale-[1.02] active:scale-100"
                 disabled={isLoading}
                 onClick={() => handleDemoLogin()}
               >
@@ -705,7 +704,7 @@ export default function LandingPage() {
             {t.landing.ctaSubtitle}
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Button size="lg" className="h-14 rounded-full px-8 text-lg font-semibold shadow-xl shadow-primary/20 transition-transform hover:scale-105 hover:bg-primary/90" disabled={isLoading} onClick={() => handleDemoLogin()}>
+            <Button size="lg" className="h-14 rounded-full px-8 text-base font-semibold shadow-sm transition-transform hover:scale-[1.02] active:scale-100" disabled={isLoading} onClick={() => handleDemoLogin()}>
               {t.landing.ctaDemo}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
@@ -772,12 +771,15 @@ export default function LandingPage() {
               &copy; {new Date().getFullYear()} fluws — {t.landing.footerRights} Construido por{" "}
               <a href="https://www.linkedin.com/in/guillermopastorini/" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground transition-colors hover:text-primary">Guillermo</a>.
             </p>
-            {/* Nombre legal del titular: la verificacion de negocio de Meta
-                rechaza el dominio si no puede atarlo a la documentacion. */}
-            <p className="mt-2 text-xs text-muted-foreground">
-              {t.landing.footerOperatedBy}{" "}
-              <span className="font-medium text-foreground">{legalEntityLine()}</span>
-            </p>
+            {/* El nombre legal del titular NO va en la landing por pedido
+                expreso: expone datos personales en la home.
+
+                Sigue publicado en /terms y /privacy, en el pie de cada una y
+                dentro del texto legal ("Titular del servicio" y "Responsable
+                del tratamiento"). Eso alcanza para que este en el sitio, que es
+                lo que mira la verificacion de negocio de Meta — pero un
+                revisor lo encuentra menos rapido que en la home. Si Meta
+                rechaza el dominio, este es el primer lugar donde mirar. */}
           </div>
         </div>
       </footer>
