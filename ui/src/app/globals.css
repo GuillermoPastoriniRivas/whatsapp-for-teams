@@ -275,7 +275,7 @@
 
   /* Mismo negro de marca que en claro: el panel no cambia entre temas. */
   --asis-auth-panel: oklch(0.167 0.012 254.2);
-  --asis-auth-panel-foreground: oklch(0.960 0.010 180);
+  --asis-auth-panel-foreground: oklch(0.645 0.118 175.0);
   --asis-auth-panel-chip: oklch(1 0 0 / 10%);
   /* El verde del logo (#15A58A), no el de la interfaz. */
   --asis-auth-panel-mark: oklch(0.645 0.118 175.0);
