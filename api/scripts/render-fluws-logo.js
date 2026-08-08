@@ -16,32 +16,30 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
-const STROKE = 36;
-const NODE_IN = { cx: 132, cy: 256, r: 52 };
-const NODE_UP = { cx: 372, cy: 152, r: 46 };
-const NODE_DOWN = { cx: 372, cy: 360, r: 46 };
-const EDGE_UP = 'M204 225L306 180';
-const EDGE_DOWN = 'M204 287L306 332';
-const MARK_VIEWBOX = '56 82 386 348';
+/* Geometría LITERAL del boceto elegido (concepto B de fluws-logo-concepts.js).
+   Tiene que quedar idéntica a la del componente TSX. */
+const STROKE = 40;
+const NODE_IN = { cx: 136, cy: 256, r: 50 };
+const NODE_UP = { cx: 374, cy: 154, r: 44 };
+const NODE_DOWN = { cx: 374, cy: 358, r: 44 };
+const EDGE_UP = 'M186 256C248 256 262 178 330 162';
+const EDGE_DOWN = 'M186 256C248 256 262 334 330 350';
+const MARK_VIEWBOX = '80 104 344 304';
 /** Centro real del bbox; no es 256 en x (el nodo de origen es más grande). */
-const GLYPH_CENTER = { x: 249, y: 256 };
+const GLYPH_CENTER = { x: 252, y: 256 };
 
 const TEAL_DARK = '#0FA292';
 const TEAL_MID = '#23C7A6';
 const TEAL_LIGHT = '#4AE4BC';
 
-/* Todo trazo: nodos huecos y aristas del mismo grosor. Las aristas van primero
-   para que los anillos les tapen los caps redondos.
-   Con `solid`, los nodos van macizos: es la salida para 16px, ver más abajo. */
-const node = (n, solid) =>
-  solid
-    ? `<circle cx="${n.cx}" cy="${n.cy}" r="${n.r}" fill="${solid}" stroke="none"/>`
-    : `<circle cx="${n.cx}" cy="${n.cy}" r="${n.r}"/>`;
+/* Aristas de trazo, nodos macizos. Las aristas van primero para que los
+   círculos les tapen los caps redondos. */
+const node = (n, color) => `<circle cx="${n.cx}" cy="${n.cy}" r="${n.r}" fill="${color}"/>`;
 
-const strokes = (color, solid = false) =>
+const strokes = (color) =>
   `<g stroke="${color}" stroke-width="${STROKE}" stroke-linecap="round" fill="none">` +
-  `<path d="${EDGE_UP}"/><path d="${EDGE_DOWN}"/>` +
-  `${node(NODE_IN, solid && color)}${node(NODE_UP, solid && color)}${node(NODE_DOWN, solid && color)}</g>`;
+  `<path d="${EDGE_UP}"/><path d="${EDGE_DOWN}"/></g>` +
+  `${node(NODE_IN, color)}${node(NODE_UP, color)}${node(NODE_DOWN, color)}`;
 
 /** La horquilla sola, degradado teal, fondo transparente: el logo del arte. */
 const markSvg = () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARK_VIEWBOX}" fill="none">
@@ -60,16 +58,15 @@ const markSvg = () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARK_V
  *   así que una esquina transparente se ve recortada. Además el glifo va más
  *   chico, porque esas máscaras comen hasta un 10% de cada borde.
  * @param glyph  Escala del glifo dentro del cuadrado.
- * @param solid  Nodos macizos en vez de anillos.
  */
-const appSvg = ({ bleed = false, glyph = bleed ? 0.58 : 0.72, solid = false } = {}) =>
+const appSvg = ({ bleed = false, glyph = bleed ? 0.58 : 0.72 } = {}) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0.72">
     <stop offset="0" stop-color="${TEAL_LIGHT}"/>
     <stop offset="1" stop-color="${TEAL_DARK}"/>
   </linearGradient></defs>
   <rect width="512" height="512" rx="${bleed ? 0 : 100}" fill="url(#g)"/>
-  <g transform="translate(256 256) scale(${glyph}) translate(${-GLYPH_CENTER.x} ${-GLYPH_CENTER.y})">${strokes('white', solid)}</g>
+  <g transform="translate(256 256) scale(${glyph}) translate(${-GLYPH_CENTER.x} ${-GLYPH_CENTER.y})">${strokes('white')}</g>
 </svg>`;
 
 /* El badge de las notificaciones push: Android se queda SOLO con el canal alfa
@@ -136,14 +133,9 @@ function buildIco(pngs) {
     render(badgeSvg(), 72),
     // El favicon lleva el glifo más grande: al 72% se empasta y queda un
     // cuadrado teal con una mancha blanca en el medio.
-    //
-    // Y a 16px los nodos van MACIZOS. El hueco del anillo mide ahí ~2px y el
-    // antialiasing se lo come: el resultado es una mancha clara sin forma.
-    // Macizos quedan tres puntos y dos aristas, que es lo que uno reconoce a
-    // ese tamaño. De 32 para arriba el hueco ya se lee y vuelve el anillo.
-    render(appSvg({ glyph: 0.82 }), 48),
+    render(appSvg({ glyph: 0.9 }), 48),
     render(appSvg({ glyph: 0.9 }), 32),
-    render(appSvg({ glyph: 0.9, solid: true }), 16),
+    render(appSvg({ glyph: 0.9 }), 16),
   ]);
 
   const ico = buildIco([

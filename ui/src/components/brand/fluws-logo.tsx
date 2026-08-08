@@ -1,50 +1,41 @@
 /* Marca Fluws: el grafo — un nodo que dispara otros dos. Es el gesto del
-   producto (un paso de la automatización que abre dos caminos), dibujado con
-   los nodos macizos y las aristas en trazo con caps redondos.
+   producto: un paso de la automatización que abre dos caminos.
 
-   OJO, dos cosas heredadas de cómo se llegó acá:
+   La geometría es LITERAL del boceto que se eligió (concepto B de
+   api/scripts/fluws-logo-concepts.js). No tocarla "para mejorarla": ya se
+   probó con los nodos huecos y las aristas rectas, y el resultado no era el
+   boceto. Si hay que iterar, se itera primero en la hoja de contacto y recién
+   después se baja acá.
 
-   1. La geometría es una construcción propia, no un calco del arte que vino con
-      el dominio (aquel era una horquilla, sin nodos). La convención del repo es
-      que el arte manda y el SVG es la copia; acá no hay arte que mande todavía.
-   2. La silueta es muy cercana al glifo de compartir de iOS y Android. Está
-      asumido a propósito, no es un descuido: se eligió sabiéndolo. Si algún día
-      molesta, lo que lo despega es mover los nodos de destino fuera del eje
-      simétrico o cambiar el nodo de origen de círculo a otra forma. */
+   La silueta es muy cercana al glifo de compartir de iOS y Android. Está
+   asumido a propósito, no es un descuido. Si algún día molesta, lo que lo
+   despega es mover los nodos de destino fuera del eje simétrico o cambiarle la
+   forma al nodo de origen. */
 
 import { useId } from "react";
 
-/* Espacio de 512. Los radios son de la LÍNEA MEDIA del anillo: el borde de
-   afuera queda a r + STROKE/2.
+/* Espacio de 512. Nodos macizos y aristas curvas de grosor 40.
 
-   Con los nodos huecos hubo que agrandarlos. Un anillo necesita que el hueco
-   sea comparable al grosor para leerse: con los radios de la versión maciza
-   (50 y 44) el agujero quedaba en 24px contra 100 de diámetro y a simple vista
-   volvía a ser un punto lleno. */
-const STROKE = 36;
-const NODE_IN = { cx: 132, cy: 256, r: 52 };
-const NODE_UP = { cx: 372, cy: 152, r: 46 };
-const NODE_DOWN = { cx: 372, cy: 360, r: 46 };
+   Las aristas arrancan y terminan pisando los círculos (x=186 cae dentro del
+   nodo de origen, y las puntas quedan a ~45 del centro de los de destino, que
+   tienen radio 44), así los caps redondos quedan tapados y no asoman como
+   muñones sueltos. */
+const STROKE = 40;
+const NODE_IN = { cx: 136, cy: 256, r: 50 };
+const NODE_UP = { cx: 374, cy: 154, r: 44 };
+const NODE_DOWN = { cx: 374, cy: 358, r: 44 };
 
-/* Aristas RECTAS, sobre la línea que une los centros, recortadas al borde de
-   cada anillo. Los extremos entran un poco en el trazo del anillo para que el
-   cap redondo quede tapado y no asome dentro del hueco.
+const EDGE_UP = "M186 256C248 256 262 178 330 162";
+const EDGE_DOWN = "M186 256C248 256 262 334 330 350";
 
-   Se probaron curvas saliendo horizontales del nodo de origen y no va: las dos
-   arrancan tangentes a la horizontal, se superponen los primeros ~60 y forman
-   un tronco grueso que a simple vista parece un cruce en X. Rectas además
-   aguantan mejor los tamaños chicos. */
-const EDGE_UP = "M204 225L306 180";
-const EDGE_DOWN = "M204 287L306 332";
-
-/* Bbox real del glifo: x 62→436, y 88→424 (lo definen los bordes de afuera de
-   los anillos, no las aristas). El viewBox de `mark` lo encuadra con un respiro
-   de 6, para que el glifo no nade dentro de la caja cuando se renderiza chico. */
-const MARK_VIEWBOX = "56 82 386 348";
+/* Bbox real del glifo: x 86→418, y 110→402 (lo definen los círculos, no las
+   aristas). El viewBox de `mark` lo encuadra con un respiro de 6, para que el
+   glifo no nade dentro de la caja cuando se renderiza chico. */
+const MARK_VIEWBOX = "80 104 344 304";
 
 /** Centro real del bbox. No es 256 en x: el nodo de origen es más grande que
  *  los de destino y corre el peso a la izquierda. */
-const GLYPH_CENTER = { x: 249, y: 256 };
+const GLYPH_CENTER = { x: 252, y: 256 };
 
 /* Teal de marca muestreado del arte original: oscuro a la izquierda, mint a la
    derecha. Van fijos y no como tokens: es el ícono de la marca y no cambia con
@@ -73,17 +64,19 @@ interface FluwsLogoProps {
   variant?: "mark" | "mono" | "app";
 }
 
-/** Todo el glifo es trazo: nodos huecos y aristas con el mismo grosor. Las
- *  aristas van primero para que los anillos les tapen los caps. */
+/** Aristas de `stroke`, nodos de `fill`, con el mismo color. Las aristas van
+ *  primero para que los círculos les tapen los caps. */
 function Glyph({ color }: { color: string }) {
   return (
-    <g stroke={color} strokeWidth={STROKE} strokeLinecap="round" fill="none">
-      <path d={EDGE_UP} />
-      <path d={EDGE_DOWN} />
-      <circle cx={NODE_IN.cx} cy={NODE_IN.cy} r={NODE_IN.r} />
-      <circle cx={NODE_UP.cx} cy={NODE_UP.cy} r={NODE_UP.r} />
-      <circle cx={NODE_DOWN.cx} cy={NODE_DOWN.cy} r={NODE_DOWN.r} />
-    </g>
+    <>
+      <g stroke={color} strokeWidth={STROKE} strokeLinecap="round" fill="none">
+        <path d={EDGE_UP} />
+        <path d={EDGE_DOWN} />
+      </g>
+      <circle cx={NODE_IN.cx} cy={NODE_IN.cy} r={NODE_IN.r} fill={color} />
+      <circle cx={NODE_UP.cx} cy={NODE_UP.cy} r={NODE_UP.r} fill={color} />
+      <circle cx={NODE_DOWN.cx} cy={NODE_DOWN.cy} r={NODE_DOWN.r} fill={color} />
+    </>
   );
 }
 
