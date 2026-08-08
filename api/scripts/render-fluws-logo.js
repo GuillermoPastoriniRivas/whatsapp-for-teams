@@ -16,19 +16,19 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
-/* Núcleo macizo + órbita de 315° con la boca arriba, más la patita abajo a la
+/* Núcleo macizo + órbita de 312° con la boca arriba, más la patita abajo a la
    izquierda. Color plano, como manda el brand board.
 
    La base de la patita se apoya sobre la banda del trazo de la órbita para que
    quede fundida con el anillo. Se dibuja con relleno Y trazo del mismo color:
    así se le redondean las esquinas y queda con el mismo acabado que los caps
    de la órbita. */
-const ORBIT_PATH = 'M310.3 124.8A142 142 0 1 1 201.7 124.8';
+const ORBIT_PATH = 'M313.8 126.3A142 142 0 1 1 198.2 126.3';
 const ORBIT_STROKE = 46;
 const CORE_R = 54;
 const TAIL_PATH = 'M185.6 388.4L84.8 421.3L123.6 326.4Z';
 const TAIL_STROKE = 18;
-const MARK_VIEWBOX = '70 96 357 340';
+const MARK_VIEWBOX = '70 97 357 339';
 
 const GREEN = '#15A58A';
 const INK = '#0B0F14';
