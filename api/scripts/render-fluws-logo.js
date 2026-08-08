@@ -43,7 +43,7 @@ const markSvg = (color = GREEN) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARK_VIEWBOX}" fill="none">${glyph(color)}</svg>`;
 
 /**
- * El símbolo blanco sobre el cuadrado verde.
+ * El símbolo verde sobre el cuadrado blanco.
  * @param bleed  El cuadrado va a sangre (radio 0). Es lo que necesitan los
  *   maskable y el apple-icon: iOS y Android aplican su propia máscara encima,
  *   así que una esquina transparente se ve recortada. Además el glifo va más
@@ -53,8 +53,8 @@ const markSvg = (color = GREEN) =>
  */
 const appSvg = ({ bleed = false, glyphScale = bleed ? 0.8 : 1 } = {}) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <rect width="512" height="512" rx="${bleed ? 0 : 115}" fill="${GREEN}"/>
-  <g transform="translate(256 256) scale(${glyphScale}) translate(-256 -256)">${glyph('#FFFFFF')}</g>
+  <rect width="512" height="512" rx="${bleed ? 0 : 115}" fill="#FFFFFF"/>
+  <g transform="translate(256 256) scale(${glyphScale}) translate(-256 -256)">${glyph(GREEN)}</g>
 </svg>`;
 
 /* El badge de las notificaciones push: Android se queda SOLO con el canal alfa
