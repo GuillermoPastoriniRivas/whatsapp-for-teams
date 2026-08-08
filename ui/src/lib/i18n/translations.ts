@@ -205,7 +205,6 @@ const translations = {
       featureTeam: "Colabora con tu equipo en tiempo real",
     },
     conversations: {
-      emptyTitle: "Fluws",
       emptyDescription:
         "Elegi una conversacion para empezar. Todas tus cuentas en un solo lugar.",
       searchPlaceholder: "Buscar conversaciones...",
@@ -1648,7 +1647,6 @@ const translations = {
       backToLogin: "Back to login",
     },
     conversations: {
-      emptyTitle: "Fluws",
       emptyDescription:
         "Pick a conversation to get started. All your accounts in one place.",
       searchPlaceholder: "Search conversations...",

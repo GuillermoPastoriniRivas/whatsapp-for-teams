@@ -4,7 +4,11 @@ import { cn } from "@/lib/utils"
 
 interface EmptyStateProps {
   icon?: LucideIcon
-  title: string
+  /**
+   * Casi siempre es texto, pero acepta nodo: el estado vacío de conversaciones
+   * usa el wordmark de marca, que no es una cadena.
+   */
+  title: React.ReactNode
   description?: string
   /** CTA opcional; se espera un `<Button>`. */
   action?: React.ReactNode
