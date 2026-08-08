@@ -63,6 +63,17 @@ const appSvg = ({ bleed = false, glyphScale = bleed ? 0.8 : 1 } = {}) =>
 const badgeSvg = () =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARK_VIEWBOX}" fill="none">${glyph('#FFFFFF')}</svg>`;
 
+/* El favicon va SIN cuadrado: el glifo verde sobre transparente.
+   Al no haber contenedor que respetar, el glifo se escala para llenar el cuadro
+   con un margen chico. El bbox mide 345.2 × 330.7 y está centrado en
+   (248.4, 264.95) — no en (256,256), porque la patita corre el peso hacia
+   abajo y a la izquierda —, así que hay que recentrarlo además de escalarlo.
+   Con 1.35 el glifo ocupa 466 de los 512 y quedan ~23 de aire por lado. */
+const faviconSvg = () =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <g transform="translate(256 256) scale(1.35) translate(-248.4 -264.95)">${glyph(GREEN)}</g>
+</svg>`;
+
 const render = (svg, size) =>
   sharp(Buffer.from(svg))
     .resize(size, size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
@@ -114,13 +125,9 @@ function buildIco(pngs) {
       render(appSvg({ bleed: true }), 192),
       render(appSvg({ bleed: true, glyphScale: 0.86 }), 180),
       render(badgeSvg(), 72),
-      // El favicon lleva el glifo un poco más chico que el nativo, para que
-      // respire dentro del cuadrado. Con 1.14 el margen más angosto quedaba en
-      // ~10% del lado y el símbolo se veía apretado contra el borde; con 0.95
-      // queda en ~17%, que es donde el radio del contenedor deja de comérselo.
-      render(appSvg({ glyphScale: 0.95 }), 48),
-      render(appSvg({ glyphScale: 0.95 }), 32),
-      render(appSvg({ glyphScale: 0.95 }), 16),
+      render(faviconSvg(), 48),
+      render(faviconSvg(), 32),
+      render(faviconSvg(), 16),
       render(markSvg(), 512),
     ]);
 
