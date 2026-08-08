@@ -1,7 +1,6 @@
 "use client";
 
 import { useLocaleStore, type Locale } from "@/stores/locale.store";
-import { Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const options: { value: Locale; label: string }[] = [
@@ -21,16 +20,17 @@ export function LanguageToggle({ collapsed }: { collapsed?: boolean }) {
       )}
     >
       {collapsed ? (
+        // Sin el globo, el botón se queda sin contenido: acá muestra el idioma
+        // activo, que además dice de un vistazo en cuál estás.
         <button
           onClick={() => setLocale(locale === "es" ? "en" : "es")}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           title={locale === "es" ? "Switch to English" : "Cambiar a Espanol"}
         >
-          <Globe className="h-4 w-4" />
+          {locale.toUpperCase()}
         </button>
       ) : (
         <div className="flex items-center gap-2 w-full">
-          <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
           <div className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
             {options.map((opt) => (
               <button

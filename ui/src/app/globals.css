@@ -191,9 +191,9 @@
    * foreground del panel. En sus colores de marca, verde sobre verde,
    * desaparecen.
    */
-  --asis-auth-panel: oklch(0.750 0.110 165.0);
-  --asis-auth-panel-foreground: oklch(0.167 0.012 254.2);
-  --asis-auth-panel-chip: oklch(0 0 0 / 12%);
+  --asis-auth-panel: oklch(0.525 0.110 165.0);
+  --asis-auth-panel-foreground: oklch(0.985 0 0);
+  --asis-auth-panel-chip: oklch(1 0 0 / 18%);
 
   /*
    * Escala de apilado. Única fuente de verdad: quien necesite un z-index usa

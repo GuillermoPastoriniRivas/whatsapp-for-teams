@@ -6,6 +6,7 @@ import { ArrowLeft, Bot, MessageSquare, Users, type LucideIcon } from "lucide-re
 import { FluwsLogo } from "@/components/brand/fluws-logo";
 import { FluwsWordmark } from "@/components/brand/fluws-wordmark";
 import { LanguageToggle } from "@/components/layout/language-toggle";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
 
@@ -124,6 +125,9 @@ export function AuthShell({
             <span />
           )}
           <div className="flex items-center gap-3">
+            {/* Las pantallas de auth no tienen ajustes a mano, así que el tema
+                se cambia desde acá, igual que en la landing. */}
+            <ThemeToggle />
             <LanguageToggle />
             {brandPanel && (
               <div className="flex items-center gap-1.5 md:hidden">
