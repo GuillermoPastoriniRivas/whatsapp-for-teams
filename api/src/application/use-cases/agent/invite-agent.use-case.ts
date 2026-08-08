@@ -59,7 +59,7 @@ export class InviteAgentUseCase {
 
     // Get tenant name for the email
     const tenant = await this.tenantRepo.findById(input.tenantId);
-    const tenantName = tenant?.name ?? 'asis.chat';
+    const tenantName = tenant?.name ?? 'Fluws';
 
     // Compose and enqueue invitation email
     const inviteUrl = `${this.frontendUrl}/accept-invite?token=${rawToken}`;

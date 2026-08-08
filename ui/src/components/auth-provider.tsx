@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
 import { onUnauthorized } from "@/lib/api";
 import { onSocketAuthError, reconnectSocket } from "@/lib/socket";
-import { AsisLogo } from "@/components/brand/asis-logo";
+import { FluwsLogo } from "@/components/brand/fluws-logo";
 
 /**
  * Continúa visualmente el splash del sistema (fondo claro + logo) mientras
@@ -14,9 +14,9 @@ import { AsisLogo } from "@/components/brand/asis-logo";
 function AppSplash() {
   return (
     <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 bg-background">
-      <AsisLogo size={88} className="text-primary animate-pulse" />
+      <FluwsLogo size={88} className="animate-pulse" />
       <p className="text-sm font-semibold text-muted-foreground">
-        asis<span className="text-primary">.chat</span>
+        Fluws
       </p>
     </div>
   );

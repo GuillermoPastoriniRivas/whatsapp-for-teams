@@ -6,7 +6,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
     <>
       <h2>1. Introduccion</h2>
       <p>
-        asis.chat (&quot;nosotros&quot;, &quot;nuestro&quot; o &quot;la
+        Fluws (&quot;nosotros&quot;, &quot;nuestro&quot; o &quot;la
         Plataforma&quot;) es una plataforma de gestion de comunicaciones por
         WhatsApp para equipos de trabajo, operada por{" "}
         <strong>{LEGAL_ENTITY.name}</strong>. Esta Politica de Privacidad
@@ -16,7 +16,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
         Platforms, Inc.
       </p>
       <p>
-        Al utilizar asis.chat, aceptas las practicas descritas en esta
+        Al utilizar Fluws, aceptas las practicas descritas en esta
         politica. Si no estas de acuerdo, por favor no utilices nuestros
         servicios.
       </p>
@@ -34,7 +34,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
           <strong>Configuracion de agentes de IA:</strong> perfil del
           negocio, instrucciones y bases de conocimiento que el usuario
           configura para sus agentes de IA. Las claves del proveedor de
-          modelos las administra asis.chat; el usuario no carga ninguna.
+          modelos las administra Fluws; el usuario no carga ninguna.
         </li>
         <li>
           <strong>Numeros de telefono de WhatsApp Business:</strong> numeros
@@ -89,7 +89,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
 
       <h2>4. Uso de la API de WhatsApp Business</h2>
       <p>
-        asis.chat utiliza la API de WhatsApp Business de Meta para enviar y
+        Fluws utiliza la API de WhatsApp Business de Meta para enviar y
         recibir mensajes. En relacion con esto:
       </p>
       <ul>
@@ -142,7 +142,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
           <strong>OpenAI:</strong> cuando un agente de IA esta activo, el
           contenido de la conversacion se envia a OpenAI para generar la
           respuesta automatica. Es el unico proveedor de modelos que
-          utilizamos y lo administra asis.chat.
+          utilizamos y lo administra Fluws.
         </li>
         <li>
           <strong>Amazon Web Services:</strong> alojamiento de la
@@ -212,7 +212,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
 
       <h2>9. Cookies y tecnologias similares</h2>
       <p>
-        asis.chat utiliza cookies y almacenamiento local del navegador
+        Fluws utiliza cookies y almacenamiento local del navegador
         unicamente para mantener tu sesion activa y tus preferencias
         (como el idioma). No utilizamos cookies de seguimiento ni de
         publicidad.
@@ -237,14 +237,14 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
         </li>
         <li>
           <strong>Email:</strong>{" "}
-          <a href="mailto:contact@asis.chat">
-            contact@asis.chat
+          <a href="mailto:contact@fluws.com">
+            contact@fluws.com
           </a>
         </li>
         <li>
           <strong>Sitio web:</strong>{" "}
-          <a href="https://asis.chat">
-            https://asis.chat
+          <a href="https://fluws.com">
+            https://fluws.com
           </a>
         </li>
       </ul>
@@ -254,7 +254,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
     <>
       <h2>1. Introduction</h2>
       <p>
-        asis.chat (&quot;we&quot;, &quot;our&quot; or &quot;the
+        Fluws (&quot;we&quot;, &quot;our&quot; or &quot;the
         Platform&quot;) is a WhatsApp communications management platform
         for teams, operated by <strong>{LEGAL_ENTITY.name}</strong>. This
         Privacy Policy describes how we collect, use,
@@ -263,7 +263,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
         by Meta Platforms, Inc.
       </p>
       <p>
-        By using asis.chat, you accept the practices described in this
+        By using Fluws, you accept the practices described in this
         policy. If you disagree, please do not use our services.
       </p>
 
@@ -278,7 +278,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
         <li>
           <strong>AI agent configuration:</strong> business profile,
           instructions, and knowledge bases the user configures for their
-          AI agents. Model provider keys are managed by asis.chat; users do
+          AI agents. Model provider keys are managed by Fluws; users do
           not supply any.
         </li>
         <li>
@@ -333,7 +333,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
 
       <h2>4. Use of the WhatsApp Business API</h2>
       <p>
-        asis.chat uses the Meta WhatsApp Business API to send and receive
+        Fluws uses the Meta WhatsApp Business API to send and receive
         messages. In this regard:
       </p>
       <ul>
@@ -384,7 +384,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
         <li>
           <strong>OpenAI:</strong> when an AI agent is active, conversation
           content is sent to OpenAI to generate the automated reply. It is
-          the only model provider we use, and it is managed by asis.chat.
+          the only model provider we use, and it is managed by Fluws.
         </li>
         <li>
           <strong>Amazon Web Services:</strong> application hosting, file
@@ -450,7 +450,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
 
       <h2>9. Cookies and similar technologies</h2>
       <p>
-        asis.chat uses cookies and browser local storage solely to maintain
+        Fluws uses cookies and browser local storage solely to maintain
         your active session and preferences (such as language). We do not
         use tracking or advertising cookies.
       </p>
@@ -474,14 +474,14 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
         </li>
         <li>
           <strong>Email:</strong>{" "}
-          <a href="mailto:contact@asis.chat">
-            contact@asis.chat
+          <a href="mailto:contact@fluws.com">
+            contact@fluws.com
           </a>
         </li>
         <li>
           <strong>Website:</strong>{" "}
-          <a href="https://asis.chat">
-            https://asis.chat
+          <a href="https://fluws.com">
+            https://fluws.com
           </a>
         </li>
       </ul>

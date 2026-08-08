@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AsisLogo } from "@/components/brand/asis-logo";
+import { FluwsLogo } from "@/components/brand/fluws-logo";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { LanguageToggle } from "@/components/layout/language-toggle";
@@ -17,9 +17,9 @@ export default function PrivacyPolicyPage() {
       <nav className="border-b border-border bg-background">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-3">
-            <AsisLogo size={36} className="text-primary" />
-            <span className="-ml-1 text-xl font-bold tracking-tight text-foreground">
-              asis<span className="text-primary">.chat</span>
+            <FluwsLogo size={36} />
+            <span className="text-xl font-bold tracking-tight text-foreground">
+              Fluws
             </span>
           </Link>
           <div className="flex items-center gap-4">
@@ -53,7 +53,7 @@ export default function PrivacyPolicyPage() {
       <footer className="border-t border-border bg-muted/40 py-8">
         <div className="mx-auto flex max-w-4xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} asis.chat — {t.legal.allRightsReserved}
+            &copy; {new Date().getFullYear()} Fluws — {t.legal.allRightsReserved}
             <br />
             <span className="text-xs">
               {t.legal.operatedBy} {legalEntityLine()}

@@ -122,7 +122,7 @@ export function WebhooksTab({ overview }: { overview: DeveloperOverview | null }
               autoFocus
               value={form.url}
               onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-              placeholder="https://tu-servidor.com/webhooks/asis"
+              placeholder="https://tu-servidor.com/webhooks/fluws"
               type="url"
             />
             <Input

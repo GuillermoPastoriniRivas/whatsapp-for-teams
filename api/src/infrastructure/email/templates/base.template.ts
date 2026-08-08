@@ -13,7 +13,7 @@ export function wrapInLayout(bodyHtml: string, preheader?: string): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>asis.chat</title>
+  <title>Fluws</title>
 </head>
 <body style="margin:0;padding:0;background-color:${GRAY_50};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
   ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;">${preheader}</div>` : ''}
@@ -24,7 +24,7 @@ export function wrapInLayout(bodyHtml: string, preheader?: string): string {
           <!-- Header -->
           <tr>
             <td style="background-color:${TEAL};padding:28px 32px;text-align:center;">
-              <span style="font-size:26px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">asis.chat</span>
+              <span style="font-size:26px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">Fluws</span>
             </td>
           </tr>
           <!-- Body -->
@@ -37,10 +37,10 @@ export function wrapInLayout(bodyHtml: string, preheader?: string): string {
           <tr>
             <td style="padding:24px 32px;border-top:1px solid ${GRAY_300};text-align:center;">
               <p style="margin:0;font-size:12px;color:${GRAY_500};">
-                &copy; ${new Date().getFullYear()} asis.chat &mdash; Plataforma de atenci&oacute;n al cliente
+                &copy; ${new Date().getFullYear()} Fluws &mdash; Plataforma de atenci&oacute;n al cliente
               </p>
               <p style="margin:8px 0 0;font-size:12px;color:${GRAY_500};">
-                <a href="https://asis.chat" style="color:${TEAL};text-decoration:none;">asis.chat</a>
+                <a href="https://fluws.com" style="color:${TEAL};text-decoration:none;">Fluws</a>
               </p>
             </td>
           </tr>

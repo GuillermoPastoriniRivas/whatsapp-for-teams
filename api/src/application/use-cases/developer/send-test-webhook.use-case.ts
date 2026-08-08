@@ -35,7 +35,7 @@ export class SendTestWebhookUseCase {
         type: DeveloperEventType.PING,
         createdAt: new Date().toISOString(),
         data: {
-          message: 'Prueba de webhook de Asis Chat. Si recibiste esto, tu endpoint funciona.',
+          message: 'Prueba de webhook de Fluws. Si recibiste esto, tu endpoint funciona.',
           endpointId,
         },
       },

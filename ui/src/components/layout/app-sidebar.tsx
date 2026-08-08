@@ -15,7 +15,7 @@ import { useConversationStore } from "@/stores/conversation.store";
 import { useBillingStore } from "@/stores/billing.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
-import { AsisLogo } from "@/components/brand/asis-logo";
+import { FluwsLogo } from "@/components/brand/fluws-logo";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { AgentStatusToggle } from "@/components/agent/agent-status-toggle";
 import { NavBadge } from "@/components/layout/nav-badge";
@@ -178,9 +178,9 @@ export function AppSidebar({ className }: { className?: string }) {
 
       {/* App Logo + Brand */}
       <div className={cn("mb-6 flex items-center gap-3", collapsed ? "justify-center px-0" : "px-4")}>
-        <AsisLogo size={40} className="shrink-0 text-primary" />
+        <FluwsLogo size={40} className="shrink-0" />
         {!collapsed && (
-          <span className="text-lg font-bold tracking-tight -ml-1">asis<span className="text-primary">.chat</span></span>
+          <span className="text-lg font-bold tracking-tight">Fluws</span>
         )}
       </div>
 

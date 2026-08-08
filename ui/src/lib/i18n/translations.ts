@@ -187,7 +187,7 @@ const translations = {
     },
     acceptInvite: {
       title: "Bienvenido al equipo",
-      subtitle: "Crea tu contrasena para empezar a usar asis.chat.",
+      subtitle: "Crea tu contrasena para empezar a usar Fluws.",
       createPassword: "Crear contrasena",
       confirmPassword: "Confirmar contrasena",
       submit: "Crear cuenta",
@@ -201,11 +201,11 @@ const translations = {
       invalidLink: "Invitacion invalida",
       invalidLinkDescription: "Este enlace de invitacion no es valido o ya expiro.",
       tagline: "Unite al equipo",
-      taglineDescription: "Tu equipo te invito a colaborar en asis.chat. Crea tu contrasena para empezar.",
+      taglineDescription: "Tu equipo te invito a colaborar en Fluws. Crea tu contrasena para empezar.",
       featureTeam: "Colabora con tu equipo en tiempo real",
     },
     conversations: {
-      emptyTitle: "asis.chat",
+      emptyTitle: "Fluws",
       emptyDescription:
         "Elegi una conversacion para empezar. Todas tus cuentas en un solo lugar.",
       searchPlaceholder: "Buscar conversaciones...",
@@ -716,7 +716,7 @@ const translations = {
       stepBusinessType: "¿Qué tipo de negocio tenés?",
       aiName: "Nombre del asistente",
       aiNamePlaceholder: 'Ej: "Sofi", "Asistente de Lo de Marcos"',
-      aiNameHint: "Así lo vas a identificar dentro de asis.chat.",
+      aiNameHint: "Así lo vas a identificar dentro de Fluws.",
       stepBusinessData: "Datos del negocio",
       businessName: "Nombre del negocio",
       businessNamePlaceholder: 'Ej: "Barbería Don Pedro"',
@@ -945,7 +945,7 @@ const translations = {
       heroTitleHighlight: "WhatsApp",
       heroTitleEnd: " de tu empresa",
       heroSubtitle:
-        "Tus clientes escriben a cualquier hora y esperan respuesta ya. asis.chat contesta con IA en segundos, las 24 horas, y le pasa a tu equipo solo las conversaciones que necesitan una persona.",
+        "Tus clientes escriben a cualquier hora y esperan respuesta ya. Fluws contesta con IA en segundos, las 24 horas, y le pasa a tu equipo solo las conversaciones que necesitan una persona.",
       ctaDemo: "Ver la demo en vivo",
       ctaReassurance: "Entrás al instante: sin registro, sin tarjeta, sin instalar nada.",
       ctaHowItWorks: "Cómo funciona",
@@ -960,7 +960,7 @@ const translations = {
         "De cinco teléfonos y respuestas a mano, a un WhatsApp que se atiende solo",
       featuresLabel: "Funcionalidades",
       featuresTitle: "Lo que tu WhatsApp hace cuando lo automatizás",
-      featuresSubtitle: "Sin funciones inventadas: esto es lo que asis.chat hace hoy. Lo que viene, está marcado.",
+      featuresSubtitle: "Sin funciones inventadas: esto es lo que Fluws hace hoy. Lo que viene, está marcado.",
       ctaTitle: "Dejá de contestar lo mismo todos los días",
       ctaSubtitle:
         "Entrá a la demo y mirá cómo responde la IA, cómo se coordina tu equipo y cómo sale una campaña. Conectar tu primer número lleva minutos.",
@@ -1021,7 +1021,7 @@ const translations = {
       footerPrivacy: "Privacidad",
       footerTerms: "Términos",
       footerRights: "Todos los derechos reservados.",
-      footerOperatedBy: "asis.chat es un servicio operado por",
+      footerOperatedBy: "Fluws es un servicio operado por",
       footerTagline:
         "WhatsApp para empresas: IA que responde sola, bandeja compartida para el equipo y campañas masivas. Todo sobre la API oficial de Meta.",
       aiSuggestion: "La IA ya escribió la respuesta",
@@ -1156,7 +1156,7 @@ const translations = {
       whatsIncluded: "Que incluye",
       included: "Incluido",
       notIncluded: "No incluido",
-      freeTagline: "Para probar asis.chat sin costo",
+      freeTagline: "Para probar Fluws sin costo",
       proTagline: "Para equipos que venden por WhatsApp",
       businessTagline: "Para operaciones en crecimiento",
       agenciesTagline: "Para agencias y partners",
@@ -1188,7 +1188,7 @@ const translations = {
       title: "Verificando tu email",
       loading: "Verificando...",
       successTitle: "Email verificado",
-      successDescription: "Tu cuenta esta activa. Ya podes usar todas las funciones de asis.chat.",
+      successDescription: "Tu cuenta esta activa. Ya podes usar todas las funciones de Fluws.",
       goToApp: "Ir al inbox",
       errorTitle: "Enlace invalido",
       errorDescription: "Este enlace de verificacion no es valido o ya expiro.",
@@ -1199,7 +1199,7 @@ const translations = {
       back: "Atrás",
       continue: "Continuar",
       // step 1
-      welcomeTitle: "Bienvenido a asis.chat",
+      welcomeTitle: "Bienvenido a Fluws",
       welcomeSubtitle: "En unos minutos vas a tener tu primer número de WhatsApp conectado y tu equipo listo para atender.",
       welcomeStart: "Empezar configuración",
       welcomeFeature1: "Conectar tu número de WhatsApp Business",
@@ -1257,7 +1257,7 @@ const translations = {
       advancedOptions: "Opciones avanzadas",
       // step 5
       doneTitle: "¡Todo listo!",
-      doneSubtitle: "Tu workspace de asis.chat está configurado.",
+      doneSubtitle: "Tu workspace de Fluws está configurado.",
       donePhoneConnected: "Número de WhatsApp conectado",
       doneAgentsInvited: "Agentes invitados",
       doneAiConfigured: "Agente IA configurado",
@@ -1276,7 +1276,7 @@ const translations = {
     },
     common: {
       loading: "Cargando...",
-      demoBanner: "Estas explorando el demo de asis.chat",
+      demoBanner: "Estas explorando el demo de Fluws",
       demoCta: "Crea tu cuenta gratis",
       cancel: "Cancelar",
       back: "Volver",
@@ -1294,7 +1294,7 @@ const translations = {
       genericError: "Algo salió mal. Probá de nuevo.",
     },
     pwa: {
-      installTitle: "Instala asis.chat",
+      installTitle: "Instala Fluws",
       installBody:
         "Agrégala a tu pantalla de inicio para abrirla como una app y recibir notificaciones.",
       installAction: "Instalar",
@@ -1309,7 +1309,7 @@ const translations = {
     },
     developers: {
       title: "Desarrolladores",
-      subtitle: "Integrá Asis Chat en tu aplicación: enviá y recibí mensajes por API y suscribite a eventos por webhooks.",
+      subtitle: "Integrá Fluws en tu aplicación: enviá y recibí mensajes por API y suscribite a eventos por webhooks.",
       tabKeys: "Claves de API",
       tabWebhooks: "Webhooks",
       tabPlayground: "Playground",
@@ -1597,7 +1597,7 @@ const translations = {
     },
     acceptInvite: {
       title: "Welcome to the team",
-      subtitle: "Create your password to start using asis.chat.",
+      subtitle: "Create your password to start using Fluws.",
       createPassword: "Create password",
       confirmPassword: "Confirm password",
       submit: "Create account",
@@ -1611,7 +1611,7 @@ const translations = {
       invalidLink: "Invalid invitation",
       invalidLinkDescription: "This invitation link is invalid or has expired.",
       tagline: "Join the team",
-      taglineDescription: "Your team invited you to collaborate on asis.chat. Create your password to get started.",
+      taglineDescription: "Your team invited you to collaborate on Fluws. Create your password to get started.",
       featureTeam: "Collaborate with your team in real time",
     },
     signup: {
@@ -1641,14 +1641,14 @@ const translations = {
       title: "Verifying your email",
       loading: "Verifying...",
       successTitle: "Email verified",
-      successDescription: "Your account is active. You can now use all asis.chat features.",
+      successDescription: "Your account is active. You can now use all Fluws features.",
       goToApp: "Go to inbox",
       errorTitle: "Invalid link",
       errorDescription: "This verification link is invalid or has expired.",
       backToLogin: "Back to login",
     },
     conversations: {
-      emptyTitle: "asis.chat",
+      emptyTitle: "Fluws",
       emptyDescription:
         "Pick a conversation to get started. All your accounts in one place.",
       searchPlaceholder: "Search conversations...",
@@ -2158,7 +2158,7 @@ const translations = {
       stepBusinessType: "What kind of business do you run?",
       aiName: "Assistant name",
       aiNamePlaceholder: 'E.g. "Sofi", "Marcos\' assistant"',
-      aiNameHint: "This is how you'll recognize it inside asis.chat.",
+      aiNameHint: "This is how you'll recognize it inside Fluws.",
       stepBusinessData: "Business details",
       businessName: "Business name",
       businessNamePlaceholder: 'E.g. "Don Pedro Barber Shop"',
@@ -2386,7 +2386,7 @@ const translations = {
       heroTitleHighlight: "WhatsApp",
       heroTitleEnd: "",
       heroSubtitle:
-        "Your customers write at any hour and expect an answer now. asis.chat replies with AI in seconds, around the clock, and hands your team only the conversations that need a person.",
+        "Your customers write at any hour and expect an answer now. Fluws replies with AI in seconds, around the clock, and hands your team only the conversations that need a person.",
       ctaDemo: "See the live demo",
       ctaReassurance: "You're in instantly: no signup, no card, nothing to install.",
       ctaHowItWorks: "How it works",
@@ -2401,7 +2401,7 @@ const translations = {
         "From five phones and hand-typed replies to a WhatsApp that runs itself",
       featuresLabel: "Features",
       featuresTitle: "What your WhatsApp does once you automate it",
-      featuresSubtitle: "No made-up features: this is what asis.chat does today. What's coming is clearly marked.",
+      featuresSubtitle: "No made-up features: this is what Fluws does today. What's coming is clearly marked.",
       ctaTitle: "Stop typing the same answer every day",
       ctaSubtitle:
         "Open the demo and see how the AI replies, how your team coordinates, and how a campaign goes out. Connecting your first number takes minutes.",
@@ -2462,7 +2462,7 @@ const translations = {
       footerPrivacy: "Privacy",
       footerTerms: "Terms",
       footerRights: "All rights reserved.",
-      footerOperatedBy: "asis.chat is a service operated by",
+      footerOperatedBy: "Fluws is a service operated by",
       footerTagline:
         "WhatsApp for business: AI that answers on its own, a shared inbox for your team, and bulk campaigns. All on Meta's official API.",
       aiSuggestion: "The AI already wrote the reply",
@@ -2597,7 +2597,7 @@ const translations = {
       whatsIncluded: "What's included",
       included: "Included",
       notIncluded: "Not included",
-      freeTagline: "Try asis.chat at no cost",
+      freeTagline: "Try Fluws at no cost",
       proTagline: "For teams selling on WhatsApp",
       businessTagline: "For growing operations",
       agenciesTagline: "For agencies and partners",
@@ -2606,7 +2606,7 @@ const translations = {
       skip: "Skip",
       back: "Back",
       continue: "Continue",
-      welcomeTitle: "Welcome to asis.chat",
+      welcomeTitle: "Welcome to Fluws",
       welcomeSubtitle: "In a few minutes you'll have your first WhatsApp number connected and your team ready.",
       welcomeStart: "Start setup",
       welcomeFeature1: "Connect your WhatsApp Business number",
@@ -2660,7 +2660,7 @@ const translations = {
       aiCreatedSuccess: "AI agent created!",
       advancedOptions: "Advanced options",
       doneTitle: "All set!",
-      doneSubtitle: "Your asis.chat workspace is configured.",
+      doneSubtitle: "Your Fluws workspace is configured.",
       donePhoneConnected: "WhatsApp number connected",
       doneAgentsInvited: "Agents invited",
       doneAiConfigured: "AI agent configured",
@@ -2678,7 +2678,7 @@ const translations = {
     },
     common: {
       loading: "Loading...",
-      demoBanner: "You're exploring the asis.chat demo",
+      demoBanner: "You're exploring the Fluws demo",
       demoCta: "Create your free account",
       cancel: "Cancel",
       back: "Back",
@@ -2696,7 +2696,7 @@ const translations = {
       genericError: "Something went wrong. Please try again.",
     },
     pwa: {
-      installTitle: "Install asis.chat",
+      installTitle: "Install Fluws",
       installBody:
         "Add it to your home screen to open it like an app and receive notifications.",
       installAction: "Install",
@@ -2711,7 +2711,7 @@ const translations = {
     },
     developers: {
       title: "Developers",
-      subtitle: "Integrate Asis Chat into your app: send and receive messages via API and subscribe to events with webhooks.",
+      subtitle: "Integrate Fluws into your app: send and receive messages via API and subscribe to events with webhooks.",
       tabKeys: "API keys",
       tabWebhooks: "Webhooks",
       tabPlayground: "Playground",

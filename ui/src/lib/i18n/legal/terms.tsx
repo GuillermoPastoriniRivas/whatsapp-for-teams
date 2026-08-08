@@ -7,7 +7,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
     <>
       <h2>1. Aceptacion de los terminos</h2>
       <p>
-        Al acceder o utilizar asis.chat (&quot;la Plataforma&quot;,
+        Al acceder o utilizar Fluws (&quot;la Plataforma&quot;,
         &quot;el Servicio&quot;), aceptas estar sujeto a estos Terminos y
         Condiciones de Servicio (&quot;Terminos&quot;). Si no estas de
         acuerdo con estos Terminos, no utilices el Servicio. Si utilizas el
@@ -17,7 +17,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
 
       <h2>2. Descripcion del servicio</h2>
       <p>
-        asis.chat es una plataforma de gestion de comunicaciones que permite
+        Fluws es una plataforma de gestion de comunicaciones que permite
         a equipos de trabajo:
       </p>
       <ul>
@@ -60,7 +60,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
       </ul>
 
       <h2>4. Uso aceptable</h2>
-      <p>Al utilizar asis.chat, te comprometes a:</p>
+      <p>Al utilizar Fluws, te comprometes a:</p>
       <ul>
         <li>
           Cumplir con todas las leyes y regulaciones aplicables, incluyendo
@@ -132,7 +132,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
 
       <h2>6. Agentes de inteligencia artificial</h2>
       <p>
-        asis.chat permite configurar agentes de IA que utilizan modelos de
+        Fluws permite configurar agentes de IA que utilizan modelos de
         lenguaje de terceros. En relacion con esta funcionalidad:
       </p>
       <ul>
@@ -147,7 +147,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
         </li>
         <li>
           Las respuestas generadas por los agentes de IA son tu
-          responsabilidad. asis.chat no garantiza la exactitud, adecuacion
+          responsabilidad. Fluws no garantiza la exactitud, adecuacion
           ni legalidad del contenido generado por la IA.
         </li>
         <li>
@@ -164,8 +164,8 @@ export const termsContent: Record<Locale, React.ReactNode> = {
       <h2>7. Propiedad intelectual</h2>
       <ul>
         <li>
-          asis.chat y todo su contenido, funcionalidades y tecnologia son
-          propiedad de asis.chat y estan protegidos por las leyes de
+          Fluws y todo su contenido, funcionalidades y tecnologia son
+          propiedad de Fluws y estan protegidos por las leyes de
           propiedad intelectual aplicables.
         </li>
         <li>
@@ -200,7 +200,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
           libre de errores.
         </li>
         <li>
-          En la maxima medida permitida por la ley, asis.chat no sera
+          En la maxima medida permitida por la ley, Fluws no sera
           responsable por danos indirectos, incidentales, especiales,
           consecuentes o punitivos, ni por la perdida de datos, beneficios,
           ingresos o oportunidades de negocio.
@@ -241,7 +241,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
       <h2>12. Ley aplicable</h2>
       <p>
         Estos Terminos se rigen e interpretan de acuerdo con las leyes
-        aplicables en la jurisdiccion donde opera asis.chat. Cualquier
+        aplicables en la jurisdiccion donde opera Fluws. Cualquier
         disputa sera sometida a la jurisdiccion de los tribunales
         competentes.
       </p>
@@ -256,14 +256,14 @@ export const termsContent: Record<Locale, React.ReactNode> = {
         </li>
         <li>
           <strong>Email:</strong>{" "}
-          <a href="mailto:contact@asis.chat">
-            contact@asis.chat
+          <a href="mailto:contact@fluws.com">
+            contact@fluws.com
           </a>
         </li>
         <li>
           <strong>Sitio web:</strong>{" "}
-          <a href="https://asis.chat">
-            https://asis.chat
+          <a href="https://fluws.com">
+            https://fluws.com
           </a>
         </li>
       </ul>
@@ -273,7 +273,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
     <>
       <h2>1. Acceptance of terms</h2>
       <p>
-        By accessing or using asis.chat (&quot;the Platform&quot;,
+        By accessing or using Fluws (&quot;the Platform&quot;,
         &quot;the Service&quot;), you agree to be bound by these Terms and
         Conditions of Service (&quot;Terms&quot;). If you do not agree with
         these Terms, do not use the Service. If you use the Service on
@@ -283,7 +283,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
 
       <h2>2. Description of the service</h2>
       <p>
-        asis.chat is a communications management platform that enables
+        Fluws is a communications management platform that enables
         teams to:
       </p>
       <ul>
@@ -325,7 +325,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
       </ul>
 
       <h2>4. Acceptable use</h2>
-      <p>By using asis.chat, you agree to:</p>
+      <p>By using Fluws, you agree to:</p>
       <ul>
         <li>
           Comply with all applicable laws and regulations, including data
@@ -396,7 +396,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
 
       <h2>6. Artificial intelligence agents</h2>
       <p>
-        asis.chat allows configuring AI agents that use third-party
+        Fluws allows configuring AI agents that use third-party
         language models. Regarding this functionality:
       </p>
       <ul>
@@ -411,7 +411,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
         </li>
         <li>
           Responses generated by AI agents are your responsibility.
-          asis.chat does not guarantee the accuracy, suitability, or
+          Fluws does not guarantee the accuracy, suitability, or
           legality of AI-generated content.
         </li>
         <li>
@@ -427,8 +427,8 @@ export const termsContent: Record<Locale, React.ReactNode> = {
       <h2>7. Intellectual property</h2>
       <ul>
         <li>
-          asis.chat and all its content, features, and technology are owned
-          by asis.chat and protected by applicable intellectual property
+          Fluws and all its content, features, and technology are owned
+          by Fluws and protected by applicable intellectual property
           laws.
         </li>
         <li>
@@ -463,7 +463,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
           secure, or error-free.
         </li>
         <li>
-          To the maximum extent permitted by law, asis.chat shall not be
+          To the maximum extent permitted by law, Fluws shall not be
           liable for indirect, incidental, special, consequential, or
           punitive damages, or for loss of data, profits, revenue, or
           business opportunities.
@@ -503,7 +503,7 @@ export const termsContent: Record<Locale, React.ReactNode> = {
       <h2>12. Governing law</h2>
       <p>
         These Terms are governed by and construed in accordance with the
-        applicable laws in the jurisdiction where asis.chat operates. Any
+        applicable laws in the jurisdiction where Fluws operates. Any
         dispute shall be submitted to the jurisdiction of the competent
         courts.
       </p>
@@ -518,14 +518,14 @@ export const termsContent: Record<Locale, React.ReactNode> = {
         </li>
         <li>
           <strong>Email:</strong>{" "}
-          <a href="mailto:contact@asis.chat">
-            contact@asis.chat
+          <a href="mailto:contact@fluws.com">
+            contact@fluws.com
           </a>
         </li>
         <li>
           <strong>Website:</strong>{" "}
-          <a href="https://asis.chat">
-            https://asis.chat
+          <a href="https://fluws.com">
+            https://fluws.com
           </a>
         </li>
       </ul>

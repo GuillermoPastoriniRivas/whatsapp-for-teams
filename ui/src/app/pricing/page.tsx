@@ -6,7 +6,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { Button } from "@/components/ui/button";
-import { AsisLogo } from "@/components/brand/asis-logo";
+import { FluwsLogo } from "@/components/brand/fluws-logo";
 import { PlanCard } from "@/components/shared/plan-card";
 import { PlanComparison } from "@/components/shared/plan-comparison";
 import { ArrowLeft } from "lucide-react";
@@ -56,9 +56,9 @@ export default function PricingPage() {
       <nav className="sticky top-0 z-(--z-nav) border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-3">
-            <AsisLogo size={36} className="text-primary" />
-            <span className="-ml-1 text-xl font-bold tracking-tight text-foreground">
-              asis<span className="text-primary">.chat</span>
+            <FluwsLogo size={36} />
+            <span className="text-xl font-bold tracking-tight text-foreground">
+              Fluws
             </span>
           </Link>
           <div className="flex items-center gap-4">
@@ -105,7 +105,7 @@ export default function PricingPage() {
       {/* Footer */}
       <footer className="border-t border-border bg-background py-8">
         <div className="mx-auto max-w-7xl px-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} asis.chat — {t.landing.footerRights}
+          &copy; {new Date().getFullYear()} Fluws — {t.landing.footerRights}
         </div>
       </footer>
     </div>

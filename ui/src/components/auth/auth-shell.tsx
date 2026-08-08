@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, Bot, MessageSquare, Users, type LucideIcon } from "lucide-react";
 
-import { AsisLogo } from "@/components/brand/asis-logo";
+import { FluwsLogo } from "@/components/brand/fluws-logo";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
@@ -72,10 +72,10 @@ export function AuthShell({
       {brandPanel && (
         <aside className="hidden w-1/2 flex-col justify-between bg-(--asis-auth-panel) p-10 text-(--asis-auth-panel-foreground) md:flex lg:p-14">
           <div className="flex items-center gap-2">
-            <AsisLogo size={44} className="text-primary" />
-            <span className="-ml-1 text-xl font-bold">
-              asis<span className="opacity-80">.chat</span>
-            </span>
+            {/* El panel ya es teal: el degradado de marca desaparecería
+                contra el fondo, así que acá va la variante monocroma. */}
+            <FluwsLogo size={44} variant="mono" />
+            <span className="text-xl font-bold">Fluws</span>
           </div>
 
           <div className="space-y-8">
@@ -102,7 +102,7 @@ export function AuthShell({
             )}
           </div>
 
-          <p className="text-xs opacity-50">&copy; {year} asis.chat</p>
+          <p className="text-xs opacity-50">&copy; {year} Fluws</p>
         </aside>
       )}
 
@@ -123,9 +123,9 @@ export function AuthShell({
             <LanguageToggle />
             {brandPanel && (
               <div className="flex items-center gap-1.5 md:hidden">
-                <AsisLogo size={36} className="text-primary" />
+                <FluwsLogo size={36} />
                 <span className="text-lg font-bold">
-                  asis<span className="text-primary">.chat</span>
+                  Fluws
                 </span>
               </div>
             )}
@@ -135,7 +135,7 @@ export function AuthShell({
         <div className="flex flex-1 items-center justify-center px-5 pb-8 sm:px-8">
           <div className="w-full max-w-sm">
             <div className={cn("mb-10 flex flex-col items-center", brandPanel && "md:hidden")}>
-              <AsisLogo size={72} className="text-primary" />
+              <FluwsLogo size={72} />
             </div>
 
             <div className={cn("mb-8", centered && "text-center")}>
@@ -154,7 +154,7 @@ export function AuthShell({
 
             {!brandPanel && (
               <p className="mt-10 text-center text-xs text-muted-foreground">
-                &copy; {year} asis.chat
+                &copy; {year} Fluws
               </p>
             )}
           </div>

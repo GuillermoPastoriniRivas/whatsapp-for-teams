@@ -28,7 +28,7 @@ import {
   KeyRound,
   TerminalSquare,
 } from "lucide-react";
-import { AsisLogo } from "@/components/brand/asis-logo";
+import { FluwsLogo } from "@/components/brand/fluws-logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { PlanCard } from "@/components/shared/plan-card";
 import { PlanComparison } from "@/components/shared/plan-comparison";
@@ -225,9 +225,9 @@ export default function LandingPage() {
       <nav className="fixed top-0 z-(--z-nav) w-full border-b border-border/60 bg-background/80 backdrop-blur-xl transition-all">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <AsisLogo size={30} className="text-primary sm:hidden" />
-            <AsisLogo size={36} className="hidden text-primary sm:block" />
-            <span className="-ml-1 text-lg font-bold tracking-tight text-foreground sm:text-xl">asis<span className="text-primary">.chat</span></span>
+            <FluwsLogo size={30} className="sm:hidden" />
+            <FluwsLogo size={36} className="hidden sm:block" />
+            <span className="text-lg font-bold tracking-tight text-foreground sm:text-xl">Fluws</span>
           </div>
 
           <div className="hidden items-center gap-5 text-sm font-medium text-muted-foreground md:flex lg:gap-8">
@@ -337,7 +337,7 @@ export default function LandingPage() {
                   <div className="h-3 w-3 rounded-full bg-green-400" />
                 </div>
                 <div className="mx-auto flex h-6 max-w-[200px] flex-1 items-center justify-center rounded-md border border-border bg-card px-3 text-xs text-muted-foreground shadow-sm">
-                  <Lock className="mr-1.5 h-3 w-3" /> app.asis.chat
+                  <Lock className="mr-1.5 h-3 w-3" /> app.fluws.com
                 </div>
                 <div className="flex gap-1.5 opacity-0">
                   <div className="h-3 w-3 rounded-full bg-red-400" />
@@ -349,7 +349,7 @@ export default function LandingPage() {
                 {/* Sidebar mock */}
                 <div className="hidden w-64 flex-col border-r border-border bg-muted/50 md:flex">
                   <div className="flex items-center gap-3 border-b border-border p-4">
-                    <AsisLogo size={32} className="text-primary" />
+                    <FluwsLogo size={32} />
                     <div className="h-4 w-24 rounded bg-muted-foreground/20" />
                   </div>
                   <div className="space-y-1 p-3">
@@ -607,7 +607,7 @@ export default function LandingPage() {
                 <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-primary">POST /v1/messages</span>
               </div>
               <pre className="overflow-x-auto p-5 font-mono text-[13px] leading-6 text-muted-foreground">
-                <code>{`curl -X POST https://api.asis.chat/v1/messages \\
+                <code>{`curl -X POST https://api.fluws.com/v1/messages \\
   -H "X-Api-Key: ak_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -696,7 +696,7 @@ export default function LandingPage() {
       <section className="relative isolate border-t border-border px-6 py-24 sm:py-32 lg:px-8">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-primary/5 via-muted/40 to-muted/40" />
         <div className="mx-auto max-w-4xl text-center">
-           <AsisLogo size={64} className="mx-auto mb-6 text-primary" />
+           <FluwsLogo size={64} className="mx-auto mb-6" />
           <h2 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">
             {t.landing.ctaTitle}
           </h2>
@@ -719,8 +719,8 @@ export default function LandingPage() {
           <div className="xl:grid xl:grid-cols-3 xl:gap-8">
             <div className="space-y-8">
               <div className="flex items-center gap-2">
-                 <AsisLogo size={32} className="text-primary" />
-                 <span className="-ml-1 text-xl font-bold text-foreground">asis<span className="text-primary">.chat</span></span>
+                 <FluwsLogo size={32} />
+                 <span className="text-xl font-bold text-foreground">Fluws</span>
               </div>
               <p className="max-w-xs text-sm leading-6 text-muted-foreground">
                 {t.landing.footerTagline}
@@ -751,7 +751,7 @@ export default function LandingPage() {
                 <div>
                   <h3 className="text-sm leading-6 font-semibold text-foreground">{t.landing.footerCompany}</h3>
                   <ul role="list" className="mt-6 space-y-4">
-                    <li><a href="mailto:contact@asis.chat" className={FOOTER_LINK}>{t.landing.footerContact}</a></li>
+                    <li><a href="mailto:contact@fluws.com" className={FOOTER_LINK}>{t.landing.footerContact}</a></li>
                     <li><a href="https://wa.me/5493442670825" target="_blank" rel="noopener noreferrer" className={FOOTER_LINK}>{t.landing.footerWhatsapp}</a></li>
                     <li><a href="https://www.linkedin.com/in/guillermopastorini/" target="_blank" rel="noopener noreferrer" className={FOOTER_LINK}>{t.landing.footerLinkedin}</a></li>
                   </ul>
@@ -768,7 +768,7 @@ export default function LandingPage() {
           </div>
           <div className="mt-16 border-t border-border pt-8 text-center sm:mt-20 lg:mt-24">
             <p className="text-sm leading-5 text-muted-foreground">
-              &copy; {new Date().getFullYear()} asis.chat — {t.landing.footerRights} Construido por{" "}
+              &copy; {new Date().getFullYear()} Fluws — {t.landing.footerRights} Construido por{" "}
               <a href="https://www.linkedin.com/in/guillermopastorini/" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground transition-colors hover:text-primary">Guillermo</a>.
             </p>
             {/* Nombre legal del titular: la verificacion de negocio de Meta

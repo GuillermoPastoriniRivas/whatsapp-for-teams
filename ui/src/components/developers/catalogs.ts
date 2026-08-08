@@ -61,7 +61,7 @@ export const ENDPOINT_CATALOG: CatalogEndpoint[] = [
     summary: { es: "Enviar mensaje a un número", en: "Send a message to a phone number" },
     bodyExample: {
       to: "+59891234567",
-      body: "Hola desde la API de Asis Chat 👋",
+      body: "Hola desde la API de Fluws 👋",
     },
   },
   {
