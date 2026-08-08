@@ -129,8 +129,8 @@
   --card-foreground: oklch(0.145 0.015 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0.015 260);
-  --primary: oklch(0.771 0.179 152.4);
-  --primary-foreground: oklch(0.167 0.012 254.2);
+  --primary: oklch(0.480 0.150 145.0);
+  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.968 0.007 247);
   --secondary-foreground: oklch(0.280 0.020 260);
   --muted: oklch(0.968 0.007 247);
@@ -140,7 +140,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.900 0.010 250);
   --input: oklch(0.900 0.010 250);
-  --ring: oklch(0.771 0.179 152.4);
+  --ring: oklch(0.480 0.150 145.0);
   /*
    * Serie categórica de los gráficos, en orden fijo: una serie nunca cambia de
    * color porque cambió su posición. Los tres últimos slots eran los grises que
@@ -159,12 +159,12 @@
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0.005 250);
   --sidebar-foreground: oklch(0.145 0.015 260);
-  --sidebar-primary: oklch(0.771 0.179 152.4);
-  --sidebar-primary-foreground: oklch(0.167 0.012 254.2);
-  --sidebar-accent: oklch(0.771 0.179 152.4 / 10%);
-  --sidebar-accent-foreground: oklch(0.771 0.179 152.4);
+  --sidebar-primary: oklch(0.480 0.150 145.0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.480 0.150 145.0 / 10%);
+  --sidebar-accent-foreground: oklch(0.480 0.150 145.0);
   --sidebar-border: oklch(0.900 0.010 250);
-  --sidebar-ring: oklch(0.771 0.179 152.4);
+  --sidebar-ring: oklch(0.480 0.150 145.0);
 
   /* asis.chat custom tokens */
   --asis-bubble-outbound: #DBEAFE;
@@ -177,17 +177,20 @@
    * es el negro. El panel invierte con el tema, el formulario de al lado
    * también, y así ninguno de los dos queda encendido contra el otro.
    *
-   * OJO: sobre el verde el contenido va OSCURO, no blanco. El verde de marca da
-   * 1.93:1 contra blanco y 9.98:1 contra el negro de marca. Por eso acá el
-   * foreground es tinta y el chip es un velo negro — al revés que en oscuro.
+   * El verde de marca se eligió por optimización, no a ojo: es el que queda más
+   * lejos de Flow y de WhatsApp —las dos colisiones detectadas— entre los que
+   * soportan texto BLANCO encima. Da 6.13:1 contra blanco, así que sirve para
+   * las tres cosas que antes se peleaban: fondo de panel con texto blanco,
+   * fondo de botón con texto blanco, y color de texto sobre fondo blanco.
    *
    * Consecuencia para quien toque el shell: sobre este panel el símbolo va en
    * `variant="mono"` y el wordmark en `tone="ink"`, para que los dos tomen el
-   * foreground del panel. En sus colores de marca, sobre verde, desaparecen.
+   * foreground del panel. En sus colores de marca, verde sobre verde,
+   * desaparecen.
    */
-  --asis-auth-panel: oklch(0.771 0.179 152.4);
-  --asis-auth-panel-foreground: oklch(0.167 0.012 254.2);
-  --asis-auth-panel-chip: oklch(0 0 0 / 12%);
+  --asis-auth-panel: oklch(0.480 0.150 145.0);
+  --asis-auth-panel-foreground: oklch(0.985 0 0);
+  --asis-auth-panel-chip: oklch(1 0 0 / 18%);
 
   /*
    * Escala de apilado. Única fuente de verdad: quien necesite un z-index usa
@@ -223,7 +226,7 @@
   --card-foreground: oklch(0.950 0 0);
   --popover: oklch(0.200 0.020 260);
   --popover-foreground: oklch(0.950 0 0);
-  --primary: oklch(0.771 0.179 152.4);
+  --primary: oklch(0.750 0.150 145.0);
   --primary-foreground: oklch(0.150 0.020 260);
   --secondary: oklch(0.240 0.020 260);
   --secondary-foreground: oklch(0.950 0 0);
@@ -234,7 +237,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.771 0.179 152.4);
+  --ring: oklch(0.750 0.150 145.0);
   /*
    * El oscuro no es un reflejo automático del claro: son pasos propios,
    * validados contra la superficie oscura. Los del claro quedaban demasiado
@@ -247,12 +250,12 @@
   --chart-5: oklch(0.660 0.130 130);
   --sidebar: oklch(0.170 0.020 260);
   --sidebar-foreground: oklch(0.950 0 0);
-  --sidebar-primary: oklch(0.771 0.179 152.4);
-  --sidebar-primary-foreground: oklch(0.167 0.012 254.2);
-  --sidebar-accent: oklch(0.771 0.179 152.4 / 12%);
-  --sidebar-accent-foreground: oklch(0.771 0.179 152.4);
+  --sidebar-primary: oklch(0.750 0.150 145.0);
+  --sidebar-primary-foreground: oklch(0.150 0.020 260);
+  --sidebar-accent: oklch(0.750 0.150 145.0 / 12%);
+  --sidebar-accent-foreground: oklch(0.750 0.150 145.0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.771 0.179 152.4);
+  --sidebar-ring: oklch(0.750 0.150 145.0);
 
   /* asis.chat custom tokens */
   --asis-bubble-outbound: #1E3A5F;

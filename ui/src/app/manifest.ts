@@ -17,7 +17,7 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#ffffff",
     // El verde de marca. Va en hex porque el manifest lo lee el sistema
     // operativo, no el navegador: no puede resolver var(--primary).
-    theme_color: "#3ED47A",
+    theme_color: "#02721C",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
