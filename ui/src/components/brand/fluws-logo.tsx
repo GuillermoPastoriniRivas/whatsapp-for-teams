@@ -35,7 +35,7 @@ const CORE_R = 54;
  * Se dibuja con relleno Y trazo del mismo color: es la forma más simple de
  * redondearle las esquinas a un triángulo en SVG, y deja la patita con el mismo
  * acabado que los caps redondos de la órbita. */
-const TAIL_PATH = "M193.7 383.6L94.9 411.6L128.4 318.3Z";
+const TAIL_PATH = "M179.3 383.7L94.9 411.6L125.7 328.2Z";
 const TAIL_STROKE = ORBIT_STROKE;
 
 /* Bbox real, contando los caps de la órbita y el trazo de la patita:
