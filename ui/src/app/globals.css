@@ -177,7 +177,10 @@
    * es el negro. El panel invierte con el tema, el formulario de al lado
    * también, y así ninguno de los dos queda encendido contra el otro.
    *
-   * El verde de marca se eligió por optimización, no a ojo: es el que queda más
+   * OJO: el panel NO usa el verde de marca tal cual. Usa el mismo tono más
+   * claro —oklch(0.750 0.110 165)— porque sobre el verde de marca el texto
+   * oscuro da 3.78:1 y no llega; sobre este da 9.28:1. El verde de marca se
+   * eligió por optimización, no a ojo: es el que queda más
    * lejos de Flow y de WhatsApp —las dos colisiones detectadas— entre los que
    * soportan texto BLANCO encima. Da 5.08:1 contra blanco, así que sirve para
    * las tres cosas que antes se peleaban: fondo de panel con texto blanco,
@@ -188,9 +191,9 @@
    * foreground del panel. En sus colores de marca, verde sobre verde,
    * desaparecen.
    */
-  --asis-auth-panel: oklch(0.525 0.110 165.0);
-  --asis-auth-panel-foreground: oklch(0.985 0 0);
-  --asis-auth-panel-chip: oklch(1 0 0 / 18%);
+  --asis-auth-panel: oklch(0.750 0.110 165.0);
+  --asis-auth-panel-foreground: oklch(0.167 0.012 254.2);
+  --asis-auth-panel-chip: oklch(0 0 0 / 12%);
 
   /*
    * Escala de apilado. Única fuente de verdad: quien necesite un z-index usa
