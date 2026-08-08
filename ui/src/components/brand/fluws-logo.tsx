@@ -46,7 +46,7 @@ const MARK_VIEWBOX = "70 94 357 343";
 /** Verde de marca del brand board. Va fijo y no como token: es el ícono de la
  *  marca y no cambia con el tema. Excepción deliberada a la regla de
  *  solo-tokens de DESIGN.md. */
-export const FLUWS_GREEN = "#18C7A5";
+export const FLUWS_GREEN = "#3ED47A";
 /** Negro de marca. También el color del wordmark sobre fondo claro. */
 export const FLUWS_INK = "#0B0F14";
 
