@@ -1,41 +1,54 @@
-/* Marca Fluws: la horquilla — un tallo que se abre en dos ramas hacia la
-   derecha. Es el gesto del producto (una conversación que se bifurca en un
-   flujo), así que se dibuja con trazo y caps redondos, no con relleno.
+/* Marca Fluws: el grafo — un nodo que dispara otros dos. Es el gesto del
+   producto (un paso de la automatización que abre dos caminos), dibujado con
+   los nodos macizos y las aristas en trazo con caps redondos.
 
-   OJO: esto está reconstruido a partir de una captura del arte, no calcado del
-   archivo original. La convención del repo es que el arte manda y el SVG es la
-   copia (ver la nota de marca en mdvault). Cuando aparezca el PNG/SVG en alta,
-   hay que volver a medir: geometría y paradas del degradado son estimaciones. */
+   OJO, dos cosas heredadas de cómo se llegó acá:
+
+   1. La geometría es una construcción propia, no un calco del arte que vino con
+      el dominio (aquel era una horquilla, sin nodos). La convención del repo es
+      que el arte manda y el SVG es la copia; acá no hay arte que mande todavía.
+   2. La silueta es muy cercana al glifo de compartir de iOS y Android. Está
+      asumido a propósito, no es un descuido: se eligió sabiéndolo. Si algún día
+      molesta, lo que lo despega es mover los nodos de destino fuera del eje
+      simétrico o cambiar el nodo de origen de círculo a otra forma. */
 
 import { useId } from "react";
 
-/* Espacio de 512. El tallo entra por la izquierda a media altura y se abre en
-   dos ramas simétricas.
+/* Espacio de 512. Los radios son de la LÍNEA MEDIA del anillo: el borde de
+   afuera queda a r + STROKE/2.
 
-   Proporción sacada del arte: alto 270 y ancho 343 con los caps incluidos
-   (razón 1.27), de donde salen el arranque del tallo en x=116 y las puntas en
-   x=396, y=256±104.
+   Con los nodos huecos hubo que agrandarlos. Un anillo necesita que el hueco
+   sea comparable al grosor para leerse: con los radios de la versión maciza
+   (50 y 44) el agujero quedaba en 24px contra 100 de diámetro y a simple vista
+   volvía a ser un punto lleno. */
+const STROKE = 36;
+const NODE_IN = { cx: 132, cy: 256, r: 52 };
+const NODE_UP = { cx: 372, cy: 152, r: 46 };
+const NODE_DOWN = { cx: 372, cy: 360, r: 46 };
 
-   El primer punto de control se queda pegado al cruce (x=276, apenas 36 más a
-   la derecha) a propósito: si se estira, las ramas se abrazan a la horizontal y
-   la bifurcación engorda hasta parecer una mancha. El segundo cae un poco por
-   fuera de la recta cruce→punta, que es lo que le da el arqueo suave. */
-const STEM_PATH = "M116 256H272";
-const UPPER_ARM = "M272 256C304 256 336 212 396 152";
-const LOWER_ARM = "M272 256C304 256 336 300 396 360";
+/* Aristas RECTAS, sobre la línea que une los centros, recortadas al borde de
+   cada anillo. Los extremos entran un poco en el trazo del anillo para que el
+   cap redondo quede tapado y no asome dentro del hueco.
 
-/** Grosor del trazo en el espacio de 512, con cap redondo. */
-const STROKE = 62;
+   Se probaron curvas saliendo horizontales del nodo de origen y no va: las dos
+   arrancan tangentes a la horizontal, se superponen los primeros ~60 y forman
+   un tronco grueso que a simple vista parece un cruce en X. Rectas además
+   aguantan mejor los tamaños chicos. */
+const EDGE_UP = "M204 225L306 180";
+const EDGE_DOWN = "M204 287L306 332";
 
-/* Bbox real del glifo con los caps incluidos: x 85→427, y 121→391. El viewBox
-   de `mark` lo encuadra con un respiro de 6, para que el glifo no nade dentro
-   de la caja cuando se renderiza chico. */
-const MARK_VIEWBOX = "79 115 354 282";
+/* Bbox real del glifo: x 62→436, y 88→424 (lo definen los bordes de afuera de
+   los anillos, no las aristas). El viewBox de `mark` lo encuadra con un respiro
+   de 6, para que el glifo no nade dentro de la caja cuando se renderiza chico. */
+const MARK_VIEWBOX = "56 82 386 348";
 
-/* Teal de marca muestreado del arte: oscuro en el tallo, mint en las puntas.
-   Van fijos y no como tokens: es el ícono de la marca y no cambia con el tema.
-   Misma excepción deliberada a la regla de solo-tokens de DESIGN.md que tenía
-   el logo anterior. */
+/** Centro real del bbox. No es 256 en x: el nodo de origen es más grande que
+ *  los de destino y corre el peso a la izquierda. */
+const GLYPH_CENTER = { x: 249, y: 256 };
+
+/* Teal de marca muestreado del arte original: oscuro a la izquierda, mint a la
+   derecha. Van fijos y no como tokens: es el ícono de la marca y no cambia con
+   el tema. Excepción deliberada a la regla de solo-tokens de DESIGN.md. */
 const TEAL_DARK = "#0FA292";
 const TEAL_MID = "#23C7A6";
 const TEAL_LIGHT = "#4AE4BC";
@@ -49,15 +62,29 @@ interface FluwsLogoProps {
   size?: number;
   className?: string;
   /**
-   * "mark" = la horquilla sola sobre transparente, como en el arte. Lleva el
-   *          degradado de marca fijo: no toma `currentColor` ni sigue al tema.
-   * "mono" = la misma horquilla en `currentColor`, para fondos de color donde
-   *          el teal desaparecería contra el fondo (el panel de auth, por
-   *          ejemplo, que ya es teal). Se tiñe con `text-*`.
-   * "app"  = la horquilla en blanco sobre el cuadrado teal; es la que se usa
-   *          para generar los íconos de PWA y el favicon.
+   * "mark" = el grafo sobre transparente. Lleva el degradado de marca fijo: no
+   *          toma `currentColor` ni sigue al tema.
+   * "mono" = el mismo grafo en `currentColor`, para fondos de color donde el
+   *          teal desaparecería contra el fondo (el panel de auth, por ejemplo,
+   *          que ya es teal). Se tiñe con `text-*`.
+   * "app"  = el grafo en blanco sobre el cuadrado teal; es la que se usa para
+   *          generar los íconos de PWA y el favicon.
    */
   variant?: "mark" | "mono" | "app";
+}
+
+/** Todo el glifo es trazo: nodos huecos y aristas con el mismo grosor. Las
+ *  aristas van primero para que los anillos les tapen los caps. */
+function Glyph({ color }: { color: string }) {
+  return (
+    <g stroke={color} strokeWidth={STROKE} strokeLinecap="round" fill="none">
+      <path d={EDGE_UP} />
+      <path d={EDGE_DOWN} />
+      <circle cx={NODE_IN.cx} cy={NODE_IN.cy} r={NODE_IN.r} />
+      <circle cx={NODE_UP.cx} cy={NODE_UP.cy} r={NODE_UP.r} />
+      <circle cx={NODE_DOWN.cx} cy={NODE_DOWN.cy} r={NODE_DOWN.r} />
+    </g>
+  );
 }
 
 export function FluwsLogo({ size = 40, className, variant = "mark" }: FluwsLogoProps) {
@@ -86,14 +113,9 @@ export function FluwsLogo({ size = 40, className, variant = "mark" }: FluwsLogoP
         {/* El glifo al 72% para que respire dentro del cuadrado redondeado y no
             se coma el radio de la máscara con la que se generan los íconos. */}
         <g
-          transform="translate(256 256) scale(0.72) translate(-256 -256)"
-          stroke="white"
-          strokeWidth={STROKE}
-          strokeLinecap="round"
+          transform={`translate(256 256) scale(0.72) translate(${-GLYPH_CENTER.x} ${-GLYPH_CENTER.y})`}
         >
-          <path d={STEM_PATH} />
-          <path d={UPPER_ARM} />
-          <path d={LOWER_ARM} />
+          <Glyph color="white" />
         </g>
       </svg>
     );
@@ -110,8 +132,8 @@ export function FluwsLogo({ size = 40, className, variant = "mark" }: FluwsLogoP
     >
       {variant === "mark" && (
         <defs>
-          {/* Casi horizontal: en el arte lo oscuro es el tallo (izquierda) y
-              las dos puntas son mint, así que x pesa mucho más que y. */}
+          {/* Casi horizontal: en el arte lo oscuro está a la izquierda y lo
+              mint a la derecha, así que x pesa mucho más que y. */}
           <linearGradient id={gradientId} x1="0" y1="0.6" x2="1" y2="0.25">
             <stop offset="0" stopColor={TEAL_DARK} />
             <stop offset="0.5" stopColor={TEAL_MID} />
@@ -120,15 +142,7 @@ export function FluwsLogo({ size = 40, className, variant = "mark" }: FluwsLogoP
         </defs>
       )}
 
-      <g
-        stroke={variant === "mono" ? "currentColor" : `url(#${gradientId})`}
-        strokeWidth={STROKE}
-        strokeLinecap="round"
-      >
-        <path d={STEM_PATH} />
-        <path d={UPPER_ARM} />
-        <path d={LOWER_ARM} />
-      </g>
+      <Glyph color={variant === "mono" ? "currentColor" : `url(#${gradientId})`} />
     </svg>
   );
 }
