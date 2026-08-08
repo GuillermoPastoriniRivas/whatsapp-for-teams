@@ -73,12 +73,13 @@ export function AuthShell({
       {brandPanel && (
         <aside className="hidden w-1/2 flex-col justify-between bg-(--asis-auth-panel) p-10 text-(--asis-auth-panel-foreground) md:flex lg:p-14">
           <div className="flex items-center gap-2">
-            {/* El panel es el negro de marca, así que acá va el símbolo en su
-                verde: 8.92:1 de contraste y es la composición del brand board.
-                La variante `mono` queda para fondos de color donde el verde sí
-                desaparecería. */}
-            <FluwsLogo size={44} />
-            <FluwsWordmark className="text-xl" />
+            {/* El panel cambia de color con el tema: verde en claro, negro en
+                oscuro. Por eso acá el símbolo y el wordmark NO van en sus
+                colores de marca — sobre el verde el verde desaparece. Los dos
+                toman el foreground del panel, que ya está elegido para dar
+                contraste contra cada fondo. */}
+            <FluwsLogo size={44} variant="mono" />
+            <FluwsWordmark className="text-xl" tone="ink" />
           </div>
 
           <div className="space-y-8">

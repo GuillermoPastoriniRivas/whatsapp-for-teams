@@ -173,17 +173,21 @@
   --asis-surface-panel: #F8FAFB;
 
   /*
-   * Panel de marca de login/registro: el negro de marca (#0B0F14) en los dos
-   * temas, con el símbolo verde encima. Es la composición del brand board.
+   * Panel de marca de login/registro. En claro es el VERDE de marca; en oscuro
+   * es el negro. El panel invierte con el tema, el formulario de al lado
+   * también, y así ninguno de los dos queda encendido contra el otro.
    *
-   * Sigue con tokens propios y no usa `--primary` de fondo por dos razones: el
-   * verde de marca da 2.15:1 contra texto blanco, así que no puede ser una
-   * superficie con texto encima; y `--primary` se invierte entre temas, lo que
-   * dejaba media pantalla encendida al lado de un formulario negro.
+   * OJO: sobre el verde el contenido va OSCURO, no blanco. El verde de marca da
+   * 2.15:1 contra blanco y 8.92:1 contra el negro de marca. Por eso acá el
+   * foreground es tinta y el chip es un velo negro — al revés que en oscuro.
+   *
+   * Consecuencia para quien toque el shell: sobre este panel el símbolo va en
+   * `variant="mono"` y el wordmark en `tone="ink"`, para que los dos tomen el
+   * foreground del panel. En sus colores de marca, sobre verde, desaparecen.
    */
-  --asis-auth-panel: oklch(0.167 0.012 254.2);
-  --asis-auth-panel-foreground: oklch(0.985 0 0);
-  --asis-auth-panel-chip: oklch(1 0 0 / 15%);
+  --asis-auth-panel: oklch(0.742 0.138 174.2);
+  --asis-auth-panel-foreground: oklch(0.167 0.012 254.2);
+  --asis-auth-panel-chip: oklch(0 0 0 / 12%);
 
   /*
    * Escala de apilado. Única fuente de verdad: quien necesite un z-index usa
