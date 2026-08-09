@@ -30,18 +30,18 @@ const CORE_R = 54;
  * banda va de 119 a 165), así queda fundida con el anillo en vez de pegada.
  *
  * Vértices en polares desde el centro: base a 118° y 152° con r=150, punta a
- * 136° con r=238.
+ * 136° con r=222.
  *
  * Se dibuja con relleno Y trazo del mismo color: es la forma más simple de
  * redondearle las esquinas a un triángulo en SVG, y deja la patita con el mismo
  * acabado que los caps redondos de la órbita. */
-const TAIL_PATH = "M185.6 388.4L84.8 421.3L123.6 326.4Z";
+const TAIL_PATH = "M185.6 388.4L96.3 410.2L123.6 326.4Z";
 const TAIL_STROKE = 18;
 
 /* Bbox real, contando los caps de la órbita y el trazo de la patita:
-   x 75.8→421, y 100.9→430.3. El viewBox de `mark` lo encuadra con un respiro
+   x 87.4→421, y 100.9→421. El viewBox de `mark` lo encuadra con un respiro
    de 6. */
-const MARK_VIEWBOX = "70 95 357 341";
+const MARK_VIEWBOX = "81 95 346 332";
 
 /**
  * Verde del LOGO.
