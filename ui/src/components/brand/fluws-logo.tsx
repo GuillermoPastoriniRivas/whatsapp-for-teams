@@ -15,13 +15,14 @@ import { useId } from "react";
 
 /* Espacio de 512.
  *
- * La órbita barre 317° y deja la boca arriba, entre 248.5° y 291.5° (en SVG el
+ * La órbita barre 317° y deja la boca EN FRENTE de la patita: centrada en 316°,
+ * entre 294.5° y 337.5° (en SVG el
  * ángulo crece hacia abajo, así que 270° es arriba). Las puntas del arco caen
- * en (308, 123.9) y (204, 123.9).
+ * en (387.2, 201.7) y (314.9, 126.8).
  *
  * Casi cerrada a propósito: con la boca más ancha lee como anillo roto o como
  * spinner de carga, y cerrada del todo lee como el punto de grabar. */
-const ORBIT_PATH = "M308 123.9A142 142 0 1 1 204 123.9";
+const ORBIT_PATH = "M387.2 201.7A142 142 0 1 1 314.9 126.8";
 const ORBIT_STROKE = 46;
 const CORE_R = 54;
 
@@ -39,9 +40,9 @@ const TAIL_PATH = "M185.6 388.4L96.3 410.2L123.6 326.4Z";
 const TAIL_STROKE = 18;
 
 /* Bbox real, contando los caps de la órbita y el trazo de la patita:
-   x 87.4→421, y 100.9→421. El viewBox de `mark` lo encuadra con un respiro
+   x 87.3→421, y 91→421. El viewBox de `mark` lo encuadra con un respiro
    de 6. */
-const MARK_VIEWBOX = "81 95 346 332";
+const MARK_VIEWBOX = "81 85 346 342";
 
 /**
  * Verde del LOGO.

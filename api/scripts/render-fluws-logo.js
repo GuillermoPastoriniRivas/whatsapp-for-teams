@@ -16,19 +16,19 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
-/* Núcleo macizo + órbita de 317° con la boca arriba, más la patita abajo a la
+/* Núcleo macizo + órbita de 317° con la boca enfrentada a la patita, más la patita abajo a la
    izquierda. Color plano, como manda el brand board.
 
    La base de la patita se apoya sobre la banda del trazo de la órbita para que
    quede fundida con el anillo. Se dibuja con relleno Y trazo del mismo color:
    así se le redondean las esquinas y queda con el mismo acabado que los caps
    de la órbita. */
-const ORBIT_PATH = 'M308 123.9A142 142 0 1 1 204 123.9';
+const ORBIT_PATH = 'M387.2 201.7A142 142 0 1 1 314.9 126.8';
 const ORBIT_STROKE = 46;
 const CORE_R = 54;
 const TAIL_PATH = 'M185.6 388.4L96.3 410.2L123.6 326.4Z';
 const TAIL_STROKE = 18;
-const MARK_VIEWBOX = '81 95 346 332';
+const MARK_VIEWBOX = '81 85 346 342';
 
 const GREEN = '#15A58A';
 const INK = '#0B0F14';
@@ -65,13 +65,13 @@ const badgeSvg = () =>
 
 /* El favicon va SIN cuadrado: el glifo verde sobre transparente.
    Al no haber contenedor que respetar, el glifo se escala para llenar el cuadro
-   con un margen chico. El bbox mide 333.6 × 320.1 y está centrado en
-   (254.2, 260.95) — no en (256,256), porque la patita corre el peso hacia
+   con un margen chico. El bbox mide 333.7 × 330 y está centrado en
+   (254.15, 256) — no en (256,256), porque la patita corre el peso hacia
    abajo y a la izquierda —, así que hay que recentrarlo además de escalarlo.
    Con 1.35 el glifo ocupa 466 de los 512 y quedan ~23 de aire por lado. */
 const faviconSvg = () =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <g transform="translate(256 256) scale(1.35) translate(-254.2 -260.95)">${glyph(GREEN)}</g>
+  <g transform="translate(256 256) scale(1.35) translate(-254.15 -256)">${glyph(GREEN)}</g>
 </svg>`;
 
 const render = (svg, size) =>
