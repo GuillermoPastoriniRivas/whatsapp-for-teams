@@ -70,14 +70,9 @@ interface FluwsLogoProps {
    * "mono" = el mismo símbolo en `currentColor`, para fondos de color donde el
    *          verde desaparecería contra el fondo (el panel de auth). Se tiñe
    *          con `text-*`.
-   * "app"  = el símbolo verde sobre el cuadrado de fondo. El fondo sale de
-   *          `--background`, así que sigue al tema: blanco en claro y casi
-   *          negro en oscuro.
-   *
-   *          OJO: eso vale solo si se renderiza dentro de la app. Los PNG del
-   *          ícono instalado (PWA, escritorio, pantalla de inicio) son UNA
-   *          imagen estática y no pueden cambiar con el tema del sistema: se
-   *          generan con el fondo blanco.
+   * "app"  = el símbolo blanco sobre el cuadrado verde. Es el ícono de la
+   *          app, y es lo que hereda del logo de asis: cuadrado de color con
+   *          una forma blanca adentro.
    */
   variant?: "mark" | "mono" | "app";
 }
@@ -119,12 +114,10 @@ export function FluwsLogo({ size = 40, className, variant = "mark" }: FluwsLogoP
         xmlns="http://www.w3.org/2000/svg"
         className={className}
       >
-        {/* El fondo sale del token del tema, no de un color fijo: blanco en
-            claro y casi negro en oscuro. El glifo va siempre en el verde. */}
-        <rect width="512" height="512" rx="115" fill="var(--background)" />
+        <rect width="512" height="512" rx="115" fill={FLUWS_GREEN} />
         {/* Sin escalar: el glifo ocupa 91→421 de 512, que deja el aire justo
             para que el radio del contenedor no se lo coma. */}
-        <Glyph color={FLUWS_GREEN} />
+        <Glyph color="#FFFFFF" />
       </svg>
     );
   }
