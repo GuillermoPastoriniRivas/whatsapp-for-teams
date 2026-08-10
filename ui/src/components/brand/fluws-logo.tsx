@@ -26,6 +26,24 @@ const ORBIT_PATH = "M387.2 201.7A142 142 0 1 1 314.9 126.8";
 const ORBIT_STROKE = 46;
 const CORE_R = 54;
 
+/* La patita del núcleo: el núcleo también es una burbuja, una adentro de la
+ * otra.
+ *
+ * NO está puesta a ojo. Es la patita grande pasada por la homotecia desde el
+ * centro que lleva el borde exterior del anillo (r=165) al núcleo (r=54), o sea
+ * k = 54/165 = 0.327. Una homotecia conserva direcciones, así que las aristas
+ * salen paralelas a las de la patita grande y al corte sin tener que forzarlo,
+ * y el núcleo queda siendo un modelo a escala de la burbuja grande: sobresale
+ * un 34.5% de su radio, igual que la grande sobresale del anillo.
+ *
+ * Punta en r=72.6 y base en r=49, adentro del núcleo. Vive entera en el hueco
+ * de 54 a 119, así que no toca la banda.
+ *
+ * Si se cambia el radio del núcleo o el trazo del anillo, esto se recalcula con
+ * la misma k, no se ajusta a mano. */
+const CORE_TAIL_PATH = "M233 299.3L203.8 306.4L212.7 279Z";
+const CORE_TAIL_STROKE = 5.9; // = TAIL_STROKE × 0.327
+
 /* La patita, abajo a la izquierda. Es un triángulo con la base APOYADA SOBRE LA
  * BANDA del trazo de la órbita (los dos vértices de la base están a r=150, y la
  * banda va de 119 a 165), así queda fundida con el anillo en vez de pegada.
@@ -128,7 +146,10 @@ function Glyph({ color }: { color: string }) {
         <rect width="512" height="512" fill="#fff" />
         <path d={CUT_PATH} fill="#000" />
       </mask>
-      {/* El núcleo queda FUERA de la máscara: el corte no debe tocarlo. */}
+      {/* El núcleo y su patita quedan FUERA de la máscara: el corte no debe
+          tocarlos. Igual no se cruzan —el corte vive de r=115 a r=156 y la
+          patita del núcleo no pasa de r=76— pero dejarlos adentro haría que
+          mover el corte los mordiera sin que se note por qué. */}
       <g mask={`url(#${maskId})`}>
         <path
           d={ORBIT_PATH}
@@ -145,6 +166,13 @@ function Glyph({ color }: { color: string }) {
           strokeLinejoin="round"
         />
       </g>
+      <path
+        d={CORE_TAIL_PATH}
+        fill={color}
+        stroke={color}
+        strokeWidth={CORE_TAIL_STROKE}
+        strokeLinejoin="round"
+      />
       <circle cx="256" cy="256" r={CORE_R} fill={color} />
     </>
   );

@@ -30,6 +30,10 @@ const ICONS = path.join(ROOT, 'public', 'icons');
 const ORBIT_PATH = 'M387.2 201.7A142 142 0 1 1 314.9 126.8';
 const ORBIT_STROKE = 46;
 const CORE_R = 54;
+/** Patita del núcleo: la grande por homotecia k = 54/165 = 0.327 desde el
+ *  centro, así las aristas salen paralelas solas. Ver el componente. */
+const CORE_TAIL_PATH = 'M233 299.3L203.8 306.4L212.7 279Z';
+const CORE_TAIL_STROKE = 5.9;
 /** Patita abajo a la izquierda, con la base apoyada sobre la banda del trazo. */
 const TAIL_PATH = 'M185.6 388.4L96.3 410.2L123.6 326.4Z';
 const TAIL_STROKE = 18;
@@ -54,7 +58,8 @@ const glyph = (color, id) =>
   `<path d="${ORBIT_PATH}" fill="none" stroke="${color}" stroke-width="${ORBIT_STROKE}" stroke-linecap="round"/>` +
   `<path d="${TAIL_PATH}" fill="${color}" stroke="${color}" stroke-width="${TAIL_STROKE}" stroke-linejoin="round"/>` +
   `</g>` +
-  // Fuera de la máscara: el corte no debe tocar el núcleo.
+  // Fuera de la máscara: el corte no debe tocar el núcleo ni su patita.
+  `<path d="${CORE_TAIL_PATH}" fill="${color}" stroke="${color}" stroke-width="${CORE_TAIL_STROKE}" stroke-linejoin="round"/>` +
   `<circle cx="256" cy="256" r="${CORE_R}" fill="${color}"/>`;
 
 /**
