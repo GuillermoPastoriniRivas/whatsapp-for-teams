@@ -26,23 +26,25 @@ const ORBIT_PATH = "M387.2 201.7A142 142 0 1 1 314.9 126.8";
 const ORBIT_STROKE = 46;
 const CORE_R = 54;
 
-/* La patita, abajo a la izquierda. Es un triángulo con la base APOYADA SOBRE LA
- * BANDA del trazo de la órbita (los dos vértices de la base están a r=150, y la
- * banda va de 119 a 165), así queda fundida con el anillo en vez de pegada.
+/* La cola de burbuja, abajo a la izquierda.
  *
- * Vértices en polares desde el centro: base a 118° y 152° con r=150, punta a
- * 136° con r=222.
+ * NO es un triángulo: es una gota. El borde de ataque sale CONVEXO (control
+ * por fuera del anillo) y el de fuga vuelve CÓNCAVO (control por dentro), y
+ * ese par es lo único que la separa de una cuña pegada al anillo.
  *
- * Se dibuja con relleno Y trazo del mismo color: es la forma más simple de
- * redondearle las esquinas a un triángulo en SVG, y deja la patita con el mismo
- * acabado que los caps redondos de la órbita. */
-const TAIL_PATH = "M185.6 388.4L96.3 410.2L123.6 326.4Z";
-const TAIL_STROKE = 18;
+ * Puntos, sobre el borde exterior del anillo (r=165) salvo la punta:
+ *   A  112° r165 · C1 123° r205 · punta 134° r225 · C2 147° r155 · B 160° r165
+ *
+ * OJO con querer alargarla: las dos aristas tangentes al anillo se cruzan a
+ * r≈178, así que una cola larga no puede ser tangente sin abrir la base casi
+ * 90°. Por eso la versión anterior, que era larga y recta, leía como cuña.
+ */
+const TAIL_PATH = "M194.2 409Q144.4 427.9 99.7 417.8Q126 340.4 101 312.4Z";
 
 /* Bbox real, contando los caps de la órbita y el trazo de la patita:
    x 87.3→421, y 91→421. El viewBox de `mark` lo encuadra con un respiro
    de 6. */
-const MARK_VIEWBOX = "81 85 346 342";
+const MARK_VIEWBOX = "85 85 342 342";
 
 /**
  * Verde del LOGO.
@@ -87,13 +89,10 @@ function Glyph({ color }: { color: string }) {
         strokeWidth={ORBIT_STROKE}
         strokeLinecap="round"
       />
-      <path
-        d={TAIL_PATH}
-        fill={color}
-        stroke={color}
-        strokeWidth={TAIL_STROKE}
-        strokeLinejoin="round"
-      />
+      {/* Relleno puro, sin trazo: las curvas ya dan el contorno. El trazo solo
+          hacía falta cuando la cola era un triángulo, para redondearle las
+          esquinas. */}
+      <path d={TAIL_PATH} fill={color} />
       <circle cx="256" cy="256" r={CORE_R} fill={color} />
     </>
   );
