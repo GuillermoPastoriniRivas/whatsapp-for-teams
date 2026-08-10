@@ -33,9 +33,10 @@ const CORE_R = 54;
 /** Patita abajo a la izquierda, con la base apoyada sobre la banda del trazo. */
 const TAIL_PATH = 'M185.6 388.4L96.3 410.2L123.6 326.4Z';
 const TAIL_STROKE = 18;
-/** Corte del anillo debajo de la patita: cuña ancha hacia adentro y en punta
- *  hacia afuera. Ver el componente — la orientación no es indistinta. */
-const CUT_PATH = 'M136 341.8L161.7 299L213 350.3L170.2 376Z';
+/** Corte del anillo debajo de la patita: triángulo semejante a ella, aristas
+ *  paralelas, punta hacia afuera en r=156 y base de 46. Ver el componente — ni
+ *  la orientación ni los radios son indistintos. */
+const CUT_PATH = 'M143.8 364.4L157.5 319.2L189.5 352.2Z';
 /** Bbox del glifo: x 87.3→421, y 91→421. */
 const MARK_VIEWBOX = '81 85 346 342';
 

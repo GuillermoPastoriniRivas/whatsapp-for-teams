@@ -51,19 +51,31 @@ const MARK_VIEWBOX = "81 85 346 342";
  * fondo pegado al arco, y es lo que hace que la patita lea como la cola de una
  * burbuja y no como un triángulo pegado a un anillo.
  *
- * Es una cuña ANCHA HACIA ADENTRO y en punta hacia afuera: base de 72 sobre
- * r≈104 y arista de 48 sobre r≈147. Nace dentro del hueco (la banda va de 119 a
- * 165) para fundirse con él sin costura, y su arista exterior pasa apenas por
- * delante de la cuerda de la base de la patita, que a esos ángulos cae en
- * r≈145: por eso separa el anillo de la patita en vez de solo adelgazarlo.
+ * Es un triángulo SEMEJANTE a la patita: aristas paralelas a las suyas, así que
+ * hereda su ángulo de punta (58.2°), y apunta para el mismo lado, hacia afuera
+ * sobre el eje de 136°. Punta en r=156, base de 46 —el mismo ancho que el trazo
+ * del anillo— sobre r≈115.
  *
- * La orientación importa. Al revés —ancha hacia afuera— la patita queda
- * enganchada al anillo por su lado ancho y el corte lee como una mordida.
+ * Con las aristas paralelas el ángulo queda fijo, o sea que el ancho ya define
+ * el largo: 46 de ancho son 41.3 de largo. No son dos números independientes.
+ *
+ * Las dos condiciones que lo sostienen, y que hay que rehacer si se toca:
+ *
+ * 1. Las ESQUINAS de la base tienen que caer dentro de r=119, el borde interno
+ *    de la banda, para que el corte se funda con el hueco. Van en r=117, con
+ *    2 de margen: con la punta en r=158 caen justo en 119 y aparece una costura
+ *    de banda entre el corte y el hueco.
+ * 2. La PUNTA tiene que pasar la cuerda de la base de la patita, que a estos
+ *    ángulos cae en r≈143. Va en 156, y por eso separa el anillo de la patita
+ *    en vez de solo adelgazarlo.
+ *
+ * La orientación importa. Al revés —ancho hacia afuera— la patita queda
+ * enganchada al anillo por el lado ancho y el corte lee como una mordida.
  *
  * Va como máscara y no como camino con `evenodd`: la patita se dibuja con
  * relleno Y trazo de 18, y un agujero en el relleno quedaría tapado por el
  * trazo. La máscara recorta el resultado ya compuesto. */
-const CUT_PATH = "M136 341.8L161.7 299L213 350.3L170.2 376Z";
+const CUT_PATH = "M143.8 364.4L157.5 319.2L189.5 352.2Z";
 
 /**
  * Verde del LOGO.
