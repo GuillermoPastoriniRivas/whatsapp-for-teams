@@ -46,23 +46,24 @@ const MARK_VIEWBOX = "81 85 346 342";
 
 /* El corte del anillo debajo de la patita.
  *
- * La banda del anillo se interrumpe entre 121° y 149°, así que el hueco
- * interior sale hasta la base de la patita. Eso es lo que se ve como un
- * triángulo del color de fondo pegado al arco, y es lo que hace que la patita
- * lea como la cola de una burbuja y no como un triángulo pegado a un anillo.
+ * La banda del anillo se interrumpe ahí, así que el hueco interior sale hasta
+ * la base de la patita. Eso es lo que se ve como un triángulo del color de
+ * fondo pegado al arco, y es lo que hace que la patita lea como la cola de una
+ * burbuja y no como un triángulo pegado a un anillo.
  *
- * Es una cuña de r=100 a r=150: arranca dentro del hueco (la banda va de 119 a
- * 165) para que el corte se funda con él sin dejar costura, y termina en la
- * base de la patita.
+ * Es una cuña ANCHA HACIA ADENTRO y en punta hacia afuera: base de 72 sobre
+ * r≈104 y arista de 48 sobre r≈147. Nace dentro del hueco (la banda va de 119 a
+ * 165) para fundirse con él sin costura, y su arista exterior pasa apenas por
+ * delante de la cuerda de la base de la patita, que a esos ángulos cae en
+ * r≈145: por eso separa el anillo de la patita en vez de solo adelgazarlo.
+ *
+ * La orientación importa. Al revés —ancha hacia afuera— la patita queda
+ * enganchada al anillo por su lado ancho y el corte lee como una mordida.
  *
  * Va como máscara y no como camino con `evenodd`: la patita se dibuja con
  * relleno Y trazo de 18, y un agujero en el relleno quedaría tapado por el
- * trazo. La máscara recorta el resultado ya compuesto.
- *
- * El ancho es lo único delicado: más abierto (118°–152°) el anillo aparenta
- * tener una segunda boca y a 20px se rompe; más cerrado (124°–146°) el corte
- * casi no se lee. */
-const CUT_PATH = "M204.5 341.7L178.7 384.6L127.4 333.3L170.3 307.5Z";
+ * trazo. La máscara recorta el resultado ya compuesto. */
+const CUT_PATH = "M136 341.8L161.7 299L213 350.3L170.2 376Z";
 
 /**
  * Verde del LOGO.
