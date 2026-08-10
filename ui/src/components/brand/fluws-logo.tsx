@@ -24,25 +24,29 @@ import { useId } from "react";
  * spinner de carga, y cerrada del todo lee como el punto de grabar. */
 const ORBIT_PATH = "M387.2 201.7A142 142 0 1 1 314.9 126.8";
 const ORBIT_STROKE = 46;
-const CORE_R = 54;
+const CORE_R = 73;
 
 /* La patita del núcleo: el núcleo también es una burbuja, una adentro de la
  * otra.
  *
  * NO está puesta a ojo. Es la patita grande pasada por la homotecia desde el
- * centro que lleva el borde exterior del anillo (r=165) al núcleo (r=54), o sea
- * k = 54/165 = 0.327. Una homotecia conserva direcciones, así que las aristas
+ * centro que lleva el borde exterior del anillo (r=165) al núcleo (r=73), o sea
+ * k = 73/165 = 0.442. Una homotecia conserva direcciones, así que las aristas
  * salen paralelas a las de la patita grande y al corte sin tener que forzarlo,
  * y el núcleo queda siendo un modelo a escala de la burbuja grande: sobresale
  * un 34.5% de su radio, igual que la grande sobresale del anillo.
  *
- * Punta en r=72.6 y base en r=49, adentro del núcleo. Vive entera en el hueco
- * de 54 a 119, así que no toca la banda.
+ * Punta en r=98 y base en r=66, adentro del núcleo. Vive entera en el hueco de
+ * 73 a 119, así que no toca la banda, pero le quedan 16.8 de aire: a 512 sobra
+ * y a 16–20px es medio píxel, así que el detalle interior se empasta. Es el
+ * precio de que el hueco blanco mida lo mismo que el trazo verde. Si molesta,
+ * la salida NO es achicar esta patita —quedaría escondida adentro del núcleo—
+ * sino achicar el núcleo.
  *
  * Si se cambia el radio del núcleo o el trazo del anillo, esto se recalcula con
  * la misma k, no se ajusta a mano. */
-const CORE_TAIL_PATH = "M233 299.3L203.8 306.4L212.7 279Z";
-const CORE_TAIL_STROKE = 5.9; // = TAIL_STROKE × 0.327
+const CORE_TAIL_PATH = "M224.9 314.6L185.3 324.2L197.4 287.1Z";
+const CORE_TAIL_STROKE = 8.0; // = TAIL_STROKE × 0.442
 
 /* La patita, abajo a la izquierda. Es un triángulo con la base APOYADA SOBRE LA
  * BANDA del trazo de la órbita (los dos vértices de la base están a r=150, y la
@@ -148,7 +152,7 @@ function Glyph({ color }: { color: string }) {
       </mask>
       {/* El núcleo y su patita quedan FUERA de la máscara: el corte no debe
           tocarlos. Igual no se cruzan —el corte vive de r=115 a r=156 y la
-          patita del núcleo no pasa de r=76— pero dejarlos adentro haría que
+          patita del núcleo no pasa de r=102— pero dejarlos adentro haría que
           mover el corte los mordiera sin que se note por qué. */}
       <g mask={`url(#${maskId})`}>
         <path

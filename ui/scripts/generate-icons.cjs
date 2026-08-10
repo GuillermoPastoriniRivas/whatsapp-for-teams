@@ -29,11 +29,11 @@ const ICONS = path.join(ROOT, 'public', 'icons');
 /** Órbita de 317° con la boca enfrentada a la patita (centrada en 316°). */
 const ORBIT_PATH = 'M387.2 201.7A142 142 0 1 1 314.9 126.8';
 const ORBIT_STROKE = 46;
-const CORE_R = 54;
-/** Patita del núcleo: la grande por homotecia k = 54/165 = 0.327 desde el
+const CORE_R = 73;
+/** Patita del núcleo: la grande por homotecia k = 73/165 = 0.442 desde el
  *  centro, así las aristas salen paralelas solas. Ver el componente. */
-const CORE_TAIL_PATH = 'M233 299.3L203.8 306.4L212.7 279Z';
-const CORE_TAIL_STROKE = 5.9;
+const CORE_TAIL_PATH = 'M224.9 314.6L185.3 324.2L197.4 287.1Z';
+const CORE_TAIL_STROKE = 8.0;
 /** Patita abajo a la izquierda, con la base apoyada sobre la banda del trazo. */
 const TAIL_PATH = 'M185.6 388.4L96.3 410.2L123.6 326.4Z';
 const TAIL_STROKE = 18;
