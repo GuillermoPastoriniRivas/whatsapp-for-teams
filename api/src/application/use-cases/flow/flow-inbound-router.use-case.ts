@@ -22,6 +22,9 @@ import { Conversation } from '../../../domain/entities/conversation.entity.js';
 import { Contact } from '../../../domain/entities/contact.entity.js';
 import { Agent } from '../../../domain/entities/agent.entity.js';
 import type { AutoAssignConversationUseCase } from '../conversation/auto-assign-conversation.use-case.js';
+import type { ServiceProviderRepository } from '../../../domain/repositories/service-provider.repository.js';
+import type { ConversationLabelRepository } from '../../../domain/repositories/conversation-label.repository.js';
+import type { SenderType } from '../../../domain/entities/flow-version.entity.js';
 import { Message, messageToText } from '../../../domain/entities/message.entity.js';
 import type { FlowVersion } from '../../../domain/entities/flow-version.entity.js';
 import { FlowExecutionStatus } from '../../../domain/enums/flow-execution-status.enum.js';
@@ -42,6 +45,12 @@ export interface FlowRouteInput {
   created: boolean;
   /** Primera respuesta del contacto a una conversación nacida de una campaña */
   promotedFromCampaign: boolean;
+}
+
+/** Quién escribe, resuelto una sola vez por mensaje entrante. */
+interface SenderInfo {
+  type: SenderType;
+  labelIds: string[];
 }
 
 export interface FlowRouteResult {
@@ -69,6 +78,8 @@ export class FlowInboundRouterUseCase {
     private readonly jobQueue: JobQueuePort,
     private readonly devEvents: DeveloperEventsPort,
     private readonly autoAssign: AutoAssignConversationUseCase,
+    private readonly providerRepo: ServiceProviderRepository,
+    private readonly convLabelRepo: ConversationLabelRepository,
   ) {}
 
   async route(input: FlowRouteInput): Promise<FlowRouteResult> {
@@ -111,6 +122,14 @@ export class FlowInboundRouterUseCase {
     const versions = await this.versionRepo.findByIds(versionIds);
     const versionById = new Map(versions.map((v) => [v.id, v]));
 
+    // Perezoso a propósito: si ningún disparador filtra por quién escribe, no
+    // se hace ni una consulta de más. La mayoría de los tenants no lo usa.
+    let senderCache: SenderInfo | null = null;
+    const resolveSender = async (): Promise<SenderInfo> => {
+      if (!senderCache) senderCache = await this.resolveSenderInfo(input);
+      return senderCache;
+    };
+
     for (const flow of flows) {
       const version = flow.publishedVersionId ? versionById.get(flow.publishedVersionId) : undefined;
       if (!version) continue;
@@ -119,7 +138,7 @@ export class FlowInboundRouterUseCase {
         if (!input.promotedFromCampaign) continue;
         if (!(await this.campaignTriggerMatches(version, input))) continue;
       } else if (version.trigger.type === 'inbound_message') {
-        if (!this.triggerMatches(version, input)) continue;
+        if (!(await this.triggerMatches(version, input, resolveSender))) continue;
       } else {
         continue; // webhook: no se dispara desde mensajes entrantes
       }
@@ -134,7 +153,7 @@ export class FlowInboundRouterUseCase {
         return false;
       }
 
-      return this.startExecution(flow.id, version, input);
+      return this.startExecution(flow.id, version, input, (await resolveSender()).type);
     }
 
     return false;
@@ -177,11 +196,55 @@ export class FlowInboundRouterUseCase {
     return !!campaignId && trigger.campaignIds.includes(campaignId);
   }
 
-  private triggerMatches(version: FlowVersion, input: FlowRouteInput): boolean {
+  /**
+   * Quién está del otro lado. Se resuelve una sola vez por mensaje y solo si
+   * algún disparador lo pide.
+   *
+   * `proveedor` gana sobre los otros dos: es lo más específico, y un proveedor
+   * que además alguna vez fue cliente sigue siendo proveedor para el ruteo.
+   */
+  private async resolveSenderInfo(input: FlowRouteInput): Promise<SenderInfo> {
+    let type: SenderType = input.created ? 'nuevo' : 'recurrente';
+    try {
+      if (input.contact.phone) {
+        const provider = await this.providerRepo.findByTenantAndPhone(input.tenantId, input.contact.phone);
+        if (provider?.canReceive) type = 'proveedor';
+      }
+    } catch (error: any) {
+      // Que falle la consulta no puede tumbar el ruteo: se cae al tipo por
+      // conversación, que es el comportamiento de antes de esta feature.
+      this.logger.warn(`No se pudo resolver si el remitente es proveedor: ${error?.message}`);
+    }
+
+    let labelIds: string[] = [];
+    try {
+      const labels = await this.convLabelRepo.findByConversationId(input.conversation.id);
+      labelIds = labels.map((l) => l.labelId);
+    } catch (error: any) {
+      this.logger.warn(`No se pudieron leer las etiquetas del chat: ${error?.message}`);
+    }
+
+    return { type, labelIds };
+  }
+
+  private async triggerMatches(
+    version: FlowVersion,
+    input: FlowRouteInput,
+    resolveSender: () => Promise<SenderInfo>,
+  ): Promise<boolean> {
     const trigger = version.trigger;
 
     if (trigger.phoneNumberIds.length > 0 && !trigger.phoneNumberIds.includes(input.phoneId)) return false;
     if (trigger.onlyNewConversations && !input.created) return false;
+
+    const wantsType = (trigger.senderTypes ?? []).length > 0;
+    const wantsLabel = (trigger.senderLabelIds ?? []).length > 0;
+    if (wantsType || wantsLabel) {
+      const sender = await resolveSender();
+      if (wantsType && !trigger.senderTypes.includes(sender.type)) return false;
+      // Con varias etiquetas alcanza con una: es un "o", no un "y".
+      if (wantsLabel && !trigger.senderLabelIds.some((id) => sender.labelIds.includes(id))) return false;
+    }
 
     if (trigger.match === 'keywords') {
       const body = normalizeText(input.message.body ?? '');
@@ -197,7 +260,12 @@ export class FlowInboundRouterUseCase {
     return true;
   }
 
-  private async startExecution(flowId: string, version: FlowVersion, input: FlowRouteInput): Promise<boolean> {
+  private async startExecution(
+    flowId: string,
+    version: FlowVersion,
+    input: FlowRouteInput,
+    senderType: SenderType,
+  ): Promise<boolean> {
     const triggerNode = version.graph.nodes.find((n) => isTrigger(n.type));
     if (!triggerNode) return false;
 
@@ -220,6 +288,9 @@ export class FlowInboundRouterUseCase {
       lastConsumedMessageId: input.message.id,
       variables: {
         message: { body: messageToText(input.message), type: input.message.messageType },
+        // `{{sender.type}}` para el nodo Condición: deja bifurcar adentro de un
+        // mismo flujo sin necesidad de armar uno por audiencia.
+        sender: { type: senderType },
         vars: {},
       },
       steps: [],

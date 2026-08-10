@@ -128,6 +128,8 @@ describe('red de seguridad del router', () => {
       {} as any,
       {} as any,
       autoAssign as any,
+      { findByTenantAndPhone: async () => null } as any,
+      { findByConversationId: async () => [] } as any,
     );
 
   const input = (created: boolean, autopilotOn = true) =>
@@ -176,6 +178,8 @@ describe('piloto automático apagado', () => {
     const router = new FlowInboundRouterUseCase(
       flowRepo as any, {} as any, execRepo as any, {} as any, {} as any,
       {} as any, {} as any, {} as any, {} as any, autoAssign as any,
+      { findByTenantAndPhone: async () => null } as any,
+      { findByConversationId: async () => [] } as any,
     );
 
     const result = await router.route({

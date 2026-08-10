@@ -19,6 +19,7 @@ export const NODE_TYPES = [
   'action.ai_reply',
   'logic.ai_route',
   'action.handoff_ai',
+  'action.handoff_provider',
   'action.handoff_human',
   'action.assign_agent',
   'action.label',
@@ -87,7 +88,9 @@ export function isSessionSend(type: string): boolean {
     type === 'action.send_list' ||
     type === 'action.send_cta_url' ||
     type === 'action.ask' ||
-    type === 'action.ai_reply'
+    type === 'action.ai_reply' ||
+    // Le manda al cliente el aviso con el botón para escribirle al proveedor.
+    type === 'action.handoff_provider'
   );
 }
 
@@ -127,6 +130,10 @@ export function outputHandles(node: FlowNode): string[] {
     case 'action.handoff_ai':
     case 'action.handoff_human':
       return [];
+    // No es terminal: si no hay proveedor para ese servicio el flujo tiene que
+    // poder seguir (derivar a una persona, ofrecer otra opción).
+    case 'action.handoff_provider':
+      return ['out', 'no_provider', 'error'];
     case 'action.assign_agent':
       return ['out', 'unassigned'];
     case 'action.label':

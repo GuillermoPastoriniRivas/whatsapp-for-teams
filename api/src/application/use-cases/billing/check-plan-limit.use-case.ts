@@ -4,12 +4,11 @@ import { PhoneNumberRepository } from '../../../domain/repositories/phone-number
 import { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import { ConversationRepository } from '../../../domain/repositories/conversation.repository.js';
 import { FlowRepository } from '../../../domain/repositories/flow.repository.js';
-import { isAiNode } from '../flow/engine/flow-node-types.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 import { PlanTier } from '../../../domain/enums/plan-tier.enum.js';
 import { effectiveLimits, effectivePlan } from './plan-resolution.util.js';
 
-export type PlanResource = 'phone_numbers' | 'human_agents' | 'ai_bots' | 'conversations' | 'flows';
+export type PlanResource = 'phone_numbers' | 'human_agents' | 'conversations' | 'flows';
 
 export interface ResourceUsage {
   current: number;
@@ -21,7 +20,6 @@ export interface FullUsage {
   plan: PlanTier;
   phoneNumbers: ResourceUsage;
   humanAgents: ResourceUsage;
-  aiBots: ResourceUsage;
   conversations: ResourceUsage;
 }
 
@@ -50,14 +48,6 @@ export class CheckPlanLimitUseCase {
         current = await this.agentRepo.countByTenantIdAndType(tenantId, AgentType.HUMAN);
         limit = limits.maxHumanAgents;
         break;
-      case 'ai_bots': {
-        // Un "bot" ya no es una entidad: es una automatización publicada que
-        // usa IA. Se cuentan esas, que es lo que el plan realmente limita.
-        const withAi = await this.flowRepo.findPublishedByTenantId(tenantId);
-        current = withAi.filter((f) => f.draftGraph.nodes.some((n) => isAiNode(n.type))).length;
-        limit = limits.maxAiBots;
-        break;
-      }
       case 'conversations': {
         const now = new Date();
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -86,13 +76,12 @@ export class CheckPlanLimitUseCase {
     // `sub.plan` a secas, la pantalla muestra "Business" con límites de Free.
     const plan = effectivePlan(sub);
 
-    const [phoneNumbers, humanAgents, aiBots, conversations] = await Promise.all([
+    const [phoneNumbers, humanAgents, conversations] = await Promise.all([
       this.checkResource(tenantId, 'phone_numbers'),
       this.checkResource(tenantId, 'human_agents'),
-      this.checkResource(tenantId, 'ai_bots'),
       this.checkResource(tenantId, 'conversations'),
     ]);
 
-    return { plan, phoneNumbers, humanAgents, aiBots, conversations };
+    return { plan, phoneNumbers, humanAgents, conversations };
   }
 }

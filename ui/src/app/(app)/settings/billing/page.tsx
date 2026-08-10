@@ -255,7 +255,6 @@ export default function BillingPage() {
                     [
                       { label: t.billing.phoneNumbers, data: usage.phoneNumbers },
                       { label: t.billing.humanAgents, data: usage.humanAgents },
-                      { label: t.billing.aiBots, data: usage.aiBots },
                       {
                         label: t.billing.conversations,
                         data: usage.conversations,

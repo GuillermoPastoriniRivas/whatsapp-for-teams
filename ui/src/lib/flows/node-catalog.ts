@@ -8,7 +8,7 @@ import {
   MessageSquareText, SquareMousePointer, List, LayoutTemplate, MessageCircleQuestion,
   Sparkles, Split, Bot, Users, UserPlus, Tag, ContactRound, StickyNote,
   GitBranch, Clock, Globe, Zap, Webhook, Megaphone, Paperclip, Variable, CalendarClock, Radio,
-  MapPin, ExternalLink,
+  MapPin, ExternalLink, Share2,
 } from "lucide-react";
 
 export type NodeCategory = "trigger" | "message" | "ai" | "team" | "logic" | "integration";
@@ -48,7 +48,7 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     description: "Se activa cuando un cliente escribe",
     category: "trigger",
     icon: Zap,
-    defaultData: { phoneScope: "all", phoneNumberIds: [], match: "any", keywords: [], keywordMode: "contains", onlyNewConversations: false },
+    defaultData: { phoneScope: "all", phoneNumberIds: [], match: "any", keywords: [], keywordMode: "contains", onlyNewConversations: false, senderTypes: [], senderLabelIds: [] },
   },
   {
     type: "trigger.webhook",
@@ -153,6 +153,30 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     category: "ai",
     icon: Bot,
     defaultData: { aiAgentId: "" },
+  },
+  {
+    type: "action.handoff_provider",
+    label: "Pasar el dato a un proveedor",
+    description: "Le manda los datos del cliente al WhatsApp de un tercero (el carpintero)",
+    category: "team",
+    icon: Share2,
+    defaultData: {
+      service: "{{vars.opcion}}",
+      templateId: "",
+      providerBody: [
+        "Nuevo pedido de {{provider.service}}.",
+        "",
+        "Cliente: {{contact.name}}",
+        "Teléfono: +{{contact.phone}}",
+        "",
+        "Escribile: https://wa.me/{{contact.phone}}",
+      ].join("\n"),
+      variables: {},
+      notifyCustomer: true,
+      customerBody:
+        "Listo, le pasé tus datos a {{provider.name}}. Te va a escribir en breve — si querés, escribile vos:",
+      customerButtonText: "Escribirle",
+    },
   },
   {
     type: "action.handoff_human",
@@ -316,6 +340,12 @@ export function nodeHandles(node: FlowNode): Array<{ id: string; label: string; 
     case "action.handoff_ai":
     case "action.handoff_human":
       return [];
+    case "action.handoff_provider":
+      return [
+        { id: "out", label: "Dato pasado", kind: "normal" as const },
+        { id: "no_provider", label: "Sin proveedor", kind: "alt" as const },
+        { id: "error", label: "Error", kind: "error" as const },
+      ];
     case "action.assign_agent":
       return [
         { id: "out", label: "Asignado", kind: "normal" },

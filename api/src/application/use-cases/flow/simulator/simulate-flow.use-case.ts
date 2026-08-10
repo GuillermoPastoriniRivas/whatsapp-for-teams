@@ -11,6 +11,7 @@ import type { FlowConnectionRepository } from '../../../../domain/repositories/f
 import type { PhoneNumberRepository } from '../../../../domain/repositories/phone-number.repository.js';
 import type { AgentRepository } from '../../../../domain/repositories/agent.repository.js';
 import type { TenantRepository } from '../../../../domain/repositories/tenant.repository.js';
+import type { ServiceProviderRepository } from '../../../../domain/repositories/service-provider.repository.js';
 import type { LabelRepository } from '../../../../domain/repositories/label.repository.js';
 import type { MessageTemplateRepository } from '../../../../domain/repositories/message-template.repository.js';
 import type { AiCompletionPort } from '../../../ports/ai-completion.port.js';
@@ -97,6 +98,7 @@ export class SimulateFlowUseCase {
     private readonly phoneRepo: PhoneNumberRepository,
     private readonly agentRepo: AgentRepository,
     private readonly tenantRepo: TenantRepository,
+    private readonly providerRepo: ServiceProviderRepository,
     private readonly labelRepo: LabelRepository,
     private readonly templateRepo: MessageTemplateRepository,
     private readonly aiCompletion: AiCompletionPort,
@@ -215,6 +217,7 @@ export class SimulateFlowUseCase {
       this.phoneRepo,
       this.agentRepo,
       this.tenantRepo,
+      this.providerRepo,
       new NoopAiUsage(),
       messageRepo,
       this.labelRepo,
@@ -343,6 +346,8 @@ export class SimulateFlowUseCase {
         contactPhoneField: null,
         contactNameField: null,
         campaignIds: [],
+        senderTypes: [],
+        senderLabelIds: [],
       },
       publishedByAgentId: flow.createdByAgentId,
       createdAt: new Date(),

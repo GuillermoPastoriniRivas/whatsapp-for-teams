@@ -59,8 +59,10 @@ import { MongoFlowNodeStatRepository } from './mongoose/repositories/mongo-flow-
 import { MongoFlowConnectionRepository } from './mongoose/repositories/mongo-flow-connection.repository.js';
 import { MediaAssetModel, MediaAssetSchema } from './mongoose/schemas/media-asset.schema.js';
 import { MediaProviderRefModel, MediaProviderRefSchema } from './mongoose/schemas/media-provider-ref.schema.js';
+import { ServiceProviderModel, ServiceProviderSchema } from './mongoose/schemas/service-provider.schema.js';
 import { MongoMediaAssetRepository } from './mongoose/repositories/mongo-media-asset.repository.js';
 import { MongoMediaProviderRefRepository } from './mongoose/repositories/mongo-media-provider-ref.repository.js';
+import { MongoServiceProviderRepository } from './mongoose/repositories/mongo-service-provider.repository.js';
 
 const schemas = MongooseModule.forFeature([
   { name: TenantModel.name, schema: TenantSchema },
@@ -93,6 +95,7 @@ const schemas = MongooseModule.forFeature([
   { name: WebhookDeliveryModel.name, schema: WebhookDeliverySchema },
   { name: MediaAssetModel.name, schema: MediaAssetSchema },
   { name: MediaProviderRefModel.name, schema: MediaProviderRefSchema },
+  { name: ServiceProviderModel.name, schema: ServiceProviderSchema },
 ]);
 
 const repositories = [
@@ -127,6 +130,7 @@ const repositories = [
   { provide: 'WebhookDeliveryRepository', useClass: MongoWebhookDeliveryRepository },
   { provide: 'MediaAssetRepository', useClass: MongoMediaAssetRepository },
   { provide: 'MediaProviderRefRepository', useClass: MongoMediaProviderRefRepository },
+  { provide: 'ServiceProviderRepository', useClass: MongoServiceProviderRepository },
 ];
 
 @Module({

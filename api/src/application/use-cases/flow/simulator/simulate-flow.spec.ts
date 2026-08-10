@@ -57,7 +57,9 @@ function buildUseCase(flow: Flow) {
     { findById: async () => null } as any,
     { findByTenantId: async () => [PHONE], findById: async () => PHONE } as any,
     { findById: async () => null, incrementActiveCount: async () => null } as any,
-    { findByAgentId: async () => null } as any,
+    { findById: async () => null } as any,
+    // proveedores: la prueba no reparte datos a terceros
+    { claimNextForService: async () => null } as any,
     { findByTenantId: async () => [], findById: async () => null } as any,
     { findById: async () => null } as any,
     { complete: async () => ({ content: '', toolCalls: [], tokensUsed: { prompt: 0, completion: 0, total: 0 }, finishReason: 'stop' }) } as any,

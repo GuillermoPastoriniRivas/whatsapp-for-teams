@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Field } from "@/components/ui/field";
 import { SimpleSelect } from "@/components/ui/select";
 import { MediaPickerDialog } from "@/components/media/media-picker-dialog";
+import { InlineNotice } from "@/components/shared/inline-notice";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { NODE_BY_TYPE, CATEGORY_STYLES } from "@/lib/flows/node-catalog";
@@ -165,6 +166,8 @@ function renderForm(
       return <AiRouteForm data={data} set={set} />;
     case "action.handoff_ai":
       return <AiPersonaFields data={data} set={set} persistent />;
+    case "action.handoff_provider":
+      return <HandoffProviderForm data={data} set={set} refs={refs} />;
     case "action.handoff_human":
       return (
         <div>
@@ -315,6 +318,66 @@ function PhoneScopeField({ data, set, refs }: { data: Record<string, any>; set: 
         </div>
       )}
     </>
+  );
+}
+
+const SENDER_TYPES = [
+  { value: "proveedor", label: "Un proveedor", hint: "Su teléfono está en Ajustes → Proveedores" },
+  { value: "nuevo", label: "Alguien nuevo", hint: "Nunca había escrito a este número" },
+  { value: "recurrente", label: "Alguien que ya había escrito", hint: "" },
+];
+
+/**
+ * Quién escribe. Deja tener un flujo para proveedores y otro para clientes
+ * sobre el mismo número, ordenados por prioridad.
+ *
+ * Sin nada tildado aplica a cualquiera, que es lo que hacían todos los
+ * disparadores antes de que esto existiera.
+ */
+function SenderFilterField({ data, set, refs }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs }) {
+  const types: string[] = Array.isArray(data.senderTypes) ? data.senderTypes : [];
+  const labelIds: string[] = Array.isArray(data.senderLabelIds) ? data.senderLabelIds : [];
+
+  return (
+    <div>
+      <FieldLabel>Quién escribe</FieldLabel>
+      <div className="space-y-1">
+        {SENDER_TYPES.map((t) => (
+          <ToggleField
+            key={t.value}
+            label={t.label}
+            checked={types.includes(t.value)}
+            onChange={(checked) =>
+              set({ senderTypes: checked ? [...types, t.value] : types.filter((v) => v !== t.value) })
+            }
+          />
+        ))}
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Sin tildar nada aplica a cualquiera. Un proveedor sigue siendo proveedor aunque además sea cliente.
+      </p>
+
+      {refs.labels.length > 0 && (
+        <div className="mt-3">
+          <FieldLabel>Con alguna de estas etiquetas</FieldLabel>
+          <div className="max-h-40 space-y-1 overflow-y-auto">
+            {refs.labels.map((label) => (
+              <ToggleField
+                key={label.id}
+                label={label.name}
+                checked={labelIds.includes(label.id)}
+                onChange={(checked) =>
+                  set({ senderLabelIds: checked ? [...labelIds, label.id] : labelIds.filter((v) => v !== label.id) })
+                }
+              />
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Alcanza con que el chat tenga una de ellas. Sin tildar ninguna, no filtra por etiqueta.
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -516,6 +579,7 @@ function TriggerMessageForm({ data, set, refs, onChangeTriggerType }: { data: Re
     <>
       <TriggerTypeSwitch current="trigger.inbound_message" onChangeTriggerType={onChangeTriggerType} />
       <PhoneScopeField data={data} set={set} refs={refs} />
+      <SenderFilterField data={data} set={set} refs={refs} />
       <SelectField
         label="Cuándo dispara"
         value={data.match ?? "any"}
@@ -944,6 +1008,124 @@ const TEMPLATE_VARIABLE_SOURCES = [
   { value: "flow_var", label: "Variable de la automatización" },
 ];
 
+/**
+ * Pasarle el dato del cliente a un tercero (el carpintero).
+ *
+ * Ojo con lo que promete la UI: la conversación NO se transfiere — eso no
+ * existe en WhatsApp. Al proveedor le llega una plantilla con el dato y un
+ * botón para escribirle al cliente desde su propio teléfono.
+ */
+function HandoffProviderForm({ data, set, refs }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs }) {
+  const approved = refs.templates.filter((t) => t.status === "approved");
+  const selected = approved.find((t) => t.id === data.templateId);
+  const placeholders = selected ? extractTemplatePlaceholders(selected) : [];
+  const variables: Record<string, { source?: string; value?: string }> = data.variables ?? {};
+
+  return (
+    <>
+      <Field
+        label="Servicio que se busca"
+        hint="Normalmente la opción que eligió el cliente en la lista. Se compara con los servicios de cada proveedor."
+      >
+        <Input
+          value={data.service ?? ""}
+          placeholder="{{vars.opcion}}"
+          onChange={(e) => set({ service: e.target.value })}
+        />
+      </Field>
+
+      <div>
+        <FieldLabel>Mensaje al proveedor (si te escribió hace menos de 24 h)</FieldLabel>
+        <Textarea
+          rows={5}
+          value={data.providerBody ?? ""}
+          placeholder="Nuevo pedido de {{provider.service}}…"
+          onChange={(e) => set({ providerBody: e.target.value })}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Con la ventana abierta va este texto, que no se factura. Poné el link{" "}
+          <code className="font-mono">https://wa.me/{"{{contact.phone}}"}</code> para que le abra el chat.
+          Si la ventana está cerrada, va la plantilla de abajo.
+        </p>
+      </div>
+
+      <SelectField
+        label="Plantilla que recibe el proveedor (si la ventana está cerrada)"
+        value={data.templateId ?? ""}
+        placeholder="Elegí una plantilla…"
+        options={approved.map((t) => ({ value: t.id, label: `${t.name} (${t.language})` }))}
+        onChange={(value) => set({ templateId: value, variables: {} })}
+      />
+      <p className="text-xs text-muted-foreground">
+        Obligatoria: es lo que se manda la primera vez y cada vez que el proveedor haga más de 24 h
+        que no escribe. Poné un botón de URL con <code className="font-mono">https://wa.me/{"{{1}}"}</code> y
+        mapealo al teléfono del cliente para que le abra el chat de una.
+      </p>
+
+      {placeholders.map((placeholder) => {
+        const entry = variables[placeholder] ?? { source: "static", value: "" };
+        return (
+          <div key={placeholder} className="rounded-xl border p-2 space-y-1">
+            <FieldLabel>{placeholder}</FieldLabel>
+            <div className="flex gap-1.5">
+              <SimpleSelect
+                className="w-36"
+                value={entry.source ?? "static"}
+                options={TEMPLATE_VARIABLE_SOURCES}
+                onChange={(value) => set({ variables: { ...variables, [placeholder]: { ...entry, source: value } } })}
+              />
+              <Input
+                className="flex-1"
+                value={entry.value ?? ""}
+                placeholder={entry.source === "contact_field" ? "name / phone" : entry.source === "flow_var" ? "vars.opcion" : "Valor"}
+                onChange={(e) => set({ variables: { ...variables, [placeholder]: { ...entry, value: e.target.value } } })}
+              />
+            </div>
+          </div>
+        );
+      })}
+
+      <ToggleField
+        label="Avisarle también al cliente"
+        checked={data.notifyCustomer !== false}
+        onChange={(v) => set({ notifyCustomer: v })}
+      />
+
+      {data.notifyCustomer !== false && (
+        <>
+          <div>
+            <FieldLabel>Aviso al cliente</FieldLabel>
+            <Textarea
+              rows={3}
+              value={data.customerBody ?? ""}
+              placeholder="Listo, le pasé tus datos a {{provider.name}}."
+              onChange={(e) => set({ customerBody: e.target.value })}
+            />
+          </div>
+          <Field label="Texto del botón" hint="Le abre el chat con el proveedor.">
+            <Input
+              value={data.customerButtonText ?? ""}
+              placeholder="Escribirle"
+              onChange={(e) => set({ customerButtonText: e.target.value })}
+            />
+          </Field>
+        </>
+      )}
+
+      <p className="text-xs text-muted-foreground">
+        Disponibles acá: <code className="font-mono">{"{{provider.name}}"}</code>,{" "}
+        <code className="font-mono">{"{{provider.phone}}"}</code> y{" "}
+        <code className="font-mono">{"{{provider.service}}"}</code>.
+      </p>
+
+      <InlineNotice variant="warning">
+        Le estás dando el teléfono del cliente a un tercero. Avisale antes en el flujo, y cargá los
+        proveedores en Ajustes → Proveedores con su permiso registrado.
+      </InlineNotice>
+    </>
+  );
+}
+
 function TemplateForm({ data, set, refs }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs }) {
   const approved = refs.templates.filter((t) => t.status === "approved");
   const selected = approved.find((t) => t.id === data.templateId);
@@ -1181,6 +1363,7 @@ const CONDITION_SOURCES = [
   { value: "contact.name", label: "Nombre del contacto" },
   { value: "contact.email", label: "Email del contacto" },
   { value: "contact.company", label: "Empresa del contacto" },
+  { value: "sender.type", label: "Quién escribe" },
   { value: "__schedule__", label: "Horario / día" },
   { value: "__custom__", label: "Variable (escribir path)" },
 ];

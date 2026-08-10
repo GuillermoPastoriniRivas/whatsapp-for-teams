@@ -32,6 +32,13 @@ import { PhoneNumberController } from './controllers/phone-number.controller.js'
 import { ConversationController } from './controllers/conversation.controller.js';
 import { TenantController } from './controllers/tenant.controller.js';
 import { AccountProfileController } from './controllers/account-profile.controller.js';
+import { ServiceProviderController } from './controllers/service-provider.controller.js';
+import {
+  CreateServiceProviderUseCase,
+  DeleteServiceProviderUseCase,
+  ListServiceProvidersUseCase,
+  UpdateServiceProviderUseCase,
+} from '../application/use-cases/provider/service-provider.use-cases.js';
 import { GetAccountProfileUseCase, UpdateAccountProfileUseCase } from '../application/use-cases/tenant/account-profile.use-cases.js';
 import { WebhookController } from './controllers/webhook.controller.js';
 import { ContactController } from './controllers/contact.controller.js';
@@ -330,6 +337,26 @@ const useCaseProviders = [
     inject: ['AgentRepository'],
   },
   {
+    provide: 'ListServiceProvidersUseCase',
+    useFactory: (repo: any) => new ListServiceProvidersUseCase(repo),
+    inject: ['ServiceProviderRepository'],
+  },
+  {
+    provide: 'CreateServiceProviderUseCase',
+    useFactory: (repo: any) => new CreateServiceProviderUseCase(repo),
+    inject: ['ServiceProviderRepository'],
+  },
+  {
+    provide: 'UpdateServiceProviderUseCase',
+    useFactory: (repo: any) => new UpdateServiceProviderUseCase(repo),
+    inject: ['ServiceProviderRepository'],
+  },
+  {
+    provide: 'DeleteServiceProviderUseCase',
+    useFactory: (repo: any) => new DeleteServiceProviderUseCase(repo),
+    inject: ['ServiceProviderRepository'],
+  },
+  {
     provide: 'GetAccountProfileUseCase',
     useFactory: (tenantRepo: any) => new GetAccountProfileUseCase(tenantRepo),
     inject: ['TenantRepository'],
@@ -569,16 +596,16 @@ const useCaseProviders = [
     provide: 'FlowEngineService',
     useFactory: (
       flowRepo: any, versionRepo: any, execRepo: any, statRepo: any, connectionRepo: any,
-      convRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, aiConfigRepo: any,
-      usageRepo: any, msgRepo: any, labelRepo: any, convLabelRepo: any, noteRepo: any,
+      convRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, tenantRepo: any,
+      providerRepo: any, usageRepo: any, msgRepo: any, labelRepo: any, convLabelRepo: any, noteRepo: any,
       eventRepo: any, templateRepo: any, secrets: any, http: any, messagingApi: any,
       aiCompletion: any, gateway: any, jobQueue: any, autoAssign: any,
       devEvents: any, accessRepo: any, assetRepo: any, mediaAccess: any,
     ) =>
       new FlowEngineService(
         flowRepo, versionRepo, execRepo, statRepo, connectionRepo,
-        convRepo, contactRepo, phoneRepo, agentRepo, aiConfigRepo,
-        usageRepo, msgRepo, labelRepo, convLabelRepo, noteRepo,
+        convRepo, contactRepo, phoneRepo, agentRepo, tenantRepo,
+        providerRepo, usageRepo, msgRepo, labelRepo, convLabelRepo, noteRepo,
         eventRepo, templateRepo, secrets, http, messagingApi,
         aiCompletion, gateway, jobQueue, autoAssign,
         devEvents, accessRepo, assetRepo, mediaAccess,
@@ -586,6 +613,7 @@ const useCaseProviders = [
     inject: [
       'FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'FlowNodeStatRepository', 'FlowConnectionRepository',
       'ConversationRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'TenantRepository',
+      'ServiceProviderRepository',
       'AiUsageRepository', 'MessageRepository', 'LabelRepository', 'ConversationLabelRepository', 'ConversationNoteRepository',
       'ConversationEventRepository', 'MessageTemplateRepository', 'FlowSecretsPort', 'FlowHttpPort', 'MessagingApiPort',
       'AiCompletionPort', 'RealtimeGatewayPort', 'JobQueuePort', 'AutoAssignConversationUseCase',
@@ -594,9 +622,9 @@ const useCaseProviders = [
   },
   {
     provide: 'FlowInboundRouterUseCase',
-    useFactory: (flowRepo: any, versionRepo: any, execRepo: any, agentRepo: any, msgRepo: any, eventRepo: any, gateway: any, jobQueue: any, devEvents: any, autoAssign: any) =>
-      new FlowInboundRouterUseCase(flowRepo, versionRepo, execRepo, agentRepo, msgRepo, eventRepo, gateway, jobQueue, devEvents, autoAssign),
-    inject: ['FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'AgentRepository', 'MessageRepository', 'ConversationEventRepository', 'RealtimeGatewayPort', 'JobQueuePort', 'DeveloperEventsPort', 'AutoAssignConversationUseCase'],
+    useFactory: (flowRepo: any, versionRepo: any, execRepo: any, agentRepo: any, msgRepo: any, eventRepo: any, gateway: any, jobQueue: any, devEvents: any, autoAssign: any, providerRepo: any, convLabelRepo: any) =>
+      new FlowInboundRouterUseCase(flowRepo, versionRepo, execRepo, agentRepo, msgRepo, eventRepo, gateway, jobQueue, devEvents, autoAssign, providerRepo, convLabelRepo),
+    inject: ['FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'AgentRepository', 'MessageRepository', 'ConversationEventRepository', 'RealtimeGatewayPort', 'JobQueuePort', 'DeveloperEventsPort', 'AutoAssignConversationUseCase', 'ServiceProviderRepository', 'ConversationLabelRepository'],
   },
   {
     provide: 'CancelActiveFlowExecutionUseCase',
@@ -702,17 +730,17 @@ const useCaseProviders = [
     provide: 'SimulateFlowUseCase',
     useFactory: (
       flowRepo: any, versionRepo: any, connectionRepo: any, phoneRepo: any, agentRepo: any,
-      tenantRepo: any, labelRepo: any, templateRepo: any, aiCompletion: any, secrets: any,
-      assetRepo: any, mediaAccess: any,
+      tenantRepo: any, providerRepo: any, labelRepo: any, templateRepo: any, aiCompletion: any,
+      secrets: any, assetRepo: any, mediaAccess: any,
     ) =>
       new SimulateFlowUseCase(
         flowRepo, versionRepo, connectionRepo, phoneRepo, agentRepo,
-        tenantRepo, labelRepo, templateRepo, aiCompletion, secrets,
-        assetRepo, mediaAccess,
+        tenantRepo, providerRepo, labelRepo, templateRepo, aiCompletion,
+        secrets, assetRepo, mediaAccess,
       ),
     inject: [
       'FlowRepository', 'FlowVersionRepository', 'FlowConnectionRepository', 'PhoneNumberRepository', 'AgentRepository',
-      'TenantRepository', 'LabelRepository', 'MessageTemplateRepository', 'AiCompletionPort', 'FlowSecretsPort',
+      'TenantRepository', 'ServiceProviderRepository', 'LabelRepository', 'MessageTemplateRepository', 'AiCompletionPort', 'FlowSecretsPort',
       'MediaAssetRepository', 'MediaAccessService',
     ],
   },
@@ -1187,6 +1215,7 @@ const useCaseProviders = [
     ConversationController,
     TenantController,
     AccountProfileController,
+    ServiceProviderController,
     WebhookController,
     ContactController,
     TemplateController,

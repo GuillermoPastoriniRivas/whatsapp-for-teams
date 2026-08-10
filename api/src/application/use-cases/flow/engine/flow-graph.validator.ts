@@ -336,6 +336,25 @@ function validateNodeConfig(
       validateTimeout(data.timeout, id, err);
       break;
     }
+    case 'action.handoff_provider': {
+      if (!String(data.service ?? '').trim()) {
+        err('missing_service', 'Definí qué servicio se busca (normalmente una variable, ej. {{vars.opcion}}).', id);
+      }
+      const templateId = data.templateId;
+      if (typeof templateId !== 'string' || !templateId) {
+        err('missing_template', 'Elegí la plantilla que le llega al proveedor.', id);
+      } else {
+        const template = refs.templates.get(templateId);
+        // Al proveedor se le escribe primero y nunca nos habló: sin plantilla
+        // aprobada, Meta rechaza el envío.
+        if (!template) err('bad_template', 'La plantilla elegida ya no existe.', id);
+        else if (!template.approved) err('template_not_approved', 'La plantilla todavía no está aprobada por Meta.', id);
+      }
+      if (data.notifyCustomer !== false && !String(data.customerBody ?? '').trim()) {
+        err('missing_customer_body', 'Escribí el aviso que recibe el cliente, o apagá el aviso.', id);
+      }
+      break;
+    }
     case 'action.ai_reply':
     case 'action.handoff_ai': {
       // La config del asistente vive en el propio nodo desde ago-2026: ya no
@@ -453,7 +472,7 @@ function lintTemplatePhones(
   if (targetIds.length === 0) return;
 
   for (const node of nodes) {
-    if (node.type !== 'action.send_template') continue;
+    if (node.type !== 'action.send_template' && node.type !== 'action.handoff_provider') continue;
 
     const templateId = (node.data as Record<string, any>)?.templateId;
     const template = typeof templateId === 'string' ? refs.templates.get(templateId) : undefined;

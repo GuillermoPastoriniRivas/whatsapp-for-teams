@@ -8,7 +8,6 @@ import type { Translations } from "@/lib/i18n/translations";
 export interface PlanSpec {
   maxPhoneNumbers: number;
   maxHumanAgents: number;
-  maxAiBots: number;
   maxActiveFlows: number;
   maxConversationsPerMonth: number;
   webhooks: boolean;
@@ -34,7 +33,6 @@ export const PLAN_SPECS: Record<PlanTier, PlanSpec> = {
   free: {
     maxPhoneNumbers: 1,
     maxHumanAgents: 2,
-    maxAiBots: 1,
     maxActiveFlows: 1,
     maxConversationsPerMonth: 50,
     webhooks: false,
@@ -51,7 +49,6 @@ export const PLAN_SPECS: Record<PlanTier, PlanSpec> = {
   pro: {
     maxPhoneNumbers: -1,
     maxHumanAgents: -1,
-    maxAiBots: 3,
     maxActiveFlows: 5,
     maxConversationsPerMonth: -1,
     webhooks: true,
@@ -68,7 +65,6 @@ export const PLAN_SPECS: Record<PlanTier, PlanSpec> = {
   business: {
     maxPhoneNumbers: -1,
     maxHumanAgents: -1,
-    maxAiBots: -1,
     maxActiveFlows: 20,
     maxConversationsPerMonth: -1,
     webhooks: true,
@@ -85,7 +81,6 @@ export const PLAN_SPECS: Record<PlanTier, PlanSpec> = {
   agencies: {
     maxPhoneNumbers: -1,
     maxHumanAgents: -1,
-    maxAiBots: -1,
     maxActiveFlows: -1,
     maxConversationsPerMonth: -1,
     webhooks: true,
@@ -143,7 +138,6 @@ export function planFeatures(tier: PlanTier, t: BillingCopy): PlanFeature[] {
   return [
     { label: t.phoneNumbers, value: amount(spec.maxPhoneNumbers, t.unlimited) },
     { label: t.humanAgents, value: amount(spec.maxHumanAgents, t.unlimited) },
-    { label: t.aiBots, value: amount(spec.maxAiBots, t.unlimited) },
     { label: t.activeFlows, value: amount(spec.maxActiveFlows, t.unlimited) },
     {
       label: t.conversations,

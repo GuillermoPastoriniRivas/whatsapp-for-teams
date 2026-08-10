@@ -6,7 +6,7 @@ import type { MessageTemplateRepository } from '../../../domain/repositories/mes
 import type { LabelRepository } from '../../../domain/repositories/label.repository.js';
 import type { AgentRepository } from '../../../domain/repositories/agent.repository.js';
 import type { PhoneNumberRepository } from '../../../domain/repositories/phone-number.repository.js';
-import { FlowTriggerIndex } from '../../../domain/entities/flow-version.entity.js';
+import { FlowTriggerIndex, SENDER_TYPES, type SenderType } from '../../../domain/entities/flow-version.entity.js';
 import { FlowStatus } from '../../../domain/enums/flow-status.enum.js';
 import { TemplateStatus } from '../../../domain/enums/template-status.enum.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
@@ -91,6 +91,10 @@ export class PublishFlowUseCase {
       keywords: Array.isArray(data.keywords) ? data.keywords.map(String) : [],
       keywordMode: data.keywordMode === 'exact' ? 'exact' : 'contains',
       onlyNewConversations: data.onlyNewConversations === true,
+      senderTypes: Array.isArray(data.senderTypes)
+        ? data.senderTypes.map(String).filter((t): t is SenderType => (SENDER_TYPES as string[]).includes(t))
+        : [],
+      senderLabelIds: Array.isArray(data.senderLabelIds) ? data.senderLabelIds.map(String) : [],
       contactPhoneField: typeof data.contactPhoneField === 'string' && data.contactPhoneField ? data.contactPhoneField : null,
       contactNameField: typeof data.contactNameField === 'string' && data.contactNameField ? data.contactNameField : null,
       campaignIds: Array.isArray(data.campaignIds) ? data.campaignIds.map(String) : [],
@@ -103,7 +107,9 @@ export class PublishFlowUseCase {
     const connectionIds = new Set<string>();
     for (const node of graph.nodes) {
       const data = node.data as Record<string, any>;
-      if (node.type === 'action.send_template' && typeof data.templateId === 'string') templateIds.add(data.templateId);
+      if ((node.type === 'action.send_template' || node.type === 'action.handoff_provider') && typeof data.templateId === 'string') {
+        templateIds.add(data.templateId);
+      }
       if (node.type === 'action.http' && typeof data.connectionId === 'string' && data.connectionId) connectionIds.add(data.connectionId);
     }
 

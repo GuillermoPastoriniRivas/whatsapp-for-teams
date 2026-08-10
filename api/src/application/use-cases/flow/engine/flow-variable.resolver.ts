@@ -7,6 +7,8 @@ export interface FlowVariableContext {
   vars?: Record<string, unknown> | null;
   webhook?: Record<string, unknown> | null;
   flow?: Record<string, unknown> | null;
+  /** Quién escribe: `sender.type` lo lee el nodo Condición por dot-path. */
+  sender?: Record<string, unknown> | null;
 }
 
 /** Acceso por dot-path con soporte de índices: items.0.price */

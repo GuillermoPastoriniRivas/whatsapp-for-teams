@@ -3,7 +3,6 @@ import { PlanTier } from '../enums/plan-tier.enum.js';
 export interface PlanLimits {
   maxPhoneNumbers: number;
   maxHumanAgents: number;
-  maxAiBots: number;
   maxActiveFlows: number;
   maxConversationsPerMonth: number;
   webhooks: boolean;
@@ -31,7 +30,6 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
   [PlanTier.FREE]: {
     maxPhoneNumbers: 1,
     maxHumanAgents: 2,
-    maxAiBots: 1,
     maxActiveFlows: 1,
     maxConversationsPerMonth: 50,
     webhooks: false,
@@ -50,7 +48,6 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
   [PlanTier.PRO]: {
     maxPhoneNumbers: -1,
     maxHumanAgents: -1,
-    maxAiBots: 3,
     maxActiveFlows: 5,
     maxConversationsPerMonth: -1,
     webhooks: true,
@@ -67,7 +64,6 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
   [PlanTier.BUSINESS]: {
     maxPhoneNumbers: -1,
     maxHumanAgents: -1,
-    maxAiBots: -1,
     maxActiveFlows: 20,
     maxConversationsPerMonth: -1,
     webhooks: true,
@@ -84,7 +80,6 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
   [PlanTier.AGENCIES]: {
     maxPhoneNumbers: -1,
     maxHumanAgents: -1,
-    maxAiBots: -1,
     maxActiveFlows: -1,
     maxConversationsPerMonth: -1,
     webhooks: true,

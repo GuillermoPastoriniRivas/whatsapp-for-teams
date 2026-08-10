@@ -409,14 +409,12 @@ export interface PlanUsage {
   plan: PlanTier;
   phoneNumbers: ResourceUsage;
   humanAgents: ResourceUsage;
-  aiBots: ResourceUsage;
   conversations: ResourceUsage;
 }
 
 export interface PlanLimits {
   maxPhoneNumbers: number;
   maxHumanAgents: number;
-  maxAiBots: number;
   maxConversationsPerMonth: number;
   webhooks: boolean;
   apiAccess: boolean;
@@ -582,6 +580,27 @@ export interface ImportContactsResult {
  * prompt. No confundir con WhatsAppBusinessProfile, que es lo que ve el cliente
  * al tocar el nombre del chat en su teléfono.
  */
+/**
+ * Un tercero al que las automatizaciones le pasan datos de clientes (el
+ * carpintero). No es agente ni contacto: tiene su propio WhatsApp y no está
+ * conectado a la plataforma.
+ */
+export interface ServiceProvider {
+  id: string;
+  name: string;
+  /** Dígitos E.164 sin '+'. */
+  phone: string;
+  services: string[];
+  active: boolean;
+  /** Cuándo aceptó recibir estos avisos. Null = no se puede activar. */
+  optInAt: string | null;
+  optInNote: string;
+  lastAssignedAt: string | null;
+  assignedCount: number;
+  notes: string;
+  createdAt: string;
+}
+
 export interface AccountBusinessProfile {
   vertical: "beauty" | "food" | "retail" | "generic";
   businessName: string;

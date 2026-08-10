@@ -19,6 +19,8 @@ import type { PhoneNumberRepository } from '../../../../domain/repositories/phon
 import type { AgentRepository } from '../../../../domain/repositories/agent.repository.js';
 import type { AgentPhoneAccessRepository } from '../../../../domain/repositories/agent-phone-access.repository.js';
 import type { TenantRepository } from '../../../../domain/repositories/tenant.repository.js';
+import type { ServiceProviderRepository } from '../../../../domain/repositories/service-provider.repository.js';
+import { normalizeService } from '../../provider/service-provider.use-cases.js';
 import { resolveAiPersona } from '../../../../domain/value-objects/ai-persona.js';
 import type { AiUsageRepository } from '../../../../domain/repositories/ai-usage.repository.js';
 import type { MessageRepository } from '../../../../domain/repositories/message.repository.js';
@@ -129,6 +131,7 @@ export class FlowEngineService {
     private readonly phoneRepo: PhoneNumberRepository,
     private readonly agentRepo: AgentRepository,
     private readonly tenantRepo: TenantRepository,
+    private readonly providerRepo: ServiceProviderRepository,
     private readonly usageRepo: AiUsageRepository,
     private readonly messageRepo: MessageRepository,
     private readonly labelRepo: LabelRepository,
@@ -524,6 +527,8 @@ export class FlowEngineService {
         return this.execAiRoute(ctx, data);
       case 'action.handoff_ai':
         return this.execHandoffAi(ctx, node, data);
+      case 'action.handoff_provider':
+        return this.execHandoffProvider(ctx, data);
       case 'action.handoff_human':
         return this.execHandoffHuman(ctx, data);
       case 'action.assign_agent':
@@ -1045,6 +1050,155 @@ export class FlowEngineService {
     return { kind: 'end', endReason: 'delegated_ai', note: persona.name, delegateToAiNodeId: node.id };
   }
 
+  /**
+   * Le pasa el dato del cliente a un proveedor externo (el carpintero).
+   *
+   * NO transfiere la conversación: eso no existe en WhatsApp. Le manda al
+   * proveedor una plantilla con los datos del cliente y un botón `wa.me` para
+   * que arranque él, y opcionalmente le avisa al cliente con un botón para
+   * escribirle él. El que reaccione primero conecta.
+   *
+   * El mensaje al proveedor se manda directo, sin crear conversación: un
+   * proveedor no es un contacto de la bandeja. Lo que queda como rastro es una
+   * nota en el chat del cliente, que es donde alguien la va a buscar.
+   */
+  private async execHandoffProvider(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const varCtx = this.varCtx(ctx);
+    const service = normalizeService(renderTemplate(String(data.service ?? ''), varCtx).text);
+    if (!service) return { kind: 'error', message: 'No se pudo resolver qué servicio pidió el cliente' };
+
+    // El botón que recibe el proveedor es un wa.me al teléfono del cliente. Si
+    // el cliente solo compartió su usuario de WhatsApp no hay link posible, y
+    // mandarle el dato igual dejaría al proveedor sin forma de contestar.
+    if (!ctx.contact.phone) {
+      return {
+        kind: 'error',
+        message: 'El cliente no compartió su teléfono, así que el proveedor no podría escribirle',
+      };
+    }
+
+    // La plantilla se resuelve siempre: es el camino cuando la ventana está
+    // cerrada, y la red cuando el mensaje de sesión rebota.
+    const template = await this.templateRepo.findById(String(data.templateId ?? ''));
+    if (!template || template.tenantId !== ctx.tenantId) return { kind: 'error', message: 'Plantilla inexistente' };
+    if (template.status !== TemplateStatus.APPROVED) return { kind: 'error', message: 'La plantilla no está aprobada' };
+    if (template.phoneNumberId !== ctx.phone.id) {
+      return { kind: 'error', message: 'La plantilla pertenece a otro número de WhatsApp' };
+    }
+
+    // Reparto atómico: con dos clientes eligiendo el mismo servicio a la vez,
+    // leer y después escribir se los daría a los dos al mismo proveedor.
+    const provider = await this.providerRepo.claimNextForService(ctx.tenantId, service);
+    if (!provider) return { kind: 'advance', handle: 'no_provider', note: `sin proveedor para "${service}"` };
+
+    // `provider.*` queda disponible para las variables de la plantilla y para
+    // el aviso al cliente ("ya le pasé tus datos a {{provider.name}}").
+    const withProvider = { ...varCtx, provider: { name: provider.name, phone: provider.phone, service } };
+
+    const variables: Record<string, string> = {};
+    const mapping: Record<string, { source?: string; value?: string }> = data.variables ?? {};
+    for (const [placeholder, def] of Object.entries(mapping)) {
+      const source = def?.source ?? 'static';
+      const rawValue = String(def?.value ?? '');
+      if (source === 'contact_field') {
+        variables[placeholder] = String(resolvePath(withProvider as any, `contact.${rawValue}`) ?? '');
+      } else if (source === 'flow_var') {
+        variables[placeholder] = String(resolvePath(withProvider as any, rawValue) ?? '');
+      } else {
+        variables[placeholder] = renderTemplate(rawValue, withProvider).text;
+      }
+    }
+
+    // Si el proveedor nos escribió hace menos de 24 h, la ventana está abierta y
+    // le podemos mandar texto libre: no se factura y no hay que encajar el
+    // detalle en variables numeradas. Si no, va la plantilla.
+    const freeFormBody = renderTemplate(String(data.providerBody ?? ''), withProvider).text.trim();
+    let sentFreeForm = false;
+
+    if (freeFormBody && (await this.providerWindowIsOpen(ctx, provider.phone))) {
+      try {
+        await this.messagingApi.sendMessage({
+          provider: ctx.phone.provider,
+          providerConfig: ctx.phone.providerConfig,
+          phoneNumberId: ctx.phone.phoneNumberId,
+          to: provider.phone,
+          type: MessageType.TEXT,
+          body: freeFormBody.substring(0, 4096),
+        });
+        sentFreeForm = true;
+      } catch (error: any) {
+        // La ventana pudo cerrarse entre el chequeo y el envío — son segundos,
+        // pero pasa. Se cae a la plantilla en vez de perder el dato.
+        //
+        // Si el envío llegó a Meta y lo que falló fue la respuesta, el proveedor
+        // recibe el aviso dos veces. Es un mal mucho menor que perder el lead.
+        this.logger.warn(
+          `El mensaje de sesión al proveedor ${provider.id} falló, se reintenta con la plantilla: ${error?.message}`,
+        );
+      }
+    }
+
+    if (!sentFreeForm) {
+      const built = buildTemplatePayload(template.components, variables);
+      await this.messagingApi.sendMessage({
+        provider: ctx.phone.provider,
+        providerConfig: ctx.phone.providerConfig,
+        phoneNumberId: ctx.phone.phoneNumberId,
+        to: provider.phone,
+        type: 'template',
+        template: { name: template.name, language: template.language, components: built.components },
+      });
+    }
+
+    // Aviso al cliente, con su propio botón para escribirle al proveedor. Es lo
+    // que evita que el lead se enfríe si el proveedor no mira el teléfono.
+    if (data.notifyCustomer !== false) {
+      const body = renderTemplate(String(data.customerBody ?? ''), withProvider).text.trim();
+      if (body) {
+        await this.sendSessionMessage(ctx, body.substring(0, 1024), {
+          kind: 'cta_url',
+          body: body.substring(0, 1024),
+          buttonText: (renderTemplate(String(data.customerButtonText ?? ''), withProvider).text.trim() || 'Escribirle').substring(0, 20),
+          url: `https://wa.me/${provider.phone}`,
+        });
+      }
+    }
+
+    await this.createFlowNote(
+      ctx,
+      `Dato pasado a ${provider.name} (+${provider.phone}) por "${service}" ` +
+        `(${sentFreeForm ? 'mensaje directo' : 'plantilla'}).`,
+    );
+
+    this.setVar(ctx, 'proveedor', provider.name);
+    return { kind: 'advance', handle: 'out', note: provider.name };
+  }
+
+  /**
+   * ¿Se le puede mandar texto libre a este proveedor?
+   *
+   * Solo si nos escribió en las últimas 24 h. Ese estado vive en la
+   * conversación, y un proveedor tiene conversación **solo si alguna vez
+   * escribió** — la crea el pipeline de entrada como con cualquiera. Acá se lee,
+   * nunca se crea: un proveedor no es un contacto de la bandeja.
+   *
+   * La ventana es por (contacto, línea): que nos haya escrito al número A no
+   * habilita mandarle desde el B, y el flujo corre en una línea concreta.
+   */
+  private async providerWindowIsOpen(ctx: RunCtx, phone: string): Promise<boolean> {
+    try {
+      const contact = await this.contactRepo.findByPhone(ctx.tenantId, phone);
+      if (!contact) return false;
+      const conversation = await this.conversationRepo.findByContactAndPhone(contact.id, ctx.phone.id);
+      if (!conversation) return false;
+      return Date.now() - conversation.lastInboundAt.getTime() < WINDOW_MS;
+    } catch (error: any) {
+      // Ante la duda, plantilla: cuesta plata pero llega.
+      this.logger.warn(`No se pudo leer la ventana del proveedor: ${error?.message}`);
+      return false;
+    }
+  }
+
   private async execHandoffHuman(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
     if (typeof data.note === 'string' && data.note.trim()) {
       const { text } = renderTemplate(data.note, this.varCtx(ctx));
@@ -1419,6 +1573,7 @@ export class FlowEngineService {
       vars: (ctx.variables.vars as Record<string, unknown>) ?? {},
       webhook: (ctx.variables.webhook as Record<string, unknown>) ?? null,
       flow: { name: ctx.flow.name },
+      sender: (ctx.variables.sender as Record<string, unknown>) ?? null,
     };
   }
 
