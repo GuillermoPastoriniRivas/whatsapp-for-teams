@@ -44,6 +44,26 @@ const TAIL_STROKE = 18;
    de 6. */
 const MARK_VIEWBOX = "81 85 346 342";
 
+/* El corte del anillo debajo de la patita.
+ *
+ * La banda del anillo se interrumpe entre 121° y 149°, así que el hueco
+ * interior sale hasta la base de la patita. Eso es lo que se ve como un
+ * triángulo del color de fondo pegado al arco, y es lo que hace que la patita
+ * lea como la cola de una burbuja y no como un triángulo pegado a un anillo.
+ *
+ * Es una cuña de r=100 a r=150: arranca dentro del hueco (la banda va de 119 a
+ * 165) para que el corte se funda con él sin dejar costura, y termina en la
+ * base de la patita.
+ *
+ * Va como máscara y no como camino con `evenodd`: la patita se dibuja con
+ * relleno Y trazo de 18, y un agujero en el relleno quedaría tapado por el
+ * trazo. La máscara recorta el resultado ya compuesto.
+ *
+ * El ancho es lo único delicado: más abierto (118°–152°) el anillo aparenta
+ * tener una segunda boca y a 20px se rompe; más cerrado (124°–146°) el corte
+ * casi no se lee. */
+const CUT_PATH = "M204.5 341.7L178.7 384.6L127.4 333.3L170.3 307.5Z";
+
 /**
  * Verde del LOGO.
  *
@@ -78,32 +98,46 @@ interface FluwsLogoProps {
 }
 
 function Glyph({ color }: { color: string }) {
+  // `useId` trae dos puntos (":r1:") y eso rompe como selector CSS; dentro de un
+  // `url(#…)` de SVG funciona igual, pero se limpian para no dejar la trampa.
+  const maskId = `fluws-cut-${useId().replace(/:/g, "")}`;
+
   return (
     <>
-      <path
-        d={ORBIT_PATH}
-        fill="none"
-        stroke={color}
-        strokeWidth={ORBIT_STROKE}
-        strokeLinecap="round"
-      />
-      <path
-        d={TAIL_PATH}
-        fill={color}
-        stroke={color}
-        strokeWidth={TAIL_STROKE}
-        strokeLinejoin="round"
-      />
+      <mask
+        id={maskId}
+        maskUnits="userSpaceOnUse"
+        x="0"
+        y="0"
+        width="512"
+        height="512"
+      >
+        <rect width="512" height="512" fill="#fff" />
+        <path d={CUT_PATH} fill="#000" />
+      </mask>
+      {/* El núcleo queda FUERA de la máscara: el corte no debe tocarlo. */}
+      <g mask={`url(#${maskId})`}>
+        <path
+          d={ORBIT_PATH}
+          fill="none"
+          stroke={color}
+          strokeWidth={ORBIT_STROKE}
+          strokeLinecap="round"
+        />
+        <path
+          d={TAIL_PATH}
+          fill={color}
+          stroke={color}
+          strokeWidth={TAIL_STROKE}
+          strokeLinejoin="round"
+        />
+      </g>
       <circle cx="256" cy="256" r={CORE_R} fill={color} />
     </>
   );
 }
 
 export function FluwsLogo({ size = 40, className, variant = "mark" }: FluwsLogoProps) {
-  // `useId` solo hace falta si algún día vuelve un degradado o una máscara; el
-  // símbolo actual es color plano y no necesita ids únicos.
-  useId();
-
   if (variant === "app") {
     return (
       <svg
