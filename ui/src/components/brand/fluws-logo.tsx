@@ -26,36 +26,66 @@ import { useId } from "react";
  * OJO CON EL RADIO. Lo fijo del símbolo es el BORDE EXTERIOR, en r=165, porque
  * es lo que define el tamaño total. El radio del eje es una consecuencia:
  *
- *     eje = 165 − trazo/2          y por lo tanto      hueco = 92 − trazo
+ *     eje = 165 − trazo/2
  *
- * (el hueco es lo que queda entre la banda y el núcleo, que está fijo en 73).
  * O sea que afinar el trazo NO achica el logo: engorda el hueco. Si se cambia
  * el trazo hay que recalcular el eje Y las dos puntas del arco con ese eje;
  * dejar el 147 y solo tocar el ancho corre el borde exterior y cambia el
  * tamaño del símbolo sin que nadie lo pida. */
 const ORBIT_PATH = "M391.8 199.8A147 147 0 1 1 317 122.2";
 const ORBIT_STROKE = 36;
-const CORE_R = 73;
+
+/* EL SISTEMA DE PROPORCIONES. Leer esto antes de tocar cualquier radio.
+ *
+ * El símbolo es una burbuja adentro de otra, y el tamaño de la de adentro NO se
+ * elige a ojo: sale de reducir la de afuera dos veces por la sección áurea.
+ *
+ *     k = 1/φ² = 0.382          núcleo = 165 × k = 63.02
+ *
+ * Ese mismo k genera la patita del núcleo (ver abajo), así que UNA constante
+ * gobierna toda la burbuja interior — radio y patita — en vez de ser dos
+ * decisiones sueltas que se desincronizan.
+ *
+ * De ahí caen las tres medidas concéntricas, hacia adentro desde 165:
+ *
+ *     banda   165 → 129   (36, el trazo)
+ *     hueco   129 →  63   (66)
+ *     núcleo   63 →   0
+ *
+ * Se evaluaron y descartaron, cada una por su motivo:
+ *
+ * · hueco = φ × trazo (núcleo 70.8). Regla tipográfica válida de contraforma
+ *   contra asta, pero gobierna el hueco y deja el núcleo como resto. El núcleo
+ *   es el acento del símbolo; no puede ser lo que sobra.
+ * · núcleo = hueco (64.5). El unísono 1:1 no crea jerarquía entre las partes.
+ * · continuación geométrica pura, núcleo = 129 × (129/165) = 101. Es la que
+ *   seguiría la progresión del anillo, pero deja el hueco en 28, más fino que
+ *   el trazo de 36, y una contraforma más delgada que el asta lee apretada.
+ *
+ * El 73 que hubo antes venía de igualar hueco y trazo cuando el trazo era 46;
+ * al pasar el trazo a 36 esa coincidencia dejó de existir y el número quedó
+ * huérfano. Por eso este bloque. */
+const CORE_R = 63;
 
 /* La patita del núcleo: el núcleo también es una burbuja, una adentro de la
  * otra.
  *
- * NO está puesta a ojo. Es la patita grande pasada por la homotecia desde el
- * centro que lleva el borde exterior del anillo (r=165) al núcleo (r=73), o sea
- * k = 73/165 = 0.442. Una homotecia conserva direcciones, así que las aristas
- * salen paralelas a las de la patita grande y al corte sin tener que forzarlo,
- * y el núcleo queda siendo un modelo a escala de la burbuja grande: sobresale
- * un 34.5% de su radio, igual que la grande sobresale del anillo.
+ * NO está puesta a ojo. Es la patita grande pasada por la MISMA homotecia que
+ * fija el radio del núcleo: k = 1/φ² = 0.382, desde el centro. Una homotecia
+ * conserva direcciones, así que las aristas salen paralelas a las de la patita
+ * grande y a las del corte sin tener que forzarlo, y el núcleo queda siendo un
+ * modelo a escala exacto de la burbuja grande: sobresale un 34.5% de su radio,
+ * igual que la grande sobresale del anillo.
  *
- * Punta en r=98 y base en r=66, adentro del núcleo. Vive entera en el hueco de
- * 73 a 129, con 26.8 de aire hasta la banda. Aun así no sobrevive por debajo de
- * 28px: a 20 y a 16 solo deforma un poco el círculo, y está bien — a ese tamaño
- * el símbolo se reconoce por la silueta, no por el interior.
+ * Punta en r=84.8 y base en r=57.3, adentro del núcleo. Vive entera en el hueco
+ * de 63 a 129, con 40.8 de aire hasta la banda. Aun así no sobrevive por debajo
+ * de 28px: a 20 y a 16 solo deforma un poco el círculo, y está bien — a ese
+ * tamaño el símbolo se reconoce por la silueta, no por el interior.
  *
  * Si se cambia el radio del núcleo o el trazo del anillo, esto se recalcula con
  * la misma k, no se ajusta a mano. */
-const CORE_TAIL_PATH = "M224.9 314.6L185.3 324.2L197.4 287.1Z";
-const CORE_TAIL_STROKE = 8.0; // = TAIL_STROKE × 0.442
+const CORE_TAIL_PATH = "M229.1 306.6L195 314.9L205.5 282.9Z";
+const CORE_TAIL_STROKE = 6.9; // = TAIL_STROKE × 0.382
 
 /* La patita, abajo a la izquierda. Es un triángulo con la base APOYADA SOBRE LA
  * BANDA del trazo de la órbita (los dos vértices de la base están a r=150, y la
@@ -170,7 +200,7 @@ function Glyph({ color }: { color: string }) {
       </mask>
       {/* El núcleo y su patita quedan FUERA de la máscara: el corte no debe
           tocarlos. Igual no se cruzan —el corte vive de r=115 a r=156 y la
-          patita del núcleo no pasa de r=102— pero dejarlos adentro haría que
+          patita del núcleo no pasa de r=88— pero dejarlos adentro haría que
           mover el corte los mordiera sin que se note por qué. */}
       <g mask={`url(#${maskId})`}>
         <path

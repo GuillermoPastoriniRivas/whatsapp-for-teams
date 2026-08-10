@@ -11,7 +11,7 @@
  * vieja huerfana para siempre y las PWA ya instaladas seguirian sirviendo el
  * icono de asis.chat. Se puede renombrar recien cuando no queden clientes en
  * v2, o agregando el prefijo viejo al filtro. */
-const SHELL_CACHE = "asis-shell-v9";
+const SHELL_CACHE = "asis-shell-v10";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/icons/badge-72.png"];
 

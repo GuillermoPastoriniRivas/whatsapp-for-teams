@@ -31,11 +31,12 @@ const ICONS = path.join(ROOT, 'public', 'icons');
  *  arco se recalculan con ese eje. Ver el componente. */
 const ORBIT_PATH = 'M391.8 199.8A147 147 0 1 1 317 122.2';
 const ORBIT_STROKE = 36;
-const CORE_R = 73;
-/** Patita del núcleo: la grande por homotecia k = 73/165 = 0.442 desde el
- *  centro, así las aristas salen paralelas solas. Ver el componente. */
-const CORE_TAIL_PATH = 'M224.9 314.6L185.3 324.2L197.4 287.1Z';
-const CORE_TAIL_STROKE = 8.0;
+/** Núcleo y su patita salen de UNA sola constante: k = 1/φ² = 0.382, la
+ *  homotecia desde el centro que reduce la burbuja de afuera a la de adentro.
+ *  núcleo = 165 × k = 63.02. El sistema completo está en el componente. */
+const CORE_R = 63;
+const CORE_TAIL_PATH = 'M229.1 306.6L195 314.9L205.5 282.9Z';
+const CORE_TAIL_STROKE = 6.9;
 /** Patita abajo a la izquierda, con la base apoyada sobre la banda del trazo. */
 const TAIL_PATH = 'M185.6 388.4L96.3 410.2L123.6 326.4Z';
 const TAIL_STROKE = 18;
