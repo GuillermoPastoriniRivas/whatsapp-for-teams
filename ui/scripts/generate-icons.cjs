@@ -26,9 +26,11 @@ const ICONS = path.join(ROOT, 'public', 'icons');
 
 /* ---- Geometría: espejo de src/components/brand/fluws-logo.tsx ---- */
 
-/** Órbita de 317° con la boca enfrentada a la patita (centrada en 316°). */
-const ORBIT_PATH = 'M387.2 201.7A142 142 0 1 1 314.9 126.8';
-const ORBIT_STROKE = 46;
+/** Órbita de 317° con la boca enfrentada a la patita (centrada en 316°). Lo fijo
+ *  es el borde EXTERIOR en r=165: el eje sale de 165 − trazo/2, y las puntas del
+ *  arco se recalculan con ese eje. Ver el componente. */
+const ORBIT_PATH = 'M391.8 199.8A147 147 0 1 1 317 122.2';
+const ORBIT_STROKE = 36;
 const CORE_R = 73;
 /** Patita del núcleo: la grande por homotecia k = 73/165 = 0.442 desde el
  *  centro, así las aristas salen paralelas solas. Ver el componente. */

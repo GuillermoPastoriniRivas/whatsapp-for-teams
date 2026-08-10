@@ -18,12 +18,23 @@ import { useId } from "react";
  * La órbita barre 317° y deja la boca EN FRENTE de la patita: centrada en 316°,
  * entre 294.5° y 337.5° (en SVG el
  * ángulo crece hacia abajo, así que 270° es arriba). Las puntas del arco caen
- * en (387.2, 201.7) y (314.9, 126.8).
+ * en (391.8, 199.8) y (317, 122.2).
  *
  * Casi cerrada a propósito: con la boca más ancha lee como anillo roto o como
- * spinner de carga, y cerrada del todo lee como el punto de grabar. */
-const ORBIT_PATH = "M387.2 201.7A142 142 0 1 1 314.9 126.8";
-const ORBIT_STROKE = 46;
+ * spinner de carga, y cerrada del todo lee como el punto de grabar.
+ *
+ * OJO CON EL RADIO. Lo fijo del símbolo es el BORDE EXTERIOR, en r=165, porque
+ * es lo que define el tamaño total. El radio del eje es una consecuencia:
+ *
+ *     eje = 165 − trazo/2          y por lo tanto      hueco = 92 − trazo
+ *
+ * (el hueco es lo que queda entre la banda y el núcleo, que está fijo en 73).
+ * O sea que afinar el trazo NO achica el logo: engorda el hueco. Si se cambia
+ * el trazo hay que recalcular el eje Y las dos puntas del arco con ese eje;
+ * dejar el 147 y solo tocar el ancho corre el borde exterior y cambia el
+ * tamaño del símbolo sin que nadie lo pida. */
+const ORBIT_PATH = "M391.8 199.8A147 147 0 1 1 317 122.2";
+const ORBIT_STROKE = 36;
 const CORE_R = 73;
 
 /* La patita del núcleo: el núcleo también es una burbuja, una adentro de la
@@ -37,11 +48,9 @@ const CORE_R = 73;
  * un 34.5% de su radio, igual que la grande sobresale del anillo.
  *
  * Punta en r=98 y base en r=66, adentro del núcleo. Vive entera en el hueco de
- * 73 a 119, así que no toca la banda, pero le quedan 16.8 de aire: a 512 sobra
- * y a 16–20px es medio píxel, así que el detalle interior se empasta. Es el
- * precio de que el hueco blanco mida lo mismo que el trazo verde. Si molesta,
- * la salida NO es achicar esta patita —quedaría escondida adentro del núcleo—
- * sino achicar el núcleo.
+ * 73 a 129, con 26.8 de aire hasta la banda. Aun así no sobrevive por debajo de
+ * 28px: a 20 y a 16 solo deforma un poco el círculo, y está bien — a ese tamaño
+ * el símbolo se reconoce por la silueta, no por el interior.
  *
  * Si se cambia el radio del núcleo o el trazo del anillo, esto se recalcula con
  * la misma k, no se ajusta a mano. */
@@ -50,7 +59,11 @@ const CORE_TAIL_STROKE = 8.0; // = TAIL_STROKE × 0.442
 
 /* La patita, abajo a la izquierda. Es un triángulo con la base APOYADA SOBRE LA
  * BANDA del trazo de la órbita (los dos vértices de la base están a r=150, y la
- * banda va de 119 a 165), así queda fundida con el anillo en vez de pegada.
+ * banda va de 129 a 165), así queda fundida con el anillo en vez de pegada.
+ *
+ * Esto pone un piso al afinado del anillo: con un trazo tal que el borde
+ * interno pase de 150, la base deja de estar apoyada y la patita queda colgando
+ * por fuera. Ese piso es trazo 30.
  *
  * Vértices en polares desde el centro: base a 118° y 152° con r=150, punta a
  * 136° con r=222.
@@ -75,18 +88,23 @@ const MARK_VIEWBOX = "81 85 346 342";
  *
  * Es un triángulo SEMEJANTE a la patita: aristas paralelas a las suyas, así que
  * hereda su ángulo de punta (58.2°), y apunta para el mismo lado, hacia afuera
- * sobre el eje de 136°. Punta en r=156, base de 46 —el mismo ancho que el trazo
- * del anillo— sobre r≈115.
+ * sobre el eje de 136°. Punta en r=156, base de 46 sobre r≈115.
+ *
+ * Ese 46 salió de igualar el trazo del anillo, cuando el trazo era 46. Ahora el
+ * trazo es 36 y el corte se dejó en 46 a propósito: bajarlo lo acortaría —ancho
+ * y largo están atados, ver abajo— y la patita se volvería a pegar al anillo.
  *
  * Con las aristas paralelas el ángulo queda fijo, o sea que el ancho ya define
  * el largo: 46 de ancho son 41.3 de largo. No son dos números independientes.
  *
  * Las dos condiciones que lo sostienen, y que hay que rehacer si se toca:
  *
- * 1. Las ESQUINAS de la base tienen que caer dentro de r=119, el borde interno
- *    de la banda, para que el corte se funda con el hueco. Van en r=117, con
- *    2 de margen: con la punta en r=158 caen justo en 119 y aparece una costura
- *    de banda entre el corte y el hueco.
+ * 1. Las ESQUINAS de la base tienen que caer dentro del borde interno de la
+ *    banda, para que el corte se funda con el hueco. Van en r=117 contra una
+ *    banda que arranca en 129: 12 de margen. Con el trazo de 46 que había antes
+ *    la banda arrancaba en 119 y el margen era de 2, así que si el trazo vuelve
+ *    a engordar esto es lo primero que se rompe, y se rompe como una costura de
+ *    banda entre el corte y el hueco.
  * 2. La PUNTA tiene que pasar la cuerda de la base de la patita, que a estos
  *    ángulos cae en r≈143. Va en 156, y por eso separa el anillo de la patita
  *    en vez de solo adelgazarlo.
