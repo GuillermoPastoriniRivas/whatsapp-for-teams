@@ -2,8 +2,7 @@
 
 import { useAuthStore } from "@/stores/auth.store";
 import { AgentStatusToggle } from "@/components/agent/agent-status-toggle";
-import { FluwsLogo } from "@/components/brand/fluws-logo";
-import { FluwsWordmark } from "@/components/brand/fluws-wordmark";
+import { FluwsLockup } from "@/components/brand/fluws-lockup";
 
 export function AppHeader() {
   const agent = useAuthStore((s) => s.agent);
@@ -13,10 +12,9 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-(--z-panel) flex items-center justify-between border-b bg-background px-4 h-[calc(var(--mobile-nav-h)+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)]">
       <div className="flex items-center gap-2 min-w-0">
-        <FluwsLogo size={32} className="shrink-0" />
-        <span className="truncate">
-          <FluwsWordmark />
-          <span className="hidden sm:inline text-muted-foreground font-normal"> · {agent.name}</span>
+        <FluwsLockup size={32} className="shrink-0" />
+        <span className="hidden truncate text-sm font-normal text-muted-foreground sm:inline">
+          · {agent.name}
         </span>
       </div>
       <AgentStatusToggle />

@@ -5,8 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
 import { onUnauthorized } from "@/lib/api";
 import { onSocketAuthError, reconnectSocket } from "@/lib/socket";
-import { FluwsLogo } from "@/components/brand/fluws-logo";
-import { FluwsWordmark } from "@/components/brand/fluws-wordmark";
+import { FluwsLockup } from "@/components/brand/fluws-lockup";
 
 /**
  * Continúa visualmente el splash del sistema (fondo claro + logo) mientras
@@ -15,8 +14,7 @@ import { FluwsWordmark } from "@/components/brand/fluws-wordmark";
 function AppSplash() {
   return (
     <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 bg-background">
-      <FluwsLogo size={88} className="animate-pulse" />
-      <FluwsWordmark className="text-sm" />
+      <FluwsLockup size={64} className="animate-pulse" />
     </div>
   );
 }

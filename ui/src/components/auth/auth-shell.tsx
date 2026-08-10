@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { ArrowLeft, Bot, MessageSquare, Users, type LucideIcon } from "lucide-react";
 
+import { FluwsLockup } from "@/components/brand/fluws-lockup";
 import { FluwsLogo } from "@/components/brand/fluws-logo";
-import { FluwsWordmark } from "@/components/brand/fluws-wordmark";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useTranslations } from "@/lib/i18n/use-translations";
@@ -73,19 +73,17 @@ export function AuthShell({
           es claro y dejaba media pantalla encendida al lado del formulario. */}
       {brandPanel && (
         <aside className="hidden w-1/2 flex-col justify-between bg-(--asis-auth-panel) p-10 text-(--asis-auth-panel-foreground) md:flex lg:p-14">
-          <div className="flex items-center gap-2">
-            {/* El panel cambia de color con el tema: verde en claro, negro en
-                oscuro. Por eso acá el símbolo y el wordmark NO van en sus
-                colores de marca — sobre el verde el verde desaparece. Los dos
-                toman el foreground del panel, que ya está elegido para dar
-                contraste contra cada fondo. */}
-            {/* El símbolo y el wordmark toman `--asis-auth-panel-mark`, que
-                invierte con el tema: blanco cuando el panel es verde, verde
-                cuando es negro. El texto del panel NO lo usa — el verde queda
-                de acento, no de color de cuerpo. */}
-            <FluwsLogo size={44} variant="mono" className="text-(--asis-auth-panel-mark)" />
-            <FluwsWordmark className="text-xl text-(--asis-auth-panel-mark)" tone="ink" />
-          </div>
+          {/* El lockup toma `--asis-auth-panel-mark`, que invierte con el tema:
+              blanco cuando el panel es verde, verde cuando es negro. Por eso va
+              en `mono` + `ink`, que es como los dos heredan el color en vez de
+              usar el verde de marca — sobre el panel verde desaparecerían.
+              El texto del panel NO usa ese token: el verde queda de acento. */}
+          <FluwsLockup
+            size={44}
+            variant="mono"
+            tone="ink"
+            className="text-(--asis-auth-panel-mark)"
+          />
 
           <div className="space-y-8">
             <div>
@@ -138,10 +136,7 @@ export function AuthShell({
             <ThemeToggle />
             <LanguageToggle />
             {brandPanel && (
-              <div className="flex items-center gap-1.5 md:hidden">
-                <FluwsLogo size={36} />
-                <FluwsWordmark className="text-lg" />
-              </div>
+              <FluwsLockup size={36} className="md:hidden" />
             )}
           </div>
         </div>

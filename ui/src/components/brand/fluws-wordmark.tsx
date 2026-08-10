@@ -21,15 +21,19 @@ import { FLUWS_GREEN } from "./fluws-logo";
 export function FluwsWordmark({
   className,
   tone = "brand",
+  style,
 }: {
   className?: string;
   /** "brand" = verde de marca. "ink" = hereda el color del texto de alrededor. */
   tone?: "brand" | "ink";
+  /** Lo usa `FluwsLockup` para derivar el cuerpo y el ajuste óptico del tamaño
+   *  del símbolo, que no se puede expresar con la escala de Tailwind. */
+  style?: React.CSSProperties;
 }) {
   return (
     <span
       className={cn("font-brand font-semibold tracking-tight", className)}
-      style={tone === "brand" ? { color: FLUWS_GREEN } : undefined}
+      style={{ ...(tone === "brand" ? { color: FLUWS_GREEN } : null), ...style }}
     >
       fluws
     </span>

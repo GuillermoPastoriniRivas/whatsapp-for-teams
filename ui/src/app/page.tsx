@@ -28,8 +28,8 @@ import {
   KeyRound,
   TerminalSquare,
 } from "lucide-react";
+import { FluwsLockup } from "@/components/brand/fluws-lockup";
 import { FluwsLogo } from "@/components/brand/fluws-logo";
-import { FluwsWordmark } from "@/components/brand/fluws-wordmark";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { PlanCard } from "@/components/shared/plan-card";
 import { PlanComparison } from "@/components/shared/plan-comparison";
@@ -224,10 +224,9 @@ export default function LandingPage() {
       {/* Navbar */}
       <nav className="fixed top-0 z-(--z-nav) w-full border-b border-border/60 bg-background/80 backdrop-blur-xl transition-all">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <FluwsLogo size={30} className="sm:hidden" />
-            <FluwsLogo size={36} className="hidden sm:block" />
-            <FluwsWordmark className="text-lg sm:text-xl" />
+          <div className="flex shrink-0 items-center">
+            <FluwsLockup size={30} className="sm:hidden" />
+            <FluwsLockup size={36} className="hidden sm:inline-flex" />
           </div>
 
           <div className="hidden items-center gap-5 text-sm font-medium text-muted-foreground md:flex lg:gap-8">
@@ -718,10 +717,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="xl:grid xl:grid-cols-3 xl:gap-8">
             <div className="space-y-8">
-              <div className="flex items-center gap-2">
-                 <FluwsLogo size={32} />
-                 <FluwsWordmark className="text-xl" />
-              </div>
+              <FluwsLockup size={32} />
               <p className="max-w-xs text-sm leading-6 text-muted-foreground">
                 {t.landing.footerTagline}
               </p>
