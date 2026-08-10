@@ -10,7 +10,7 @@ interface AdminNotificationParams {
 export function adminNotificationEmail(params: AdminNotificationParams): { subject: string; html: string; text: string } {
   const { title, bodyText, ctaLabel, ctaUrl } = params;
 
-  const subject = `${title} — Fluws`;
+  const subject = `${title} — asis.chat`;
 
   const ctaHtml = ctaLabel && ctaUrl ? ctaButton(ctaLabel, ctaUrl) : '';
 

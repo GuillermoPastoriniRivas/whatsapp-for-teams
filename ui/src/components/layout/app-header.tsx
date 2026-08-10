@@ -2,7 +2,7 @@
 
 import { useAuthStore } from "@/stores/auth.store";
 import { AgentStatusToggle } from "@/components/agent/agent-status-toggle";
-import { FluwsLockup } from "@/components/brand/fluws-lockup";
+import { AsisLockup } from "@/components/brand/asis-lockup";
 
 export function AppHeader() {
   const agent = useAuthStore((s) => s.agent);
@@ -12,7 +12,7 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-(--z-panel) flex items-center justify-between border-b bg-background px-4 h-[calc(var(--mobile-nav-h)+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)]">
       <div className="flex items-center gap-2 min-w-0">
-        <FluwsLockup size={32} className="shrink-0" />
+        <AsisLockup size={32} className="shrink-0" />
         <span className="hidden truncate text-sm font-normal text-muted-foreground sm:inline">
           · {agent.name}
         </span>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FluwsLockup } from "@/components/brand/fluws-lockup";
+import { AsisLockup } from "@/components/brand/asis-lockup";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { LanguageToggle } from "@/components/layout/language-toggle";
@@ -17,7 +17,7 @@ export default function TermsOfServicePage() {
       <nav className="border-b border-border bg-background">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
           <Link href="/">
-            <FluwsLockup size={36} />
+            <AsisLockup size={36} />
           </Link>
           <div className="flex items-center gap-4">
             <LanguageToggle />
@@ -50,7 +50,7 @@ export default function TermsOfServicePage() {
       <footer className="border-t border-border bg-muted/40 py-8">
         <div className="mx-auto flex max-w-4xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} fluws — {t.legal.allRightsReserved}
+            &copy; {new Date().getFullYear()} asis.chat — {t.legal.allRightsReserved}
             <br />
             <span className="text-xs">
               {t.legal.operatedBy} {legalEntityLine()}

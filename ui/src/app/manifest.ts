@@ -3,10 +3,11 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     // Nombre de la app instalada. `short_name` es el que va debajo del ícono
-    // en el escritorio y en la pantalla de inicio: si se pone el dominio, ahí
-    // se lee "fluws.com" en vez del nombre de la marca.
-    name: "fluws",
-    short_name: "fluws",
+    // en el escritorio y en la pantalla de inicio, y ahí el espacio es poco:
+    // "asis.chat" entra justo, cualquier cosa más larga se corta con puntos
+    // suspensivos.
+    name: "asis.chat",
+    short_name: "asis.chat",
     description: "Atención por WhatsApp para equipos, con IA",
     id: "/",
     start_url: "/conversations",

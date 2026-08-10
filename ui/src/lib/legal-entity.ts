@@ -1,5 +1,5 @@
 /**
- * Identificacion legal del titular de Fluws.
+ * Identificacion legal del titular de asis.chat.
  *
  * El nombre legal tiene que estar visible en el sitio publico: la verificacion
  * de negocio de Meta rechaza el dominio si no puede atarlo a la persona que

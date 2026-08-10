@@ -19,7 +19,7 @@ const PUBLIC_API_PREFIX = '/api/v1';
  */
 function publicApiDescription(): string {
   return [
-    'API REST para integrar WhatsApp de Fluws en tu propia aplicación.',
+    'API REST para integrar WhatsApp de asis.chat en tu propia aplicación.',
     '',
     '### Autenticación',
     'Mandá tu clave en el header `X-Api-Key` (también se acepta `Authorization: Bearer ak_live_...`).',
@@ -85,7 +85,7 @@ async function bootstrap() {
   // Documento interno: toda la superficie de la app. Es la referencia del
   // equipo, no la que se le pasa a un integrador.
   const internalConfig = new DocumentBuilder()
-    .setTitle('Fluws — API interna')
+    .setTitle('asis.chat — API interna')
     .setDescription('Superficie completa de la app (sesión JWT). La referencia pública para desarrolladores está en /api/docs.')
     .setVersion('1.0')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
@@ -111,7 +111,7 @@ async function bootstrap() {
   // Documento público: solo /v1. Mostrarle a un integrador los endpoints
   // internos es ruido — ninguno le sirve, todos exigen sesión de la app.
   const publicConfig = new DocumentBuilder()
-    .setTitle('Fluws API')
+    .setTitle('asis.chat API')
     .setDescription(publicApiDescription())
     .setVersion('1.0')
     .addApiKey({ type: 'apiKey', name: 'X-Api-Key', in: 'header' }, 'ApiKey')

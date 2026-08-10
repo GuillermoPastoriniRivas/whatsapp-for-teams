@@ -6,7 +6,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { Button } from "@/components/ui/button";
-import { FluwsLockup } from "@/components/brand/fluws-lockup";
+import { AsisLockup } from "@/components/brand/asis-lockup";
 import { PlanCard } from "@/components/shared/plan-card";
 import { PlanComparison } from "@/components/shared/plan-comparison";
 import { ArrowLeft } from "lucide-react";
@@ -56,7 +56,7 @@ export default function PricingPage() {
       <nav className="sticky top-0 z-(--z-nav) border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/">
-            <FluwsLockup size={36} />
+            <AsisLockup size={36} />
           </Link>
           <div className="flex items-center gap-4">
             <LanguageToggle />
@@ -102,7 +102,7 @@ export default function PricingPage() {
       {/* Footer */}
       <footer className="border-t border-border bg-background py-8">
         <div className="mx-auto max-w-7xl px-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} fluws — {t.landing.footerRights}
+          &copy; {new Date().getFullYear()} asis.chat — {t.landing.footerRights}
         </div>
       </footer>
     </div>

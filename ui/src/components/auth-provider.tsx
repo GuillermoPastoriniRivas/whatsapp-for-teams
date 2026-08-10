@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
 import { onUnauthorized } from "@/lib/api";
 import { onSocketAuthError, reconnectSocket } from "@/lib/socket";
-import { FluwsLockup } from "@/components/brand/fluws-lockup";
+import { AsisLockup } from "@/components/brand/asis-lockup";
 
 /**
  * Continúa visualmente el splash del sistema (fondo claro + logo) mientras
@@ -14,7 +14,7 @@ import { FluwsLockup } from "@/components/brand/fluws-lockup";
 function AppSplash() {
   return (
     <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 bg-background">
-      <FluwsLockup size={64} className="animate-pulse" />
+      <AsisLockup size={64} className="animate-pulse" />
     </div>
   );
 }

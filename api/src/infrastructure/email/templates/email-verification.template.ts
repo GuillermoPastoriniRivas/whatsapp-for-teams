@@ -9,25 +9,25 @@ interface EmailVerificationParams {
 export function emailVerificationEmail(params: EmailVerificationParams): { subject: string; html: string; text: string } {
   const { agentName, verifyUrl, expiresInHours } = params;
 
-  const subject = 'Confirmá tu email — Fluws';
+  const subject = 'Confirmá tu email — asis.chat';
 
   const html = wrapInLayout(
     `<p style="margin:0 0 16px;">Hola <strong>${agentName}</strong>,</p>
-<p style="margin:0 0 16px;">¡Bienvenido/a a Fluws! Para activar tu cuenta, confirmá tu dirección de email.</p>
+<p style="margin:0 0 16px;">¡Bienvenido/a a asis.chat! Para activar tu cuenta, confirmá tu dirección de email.</p>
 ${ctaButton('Confirmar email', verifyUrl)}
 <p style="margin:0 0 16px;">Este enlace expira en <strong>${expiresInHours} horas</strong>.</p>
-<p style="margin:0;font-size:13px;color:${GRAY_500};">Si no creaste una cuenta en Fluws, podés ignorar este email.</p>`,
-    'Confirmá tu email en Fluws',
+<p style="margin:0;font-size:13px;color:${GRAY_500};">Si no creaste una cuenta en asis.chat, podés ignorar este email.</p>`,
+    'Confirmá tu email en asis.chat',
   );
 
   const text = `Hola ${agentName},
 
-¡Bienvenido/a a Fluws! Para activar tu cuenta, confirmá tu dirección de email ingresando al siguiente enlace:
+¡Bienvenido/a a asis.chat! Para activar tu cuenta, confirmá tu dirección de email ingresando al siguiente enlace:
 ${verifyUrl}
 
 Este enlace expira en ${expiresInHours} horas.
 
-Si no creaste una cuenta en Fluws, podés ignorar este email.`;
+Si no creaste una cuenta en asis.chat, podés ignorar este email.`;
 
   return { subject, html, text };
 }

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { ArrowLeft, Bot, MessageSquare, Users, type LucideIcon } from "lucide-react";
 
-import { FluwsLockup } from "@/components/brand/fluws-lockup";
-import { FluwsLogo } from "@/components/brand/fluws-logo";
+import { AsisLockup } from "@/components/brand/asis-lockup";
+import { AsisLogo } from "@/components/brand/asis-logo";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useTranslations } from "@/lib/i18n/use-translations";
@@ -78,7 +78,7 @@ export function AuthShell({
               en `mono` + `ink`, que es como los dos heredan el color en vez de
               usar el verde de marca — sobre el panel verde desaparecerían.
               El texto del panel NO usa ese token: el verde queda de acento. */}
-          <FluwsLockup
+          <AsisLockup
             size={44}
             variant="mono"
             tone="ink"
@@ -113,7 +113,7 @@ export function AuthShell({
             )}
           </div>
 
-          <p className="text-xs opacity-50">&copy; {year} fluws</p>
+          <p className="text-xs opacity-50">&copy; {year} asis.chat</p>
         </aside>
       )}
 
@@ -136,7 +136,7 @@ export function AuthShell({
             <ThemeToggle />
             <LanguageToggle />
             {brandPanel && (
-              <FluwsLockup size={36} className="md:hidden" />
+              <AsisLockup size={36} className="md:hidden" />
             )}
           </div>
         </div>
@@ -144,7 +144,7 @@ export function AuthShell({
         <div className="flex flex-1 items-center justify-center px-5 pb-8 sm:px-8">
           <div className="w-full max-w-sm">
             <div className={cn("mb-10 flex flex-col items-center", brandPanel && "md:hidden")}>
-              <FluwsLogo size={72} />
+              <AsisLogo size={72} />
             </div>
 
             <div className={cn("mb-8", centered && "text-center")}>
@@ -163,7 +163,7 @@ export function AuthShell({
 
             {!brandPanel && (
               <p className="mt-10 text-center text-xs text-muted-foreground">
-                &copy; {year} fluws
+                &copy; {year} asis.chat
               </p>
             )}
           </div>

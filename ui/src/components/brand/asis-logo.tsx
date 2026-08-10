@@ -1,4 +1,4 @@
-/* Marca fluws: núcleo macizo + órbita de 317°.
+/* Marca asis.chat: núcleo macizo + órbita de 317°.
  *
  * La forma salió de una exploración larga y conviene saber qué NO volver a
  * proponer, porque cada una se descartó por un motivo concreto:
@@ -161,11 +161,11 @@ const CUT_PATH = "M143.8 364.4L157.5 319.2L189.5 352.2Z";
  * Va fijo y no como token: es el ícono de la marca y no cambia con el tema.
  * Excepción deliberada a la regla de solo-tokens de DESIGN.md.
  */
-export const FLUWS_GREEN = "#15A58A";
+export const ASIS_GREEN = "#15A58A";
 /** Negro de marca. También el color del wordmark sobre fondo claro. */
-export const FLUWS_INK = "#0B0F14";
+export const ASIS_INK = "#0B0F14";
 
-interface FluwsLogoProps {
+interface AsisLogoProps {
   size?: number;
   className?: string;
   /**
@@ -183,7 +183,7 @@ interface FluwsLogoProps {
 function Glyph({ color }: { color: string }) {
   // `useId` trae dos puntos (":r1:") y eso rompe como selector CSS; dentro de un
   // `url(#…)` de SVG funciona igual, pero se limpian para no dejar la trampa.
-  const maskId = `fluws-cut-${useId().replace(/:/g, "")}`;
+  const maskId = `asis-cut-${useId().replace(/:/g, "")}`;
 
   return (
     <>
@@ -230,7 +230,7 @@ function Glyph({ color }: { color: string }) {
   );
 }
 
-export function FluwsLogo({ size = 40, className, variant = "mark" }: FluwsLogoProps) {
+export function AsisLogo({ size = 40, className, variant = "mark" }: AsisLogoProps) {
   if (variant === "app") {
     return (
       <svg
@@ -241,7 +241,7 @@ export function FluwsLogo({ size = 40, className, variant = "mark" }: FluwsLogoP
         xmlns="http://www.w3.org/2000/svg"
         className={className}
       >
-        <rect width="512" height="512" rx="115" fill={FLUWS_GREEN} />
+        <rect width="512" height="512" rx="115" fill={ASIS_GREEN} />
         {/* Sin escalar: el glifo ocupa 91→421 de 512, que deja el aire justo
             para que el radio del contenedor no se lo coma. */}
         <Glyph color="#FFFFFF" />
@@ -258,7 +258,7 @@ export function FluwsLogo({ size = 40, className, variant = "mark" }: FluwsLogoP
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      <Glyph color={variant === "mono" ? "currentColor" : FLUWS_GREEN} />
+      <Glyph color={variant === "mono" ? "currentColor" : ASIS_GREEN} />
     </svg>
   );
 }

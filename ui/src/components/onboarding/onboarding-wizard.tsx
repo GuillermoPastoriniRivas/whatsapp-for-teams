@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { FluwsLockup } from "@/components/brand/fluws-lockup";
+import { AsisLockup } from "@/components/brand/asis-lockup";
 import { useAuthStore } from "@/stores/auth.store";
 import { StepWelcome } from "./steps/step-welcome";
 import { StepWhatsapp } from "./steps/step-whatsapp";
@@ -77,7 +77,7 @@ export function OnboardingWizard() {
     <div className="flex min-h-dvh flex-col">
       {/* Header */}
       <header className="flex items-center justify-between border-b px-4 py-3 md:px-6">
-        <FluwsLockup size={32} />
+        <AsisLockup size={32} />
         {step < TOTAL_STEPS && (
           <span className="text-xs text-muted-foreground">
             Paso {step} de {TOTAL_STEPS - 1}

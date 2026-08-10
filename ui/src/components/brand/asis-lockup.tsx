@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
-import { FluwsLogo } from "./fluws-logo";
-import { FluwsWordmark } from "./fluws-wordmark";
+import { AsisLogo } from "./asis-logo";
+import { AsisWordmark } from "./asis-wordmark";
 
 /**
  * Símbolo + wordmark, con la relación entre los dos definida en UN solo lugar.
@@ -16,9 +16,14 @@ import { FluwsWordmark } from "./fluws-wordmark";
 /**
  * Cuerpo del wordmark como fracción del alto del símbolo.
  *
- * Con 0.68 los ascendentes de la "f" y la "l" llegan casi al alto del símbolo,
+ * Con 0.68 los ascendentes de la "h" y la "t" llegan casi al alto del símbolo,
  * que es lo que hace que se lea como una unidad. Más abajo (0.50–0.56) el texto
  * queda enano al lado; más arriba (0.75) la palabra se come al símbolo.
+ *
+ * OJO: este valor se calibró con una palabra de cinco letras. "asis.chat" tiene
+ * nueve y casi todas de altura de x, así que el mismo 0.68 da un bloque mucho
+ * más ancho y ópticamente más chico —hay menos tinta arriba de la línea media—.
+ * Si el conjunto se ve desbalanceado, es acá y no en el símbolo.
  */
 const TEXT_RATIO = 0.68;
 
@@ -28,13 +33,14 @@ const GAP_RATIO = 0.24;
 /**
  * Corrección óptica vertical, como fracción del símbolo.
  *
- * "fluws" no tiene descendentes y sí ascendentes en la "f" y la "l", así que su
- * masa de tinta queda por encima del centro de la caja de línea. Centrado sin
- * más, el texto se ve flotando alto respecto del símbolo. Esto lo baja.
+ * "asis.chat" no tiene descendentes y sí ascendentes en la "h" y la "t", así
+ * que su masa de tinta queda por encima del centro de la caja de línea.
+ * Centrado sin más, el texto se ve flotando alto respecto del símbolo. Esto lo
+ * baja.
  */
 const OPTICAL_NUDGE_RATIO = 0.045;
 
-export function FluwsLockup({
+export function AsisLockup({
   size = 40,
   variant = "mark",
   tone = "brand",
@@ -53,8 +59,8 @@ export function FluwsLockup({
       className={cn("inline-flex items-center", className)}
       style={{ gap: size * GAP_RATIO }}
     >
-      <FluwsLogo size={size} variant={variant} className="shrink-0" />
-      <FluwsWordmark
+      <AsisLogo size={size} variant={variant} className="shrink-0" />
+      <AsisWordmark
         tone={tone}
         className="leading-none"
         style={{

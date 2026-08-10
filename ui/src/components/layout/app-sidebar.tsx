@@ -15,8 +15,8 @@ import { useConversationStore } from "@/stores/conversation.store";
 import { useBillingStore } from "@/stores/billing.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { cn } from "@/lib/utils";
-import { FluwsLockup } from "@/components/brand/fluws-lockup";
-import { FluwsLogo } from "@/components/brand/fluws-logo";
+import { AsisLockup } from "@/components/brand/asis-lockup";
+import { AsisLogo } from "@/components/brand/asis-logo";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { AgentStatusToggle } from "@/components/agent/agent-status-toggle";
 import { NavBadge } from "@/components/layout/nav-badge";
@@ -180,9 +180,9 @@ export function AppSidebar({ className }: { className?: string }) {
       {/* App Logo + Brand */}
       <div className={cn("mb-6 flex items-center gap-3", collapsed ? "justify-center px-0" : "px-4")}>
         {collapsed ? (
-          <FluwsLogo size={40} className="shrink-0" />
+          <AsisLogo size={40} className="shrink-0" />
         ) : (
-          <FluwsLockup size={40} />
+          <AsisLockup size={40} />
         )}
       </div>
 

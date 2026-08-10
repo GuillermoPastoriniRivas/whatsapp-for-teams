@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "@/lib/i18n/use-translations";
-import { FluwsLockup } from "@/components/brand/fluws-lockup";
+import { AsisLockup } from "@/components/brand/asis-lockup";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export default function ConversationsEmptyState() {
@@ -13,7 +13,7 @@ export default function ConversationsEmptyState() {
           tipografía, el color y la proporción de marca como el resto de la app,
           en vez de la fuente de la interfaz. */}
       <EmptyState
-        title={<FluwsLockup size={56} />}
+        title={<AsisLockup size={56} />}
         description={t.conversations.emptyDescription}
         className="py-0"
       />
