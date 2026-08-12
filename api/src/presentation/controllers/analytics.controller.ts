@@ -8,9 +8,27 @@ import {
   GetWhatsAppAnalyticsUseCase,
 } from '../../application/use-cases/analytics/get-whatsapp-analytics.use-case.js';
 import type { DomainError } from '../../domain/errors/domain-errors.js';
+import type { GetMessageUsageUseCase } from '../../application/use-cases/billing/get-message-usage.use-case.js';
+import type { ReconcileMetaUsageUseCase } from '../../application/use-cases/billing/reconcile-meta-usage.use-case.js';
+import type { GetAdPerformanceUseCase } from '../../application/use-cases/analytics/get-ad-performance.use-case.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_WINDOW_DAYS = 30;
+
+/**
+ * Las dimensiones que Meta no puede darnos porque no las sabe: quién mandó el
+ * mensaje, de qué campaña salió, con qué plantilla.
+ */
+const MESSAGE_USAGE_GROUPS = [
+  'category',
+  'senderKind',
+  'campaign',
+  'template',
+  'phoneNumber',
+  'country',
+  'day',
+  'ad',
+] as const;
 
 @ApiTags('Analytics')
 @ApiBearerAuth('JWT')
@@ -19,6 +37,9 @@ export class AnalyticsController {
   constructor(
     @Inject('GetWhatsAppAnalyticsUseCase') private readonly getAnalytics: GetWhatsAppAnalyticsUseCase,
     @Inject('GetTemplateAnalyticsUseCase') private readonly getTemplateAnalytics: GetTemplateAnalyticsUseCase,
+    @Inject('GetMessageUsageUseCase') private readonly messageUsage_: GetMessageUsageUseCase,
+    @Inject('ReconcileMetaUsageUseCase') private readonly reconcile: ReconcileMetaUsageUseCase,
+    @Inject('GetAdPerformanceUseCase') private readonly adPerformance: GetAdPerformanceUseCase,
   ) {}
 
   @Get('phone-numbers/:id')
@@ -78,6 +99,83 @@ export class AnalyticsController {
     });
     if (!result.ok) this.throwMapped(result.error);
     return result.value;
+  }
+
+  @Get('messages')
+  @Roles('admin')
+  @ApiOperation({
+    summary: 'Message volume and cost, from our own ledger',
+    description:
+      'Delivered messages and their cost for a period, broken down by dimensions Meta cannot know — who sent ' +
+      'the message, which campaign, which template. These messages are billed by Meta directly to the ' +
+      "customer: asis applies no markup and does not charge for them. Meta's invoice is the source of truth.",
+  })
+  @ApiQuery({ name: 'start', required: false, description: 'ISO date. Defaults to 30 days ago.' })
+  @ApiQuery({ name: 'end', required: false, description: 'ISO date. Defaults to now.' })
+  @ApiQuery({ name: 'phoneNumberId', required: false })
+  @ApiQuery({ name: 'groupBy', required: false, enum: MESSAGE_USAGE_GROUPS })
+  @ApiResponse({ status: 200, description: 'Message usage and cost' })
+  async messageUsage(
+    @CurrentAgent() agent: RequestAgent,
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('phoneNumberId') phoneNumberId?: string,
+    @Query('groupBy') groupBy?: string,
+  ) {
+    const range = this.parseRange(start, end);
+    return this.messageUsage_.execute({
+      tenantId: agent.tenantId,
+      from: range.start,
+      to: range.end,
+      phoneNumberId,
+      groupBy: MESSAGE_USAGE_GROUPS.includes(groupBy as never) ? (groupBy as never) : undefined,
+    });
+  }
+
+  @Get('ads')
+  @Roles('admin')
+  @ApiOperation({
+    summary: 'Performance por anuncio Click-to-WhatsApp',
+    description:
+      'Conversaciones, contactos y costo de mensajería agrupados por el anuncio o posteo que trajo el lead. ' +
+      'La atribución sale del objeto `referral` que Meta manda en el primer mensaje después del click.',
+  })
+  @ApiQuery({ name: 'start', required: false, description: 'ISO date. Defaults to 30 days ago.' })
+  @ApiQuery({ name: 'end', required: false, description: 'ISO date. Defaults to now.' })
+  @ApiQuery({ name: 'phoneNumberId', required: false })
+  @ApiResponse({ status: 200, description: 'Ad performance' })
+  async ads(
+    @CurrentAgent() agent: RequestAgent,
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('phoneNumberId') phoneNumberId?: string,
+  ) {
+    const range = this.parseRange(start, end);
+    return this.adPerformance.execute({
+      tenantId: agent.tenantId,
+      from: range.start,
+      to: range.end,
+      phoneNumberId,
+    });
+  }
+
+  @Get('messages/reconciliation')
+  @Roles('admin')
+  @ApiOperation({
+    summary: 'Reconcile our ledger against Meta',
+    description:
+      'Compares our delivered-message ledger against what Meta reports for the same WABA and period. ' +
+      'A non-zero delta means a webhook was lost or a send went unrecorded.',
+  })
+  @ApiQuery({ name: 'start', required: false })
+  @ApiQuery({ name: 'end', required: false })
+  async reconciliation(
+    @CurrentAgent() agent: RequestAgent,
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+  ) {
+    const range = this.parseRange(start, end);
+    return this.reconcile.execute(agent.tenantId, range.start, range.end);
   }
 
   private parseRange(start?: string, end?: string): { start: Date; end: Date } {

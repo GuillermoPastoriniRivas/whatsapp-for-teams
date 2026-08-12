@@ -23,6 +23,7 @@ import { MessageTemplate } from '../../../domain/entities/message-template.entit
 import { buildTemplatePayload } from './helpers/template-variable.resolver.js';
 import { CAMPAIGN_DISPATCH_JOB } from './start-campaign.use-case.js';
 import { recipientIdentityOf } from '../../../domain/value-objects/recipient-identity.js';
+import { MessageChargeRepository } from '../../../domain/repositories/message-charge.repository.js';
 
 const STALE_QUEUED_MS = 10 * 60 * 1000;
 const RATE_LIMIT_BACKOFF_MS = 60 * 1000;
@@ -60,6 +61,7 @@ export class ProcessCampaignBatchUseCase {
     private readonly messagingApi: MessagingApiPort,
     private readonly jobQueue: JobQueuePort,
     private readonly gateway: RealtimeGatewayPort,
+    private readonly charges: MessageChargeRepository,
   ) {}
 
   async execute(input: { campaignId: string }): Promise<void> {
@@ -160,6 +162,24 @@ export class ProcessCampaignBatchUseCase {
           language: template.language,
           components: built.components,
         },
+        // La conversación se crea recién después del envío (una que falla no
+        // debe dejar un chat fantasma en la bandeja), así que acá todavía no
+        // hay id: se enlaza abajo, cuando ya existe.
+        billing: {
+          tenantId: campaign.tenantId,
+          phoneNumberId: campaign.phoneNumberId,
+          conversationId: null,
+          contactId: recipient.contactId,
+          destinationPhone: recipient.phone ?? null,
+          destinationBsuid: recipient.bsuid ?? null,
+          senderKind: 'campaign',
+          campaignId: campaign.id,
+          templateId: template.id,
+          templateCategory: template.category,
+          // Una campaña sale fuera de toda ventana: por eso es una plantilla.
+          windowOpen: false,
+          freeEntryPointAt: null,
+        },
       });
 
       const now = new Date();
@@ -194,8 +214,13 @@ export class ProcessCampaignBatchUseCase {
         timestamp: now,
         senderAgentId: campaign.createdByAgentId,
         senderAgentName: null,
+        senderKind: 'campaign',
         campaignId: campaign.id,
       });
+
+      // El charge se escribió en el envío, sin conversación todavía. Ahora que
+      // existe, se enlaza para poder ir del costo al chat.
+      await this.charges.linkMessage(waMessageId, message.id, conversation.id);
 
       await this.recipientRepo.markSent(recipient.id, {
         waMessageId,

@@ -4,6 +4,7 @@ import { MessageDirection } from '../../../../domain/enums/message-direction.enu
 import { MessageType } from '../../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../../domain/enums/message-wa-status.enum.js';
 import { MessageLocation } from '../../../../domain/value-objects/message-location.js';
+import { MessageReferral } from '../../../../domain/value-objects/message-referral.js';
 
 export type MessageDocument = HydratedDocument<MessageModel>;
 
@@ -69,9 +70,20 @@ export class MessageModel {
 
   @Prop({ type: Object, default: null })
   location: MessageLocation | null;
+
+  /** Write-once. Meta cobra entregado, y `waStatus` es mutable y desordenado. */
+  @Prop({ type: Date, default: null })
+  deliveredAt: Date | null;
+
+  @Prop({ type: Date, default: null })
+  failedAt: Date | null;
+
+  @Prop({ type: Object, default: null })
+  referral: MessageReferral | null;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(MessageModel);
 
 MessageSchema.index({ conversationId: 1, timestamp: 1 });
 MessageSchema.index({ campaignId: 1 }, { sparse: true });
+MessageSchema.index({ 'referral.sourceId': 1, timestamp: -1 }, { sparse: true });

@@ -2,6 +2,7 @@ import { MessageDirection } from '../enums/message-direction.enum.js';
 import { MessageType } from '../enums/message-type.enum.js';
 import { MessageWaStatus } from '../enums/message-wa-status.enum.js';
 import { MessageLocation, formatLocation } from '../value-objects/message-location.js';
+import type { MessageReferral } from '../value-objects/message-referral.js';
 
 /** Quién originó un mensaje saliente. */
 export type MessageSenderKind = 'agent' | 'ai' | 'flow' | 'campaign' | 'api';
@@ -41,6 +42,18 @@ export class Message {
      * que dispara la derivación a un humano.
      */
     public readonly senderKind: MessageSenderKind | null = null,
+    /**
+     * Cuándo Meta confirmó la entrega. Se escribe una sola vez y nunca se pisa.
+     *
+     * `waStatus` no sirve para esto: es un solo campo mutable y los webhooks de
+     * Meta no vienen ordenados, así que un `sent` tardío degradaba un `read`. Y
+     * Meta **cobra entregado, no enviado**: sin este timestamp no se puede
+     * responder cuántos mensajes se entregaron en un período.
+     */
+    public readonly deliveredAt: Date | null = null,
+    /** Cuándo Meta lo dio por fallido. Un mensaje fallido no se cobra. */
+    public readonly failedAt: Date | null = null,
+    public readonly referral: MessageReferral | null = null,
   ) {}
 }
 

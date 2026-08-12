@@ -23,6 +23,7 @@ import { MediaAccessService } from '../media/media-access.service.js';
 import { MessageMediaEnricher } from '../media/message-media.enricher.js';
 import { SetAutopilotUseCase } from './set-autopilot.use-case.js';
 import { recipientIdentityOf } from '../../../domain/value-objects/recipient-identity.js';
+import { billingForConversation } from '../billing/outbound-billing.helper.js';
 
 /** El tipo de mensaje de WhatsApp que corresponde a cada clase de archivo. */
 const MEDIA_MESSAGE_TYPES: Record<MediaKind, MessageType> = {
@@ -110,6 +111,7 @@ export class SendMessageUseCase {
       mediaId,
       filename: asset?.filename ?? undefined,
       contextWaMessageId,
+      billing: billingForConversation(conversation, contact, { senderKind: 'agent' }),
     });
 
     const message = await this.messageRepo.upsertByWaMessageId({
@@ -124,6 +126,7 @@ export class SendMessageUseCase {
       timestamp: new Date(),
       senderAgentId: input.agentId,
       senderAgentName: agent?.name ?? null,
+      senderKind: 'agent',
       mediaAssetId: asset?.id ?? null,
       contextWaMessageId: contextWaMessageId ?? null,
     });

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuthStore } from "@/stores/auth.store";
 import { useBillingStore } from "@/stores/billing.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
@@ -156,6 +157,21 @@ export default function BillingPage() {
               <p>{t.billing.trialExpiredMessage}</p>
             </InlineNotice>
           )}
+
+          {/* El costo de los mensajes va aparte del plan, y con su propio link,
+              porque no lo cobramos nosotros: mezclarlo con "tu plan" haría
+              parecer que es un cargo de asis. */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.billing.messagesTitle}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">{t.billing.messagesPassthrough}</p>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/analytics">{t.billing.messagesLink}</Link>
+              </Button>
+            </CardContent>
+          </Card>
 
           {/* Plan actual + uso */}
           <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">

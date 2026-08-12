@@ -22,6 +22,8 @@ import { normalizePhone } from '../contact/normalize-phone.js';
 import { toMessageLocation } from '../../../domain/value-objects/message-location.js';
 import type { InteractiveSendPayload, OutboundContactCard } from '../../ports/messaging-api.port.js';
 import { Contact } from '../../../domain/entities/contact.entity.js';
+import { Conversation } from '../../../domain/entities/conversation.entity.js';
+import { billingForConversation } from '../billing/outbound-billing.helper.js';
 import { isBsuidOnly, recipientIdentityOf, templateRequiresPhone } from '../../../domain/value-objects/recipient-identity.js';
 import { listTemplatePlaceholders, buildTemplatePayload, TemplatePlaceholder } from '../campaign/helpers/template-variable.resolver.js';
 import { templateBelongsToPhone } from '../template/helpers/template-scope.js';
@@ -178,7 +180,7 @@ export class SendApiMessageUseCase {
 
     let message: Message;
     if (input.templateId) {
-      const sent = await this.sendTemplate(input, phone, contact, conversation.id, sender);
+      const sent = await this.sendTemplate(input, phone, contact, conversation, sender);
       if (!sent.ok) return sent;
       message = sent.value;
     } else {
@@ -209,6 +211,7 @@ export class SendApiMessageUseCase {
         interactive: input.interactive,
         reaction: input.reaction,
         contextWaMessageId: input.replyToWaMessageId,
+        billing: billingForConversation(conversation, contact, { senderKind: 'api' }),
       });
 
       message = await this.messageRepo.upsertByWaMessageId({
@@ -223,6 +226,7 @@ export class SendApiMessageUseCase {
         timestamp: new Date(),
         senderAgentId: sender.agentId,
         senderAgentName: sender.name,
+        senderKind: 'api',
         location: input.location
           ? toMessageLocation({
               latitude: input.location.latitude,
@@ -317,7 +321,7 @@ export class SendApiMessageUseCase {
     input: SendApiMessageInput,
     phone: { id: string; provider: any; providerConfig: any; phoneNumberId: string; wabaId?: string | null },
     contact: Contact,
-    conversationId: string,
+    conversation: Conversation,
     sender: SenderAttribution,
   ): Promise<Result<Message, DomainError>> {
     const template = await this.templateRepo.findById(input.templateId!);
@@ -365,10 +369,19 @@ export class SendApiMessageUseCase {
       // MM Lite sólo aplica a marketing; pedirlo en otra categoría lo rechaza
       // Meta, así que se ignora en vez de romper el envío.
       marketingLite: input.marketingLite && template.category === TemplateCategory.MARKETING,
+      // La categoría se congela acá: Meta la puede cambiar después (hay un
+      // webhook `template_category_update`) y entonces leerla de la plantilla
+      // devolvería una tarifa que no es la que se cobró.
+      billing: billingForConversation(conversation, contact, {
+        senderKind: 'api',
+        templateId: template.id,
+        templateCategory: template.category,
+        marketingLite: input.marketingLite && template.category === TemplateCategory.MARKETING,
+      }),
     });
 
     const message = await this.messageRepo.upsertByWaMessageId({
-      conversationId,
+      conversationId: conversation.id,
       direction: MessageDirection.OUTBOUND,
       messageType: MessageType.TEMPLATE,
       body: built.renderedBody,
@@ -379,6 +392,7 @@ export class SendApiMessageUseCase {
       timestamp: new Date(),
       senderAgentId: sender.agentId,
       senderAgentName: sender.name,
+      senderKind: 'api',
     });
 
     return ok(message);

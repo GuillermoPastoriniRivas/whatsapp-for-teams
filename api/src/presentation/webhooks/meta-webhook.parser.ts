@@ -2,7 +2,13 @@
 // Pure functions — no NestJS dependencies, no side effects.
 
 import { toMessageLocation } from '../../domain/value-objects/message-location.js';
-import type { InboundMessageInput, UserIdUpdateInput } from '../../application/dtos/webhook/inbound-message-input.dto.js';
+import { toMessageReferral } from '../../domain/value-objects/message-referral.js';
+import { toMetaPricingSnapshot } from '../../domain/value-objects/meta-pricing.js';
+import type {
+  FlowResponsePayload,
+  InboundMessageInput,
+  UserIdUpdateInput,
+} from '../../application/dtos/webhook/inbound-message-input.dto.js';
 import type { StatusUpdateInput } from '../../application/dtos/webhook/status-update-input.dto.js';
 import type { TemplateEventInput } from '../../application/dtos/webhook/template-event-input.dto.js';
 import type {
@@ -281,8 +287,32 @@ export function mapMetaMessageToInbound(
     interactiveReplyId: extractInteractiveReplyId(msg),
     // La reacción no usa `context`: apunta a su objetivo por su propio campo.
     contextWaMessageId: msg.type === 'reaction' ? msg.reaction?.message_id : msg.context?.id,
+    referral: toMessageReferral(msg.referral),
     location: msg.type === 'location' && msg.location ? toMessageLocation(msg.location) : null,
+    flowResponse: extractFlowResponse(msg),
   };
+}
+
+/**
+ * Lo que completó el cliente en un Flow. Llega como `interactive.nfm_reply` con
+ * el formulario serializado en `response_json`, y **sin el id del Flow**: la
+ * única forma de saber a qué envío corresponde es el `flow_token` que va
+ * adentro, que lo pusimos nosotros al mandarlo.
+ */
+function extractFlowResponse(msg: MetaWebhookMessage): FlowResponsePayload | null {
+  const reply = msg.interactive?.nfm_reply;
+  if (!reply?.response_json) return null;
+
+  let fields: Record<string, unknown>;
+  try {
+    fields = JSON.parse(reply.response_json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+
+  const token = typeof fields.flow_token === 'string' ? fields.flow_token : null;
+  const { flow_token: _descartado, ...resto } = fields;
+  return { token, fields: resto };
 }
 
 /** Mapea un `user_id_update` ya parseado al input de la capa de aplicación. */
@@ -293,11 +323,16 @@ export function mapUserIdUpdateToInput(parsed: ParsedUserIdUpdate): UserIdUpdate
 // ── 3. Map a Meta status → StatusUpdateInput ─────────────────────
 
 export function mapMetaStatusToUpdate(status: MetaWebhookStatus): StatusUpdateInput {
+  const timestamp = new Date(parseInt(status.timestamp, 10) * 1000);
   return {
     waMessageId: status.id,
     status: STATUS_MAP[status.status] ?? 'sent',
-    timestamp: new Date(parseInt(status.timestamp, 10) * 1000),
+    timestamp,
     errors: status.errors?.map((e) => ({ code: e.code, title: e.title })),
+    // Meta manda el cobro pegado al `delivered` y no lo repite. El `receivedAt`
+    // es el timestamp del evento, no `Date.now()`: el job puede procesarse
+    // mucho después y la hora del cobro tiene que ser la de Meta.
+    pricing: toMetaPricingSnapshot(status.pricing, status.conversation, timestamp),
   };
 }
 

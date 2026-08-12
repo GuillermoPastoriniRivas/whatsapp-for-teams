@@ -21,6 +21,7 @@ import { TemplateStatus } from '../../../domain/enums/template-status.enum.js';
 import { isBsuidOnly, recipientIdentityOf, templateRequiresPhone } from '../../../domain/value-objects/recipient-identity.js';
 import { AuthTemplateRequiresPhoneError, MarketingOptOutError } from '../../../domain/errors/domain-errors.js';
 import { TemplateCategory } from '../../../domain/enums/template-category.enum.js';
+import { billingForConversation } from '../billing/outbound-billing.helper.js';
 
 export interface SendTemplateMessageInput {
   conversationId: string;
@@ -114,6 +115,14 @@ export class SendTemplateMessageUseCase {
         language: template.language,
         components: built.components,
       },
+      // La categoría se congela acá: Meta la puede cambiar después (hay un
+      // webhook `template_category_update`) y entonces leerla de la plantilla
+      // devolvería una tarifa que no es la que se cobró.
+      billing: billingForConversation(conversation, contact, {
+        senderKind: 'agent',
+        templateId: template.id,
+        templateCategory: template.category,
+      }),
     });
 
     const message = await this.messageRepo.upsertByWaMessageId({
@@ -128,6 +137,7 @@ export class SendTemplateMessageUseCase {
       timestamp: new Date(),
       senderAgentId: input.agentId,
       senderAgentName: agent?.name ?? null,
+      senderKind: 'agent',
     });
 
     await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date() } as any);

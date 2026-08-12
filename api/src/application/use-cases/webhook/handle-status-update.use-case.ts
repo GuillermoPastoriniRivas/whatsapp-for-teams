@@ -8,12 +8,16 @@ import { StatusUpdateInput } from '../../dtos/webhook/status-update-input.dto.js
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
 import { CampaignRecipientStatus } from '../../../domain/enums/campaign-recipient-status.enum.js';
 import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
+import { MessageChargeRepository } from '../../../domain/repositories/message-charge.repository.js';
 
 const RECIPIENT_STATUS_MAP: Record<string, CampaignRecipientStatus> = {
   delivered: CampaignRecipientStatus.DELIVERED,
   read: CampaignRecipientStatus.READ,
   failed: CampaignRecipientStatus.FAILED,
 };
+
+/** `read` prueba la entrega aunque el `delivered` se haya perdido. */
+const DELIVERED_STATUSES = new Set(['delivered', 'read']);
 
 export class HandleStatusUpdateUseCase {
   constructor(
@@ -23,6 +27,7 @@ export class HandleStatusUpdateUseCase {
     private readonly recipientRepo: CampaignRecipientRepository,
     private readonly conversationRepo: ConversationRepository,
     private readonly devEvents: DeveloperEventsPort,
+    private readonly charges: MessageChargeRepository,
   ) {}
 
   async execute(input: StatusUpdateInput): Promise<void> {
@@ -32,8 +37,16 @@ export class HandleStatusUpdateUseCase {
     const message = await this.messageRepo.updateStatusByWaMessageId(
       input.waMessageId,
       input.status as MessageWaStatus,
-      input.status === 'failed' ? errorInfo : undefined,
+      {
+        occurredAt: input.timestamp,
+        ...(input.status === 'failed' && errorInfo ? { error: errorInfo } : {}),
+      },
     );
+
+    // Contabilidad. Va antes de lo demás y no depende de que exista el Message:
+    // el `pricing` de Meta llega pegado al `delivered`, una sola vez, y si no se
+    // guarda cuando llega no hay forma de recuperarlo.
+    await this.recordCharge(input, message?.conversationId ?? null);
 
     if (message) {
       this.gateway.emitToConversation(message.conversationId, 'message.status', {
@@ -79,5 +92,40 @@ export class HandleStatusUpdateUseCase {
         counts: campaign.counts,
       });
     }
+  }
+
+  /**
+   * Sella la entrega —o el fallo— en el libro contable.
+   *
+   * Si no hay fila de envío, el mensaje salió antes de que existiera el ledger:
+   * se crea una huérfana con lo que cobró Meta en vez de tirar el dato. Para eso
+   * hace falta el tenant, que sólo se puede resolver por la conversación.
+   */
+  private async recordCharge(input: StatusUpdateInput, conversationId: string | null): Promise<void> {
+    if (input.status === 'failed') {
+      await this.charges.stampFailed(
+        input.waMessageId,
+        input.timestamp,
+        input.errors?.[0] ? String(input.errors[0].code) : null,
+      );
+      return;
+    }
+
+    if (!DELIVERED_STATUSES.has(input.status)) return;
+
+    const fallback = conversationId ? await this.orphanFallback(conversationId) : undefined;
+    await this.charges.stampDelivered(input.waMessageId, input.timestamp, input.pricing ?? null, fallback);
+  }
+
+  private async orphanFallback(conversationId: string) {
+    const conversation = await this.conversationRepo.findById(conversationId);
+    if (!conversation) return undefined;
+    return {
+      tenantId: conversation.tenantId,
+      phoneNumberId: conversation.phoneNumberId,
+      conversationId: conversation.id,
+      // No sabemos quién lo escribió, y inventarlo ensuciaría los agrupados.
+      senderKind: 'unknown' as const,
+    };
   }
 }

@@ -28,6 +28,9 @@ export class MessageMapper {
       doc.mediaAssetId?.toHexString() ?? null,
       doc.location ?? null,
       (doc.senderKind as MessageSenderKind | null) ?? null,
+      doc.deliveredAt ?? null,
+      doc.failedAt ?? null,
+      doc.referral ?? null,
     );
   }
 }

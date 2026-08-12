@@ -92,14 +92,33 @@ export interface MetaWebhookMessage {
   reaction?: { message_id: string; emoji: string };
   /** Tarjetas de contacto compartidas; es la respuesta a `REQUEST_CONTACT_INFO`. */
   contacts?: MetaSharedContact[];
-  /** Reply to an interactive (non-template) buttons/list message. */
+  /** Reply to an interactive (non-template) buttons/list/flow message. */
   interactive?: {
-    type: 'button_reply' | 'list_reply' | string;
+    type: 'button_reply' | 'list_reply' | 'nfm_reply' | string;
     button_reply?: { id: string; title: string };
     list_reply?: { id: string; title: string; description?: string };
+    /**
+     * Formulario de un Flow completado. `body` siempre dice "Sent" y el
+     * contenido real viaja serializado en `response_json`.
+     */
+    nfm_reply?: { name?: string; body?: string; response_json?: string };
   };
   /** Reply to a template quick-reply button (Meta sends type 'button'). */
   button?: { payload: string; text: string };
+  referral?: MetaWebhookReferral;
+}
+
+export interface MetaWebhookReferral {
+  source_type?: string;
+  source_id?: string;
+  source_url?: string;
+  headline?: string;
+  body?: string;
+  media_type?: string;
+  image_url?: string;
+  video_url?: string;
+  thumbnail_url?: string;
+  ctwa_clid?: string;
 }
 
 export interface MetaMediaPayload {
@@ -114,6 +133,39 @@ export interface MetaSharedContact {
   phones?: Array<{ phone?: string; wa_id?: string; type?: string }>;
 }
 
+/**
+ * Lo que Meta dice que cobró por un mensaje. Es la **fuente de verdad**: nuestra
+ * categoría es una estimación del momento del envío, la de acá es la que sale en
+ * la factura.
+ *
+ * Viaja pegado al status `delivered` (Meta cobra entregado, no enviado) y no se
+ * repite en `read`.
+ *
+ * Los campos son todos opcionales a propósito: Meta agrega valores nuevos sin
+ * avisar —`meta_business_agent` es de julio 2026 y todavía no publicó el shape
+ * definitivo— así que además se guarda el objeto crudo.
+ */
+export interface MetaStatusPricing {
+  billable?: boolean;
+  /** 'PMP' (per-message) | 'CBP' (conversation-based, el modelo viejo). */
+  pricing_model?: string;
+  /** 'regular' | 'free_customer_service' | 'free_entry_point' | … */
+  type?: string;
+  /** 'marketing' | 'utility' | 'authentication' | 'service' | 'meta_business_agent' */
+  category?: string;
+}
+
+/**
+ * La conversación de 24 h según Meta, del modelo de facturación por
+ * conversación. Sigue llegando; se guarda para poder reconciliar el período de
+ * transición hacia el cobro por mensaje.
+ */
+export interface MetaStatusConversation {
+  id?: string;
+  origin?: { type?: string };
+  expiration_timestamp?: string;
+}
+
 export interface MetaWebhookStatus {
   id: string;
   status: string;
@@ -122,6 +174,8 @@ export interface MetaWebhookStatus {
   recipient_user_id?: string;
   recipient_parent_user_id?: string;
   errors?: Array<{ code: number; title: string }>;
+  pricing?: MetaStatusPricing;
+  conversation?: MetaStatusConversation;
 }
 
 /**

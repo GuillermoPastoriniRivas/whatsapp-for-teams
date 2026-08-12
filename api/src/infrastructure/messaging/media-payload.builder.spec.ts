@@ -8,6 +8,14 @@ const base: SendMessageParams = {
   phoneNumberId: '123',
   to: '549',
   type: 'image',
+  billing: {
+    tenantId: 't1',
+    phoneNumberId: 'p1',
+    conversationId: 'c1',
+    contactId: 'ct1',
+    destinationPhone: '549',
+    senderKind: 'agent',
+  },
 };
 
 describe('buildMediaPayload', () => {

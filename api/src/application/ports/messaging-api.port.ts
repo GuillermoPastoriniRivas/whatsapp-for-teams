@@ -1,4 +1,5 @@
 import { MessagingProvider } from '../../domain/enums/messaging-provider.enum.js';
+import type { OutboundBillingContext } from '../../domain/value-objects/outbound-billing.js';
 
 export interface TemplateSendComponent {
   type: 'header' | 'body' | 'button';
@@ -31,7 +32,7 @@ export interface TemplateSendPayload {
  * la UI lo lee sin discriminar.
  */
 export interface InteractiveSendPayload {
-  kind: 'buttons' | 'list' | 'cta_url' | 'location_request' | 'address_message';
+  kind: 'buttons' | 'list' | 'cta_url' | 'location_request' | 'address_message' | 'flow';
   body: string;
   footer?: string;
   /** Encabezado de texto, para los tipos que lo admiten. */
@@ -52,6 +53,25 @@ export interface InteractiveSendPayload {
    * dirección en algunos mercados (India y Singapur), y lo exige.
    */
   country?: string;
+  /** kind 'flow': el formulario nativo de WhatsApp. */
+  flow?: {
+    id: string;
+    /**
+     * Lo que devuelve el cliente **no incluye el id del Flow**: Meta manda un
+     * `nfm_reply` con el `flow_token` que mandamos nosotros. Es la única forma
+     * de saber a qué envío corresponde una respuesta.
+     */
+    token: string;
+    cta: string;
+    /** Pantalla de entrada. Vacío = la primera del Flow. */
+    screen?: string;
+    /** Datos iniciales de esa pantalla. */
+    data?: Record<string, unknown>;
+    /** 'published' (default) o 'draft' para probar uno sin publicar. */
+    mode?: 'published' | 'draft';
+    /** `data_exchange` solo si el Flow tiene endpoint; si no, `navigate`. */
+    action?: 'navigate' | 'data_exchange';
+  };
 }
 
 /** Tarjeta de contacto saliente. Meta exige al menos `name.formatted_name`. */
@@ -108,6 +128,17 @@ export interface SendMessageParams {
    * (`product_type=MARKETING_LITE`).
    */
   marketingLite?: boolean;
+  /**
+   * Con qué se contabiliza este saliente. **Obligatorio a propósito**: desde
+   * octubre de 2026 Meta cobra todo mensaje entregado, así que el compilador
+   * tiene que romper el día que aparezca un punto de envío nuevo sin
+   * contabilidad.
+   *
+   * Antes esto dependía de acordarse de escribir el `Message` después del
+   * envío, y ahí es donde se abren los agujeros que nadie ve hasta que el total
+   * no cierra contra la factura.
+   */
+  billing: OutboundBillingContext;
 }
 
 export interface SendMessageResult {

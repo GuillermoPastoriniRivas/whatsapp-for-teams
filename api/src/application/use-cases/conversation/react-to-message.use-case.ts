@@ -17,6 +17,7 @@ import { MessageDirection } from '../../../domain/enums/message-direction.enum.j
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
 import { recipientIdentityOf } from '../../../domain/value-objects/recipient-identity.js';
+import { billingForConversation } from '../billing/outbound-billing.helper.js';
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
@@ -87,6 +88,9 @@ export class ReactToMessageUseCase {
       ...recipientIdentityOf(contact),
       type: MessageType.REACTION,
       reaction: { waMessageId: target.waMessageId, emoji: input.emoji },
+      // Una reacción sale por el mismo endpoint que cualquier no-plantilla, así
+      // que desde octubre 2026 se cobra como service. Se contabiliza igual.
+      billing: billingForConversation(conversation, contact, { senderKind: 'agent' }),
     });
 
     const message = await this.messageRepo.upsertByWaMessageId({
@@ -101,6 +105,7 @@ export class ReactToMessageUseCase {
       timestamp: new Date(),
       senderAgentId: input.agentId,
       senderAgentName: agent?.name ?? null,
+      senderKind: 'agent',
       contextWaMessageId: target.waMessageId,
     });
 
