@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Phone, AtSign, BellOff, Clock, StickyNote, Tag } from "lucide-react";
+import { User, Phone, AtSign, BellOff, Clock, Megaphone, StickyNote, Tag } from "lucide-react";
 import { api } from "@/lib/api";
 import { displayIdentity, identityHandle, identitySubtitle, formatPhone } from "@/lib/identity";
 import { useTranslations } from "@/lib/i18n/use-translations";
@@ -12,6 +12,7 @@ import { ActivityTimeline } from "./activity-timeline";
 import { ConversationNotes } from "./conversation-notes";
 import { ContactFields } from "./contact-fields";
 import { LabelPicker } from "./label-picker";
+import { AdAttributionCard } from "./ad-attribution-card";
 import type { Conversation, ConversationEvent } from "@/types";
 
 interface Props {
@@ -93,6 +94,19 @@ export function ContactInfoPanel({ conversation }: Props) {
             />
           )}
         </div>
+
+        {conversation?.attribution && (
+          <>
+            <Separator />
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
+                <Megaphone className="h-3.5 w-3.5" />
+                {t.ads.panelTitle}
+              </h3>
+              <AdAttributionCard attribution={conversation.attribution} />
+            </div>
+          </>
+        )}
 
         <Separator />
 

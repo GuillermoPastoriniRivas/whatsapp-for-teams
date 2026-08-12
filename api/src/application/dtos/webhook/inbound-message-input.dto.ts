@@ -1,4 +1,5 @@
 import type { MessageLocation } from '../../../domain/value-objects/message-location.js';
+import type { MessageReferral } from '../../../domain/value-objects/message-referral.js';
 
 export interface InboundMessageInput {
   phoneNumberId: string;
@@ -40,6 +41,19 @@ export interface InboundMessageInput {
   contextWaMessageId?: string;
   /** Coordenadas de un mensaje `location`, ya normalizadas. */
   location?: MessageLocation | null;
+  /** Formulario de un Flow que el cliente completó. */
+  flowResponse?: FlowResponsePayload | null;
+  referral?: MessageReferral | null;
+}
+
+/**
+ * Respuesta de un Flow. `token` es el `flow_token` que mandamos al abrirlo: es
+ * lo único que ata la respuesta a lo que la pidió, porque Meta **no incluye el
+ * id del Flow** en la respuesta.
+ */
+export interface FlowResponsePayload {
+  token: string | null;
+  fields: Record<string, unknown>;
 }
 
 /** Meta regeneró el BSUID de un usuario (cambió de teléfono). */

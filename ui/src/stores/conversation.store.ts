@@ -11,11 +11,14 @@ interface ConversationState {
   page: number;
   pages: number;
   statusFilter: string;
+  /** Anuncio concreto por el que está filtrada la bandeja. */
+  adSourceId: string | null;
   view: "inbox" | "campaign";
   isLoading: boolean;
   fetch: (status?: string, page?: number) => Promise<void>;
   setActive: (id: string | null) => void;
   setFilter: (status: string) => void;
+  setAdFilter: (sourceId: string | null) => void;
   setView: (view: "inbox" | "campaign") => void;
   updateConversation: (conv: Partial<Conversation> & { id: string }) => void;
   addConversation: (conv: Conversation) => void;
@@ -29,6 +32,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   page: 1,
   pages: 1,
   statusFilter: "",
+  adSourceId: null,
   view: "inbox",
   isLoading: false,
 
@@ -39,7 +43,11 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       const params = new URLSearchParams({ page: String(page), limit: "30" });
       // "unread" es un filtro propio, no un status del backend
       if (filter === "unread") params.set("unread", "true");
+      // "ads" tampoco es un status: filtra por conversaciones con atribución.
+      else if (filter === "ads") params.set("fromAds", "true");
       else if (filter) params.set("status", filter);
+      const adSourceId = get().adSourceId;
+      if (adSourceId) params.set("adSourceId", adSourceId);
       // Default 'inbox' sends no param — server behavior stays untouched
       if (get().view === "campaign") params.set("view", "campaign");
 
@@ -69,8 +77,13 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   setActive: (id) => set({ activeId: id }),
 
   setFilter: (status) => {
-    set({ statusFilter: status });
+    set({ statusFilter: status, adSourceId: null });
     get().fetch(status);
+  },
+
+  setAdFilter: (sourceId) => {
+    set({ adSourceId: sourceId, statusFilter: "" });
+    get().fetch("");
   },
 
   setView: (view) => {

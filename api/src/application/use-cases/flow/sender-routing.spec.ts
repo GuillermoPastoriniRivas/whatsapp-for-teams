@@ -1,20 +1,20 @@
 import { FlowInboundRouterUseCase } from './flow-inbound-router.use-case.js';
 
-// Rutear por quién escribe: un proveedor que le contesta al número tiene que
-// caer en el flujo de proveedores, no en el de clientes.
+// Rutear por quién escribe: un contacto nuevo tiene que caer en el flujo de
+// bienvenida y no en el de siempre.
 //
 // Equivocarse acá es peor que un error visible: el mensaje entra igual, arranca
 // el flujo equivocado y el cliente recibe algo que no tiene sentido.
 
-const FLOW_PROVEEDORES = {
-  id: 'f-prov',
-  publishedVersionId: 'v-prov',
+const FLOW_A = {
+  id: 'f-a',
+  publishedVersionId: 'v-a',
   priority: 10,
   defaultForPhoneNumberId: null,
 };
-const FLOW_CLIENTES = {
-  id: 'f-cli',
-  publishedVersionId: 'v-cli',
+const FLOW_B = {
+  id: 'f-b',
+  publishedVersionId: 'v-b',
   priority: 20,
   defaultForPhoneNumberId: null,
 };
@@ -42,7 +42,6 @@ function version(id: string, senderTypes: string[], senderLabelIds: string[] = [
 function buildRouter(opts: {
   flows: any[];
   versions: any[];
-  provider?: any;
   labels?: Array<{ labelId: string }>;
   onStart: jest.Mock;
 }) {
@@ -66,7 +65,6 @@ function buildRouter(opts: {
     { enqueue: async () => {} } as any,
     { emit: () => {} } as any,
     { execute: async () => null } as any,
-    { findByTenantAndPhone: async () => opts.provider ?? null } as any,
     { findByConversationId: async () => opts.labels ?? [] } as any,
   );
 }
@@ -84,94 +82,61 @@ function input(overrides: Record<string, unknown> = {}) {
   } as any;
 }
 
-const ACTIVE_PROVIDER = { canReceive: true, name: 'Juan' };
-
 describe('ruteo por quién escribe', () => {
-  it('un proveedor entra al flujo de proveedores, no al de clientes', async () => {
-    const onStart = jest.fn();
-    const router = buildRouter({
-      flows: [FLOW_PROVEEDORES, FLOW_CLIENTES],
-      versions: [version('v-prov', ['proveedor']), version('v-cli', [])],
-      provider: ACTIVE_PROVIDER,
-      onStart,
-    });
-
-    await router.route(input());
-
-    expect(onStart).toHaveBeenCalledTimes(1);
-    expect(onStart.mock.calls[0][0].flowId).toBe('f-prov');
-  });
-
-  it('un cliente saltea el flujo de proveedores y cae en el siguiente', async () => {
-    const onStart = jest.fn();
-    const router = buildRouter({
-      flows: [FLOW_PROVEEDORES, FLOW_CLIENTES],
-      versions: [version('v-prov', ['proveedor']), version('v-cli', [])],
-      provider: null,
-      onStart,
-    });
-
-    await router.route(input());
-
-    expect(onStart.mock.calls[0][0].flowId).toBe('f-cli');
-  });
-
-  it('un proveedor pausado se rutea como cliente', async () => {
-    // `canReceive` es false sin opt-in o desactivado: no es un proveedor
-    // operativo, así que no puede secuestrar el flujo de proveedores.
-    const onStart = jest.fn();
-    const router = buildRouter({
-      flows: [FLOW_PROVEEDORES, FLOW_CLIENTES],
-      versions: [version('v-prov', ['proveedor']), version('v-cli', [])],
-      provider: { canReceive: false, name: 'Juan' },
-      onStart,
-    });
-
-    await router.route(input());
-
-    expect(onStart.mock.calls[0][0].flowId).toBe('f-cli');
-  });
-
   it('distingue un contacto nuevo de uno recurrente', async () => {
     const onStart = jest.fn();
     const router = buildRouter({
-      flows: [FLOW_PROVEEDORES, FLOW_CLIENTES],
-      versions: [version('v-prov', ['nuevo']), version('v-cli', ['recurrente'])],
+      flows: [FLOW_A, FLOW_B],
+      versions: [version('v-a', ['nuevo']), version('v-b', ['recurrente'])],
       onStart,
     });
 
     await router.route(input({ created: true }));
-    expect(onStart.mock.calls[0][0].flowId).toBe('f-prov');
+    expect(onStart.mock.calls[0][0].flowId).toBe('f-a');
 
     onStart.mockClear();
     await router.route(input({ created: false }));
-    expect(onStart.mock.calls[0][0].flowId).toBe('f-cli');
+    expect(onStart.mock.calls[0][0].flowId).toBe('f-b');
+  });
+
+  it('un flujo sin filtro agarra a cualquiera', async () => {
+    const onStart = jest.fn();
+    const router = buildRouter({
+      flows: [FLOW_A, FLOW_B],
+      versions: [version('v-a', ['nuevo']), version('v-b', [])],
+      onStart,
+    });
+
+    await router.route(input({ created: false }));
+
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onStart.mock.calls[0][0].flowId).toBe('f-b');
   });
 
   it('filtra por etiqueta con un "o" entre varias', async () => {
     const onStart = jest.fn();
     const router = buildRouter({
-      flows: [FLOW_PROVEEDORES, FLOW_CLIENTES],
-      versions: [version('v-prov', [], ['lab-mayorista', 'lab-vip']), version('v-cli', [])],
+      flows: [FLOW_A, FLOW_B],
+      versions: [version('v-a', [], ['lab-mayorista', 'lab-vip']), version('v-b', [])],
       labels: [{ labelId: 'lab-vip' }],
       onStart,
     });
 
     await router.route(input());
-    expect(onStart.mock.calls[0][0].flowId).toBe('f-prov');
+    expect(onStart.mock.calls[0][0].flowId).toBe('f-a');
   });
 
   it('sin la etiqueta pedida, no matchea', async () => {
     const onStart = jest.fn();
     const router = buildRouter({
-      flows: [FLOW_PROVEEDORES, FLOW_CLIENTES],
-      versions: [version('v-prov', [], ['lab-mayorista']), version('v-cli', [])],
+      flows: [FLOW_A, FLOW_B],
+      versions: [version('v-a', [], ['lab-mayorista']), version('v-b', [])],
       labels: [{ labelId: 'lab-otra' }],
       onStart,
     });
 
     await router.route(input());
-    expect(onStart.mock.calls[0][0].flowId).toBe('f-cli');
+    expect(onStart.mock.calls[0][0].flowId).toBe('f-b');
   });
 
   it('deja el tipo disponible como variable del flujo', async () => {
@@ -179,25 +144,19 @@ describe('ruteo por quién escribe', () => {
     // mismo flujo, sin necesidad de armar uno por audiencia.
     const onStart = jest.fn();
     const router = buildRouter({
-      flows: [FLOW_CLIENTES],
-      versions: [version('v-cli', [])],
-      provider: ACTIVE_PROVIDER,
+      flows: [FLOW_B],
+      versions: [version('v-b', [])],
       onStart,
     });
 
-    await router.route(input());
+    await router.route(input({ created: true }));
 
-    expect(onStart.mock.calls[0][0].variables.sender).toEqual({ type: 'proveedor' });
+    expect(onStart.mock.calls[0][0].variables.sender).toEqual({ type: 'nuevo' });
   });
 
   it('no consulta nada cuando ningún flujo agarra el mensaje', async () => {
     // La resolución es perezosa y la mayoría de los mensajes entrantes no
     // arrancan un flujo (reanudan uno, o no matchea ninguno). Esos no pagan.
-    //
-    // Cuando sí arranca uno, la consulta se hace aunque el disparador no haya
-    // filtrado: `{{sender.type}}` queda en las variables y tiene que ser
-    // correcto, no una adivinanza barata.
-    const findByTenantAndPhone = jest.fn().mockResolvedValue(null);
     const findByConversationId = jest.fn().mockResolvedValue([]);
 
     const router = new FlowInboundRouterUseCase(
@@ -209,19 +168,16 @@ describe('ruteo por quién escribe', () => {
       { enqueue: async () => {} } as any,
       { emit: () => {} } as any,
       { execute: async () => null } as any,
-      { findByTenantAndPhone } as any,
       { findByConversationId } as any,
     );
 
     const result = await router.route(input());
 
     expect(result.handled).toBe(false);
-    expect(findByTenantAndPhone).not.toHaveBeenCalled();
     expect(findByConversationId).not.toHaveBeenCalled();
   });
 
   it('tampoco consulta con el piloto apagado', async () => {
-    const findByTenantAndPhone = jest.fn().mockResolvedValue(null);
     const findByConversationId = jest.fn().mockResolvedValue([]);
     const findPublishedByTenantId = jest.fn();
 
@@ -233,7 +189,6 @@ describe('ruteo por quién escribe', () => {
       { emitToConversation: () => {}, emitToTenant: () => {} } as any,
       {} as any, { emit: () => {} } as any,
       { execute: async () => null } as any,
-      { findByTenantAndPhone } as any,
       { findByConversationId } as any,
     );
 
@@ -248,6 +203,6 @@ describe('ruteo por quién escribe', () => {
     );
 
     expect(findPublishedByTenantId).not.toHaveBeenCalled();
-    expect(findByTenantAndPhone).not.toHaveBeenCalled();
+    expect(findByConversationId).not.toHaveBeenCalled();
   });
 });

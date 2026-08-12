@@ -29,6 +29,7 @@ import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
 import { AgentType } from '../../../domain/enums/agent-type.enum.js';
 import { ConversationOrigin } from '../../../domain/enums/conversation-origin.enum.js';
+import { toConversationAttribution } from '../../../domain/value-objects/message-referral.js';
 
 const AI_RESPONSE_JOB = 'ai.process-response';
 
@@ -91,7 +92,7 @@ export class HandleInboundMessageUseCase {
       lastMessageAt: now,
       lastInboundAt: now,
       pendingAiSince: null,
-      origin: ConversationOrigin.INBOUND,
+      origin: input.referral ? ConversationOrigin.AD : ConversationOrigin.INBOUND,
       hasReplied: true,
       repliedAt: null,
     });
@@ -129,6 +130,12 @@ export class HandleInboundMessageUseCase {
       interactiveReplyId: input.interactiveReplyId ?? null,
       contextWaMessageId: input.contextWaMessageId ?? null,
       location: input.location ?? null,
+      // El formulario de un Flow viaja acá: es un objeto con la forma que le
+      // dio el Flow, no un texto, y el motor lo lee para ramificar.
+      interactivePayload: input.flowResponse
+        ? { kind: 'flow_response', token: input.flowResponse.token, fields: input.flowResponse.fields }
+        : null,
+      referral: input.referral ?? null,
     });
 
     // 4b. Archivo adjunto: se registra el asset y, si el plan tiene storage, se
@@ -158,11 +165,32 @@ export class HandleInboundMessageUseCase {
     // 5. Update conversation timestamps.
     // A reply to a campaign conversation promotes it into the regular inbox.
     const promotedFromCampaign = !conversation.hasReplied;
-    await this.conversationRepo.update(conversation.id, {
+    const attribution = input.referral
+      ? toConversationAttribution(input.referral, input.waMessageId, input.timestamp)
+      : null;
+    const refreshed = await this.conversationRepo.update(conversation.id, {
       lastMessageAt: now,
       lastInboundAt: now,
       ...(promotedFromCampaign ? { hasReplied: true, repliedAt: now } : {}),
+      ...(attribution ? { attribution } : {}),
     } as any);
+    if (refreshed) conversation = refreshed;
+
+    if (attribution) {
+      const attributionEvent = await this.eventRepo.create({
+        conversationId: conversation.id,
+        tenantId,
+        type: ConversationEventType.AD_ATTRIBUTED,
+        performedBy: null,
+        data: {
+          sourceType: attribution.sourceType,
+          sourceId: attribution.sourceId,
+          headline: attribution.headline,
+          sourceUrl: attribution.sourceUrl,
+        },
+      });
+      this.gateway.emitToConversation(conversation.id, 'conversation.event', attributionEvent);
+    }
 
     // 5b. Attribute this reply to any open campaign sends for the contact
     await this.attributeCampaignReply.execute(contact.id, now);

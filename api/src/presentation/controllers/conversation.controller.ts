@@ -88,6 +88,8 @@ export class ConversationController {
   @ApiQuery({ name: 'agentId', required: false, description: 'Filter by assigned agent ID' })
   @ApiQuery({ name: 'phoneNumberId', required: false, description: 'Filter by phone number ID' })
   @ApiQuery({ name: 'view', required: false, enum: ['inbox', 'campaign', 'all'], description: 'inbox (default) hides unanswered campaign conversations; campaign shows only those; all shows everything' })
+  @ApiQuery({ name: 'adSourceId', required: false, description: 'Solo conversaciones atribuidas a este anuncio' })
+  @ApiQuery({ name: 'fromAds', required: false, enum: ['true', 'false'], description: 'Solo conversaciones que vinieron de un anuncio o posteo' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default: 20, max: 100)' })
   @ApiResponse({ status: 200, description: 'Paginated list of conversations with contact info' })

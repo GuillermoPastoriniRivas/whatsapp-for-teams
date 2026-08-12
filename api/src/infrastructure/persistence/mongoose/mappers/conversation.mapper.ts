@@ -31,6 +31,9 @@ export class ConversationMapper {
             aiNode: doc.autopilot.aiNode ?? null,
           }
         : AUTOPILOT_ON,
+      doc.attribution
+        ? { ...doc.attribution, capturedAt: new Date(doc.attribution.capturedAt) }
+        : null,
     );
   }
 }

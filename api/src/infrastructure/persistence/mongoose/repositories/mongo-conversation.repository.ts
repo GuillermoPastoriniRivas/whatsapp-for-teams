@@ -6,6 +6,8 @@ import {
   ConversationFilters,
   PaginatedResult,
   FindOrCreateResult,
+  AdPerformanceQuery,
+  AdPerformanceRow,
 } from '../../../../domain/repositories/conversation.repository.js';
 import { Conversation } from '../../../../domain/entities/conversation.entity.js';
 import { ConversationStatus } from '../../../../domain/enums/conversation-status.enum.js';
@@ -19,7 +21,7 @@ export class MongoConversationRepository implements ConversationRepository {
     @InjectModel(ConversationModel.name) private readonly model: Model<ConversationDocument>,
   ) {}
 
-  async create(data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount'>): Promise<Conversation> {
+  async create(data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount' | 'attribution'>): Promise<Conversation> {
     const doc = await this.model.create({
       tenantId: new Types.ObjectId(data.tenantId),
       phoneNumberId: new Types.ObjectId(data.phoneNumberId),
@@ -36,7 +38,7 @@ export class MongoConversationRepository implements ConversationRepository {
   }
 
   async findOrCreateByContactAndPhone(
-    data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount'>,
+    data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount' | 'attribution'>,
   ): Promise<FindOrCreateResult> {
     const result = await this.model.findOneAndUpdate(
       {
@@ -108,6 +110,8 @@ export class MongoConversationRepository implements ConversationRepository {
     }
 
     if (filters.unread) query.unreadCount = { $gt: 0 };
+    if (filters.adSourceId) query['attribution.sourceId'] = filters.adSourceId;
+    else if (filters.fromAds) query['attribution.sourceId'] = { $ne: null };
 
     const [docs, total] = await Promise.all([
       this.model
@@ -172,5 +176,49 @@ export class MongoConversationRepository implements ConversationRepository {
       tenantId: new Types.ObjectId(tenantId),
       createdAt: { $gte: since },
     });
+  }
+
+  async adPerformance(query: AdPerformanceQuery): Promise<AdPerformanceRow[]> {
+    const match: Record<string, unknown> = {
+      tenantId: new Types.ObjectId(query.tenantId),
+      'attribution.sourceId': { $ne: null },
+      'attribution.capturedAt': { $gte: query.from, $lt: query.to },
+    };
+    if (query.phoneNumberId) match.phoneNumberId = new Types.ObjectId(query.phoneNumberId);
+
+    const rows = await this.model.aggregate([
+      { $match: match },
+      { $sort: { 'attribution.capturedAt': 1 } },
+      {
+        $group: {
+          _id: '$attribution.sourceId',
+          sourceType: { $last: '$attribution.sourceType' },
+          headline: { $last: '$attribution.headline' },
+          body: { $last: '$attribution.body' },
+          sourceUrl: { $last: '$attribution.sourceUrl' },
+          thumbnailUrl: { $last: '$attribution.thumbnailUrl' },
+          conversations: { $sum: 1 },
+          contacts: { $addToSet: '$contactId' },
+          assigned: { $sum: { $cond: [{ $ne: [{ $ifNull: ['$agentId', null] }, null] }, 1, 0] } },
+          unread: { $sum: { $cond: [{ $gt: [{ $ifNull: ['$unreadCount', 0] }, 0] }, 1, 0] } },
+          lastAt: { $max: '$attribution.capturedAt' },
+        },
+      },
+      { $sort: { conversations: -1, lastAt: -1 } },
+    ]);
+
+    return rows.map((row) => ({
+      sourceId: String(row._id),
+      sourceType: row.sourceType ?? 'ad',
+      headline: row.headline ?? null,
+      body: row.body ?? null,
+      sourceUrl: row.sourceUrl ?? null,
+      thumbnailUrl: row.thumbnailUrl ?? null,
+      conversations: row.conversations ?? 0,
+      contacts: Array.isArray(row.contacts) ? row.contacts.length : 0,
+      assigned: row.assigned ?? 0,
+      unread: row.unread ?? 0,
+      lastAt: row.lastAt,
+    }));
   }
 }

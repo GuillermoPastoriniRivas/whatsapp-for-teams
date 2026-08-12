@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { ConversationStatus } from '../../../../domain/enums/conversation-status.enum.js';
 import { ConversationOrigin } from '../../../../domain/enums/conversation-origin.enum.js';
+import { ConversationAttribution } from '../../../../domain/value-objects/message-referral.js';
 
 export type ConversationDocument = HydratedDocument<ConversationModel>;
 
@@ -64,6 +65,9 @@ export class ConversationModel {
     aiNode: { flowId: string; flowVersionId: string; nodeId: string } | null;
   } | null;
 
+  @Prop({ type: Object, default: null })
+  attribution: ConversationAttribution | null;
+
   createdAt: Date;
 }
 
@@ -73,3 +77,4 @@ ConversationSchema.index({ tenantId: 1, status: 1 });
 ConversationSchema.index({ contactId: 1, phoneNumberId: 1 }, { unique: true });
 ConversationSchema.index({ contactId: 1, phoneNumberId: 1, status: 1 });
 ConversationSchema.index({ tenantId: 1, origin: 1, hasReplied: 1, status: 1 });
+ConversationSchema.index({ tenantId: 1, 'attribution.sourceId': 1, createdAt: -1 }, { sparse: true });

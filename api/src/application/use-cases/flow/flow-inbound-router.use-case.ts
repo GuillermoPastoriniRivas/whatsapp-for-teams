@@ -22,10 +22,10 @@ import { Conversation } from '../../../domain/entities/conversation.entity.js';
 import { Contact } from '../../../domain/entities/contact.entity.js';
 import { Agent } from '../../../domain/entities/agent.entity.js';
 import type { AutoAssignConversationUseCase } from '../conversation/auto-assign-conversation.use-case.js';
-import type { ServiceProviderRepository } from '../../../domain/repositories/service-provider.repository.js';
 import type { ConversationLabelRepository } from '../../../domain/repositories/conversation-label.repository.js';
 import type { SenderType } from '../../../domain/entities/flow-version.entity.js';
 import { Message, messageToText } from '../../../domain/entities/message.entity.js';
+import { adVariables } from '../../../domain/value-objects/message-referral.js';
 import type { FlowVersion } from '../../../domain/entities/flow-version.entity.js';
 import { FlowExecutionStatus } from '../../../domain/enums/flow-execution-status.enum.js';
 import { ConversationEventType } from '../../../domain/enums/conversation-event-type.enum.js';
@@ -78,7 +78,6 @@ export class FlowInboundRouterUseCase {
     private readonly jobQueue: JobQueuePort,
     private readonly devEvents: DeveloperEventsPort,
     private readonly autoAssign: AutoAssignConversationUseCase,
-    private readonly providerRepo: ServiceProviderRepository,
     private readonly convLabelRepo: ConversationLabelRepository,
   ) {}
 
@@ -199,22 +198,9 @@ export class FlowInboundRouterUseCase {
   /**
    * Quién está del otro lado. Se resuelve una sola vez por mensaje y solo si
    * algún disparador lo pide.
-   *
-   * `proveedor` gana sobre los otros dos: es lo más específico, y un proveedor
-   * que además alguna vez fue cliente sigue siendo proveedor para el ruteo.
    */
   private async resolveSenderInfo(input: FlowRouteInput): Promise<SenderInfo> {
-    let type: SenderType = input.created ? 'nuevo' : 'recurrente';
-    try {
-      if (input.contact.phone) {
-        const provider = await this.providerRepo.findByTenantAndPhone(input.tenantId, input.contact.phone);
-        if (provider?.canReceive) type = 'proveedor';
-      }
-    } catch (error: any) {
-      // Que falle la consulta no puede tumbar el ruteo: se cae al tipo por
-      // conversación, que es el comportamiento de antes de esta feature.
-      this.logger.warn(`No se pudo resolver si el remitente es proveedor: ${error?.message}`);
-    }
+    const type: SenderType = input.created ? 'nuevo' : 'recurrente';
 
     let labelIds: string[] = [];
     try {
@@ -244,6 +230,13 @@ export class FlowInboundRouterUseCase {
       if (wantsType && !trigger.senderTypes.includes(sender.type)) return false;
       // Con varias etiquetas alcanza con una: es un "o", no un "y".
       if (wantsLabel && !trigger.senderLabelIds.some((id) => sender.labelIds.includes(id))) return false;
+    }
+
+    const adScope = trigger.adScope ?? 'any';
+    if (adScope !== 'any') {
+      const sourceId = input.conversation.attribution?.sourceId;
+      if (!sourceId) return false;
+      if (adScope === 'specific' && !(trigger.adSourceIds ?? []).includes(sourceId)) return false;
     }
 
     if (trigger.match === 'keywords') {
@@ -291,6 +284,7 @@ export class FlowInboundRouterUseCase {
         // `{{sender.type}}` para el nodo Condición: deja bifurcar adentro de un
         // mismo flujo sin necesidad de armar uno por audiencia.
         sender: { type: senderType },
+        ad: adVariables(input.conversation.attribution),
         vars: {},
       },
       steps: [],

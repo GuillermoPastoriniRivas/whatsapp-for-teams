@@ -18,4 +18,5 @@ export enum ConversationEventType {
   /** Piloto automático del chat: prendido / apagado (ver SetAutopilotUseCase) */
   AUTOPILOT_ON = 'autopilot_on',
   AUTOPILOT_OFF = 'autopilot_off',
+  AD_ATTRIBUTED = 'ad_attributed',
 }

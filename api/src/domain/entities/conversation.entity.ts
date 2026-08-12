@@ -1,5 +1,6 @@
 import { ConversationStatus } from '../enums/conversation-status.enum.js';
 import { ConversationOrigin } from '../enums/conversation-origin.enum.js';
+import type { ConversationAttribution } from '../value-objects/message-referral.js';
 
 /** Por qué se apagó el piloto. Se muestra en el chat para poder retomarlo. */
 export type AutopilotPausedReason = 'agent_reply' | 'manual';
@@ -62,5 +63,6 @@ export class Conversation {
     public readonly unreadCount: number = 0,
     /** Prendido salvo que alguien lo apague o intervenga escribiendo. */
     public readonly autopilot: ConversationAutopilot = AUTOPILOT_ON,
+    public readonly attribution: ConversationAttribution | null = null,
   ) {}
 }

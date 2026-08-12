@@ -3,4 +3,5 @@ export enum ConversationOrigin {
   CAMPAIGN = 'campaign',
   /** Creada por la API pública de desarrolladores */
   API = 'api',
+  AD = 'ad',
 }

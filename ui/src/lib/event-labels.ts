@@ -9,6 +9,7 @@ import {
   ArrowRightLeft,
   Tag,
   Tags,
+  Megaphone,
   Workflow,
 } from "lucide-react";
 
@@ -74,6 +75,15 @@ export const eventConfig: Record<
     icon: Tags,
     color: "text-muted-foreground",
     label: (data) => `${data.agentName} removed label "${data.labelName}"`,
+  },
+  ad_attributed: {
+    icon: Megaphone,
+    color: "text-primary",
+    label: (data) => {
+      const origin = data.sourceType === "post" ? "un posteo" : "un anuncio";
+      const creative = typeof data.headline === "string" && data.headline ? `«${data.headline}»` : `${data.sourceId}`;
+      return `Llegó desde ${origin} ${creative}`;
+    },
   },
   flow_started: {
     icon: Workflow,

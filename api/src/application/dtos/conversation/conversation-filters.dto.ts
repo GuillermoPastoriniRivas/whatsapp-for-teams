@@ -8,6 +8,8 @@ export interface ConversationFiltersInput {
   phoneNumberId?: string;
   view?: ConversationView;
   unread?: boolean;
+  adSourceId?: string;
+  fromAds?: boolean;
   page: number;
   limit: number;
 }

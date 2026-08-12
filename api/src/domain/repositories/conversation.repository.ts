@@ -10,6 +10,8 @@ export interface ConversationFilters {
   phoneNumberId?: string;
   view?: ConversationView;
   unread?: boolean;
+  adSourceId?: string;
+  fromAds?: boolean;
   page: number;
   limit: number;
 }
@@ -24,10 +26,33 @@ export interface FindOrCreateResult {
   created: boolean;
 }
 
+export interface AdPerformanceQuery {
+  tenantId: string;
+  from: Date;
+  to: Date;
+  phoneNumberId?: string;
+}
+
+export interface AdPerformanceRow {
+  sourceId: string;
+  sourceType: string;
+  headline: string | null;
+  body: string | null;
+  sourceUrl: string | null;
+  thumbnailUrl: string | null;
+  conversations: number;
+  contacts: number;
+  /** Chats que alguien del equipo tomó. */
+  assigned: number;
+  /** Chats con entrantes sin leer: leads que todavía nadie miró. */
+  unread: number;
+  lastAt: Date;
+}
+
 export interface ConversationRepository {
-  create(conversation: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount' | 'autopilot'>): Promise<Conversation>;
+  create(conversation: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount' | 'autopilot' | 'attribution'>): Promise<Conversation>;
   findOrCreateByContactAndPhone(
-    data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount' | 'autopilot'>,
+    data: Omit<Conversation, 'id' | 'createdAt' | 'resolvedAt' | 'closedBy' | 'summary' | 'unreadCount' | 'autopilot' | 'attribution'>,
   ): Promise<FindOrCreateResult>;
   findById(id: string): Promise<Conversation | null>;
   findOpenByContactAndPhone(contactId: string, phoneNumberId: string): Promise<Conversation | null>;
@@ -39,4 +64,5 @@ export interface ConversationRepository {
   incrementUnread(id: string): Promise<void>;
   clearUnread(id: string): Promise<void>;
   countByTenantIdSince(tenantId: string, since: Date): Promise<number>;
+  adPerformance(query: AdPerformanceQuery): Promise<AdPerformanceRow[]>;
 }

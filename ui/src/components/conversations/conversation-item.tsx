@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { User } from "lucide-react";
+import { Megaphone, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -87,6 +87,18 @@ export function ConversationItem({ conversation, onSelect }: Props) {
           >
             {displayIdentity(conversation.contact, t.chat.unknown)}
           </span>
+          {conversation.attribution && (
+            <Badge
+              variant="secondary"
+              className="shrink-0 gap-1 px-1.5 font-normal"
+              title={conversation.attribution.headline ?? conversation.attribution.sourceId}
+            >
+              <Megaphone className="size-3" />
+              <span className="sr-only">
+                {conversation.attribution.sourceType === "post" ? t.ads.originPost : t.ads.originAd}
+              </span>
+            </Badge>
+          )}
           {conversation.phoneLabel && (
             <Badge variant="outline" className="max-w-[90px] min-w-0 shrink px-1.5 font-normal text-muted-foreground">
               <span className="truncate">{conversation.phoneLabel}</span>
