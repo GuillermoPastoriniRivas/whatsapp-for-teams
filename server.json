@@ -7,7 +7,7 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://api.asis.chat/api/mcp",
+      "url": "https://asis.chat/api/mcp",
       "headers": [
         {
           "name": "Authorization",

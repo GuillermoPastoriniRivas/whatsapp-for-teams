@@ -21,6 +21,9 @@ import {
 import {
   WHATSAPP_COMPONENT_LIMITS, WHATSAPP_COMPONENT_LIMIT_NOTES,
 } from '../../application/use-cases/flow/engine/whatsapp-component-limits.js';
+import {
+  FLOW_NODE_DATA_SCHEMA, FLOW_NODE_DATA_SCHEMA_NOTES,
+} from '../../application/use-cases/flow/engine/flow-node-data-schema.js';
 import { API_SCOPE_DESCRIPTIONS } from '../../domain/value-objects/api-scopes.js';
 import { TemplateStatus } from '../../domain/enums/template-status.enum.js';
 import { AgentType } from '../../domain/enums/agent-type.enum.js';
@@ -31,6 +34,8 @@ import type { ConversationRepository } from '../../domain/repositories/conversat
 import type { MessageRepository } from '../../domain/repositories/message.repository.js';
 import type { ContactRepository } from '../../domain/repositories/contact.repository.js';
 import type { MessageTemplateRepository } from '../../domain/repositories/message-template.repository.js';
+import type { LabelRepository } from '../../domain/repositories/label.repository.js';
+import type { FlowConnectionRepository } from '../../domain/repositories/flow-connection.repository.js';
 import type { ConversationStatus } from '../../domain/enums/conversation-status.enum.js';
 
 export const MCP_SERVER_NAME = 'asis-chat';
@@ -65,6 +70,8 @@ export class AsisMcpServerFactory {
     @Inject('ContactRepository') private readonly contactRepo: ContactRepository,
     @Inject('MessageTemplateRepository') private readonly templateRepo: MessageTemplateRepository,
     @Inject('AgentRepository') private readonly agentRepo: AgentRepository,
+    @Inject('LabelRepository') private readonly labelRepo: LabelRepository,
+    @Inject('FlowConnectionRepository') private readonly connectionRepo: FlowConnectionRepository,
     @Inject('SendApiMessageUseCase') private readonly sendApiMessage: SendApiMessageUseCase,
     @Inject('CreateContactUseCase') private readonly createContact: CreateContactUseCase,
     @Inject('CreateFlowUseCase') private readonly createFlow: CreateFlowUseCase,
@@ -90,9 +97,15 @@ export class AsisMcpServerFactory {
 
     this.registerCatalogResources(server);
     this.registerMessagingTools(server, principal);
+    this.registerBuildingBlockTools(server, principal);
     this.registerAutomationTools(server, principal);
     this.registerAuthoringPrompts(server);
     return server;
+  }
+
+  private lacksEveryScope(principal: ApiKeyPrincipal, scopes: ApiScope[]): ToolReply | null {
+    if (scopes.some((scope) => principal.scopes.includes(scope))) return null;
+    return this.lacksScope(principal, scopes[0]);
   }
 
   private lacksScope(principal: ApiKeyPrincipal, scope: ApiScope): ToolReply | null {
@@ -137,8 +150,8 @@ export class AsisMcpServerFactory {
       {
         title: 'Automation node catalog',
         description:
-          'Every node type the automation engine accepts, with the output handles an edge may start from. ' +
-          'Nodes flagged dynamicOutputs derive their handles from their own configuration.',
+          'Every node type the automation engine accepts: the fields its data object takes, and the output handles ' +
+          'an edge may start from. Nodes flagged dynamicOutputs derive their handles from their own configuration.',
         mimeType: 'application/json',
       },
       async (uri) => ({
@@ -148,6 +161,7 @@ export class AsisMcpServerFactory {
             mimeType: 'application/json',
             text: JSON.stringify(
               {
+                notes: FLOW_NODE_DATA_SCHEMA_NOTES,
                 triggers: [...TRIGGER_TYPES],
                 nodeTypes: NODE_TYPES.map((type) => ({
                   type,
@@ -155,6 +169,7 @@ export class AsisMcpServerFactory {
                   terminal: isTerminal(type),
                   outputs: outputHandles({ id: 'sample', type, position: { x: 0, y: 0 }, data: {} } as never),
                   dynamicOutputs: DYNAMIC_OUTPUT_TYPES.has(type),
+                  fields: FLOW_NODE_DATA_SCHEMA[type] ?? [],
                 })),
               },
               null,
@@ -458,6 +473,73 @@ export class AsisMcpServerFactory {
     const agents = await this.agentRepo.findByTenantId(principal.tenantId);
     const admin = agents.find((agent) => agent.role === 'admin' && agent.type === AgentType.HUMAN);
     return admin?.id ?? agents.find((agent) => agent.type === AgentType.HUMAN)?.id ?? null;
+  }
+
+  private registerBuildingBlockTools(server: McpServer, principal: ApiKeyPrincipal): void {
+    const readsEither: ApiScope[] = ['flows:read', 'messages:read'];
+
+    server.registerTool(
+      'list_labels',
+      {
+        title: 'List conversation labels',
+        description:
+          'Labels that exist in this account. The label node only accepts one of these ids: labels cannot be created ' +
+          'from here, so if the one you need is missing, ask the account owner to create it in the app.',
+        inputSchema: {},
+        annotations: READ_ONLY,
+      },
+      async () => {
+        const denied = this.lacksEveryScope(principal, readsEither);
+        if (denied) return denied;
+        const labels = await this.labelRepo.findByTenantId(principal.tenantId);
+        return asJson(labels.map((label) => ({ id: label.id, name: label.name, color: label.color })));
+      },
+    );
+
+    server.registerTool(
+      'list_team_agents',
+      {
+        title: 'List the people on the team',
+        description:
+          'Human agents of the account. Use their id when an automation assigns a conversation to someone specific.',
+        inputSchema: {},
+        annotations: READ_ONLY,
+      },
+      async () => {
+        const denied = this.lacksEveryScope(principal, readsEither);
+        if (denied) return denied;
+        const agents = await this.agentRepo.findByTenantId(principal.tenantId);
+        return asJson(
+          agents
+            .filter((agent) => agent.type === AgentType.HUMAN)
+            .map((agent) => ({ id: agent.id, name: agent.name, role: agent.role })),
+        );
+      },
+    );
+
+    server.registerTool(
+      'list_http_connections',
+      {
+        title: 'List saved HTTP connections',
+        description:
+          'Connections that carry a stored secret header, so an automation can call an external system without the ' +
+          'credential living in the graph. The secret itself is never readable from here.',
+        inputSchema: {},
+        annotations: READ_ONLY,
+      },
+      async () => {
+        const denied = this.lacksScope(principal, 'flows:read');
+        if (denied) return denied;
+        const connections = await this.connectionRepo.findByTenantId(principal.tenantId);
+        return asJson(
+          connections.map((connection) => ({
+            id: connection.id,
+            name: connection.name,
+            headerName: connection.headerName,
+          })),
+        );
+      },
+    );
   }
 
   private registerAutomationTools(server: McpServer, principal: ApiKeyPrincipal): void {

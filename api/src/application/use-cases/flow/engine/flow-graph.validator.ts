@@ -178,10 +178,65 @@ export function validateFlowGraph(graph: FlowGraph, refs: FlowGraphRefs): FlowGr
     }
   }
 
+  lintDanglingVariables(nodes, saveAsSeen, err);
+
   return { errors, warnings };
 }
 
 // ─────────────────────────────────────────────────────────────────
+
+const VARIABLE_REFERENCE = /\{\{[^{}]*?\bvars\.([a-zA-Z0-9_]+)/g;
+const INTERPOLATION = /\{\{[^{}]*\}\}/g;
+
+function literalLengthOf(value: string): number {
+  return value.replace(INTERPOLATION, '').length;
+}
+
+function isInterpolated(value: string): boolean {
+  return value.includes('{{');
+}
+
+function collectTemplateStrings(value: unknown, found: string[]): void {
+  if (typeof value === 'string') {
+    if (value.includes('{{')) found.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectTemplateStrings(item, found);
+    return;
+  }
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) collectTemplateStrings(item, found);
+  }
+}
+
+function referencedVariables(node: FlowNode): Set<string> {
+  const templates: string[] = [];
+  collectTemplateStrings(node.data, templates);
+
+  const names = new Set<string>();
+  for (const template of templates) {
+    for (const match of template.matchAll(VARIABLE_REFERENCE)) names.add(match[1]);
+  }
+  return names;
+}
+
+function lintDanglingVariables(
+  nodes: FlowNode[],
+  savedVariables: Map<string, string>,
+  err: (code: string, message: string, nodeId?: string) => void,
+): void {
+  for (const node of nodes) {
+    for (const name of referencedVariables(node)) {
+      if (savedVariables.has(name)) continue;
+      err(
+        'unknown_variable',
+        `Este paso usa la variable "${name}" y ningún otro paso la guarda, así que va a salir vacía. Guardala antes (por ejemplo, con "Guardar respuesta como" en la pregunta o la lista que la recolecta).`,
+        node.id,
+      );
+    }
+  }
+}
 
 function validateNodeConfig(
   node: FlowNode,
@@ -196,8 +251,22 @@ function validateNodeConfig(
     const value = data[field];
     if (typeof value !== 'string' || !value.trim()) {
       err('missing_field', `Falta "${label}".`, id);
-    } else if (value.length > max) {
+    } else if (literalLengthOf(value) > max) {
       err('field_too_long', `"${label}" supera los ${max} caracteres.`, id);
+    }
+  };
+
+  const lintShortOptionLabel = (value: string, max: number, code: string, describe: () => string) => {
+    if (literalLengthOf(value) > max) {
+      err(code, describe(), id);
+      return;
+    }
+    if (isInterpolated(value)) {
+      warn(
+        'length_depends_on_data',
+        `El largo final de "${value}" depende del dato que traiga la corrida, y WhatsApp corta en ${max} caracteres. Revisá que lo que guardes ahí sea corto.`,
+        id,
+      );
     }
   };
 
@@ -251,7 +320,7 @@ function validateNodeConfig(
       if (!/^https?:\/\//i.test(url) && !url.includes('{{')) {
         err('bad_cta_url', 'El botón necesita un link que empiece con https://', id);
       }
-      if (String(data.buttonText ?? '').length > LIMITS.ctaUrl.buttonTextMaxLength) {
+      if (literalLengthOf(String(data.buttonText ?? '')) > LIMITS.ctaUrl.buttonTextMaxLength) {
         err('field_too_long', `El texto del botón supera los ${LIMITS.ctaUrl.buttonTextMaxLength} caracteres.`, id);
       }
       break;
@@ -272,7 +341,7 @@ function validateNodeConfig(
       }
       if (!String(data.cta ?? '').trim()) {
         err('missing_flow_cta', 'Poné el texto del botón que abre el formulario.', id);
-      } else if (String(data.cta).length > LIMITS.form.ctaMaxLength) {
+      } else if (literalLengthOf(String(data.cta)) > LIMITS.form.ctaMaxLength) {
         err('field_too_long', `El botón del formulario no puede pasar de ${LIMITS.form.ctaMaxLength} caracteres.`, id);
       }
       if (typeof data.saveAs !== 'string' || !/^[a-z0-9_]+$/.test(data.saveAs)) {
@@ -373,11 +442,14 @@ function validateNodeConfig(
       }
       for (const button of buttons) {
         if (!button?.title?.trim()) err('button_title', 'Todos los botones necesitan un texto.', id);
-        else if (button.title.length > LIMITS.buttons.titleMaxLength) {
-          err(
+        else {
+          const title = button.title;
+          lintShortOptionLabel(
+            title,
+            LIMITS.buttons.titleMaxLength,
             'button_title_long',
-            `El botón "${button.title.slice(0, LIMITS.buttons.titleMaxLength)}…" supera los ${LIMITS.buttons.titleMaxLength} caracteres.`,
-            id,
+            () =>
+              `El botón "${title.slice(0, LIMITS.buttons.titleMaxLength)}…" supera los ${LIMITS.buttons.titleMaxLength} caracteres.`,
           );
         }
       }
@@ -396,18 +468,21 @@ function validateNodeConfig(
       }
       for (const row of rows) {
         if (!row?.title?.trim()) err('row_title', 'Todas las opciones necesitan un título.', id);
-        else if (row.title.length > LIMITS.list.rowTitleMaxLength) {
-          err(
+        else {
+          const title = row.title;
+          lintShortOptionLabel(
+            title,
+            LIMITS.list.rowTitleMaxLength,
             'row_title_long',
-            `La opción "${row.title.slice(0, LIMITS.list.rowTitleMaxLength)}…" supera los ${LIMITS.list.rowTitleMaxLength} caracteres.`,
-            id,
+            () =>
+              `La opción "${title.slice(0, LIMITS.list.rowTitleMaxLength)}…" supera los ${LIMITS.list.rowTitleMaxLength} caracteres.`,
           );
         }
-        if (row?.description && row.description.length > LIMITS.list.rowDescriptionMaxLength) {
+        if (row?.description && literalLengthOf(row.description) > LIMITS.list.rowDescriptionMaxLength) {
           err('row_desc_long', `Las descripciones superan los ${LIMITS.list.rowDescriptionMaxLength} caracteres.`, id);
         }
       }
-      if (typeof data.buttonText === 'string' && data.buttonText.length > LIMITS.list.buttonTextMaxLength) {
+      if (typeof data.buttonText === 'string' && literalLengthOf(data.buttonText) > LIMITS.list.buttonTextMaxLength) {
         err('list_button_long', `El texto del botón de la lista supera los ${LIMITS.list.buttonTextMaxLength} caracteres.`, id);
       }
       validateTimeout(data.timeout, id, err);

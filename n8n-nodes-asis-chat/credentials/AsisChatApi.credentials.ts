@@ -27,7 +27,7 @@ export class AsisChatApi implements ICredentialType {
       displayName: 'Base URL',
       name: 'baseUrl',
       type: 'string',
-      default: 'https://api.asis.chat/api',
+      default: 'https://asis.chat/api',
       description: 'Change this only if you run asis.chat on your own domain',
     },
   ];

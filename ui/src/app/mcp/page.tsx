@@ -8,7 +8,7 @@ import { LanguageToggle } from "@/components/layout/language-toggle";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n/use-translations";
 
-const MCP_ENDPOINT_URL = "https://api.asis.chat/api/mcp";
+const MCP_ENDPOINT_URL = "https://asis.chat/api/mcp";
 
 const AGENT_CONFIG_SNIPPET = `{
   "mcpServers": {

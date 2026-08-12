@@ -24,6 +24,8 @@ function buildFactory(overrides: Record<string, any> = {}): AsisMcpServerFactory
     contactRepo: { findByTenantId: jest.fn().mockResolvedValue(emptyPage), findById: jest.fn().mockResolvedValue(null) },
     templateRepo: { findByFilters: jest.fn().mockResolvedValue(emptyPage) },
     agentRepo: { findByTenantId: jest.fn().mockResolvedValue([]) },
+    labelRepo: { findByTenantId: jest.fn().mockResolvedValue([]) },
+    connectionRepo: { findByTenantId: jest.fn().mockResolvedValue([]) },
     sendApiMessage: { execute: jest.fn() },
     createContact: { execute: jest.fn() },
     createFlow: { execute: jest.fn() },
@@ -41,6 +43,8 @@ function buildFactory(overrides: Record<string, any> = {}): AsisMcpServerFactory
     deps.contactRepo as any,
     deps.templateRepo as any,
     deps.agentRepo as any,
+    deps.labelRepo as any,
+    deps.connectionRepo as any,
     deps.sendApiMessage as any,
     deps.createContact as any,
     deps.createFlow as any,
@@ -150,6 +154,31 @@ describe('AsisMcpServerFactory', () => {
     const buttons = nodeTypes.nodeTypes.find((node: any) => node.type === 'action.send_buttons');
     expect(buttons.dynamicOutputs).toBe(true);
     expect(buttons.outputs).toContain('other');
+  });
+
+  it('el catálogo dice qué campos lleva cada nodo, que es lo que no se puede adivinar', async () => {
+    const client = await connect(buildFactory(), ALL_SCOPES);
+    const catalog = await client.readResource({ uri: 'asis://automations/node-types' });
+    const nodeTypes = JSON.parse((catalog.contents[0] as { text: string }).text);
+
+    const sinCampos = nodeTypes.nodeTypes.filter((node: any) => node.fields.length === 0);
+    expect(sinCampos.map((node: any) => node.type)).toEqual([]);
+
+    const actualizarContacto = nodeTypes.nodeTypes.find((node: any) => node.type === 'action.update_contact');
+    expect(actualizarContacto.fields[0]).toMatchObject({ name: 'fields', required: true });
+
+    const lista = nodeTypes.nodeTypes.find((node: any) => node.type === 'action.send_list');
+    expect(lista.fields.some((field: any) => field.name === 'saveAs')).toBe(true);
+  });
+
+  it('expone los bloques que el validador exige elegir de una lista', async () => {
+    const client = await connect(buildFactory(), ALL_SCOPES);
+    const { tools } = await client.listTools();
+    const names = tools.map((tool) => tool.name);
+
+    expect(names).toContain('list_labels');
+    expect(names).toContain('list_team_agents');
+    expect(names).toContain('list_http_connections');
   });
 
   it('ofrece los prompts de autoría', async () => {

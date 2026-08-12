@@ -274,9 +274,13 @@ describe('flow-graph.validator', () => {
     const graph: FlowGraph = {
       nodes: [
         trigger,
-        { id: 'm', type: 'action.send_media', position: { x: 1, y: 0 }, data: { mediaType: 'document', mediaUrl: '{{vars.link}}' } },
+        { id: 'v', type: 'action.set_variable', position: { x: 1, y: 0 }, data: { saveAs: 'link', mode: 'text', value: 'https://x/y.pdf' } },
+        { id: 'm', type: 'action.send_media', position: { x: 2, y: 0 }, data: { mediaType: 'document', mediaUrl: '{{vars.link}}' } },
       ],
-      edges: [{ id: 'e1', source: 't', sourceHandle: 'out', target: 'm' }],
+      edges: [
+        { id: 'e1', source: 't', sourceHandle: 'out', target: 'v' },
+        { id: 'e2', source: 'v', sourceHandle: 'out', target: 'm' },
+      ],
     };
     expect(validateFlowGraph(graph, refs).errors).toEqual([]);
   });
@@ -374,10 +378,20 @@ describe('flow-graph.validator — ubicación y botón con link', () => {
 
   /** Con variable no se puede validar al publicar: se resuelve al enviar. */
   it('deja pasar coordenadas que son variables', () => {
-    const { errors } = validateFlowGraph(
-      graphWith({ type: 'action.send_location', data: { latitude: '{{vars.lat}}', longitude: '{{vars.lng}}' } }),
-      refs,
-    );
+    const graph: FlowGraph = {
+      nodes: [
+        trigger,
+        { id: 'pos', type: 'action.request_location', position: { x: 1, y: 0 }, data: { body: '¿Dónde estás?', saveAs: 'lat' } },
+        { id: 'lng', type: 'action.set_variable', position: { x: 2, y: 0 }, data: { saveAs: 'lng', mode: 'text', value: '-56.1' } },
+        { id: 'n', type: 'action.send_location', position: { x: 3, y: 0 }, data: { latitude: '{{vars.lat}}', longitude: '{{vars.lng}}' } },
+      ],
+      edges: [
+        { id: 'e1', source: 't', sourceHandle: 'out', target: 'pos' },
+        { id: 'e2', source: 'pos', sourceHandle: 'reply', target: 'lng' },
+        { id: 'e3', source: 'lng', sourceHandle: 'out', target: 'n' },
+      ],
+    };
+    const { errors } = validateFlowGraph(graph, refs);
     expect(errors).toEqual([]);
   });
 
