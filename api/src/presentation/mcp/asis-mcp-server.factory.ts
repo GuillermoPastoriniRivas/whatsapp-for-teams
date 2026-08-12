@@ -6,6 +6,9 @@ import type { ApiScope } from '../../domain/value-objects/api-scopes.js';
 import { FlowGraphSchema } from '../request-dtos/flow-request.dto.js';
 import { SendApiMessageUseCase } from '../../application/use-cases/developer/send-api-message.use-case.js';
 import { CreateContactUseCase } from '../../application/use-cases/contact/create-contact.use-case.js';
+import { CreateLabelUseCase } from '../../application/use-cases/label/create-label.use-case.js';
+import { UpdateLabelUseCase } from '../../application/use-cases/label/update-label.use-case.js';
+import { LABEL_COLORS } from '../../domain/value-objects/label-colors.js';
 import { CreateFlowUseCase } from '../../application/use-cases/flow/create-flow.use-case.js';
 import { ListFlowsUseCase } from '../../application/use-cases/flow/list-flows.use-case.js';
 import { GetFlowUseCase } from '../../application/use-cases/flow/get-flow.use-case.js';
@@ -74,6 +77,8 @@ export class AsisMcpServerFactory {
     @Inject('FlowConnectionRepository') private readonly connectionRepo: FlowConnectionRepository,
     @Inject('SendApiMessageUseCase') private readonly sendApiMessage: SendApiMessageUseCase,
     @Inject('CreateContactUseCase') private readonly createContact: CreateContactUseCase,
+    @Inject('CreateLabelUseCase') private readonly createLabel: CreateLabelUseCase,
+    @Inject('UpdateLabelUseCase') private readonly updateLabel: UpdateLabelUseCase,
     @Inject('CreateFlowUseCase') private readonly createFlow: CreateFlowUseCase,
     @Inject('ListFlowsUseCase') private readonly listFlows: ListFlowsUseCase,
     @Inject('GetFlowUseCase') private readonly getFlow: GetFlowUseCase,
@@ -477,14 +482,15 @@ export class AsisMcpServerFactory {
 
   private registerBuildingBlockTools(server: McpServer, principal: ApiKeyPrincipal): void {
     const readsEither: ApiScope[] = ['flows:read', 'messages:read'];
+    const writesEither: ApiScope[] = ['flows:write', 'messages:write'];
 
     server.registerTool(
       'list_labels',
       {
         title: 'List conversation labels',
         description:
-          'Labels that exist in this account. The label node only accepts one of these ids: labels cannot be created ' +
-          'from here, so if the one you need is missing, ask the account owner to create it in the app.',
+          'Labels that exist in this account. The label node only accepts one of these ids. If the one you need is ' +
+          'missing, create it with create_label.',
         inputSchema: {},
         annotations: READ_ONLY,
       },
@@ -493,6 +499,57 @@ export class AsisMcpServerFactory {
         if (denied) return denied;
         const labels = await this.labelRepo.findByTenantId(principal.tenantId);
         return asJson(labels.map((label) => ({ id: label.id, name: label.name, color: label.color })));
+      },
+    );
+
+    server.registerTool(
+      'create_label',
+      {
+        title: 'Create a conversation label',
+        description:
+          'Creates a label the whole account will see, in the inbox and in the label node of any automation. ' +
+          'Names are unique: creating one that already exists fails, so call list_labels first. ' +
+          'Keep the name short — it is shown as a chip next to the conversation.',
+        inputSchema: {
+          name: z.string().min(1).max(50),
+          color: z.enum(LABEL_COLORS),
+        },
+        annotations: SAFE_WRITE,
+      },
+      async ({ name, color }) => {
+        const denied = this.lacksEveryScope(principal, writesEither);
+        if (denied) return denied;
+        const result = await this.createLabel.execute({ tenantId: principal.tenantId, name, color });
+        if (!result.ok) {
+          return asProblem(
+            `${result.error.code}: ${result.error.message} Call list_labels to see what already exists.`,
+          );
+        }
+        return asJson({ id: result.value.id, name: result.value.name, color: result.value.color });
+      },
+    );
+
+    server.registerTool(
+      'update_label',
+      {
+        title: 'Rename a label or change its colour',
+        description:
+          'Changes the name or the colour of an existing label. The change reaches every conversation already ' +
+          'carrying it and every automation that uses it, so renaming is not a local edit.',
+        inputSchema: {
+          labelId: z.string(),
+          name: z.string().min(1).max(50).optional(),
+          color: z.enum(LABEL_COLORS).optional(),
+        },
+        annotations: REPLACES_EXISTING_DRAFT,
+      },
+      async ({ labelId, name, color }) => {
+        const denied = this.lacksEveryScope(principal, writesEither);
+        if (denied) return denied;
+        if (!name && !color) return asProblem('Pass a new name, a new colour, or both.');
+        const result = await this.updateLabel.execute({ labelId, tenantId: principal.tenantId, name, color });
+        if (!result.ok) return asProblem(`${result.error.code}: ${result.error.message}`);
+        return asJson({ id: result.value.id, name: result.value.name, color: result.value.color });
       },
     );
 

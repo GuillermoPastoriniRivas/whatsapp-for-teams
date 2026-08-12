@@ -1,12 +1,12 @@
 import {
-  Controller, Get, Post, Body, Param, Query,
+  Controller, Get, Post, Patch, Body, Param, Query,
   Inject, UseGuards, HttpException, NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiSecurity, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { Public } from '../decorators/public.decorator.js';
 import { ApiKeyGuard } from '../guards/api-key.guard.js';
 import { ApiPrincipal } from '../decorators/api-principal.decorator.js';
-import { RequireScopes } from '../decorators/require-scopes.decorator.js';
+import { RequireScopes, RequireAnyScope } from '../decorators/require-scopes.decorator.js';
 import type { ApiKeyPrincipal } from '../decorators/api-principal.decorator.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import {
@@ -17,6 +17,13 @@ import type {
 } from '../request-dtos/public-api-requests.dto.js';
 import { SendApiMessageUseCase } from '../../application/use-cases/developer/send-api-message.use-case.js';
 import { CreateContactUseCase } from '../../application/use-cases/contact/create-contact.use-case.js';
+import { CreateLabelUseCase } from '../../application/use-cases/label/create-label.use-case.js';
+import { UpdateLabelUseCase } from '../../application/use-cases/label/update-label.use-case.js';
+import { CreateLabelRequestSchema } from '../request-dtos/create-label-request.dto.js';
+import type { CreateLabelRequestDto } from '../request-dtos/create-label-request.dto.js';
+import { UpdateLabelRequestSchema } from '../request-dtos/update-label-request.dto.js';
+import type { UpdateLabelRequestDto } from '../request-dtos/update-label-request.dto.js';
+import type { LabelRepository } from '../../domain/repositories/label.repository.js';
 import { resolvePlanFeatures } from '../../application/use-cases/developer/plan-features.util.js';
 import { serializeMessage, serializeConversation, serializeContact } from '../../application/use-cases/developer/developer-payloads.util.js';
 import { DomainError } from '../../domain/errors/domain-errors.js';
@@ -48,6 +55,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   PHONE_NUMBER_AMBIGUOUS: 422,
   PHONE_NUMBER_INACTIVE: 422,
   FEATURE_NOT_IN_PLAN: 403,
+  LABEL_NOT_FOUND: 404,
+  DUPLICATE_LABEL_NAME: 409,
 };
 
 /**
@@ -70,6 +79,9 @@ export class PublicApiController {
     @Inject('MessageTemplateRepository') private readonly templateRepo: MessageTemplateRepository,
     @Inject('SendApiMessageUseCase') private readonly sendApiMessage: SendApiMessageUseCase,
     @Inject('CreateContactUseCase') private readonly createContact: CreateContactUseCase,
+    @Inject('LabelRepository') private readonly labelRepo: LabelRepository,
+    @Inject('CreateLabelUseCase') private readonly createLabel: CreateLabelUseCase,
+    @Inject('UpdateLabelUseCase') private readonly updateLabel: UpdateLabelUseCase,
   ) {}
 
   private fail(error: DomainError): never {
@@ -273,6 +285,47 @@ export class PublicApiController {
     });
     if (!result.ok) this.fail(result.error as DomainError);
     return result.value;
+  }
+
+  @Get('labels')
+  @RequireAnyScope('messages:read', 'flows:read')
+  @ApiOperation({
+    summary: 'List labels',
+    description: 'Labels of the account. Automations reference them by id, and the inbox shows them on a conversation.',
+  })
+  async labels(@ApiPrincipal() principal: ApiKeyPrincipal) {
+    const labels = await this.labelRepo.findByTenantId(principal.tenantId);
+    return { data: labels.map((label) => ({ id: label.id, name: label.name, color: label.color })) };
+  }
+
+  @Post('labels')
+  @RequireAnyScope('messages:write', 'flows:write')
+  @ApiOperation({ summary: 'Create a label', description: 'Names are unique within the account.' })
+  async createLabelEndpoint(
+    @ApiPrincipal() principal: ApiKeyPrincipal,
+    @Body(new ZodValidationPipe(CreateLabelRequestSchema)) body: CreateLabelRequestDto,
+  ) {
+    const result = await this.createLabel.execute({
+      tenantId: principal.tenantId,
+      name: body.name,
+      color: body.color,
+    });
+    if (!result.ok) this.fail(result.error as DomainError);
+    return { id: result.value.id, name: result.value.name, color: result.value.color };
+  }
+
+  @Patch('labels/:id')
+  @RequireAnyScope('messages:write', 'flows:write')
+  @ApiOperation({ summary: 'Rename a label or change its colour' })
+  @ApiParam({ name: 'id' })
+  async updateLabelEndpoint(
+    @Param('id') id: string,
+    @ApiPrincipal() principal: ApiKeyPrincipal,
+    @Body(new ZodValidationPipe(UpdateLabelRequestSchema)) body: UpdateLabelRequestDto,
+  ) {
+    const result = await this.updateLabel.execute({ labelId: id, tenantId: principal.tenantId, ...body });
+    if (!result.ok) this.fail(result.error as DomainError);
+    return { id: result.value.id, name: result.value.name, color: result.value.color };
   }
 
   @Get('contacts')

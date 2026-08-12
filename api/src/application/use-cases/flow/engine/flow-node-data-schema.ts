@@ -128,7 +128,7 @@ export const FLOW_NODE_DATA_SCHEMA: Record<string, FlowNodeField[]> = {
     { name: 'agentId', type: 'string', note: 'Obligatorio si mode es "specific". Id de list_team_agents.' },
   ],
   'action.label': [
-    { name: 'labelId', type: 'string', required: true, note: 'Id de list_labels. Tiene que existir en la cuenta.' },
+    { name: 'labelId', type: 'string', required: true, note: 'Id de list_labels. Si la etiqueta que necesitás no existe, creala con create_label.' },
   ],
   'action.update_contact': [
     { name: 'fields', type: '[{ field: string, value: string }]', required: true, note: 'field es "name", "email", "company", "notes" o "custom.<lo_que_quieras>". Al menos uno.' },

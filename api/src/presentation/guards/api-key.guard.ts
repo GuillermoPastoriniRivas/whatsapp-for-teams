@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, HttpException, HttpS
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { AuthenticateApiKeyUseCase, ApiKeyPrincipal } from '../../application/use-cases/developer/authenticate-api-key.use-case.js';
-import { REQUIRED_SCOPES_KEY } from '../decorators/require-scopes.decorator.js';
+import { REQUIRED_SCOPES_KEY, REQUIRED_ANY_SCOPE_KEY } from '../decorators/require-scopes.decorator.js';
 import type { ApiScope } from '../../domain/value-objects/api-scopes.js';
 
 export interface RequestApiPrincipal extends ApiKeyPrincipal {}
@@ -58,6 +58,19 @@ export class ApiKeyGuard implements CanActivate {
   }
 
   private enforceScopes(context: ExecutionContext, principal: ApiKeyPrincipal): void {
+    const anyOf = this.reflector.getAllAndOverride<ApiScope[] | undefined>(REQUIRED_ANY_SCOPE_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (anyOf?.length && !anyOf.some((scope) => principal.scopes.includes(scope))) {
+      throw new ForbiddenException({
+        code: 'MISSING_SCOPE',
+        message: `This API key needs at least one of the ${anyOf.join(' or ')} permissions. Create a key with one from Developers.`,
+        required: anyOf,
+        granted: principal.scopes,
+      });
+    }
+
     const required = this.reflector.getAllAndOverride<ApiScope[] | undefined>(REQUIRED_SCOPES_KEY, [
       context.getHandler(),
       context.getClass(),

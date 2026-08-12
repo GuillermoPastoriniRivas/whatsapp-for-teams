@@ -28,6 +28,8 @@ function buildFactory(overrides: Record<string, any> = {}): AsisMcpServerFactory
     connectionRepo: { findByTenantId: jest.fn().mockResolvedValue([]) },
     sendApiMessage: { execute: jest.fn() },
     createContact: { execute: jest.fn() },
+    createLabel: { execute: jest.fn() },
+    updateLabel: { execute: jest.fn() },
     createFlow: { execute: jest.fn() },
     listFlows: { execute: jest.fn().mockResolvedValue([]) },
     getFlow: { execute: jest.fn() },
@@ -47,6 +49,8 @@ function buildFactory(overrides: Record<string, any> = {}): AsisMcpServerFactory
     deps.connectionRepo as any,
     deps.sendApiMessage as any,
     deps.createContact as any,
+    deps.createLabel as any,
+    deps.updateLabel as any,
     deps.createFlow as any,
     deps.listFlows as any,
     deps.getFlow as any,
@@ -179,6 +183,53 @@ describe('AsisMcpServerFactory', () => {
     expect(names).toContain('list_labels');
     expect(names).toContain('list_team_agents');
     expect(names).toContain('list_http_connections');
+    expect(names).toContain('create_label');
+    expect(names).toContain('update_label');
+  });
+
+  it('deja crear etiquetas con permiso de cualquiera de las dos mitades', async () => {
+    const creada = { id: 'lab_1', name: 'Turno', color: 'teal' };
+
+    for (const scopes of [['flows:write'], ['messages:write']] as ApiKeyPrincipal['scopes'][]) {
+      const factory = buildFactory({ createLabel: { execute: jest.fn().mockResolvedValue({ ok: true, value: creada }) } });
+      const client = await connect(factory, { ...ALL_SCOPES, scopes });
+      const result: any = await client.callTool({
+        name: 'create_label',
+        arguments: { name: 'Turno', color: 'teal' },
+      });
+      expect(result.isError ?? false).toBe(false);
+      expect(textOf(result)).toContain('lab_1');
+    }
+  });
+
+  it('no deja crear etiquetas con una clave de solo lectura', async () => {
+    const client = await connect(buildFactory(), READ_ONLY_MESSAGING);
+    const result: any = await client.callTool({
+      name: 'create_label',
+      arguments: { name: 'Turno', color: 'teal' },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain('flows:write');
+  });
+
+  it('cuando el nombre ya existe, manda a mirar las que hay', async () => {
+    const factory = buildFactory({
+      createLabel: {
+        execute: jest.fn().mockResolvedValue({
+          ok: false,
+          error: { code: 'DUPLICATE_LABEL_NAME', message: 'Ya existe una etiqueta con ese nombre.' },
+        }),
+      },
+    });
+    const client = await connect(factory, ALL_SCOPES);
+    const result: any = await client.callTool({
+      name: 'create_label',
+      arguments: { name: 'Turno', color: 'teal' },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain('list_labels');
   });
 
   it('ofrece los prompts de autoría', async () => {

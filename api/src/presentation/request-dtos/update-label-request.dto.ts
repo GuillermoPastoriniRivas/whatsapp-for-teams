@@ -1,6 +1,5 @@
 import { z } from 'zod';
-
-const LABEL_COLORS = ['red', 'orange', 'yellow', 'green', 'teal', 'blue', 'indigo', 'purple', 'pink', 'gray'] as const;
+import { LABEL_COLORS } from '../../domain/value-objects/label-colors.js';
 
 export const UpdateLabelRequestSchema = z.object({
   name: z.string().min(1).max(50).optional(),
