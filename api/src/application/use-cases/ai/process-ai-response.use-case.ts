@@ -16,6 +16,7 @@ import { AiCompletionPort } from '../../ports/ai-completion.port.js';
 import type { ChatMessage } from '../../ports/ai-completion.port.js';
 import { MessagingApiPort } from '../../ports/messaging-api.port.js';
 import { recipientIdentityOf } from '../../../domain/value-objects/recipient-identity.js';
+import { billingForConversation } from '../billing/outbound-billing.helper.js';
 import { RealtimeGatewayPort } from '../../ports/realtime-gateway.port.js';
 import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { HandoffToHumanUseCase } from './handoff-to-human.use-case.js';
@@ -361,6 +362,7 @@ export class ProcessAiResponseUseCase {
       replyToWaMessageId: lastInbound?.waMessageId ?? null,
       devEvents: this.devEvents,
       tenantId: conversation.tenantId,
+      billing: billingForConversation(conversation, sendContact, { senderKind: 'ai' }),
     });
 
     await this.conversationRepo.update(conversation.id, { lastMessageAt: new Date(), pendingAiSince: null } as any);

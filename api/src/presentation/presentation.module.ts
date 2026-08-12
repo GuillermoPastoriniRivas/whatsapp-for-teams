@@ -32,13 +32,6 @@ import { PhoneNumberController } from './controllers/phone-number.controller.js'
 import { ConversationController } from './controllers/conversation.controller.js';
 import { TenantController } from './controllers/tenant.controller.js';
 import { AccountProfileController } from './controllers/account-profile.controller.js';
-import { ServiceProviderController } from './controllers/service-provider.controller.js';
-import {
-  CreateServiceProviderUseCase,
-  DeleteServiceProviderUseCase,
-  ListServiceProvidersUseCase,
-  UpdateServiceProviderUseCase,
-} from '../application/use-cases/provider/service-provider.use-cases.js';
 import { GetAccountProfileUseCase, UpdateAccountProfileUseCase } from '../application/use-cases/tenant/account-profile.use-cases.js';
 import { WebhookController } from './controllers/webhook.controller.js';
 import { ContactController } from './controllers/contact.controller.js';
@@ -49,6 +42,7 @@ import {
   GetTemplateAnalyticsUseCase,
   GetWhatsAppAnalyticsUseCase,
 } from '../application/use-cases/analytics/get-whatsapp-analytics.use-case.js';
+import { GetAdPerformanceUseCase } from '../application/use-cases/analytics/get-ad-performance.use-case.js';
 
 // Use Cases — Auth
 import { LoginUseCase } from '../application/use-cases/auth/login.use-case.js';
@@ -121,6 +115,7 @@ import { CreateTemplateUseCase } from '../application/use-cases/template/create-
 import { UpdateTemplateUseCase } from '../application/use-cases/template/update-template.use-case.js';
 import { DeleteTemplateUseCase } from '../application/use-cases/template/delete-template.use-case.js';
 import { ListTemplatesUseCase } from '../application/use-cases/template/list-templates.use-case.js';
+import { ListWhatsAppFlowsUseCase } from '../application/use-cases/flow/list-whatsapp-flows.use-case.js';
 import { GetTemplateUseCase } from '../application/use-cases/template/get-template.use-case.js';
 import { SyncTemplatesUseCase } from '../application/use-cases/template/sync-templates.use-case.js';
 
@@ -202,6 +197,9 @@ import { PlanLimitGuard } from './guards/plan-limit.guard.js';
 // Developer platform (API pública + webhooks)
 import { DeveloperController } from './controllers/developer.controller.js';
 import { PublicApiController } from './controllers/public-api.controller.js';
+import { PublicFlowsController } from './controllers/public-flows.controller.js';
+import { McpController } from './mcp/mcp.controller.js';
+import { AsisMcpServerFactory } from './mcp/asis-mcp-server.factory.js';
 import { ApiKeyGuard } from './guards/api-key.guard.js';
 import { GetDeveloperOverviewUseCase } from '../application/use-cases/developer/get-developer-overview.use-case.js';
 import { CreateApiKeyUseCase } from '../application/use-cases/developer/create-api-key.use-case.js';
@@ -241,6 +239,7 @@ import { ListFlowsUseCase } from '../application/use-cases/flow/list-flows.use-c
 import { GetFlowUseCase } from '../application/use-cases/flow/get-flow.use-case.js';
 import { UpdateFlowUseCase } from '../application/use-cases/flow/update-flow.use-case.js';
 import { PublishFlowUseCase } from '../application/use-cases/flow/publish-flow.use-case.js';
+import { CheckFlowUseCase } from '../application/use-cases/flow/check-flow.use-case.js';
 import { EnsureDefaultPhoneFlowUseCase } from '../application/use-cases/flow/ensure-default-phone-flow.use-case.js';
 import {
   PauseFlowUseCase, ActivateFlowUseCase, ArchiveFlowUseCase, RegenerateWebhookTokenUseCase,
@@ -252,6 +251,10 @@ import {
 import {
   CreateFlowConnectionUseCase, ListFlowConnectionsUseCase, DeleteFlowConnectionUseCase,
 } from '../application/use-cases/flow/flow-connections.use-cases.js';
+import { GetMessageUsageUseCase } from '../application/use-cases/billing/get-message-usage.use-case.js';
+import { RateChargesUseCase } from '../application/use-cases/billing/rate-charges.use-case.js';
+import { ReconcileMetaUsageUseCase } from '../application/use-cases/billing/reconcile-meta-usage.use-case.js';
+import { BillingJobProcessor } from '../infrastructure/queue/billing-job.processor.js';
 
 const useCaseProviders = [
   // Auth
@@ -335,26 +338,6 @@ const useCaseProviders = [
     provide: 'ListAgentsUseCase',
     useFactory: (agentRepo: any) => new ListAgentsUseCase(agentRepo),
     inject: ['AgentRepository'],
-  },
-  {
-    provide: 'ListServiceProvidersUseCase',
-    useFactory: (repo: any) => new ListServiceProvidersUseCase(repo),
-    inject: ['ServiceProviderRepository'],
-  },
-  {
-    provide: 'CreateServiceProviderUseCase',
-    useFactory: (repo: any) => new CreateServiceProviderUseCase(repo),
-    inject: ['ServiceProviderRepository'],
-  },
-  {
-    provide: 'UpdateServiceProviderUseCase',
-    useFactory: (repo: any) => new UpdateServiceProviderUseCase(repo),
-    inject: ['ServiceProviderRepository'],
-  },
-  {
-    provide: 'DeleteServiceProviderUseCase',
-    useFactory: (repo: any) => new DeleteServiceProviderUseCase(repo),
-    inject: ['ServiceProviderRepository'],
   },
   {
     provide: 'GetAccountProfileUseCase',
@@ -468,6 +451,12 @@ const useCaseProviders = [
     provide: 'GetWhatsAppAnalyticsUseCase',
     useFactory: (phoneRepo: any, analytics: any) => new GetWhatsAppAnalyticsUseCase(phoneRepo, analytics),
     inject: ['PhoneNumberRepository', 'WhatsAppAnalyticsPort'],
+  },
+  {
+    provide: 'GetAdPerformanceUseCase',
+    useFactory: (conversationRepo: any, chargeRepo: any) =>
+      new GetAdPerformanceUseCase(conversationRepo, chargeRepo),
+    inject: ['ConversationRepository', 'MessageChargeRepository'],
   },
   {
     provide: 'GetTemplateAnalyticsUseCase',
@@ -597,7 +586,7 @@ const useCaseProviders = [
     useFactory: (
       flowRepo: any, versionRepo: any, execRepo: any, statRepo: any, connectionRepo: any,
       convRepo: any, contactRepo: any, phoneRepo: any, agentRepo: any, tenantRepo: any,
-      providerRepo: any, usageRepo: any, msgRepo: any, labelRepo: any, convLabelRepo: any, noteRepo: any,
+      usageRepo: any, msgRepo: any, labelRepo: any, convLabelRepo: any, noteRepo: any,
       eventRepo: any, templateRepo: any, secrets: any, http: any, messagingApi: any,
       aiCompletion: any, gateway: any, jobQueue: any, autoAssign: any,
       devEvents: any, accessRepo: any, assetRepo: any, mediaAccess: any,
@@ -605,7 +594,7 @@ const useCaseProviders = [
       new FlowEngineService(
         flowRepo, versionRepo, execRepo, statRepo, connectionRepo,
         convRepo, contactRepo, phoneRepo, agentRepo, tenantRepo,
-        providerRepo, usageRepo, msgRepo, labelRepo, convLabelRepo, noteRepo,
+        usageRepo, msgRepo, labelRepo, convLabelRepo, noteRepo,
         eventRepo, templateRepo, secrets, http, messagingApi,
         aiCompletion, gateway, jobQueue, autoAssign,
         devEvents, accessRepo, assetRepo, mediaAccess,
@@ -613,7 +602,6 @@ const useCaseProviders = [
     inject: [
       'FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'FlowNodeStatRepository', 'FlowConnectionRepository',
       'ConversationRepository', 'ContactRepository', 'PhoneNumberRepository', 'AgentRepository', 'TenantRepository',
-      'ServiceProviderRepository',
       'AiUsageRepository', 'MessageRepository', 'LabelRepository', 'ConversationLabelRepository', 'ConversationNoteRepository',
       'ConversationEventRepository', 'MessageTemplateRepository', 'FlowSecretsPort', 'FlowHttpPort', 'MessagingApiPort',
       'AiCompletionPort', 'RealtimeGatewayPort', 'JobQueuePort', 'AutoAssignConversationUseCase',
@@ -622,9 +610,9 @@ const useCaseProviders = [
   },
   {
     provide: 'FlowInboundRouterUseCase',
-    useFactory: (flowRepo: any, versionRepo: any, execRepo: any, agentRepo: any, msgRepo: any, eventRepo: any, gateway: any, jobQueue: any, devEvents: any, autoAssign: any, providerRepo: any, convLabelRepo: any) =>
-      new FlowInboundRouterUseCase(flowRepo, versionRepo, execRepo, agentRepo, msgRepo, eventRepo, gateway, jobQueue, devEvents, autoAssign, providerRepo, convLabelRepo),
-    inject: ['FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'AgentRepository', 'MessageRepository', 'ConversationEventRepository', 'RealtimeGatewayPort', 'JobQueuePort', 'DeveloperEventsPort', 'AutoAssignConversationUseCase', 'ServiceProviderRepository', 'ConversationLabelRepository'],
+    useFactory: (flowRepo: any, versionRepo: any, execRepo: any, agentRepo: any, msgRepo: any, eventRepo: any, gateway: any, jobQueue: any, devEvents: any, autoAssign: any, convLabelRepo: any) =>
+      new FlowInboundRouterUseCase(flowRepo, versionRepo, execRepo, agentRepo, msgRepo, eventRepo, gateway, jobQueue, devEvents, autoAssign, convLabelRepo),
+    inject: ['FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'AgentRepository', 'MessageRepository', 'ConversationEventRepository', 'RealtimeGatewayPort', 'JobQueuePort', 'DeveloperEventsPort', 'AutoAssignConversationUseCase', 'ConversationLabelRepository'],
   },
   {
     provide: 'CancelActiveFlowExecutionUseCase',
@@ -657,6 +645,15 @@ const useCaseProviders = [
     provide: 'UpdateFlowUseCase',
     useFactory: (flowRepo: any) => new UpdateFlowUseCase(flowRepo),
     inject: ['FlowRepository'],
+  },
+  {
+    provide: 'CheckFlowUseCase',
+    useFactory: (flowRepo: any, templateRepo: any, labelRepo: any, agentRepo: any, phoneRepo: any, connectionRepo: any) =>
+      new CheckFlowUseCase(flowRepo, { templateRepo, labelRepo, agentRepo, phoneRepo, connectionRepo }),
+    inject: [
+      'FlowRepository', 'MessageTemplateRepository', 'LabelRepository', 'AgentRepository',
+      'PhoneNumberRepository', 'FlowConnectionRepository',
+    ],
   },
   {
     provide: 'PublishFlowUseCase',
@@ -730,17 +727,17 @@ const useCaseProviders = [
     provide: 'SimulateFlowUseCase',
     useFactory: (
       flowRepo: any, versionRepo: any, connectionRepo: any, phoneRepo: any, agentRepo: any,
-      tenantRepo: any, providerRepo: any, labelRepo: any, templateRepo: any, aiCompletion: any,
+      tenantRepo: any, labelRepo: any, templateRepo: any, aiCompletion: any,
       secrets: any, assetRepo: any, mediaAccess: any,
     ) =>
       new SimulateFlowUseCase(
         flowRepo, versionRepo, connectionRepo, phoneRepo, agentRepo,
-        tenantRepo, providerRepo, labelRepo, templateRepo, aiCompletion,
+        tenantRepo, labelRepo, templateRepo, aiCompletion,
         secrets, assetRepo, mediaAccess,
       ),
     inject: [
       'FlowRepository', 'FlowVersionRepository', 'FlowConnectionRepository', 'PhoneNumberRepository', 'AgentRepository',
-      'TenantRepository', 'ServiceProviderRepository', 'LabelRepository', 'MessageTemplateRepository', 'AiCompletionPort', 'FlowSecretsPort',
+      'TenantRepository', 'LabelRepository', 'MessageTemplateRepository', 'AiCompletionPort', 'FlowSecretsPort',
       'MediaAssetRepository', 'MediaAccessService',
     ],
   },
@@ -796,9 +793,9 @@ const useCaseProviders = [
   },
   {
     provide: 'HandleStatusUpdateUseCase',
-    useFactory: (msgRepo: any, gateway: any, campaignRepo: any, recipientRepo: any, convRepo: any, devEvents: any) =>
-      new HandleStatusUpdateUseCase(msgRepo, gateway, campaignRepo, recipientRepo, convRepo, devEvents),
-    inject: ['MessageRepository', 'RealtimeGatewayPort', 'CampaignRepository', 'CampaignRecipientRepository', 'ConversationRepository', 'DeveloperEventsPort'],
+    useFactory: (msgRepo: any, gateway: any, campaignRepo: any, recipientRepo: any, convRepo: any, devEvents: any, charges: any) =>
+      new HandleStatusUpdateUseCase(msgRepo, gateway, campaignRepo, recipientRepo, convRepo, devEvents, charges),
+    inject: ['MessageRepository', 'RealtimeGatewayPort', 'CampaignRepository', 'CampaignRecipientRepository', 'ConversationRepository', 'DeveloperEventsPort', 'MessageChargeRepository'],
   },
   {
     provide: 'HandleTemplateStatusUpdateUseCase',
@@ -840,6 +837,11 @@ const useCaseProviders = [
     provide: 'ListTemplatesUseCase',
     useFactory: (templateRepo: any, phoneRepo: any) => new ListTemplatesUseCase(templateRepo, phoneRepo),
     inject: ['MessageTemplateRepository', 'PhoneNumberRepository'],
+  },
+  {
+    provide: 'ListWhatsAppFlowsUseCase',
+    useFactory: (phoneRepo: any, catalog: any) => new ListWhatsAppFlowsUseCase(phoneRepo, catalog),
+    inject: ['PhoneNumberRepository', 'FlowCatalogPort'],
   },
   {
     provide: 'GetTemplateUseCase',
@@ -914,9 +916,9 @@ const useCaseProviders = [
   },
   {
     provide: 'ProcessCampaignBatchUseCase',
-    useFactory: (campaignRepo: any, recipientRepo: any, templateRepo: any, phoneRepo: any, convRepo: any, msgRepo: any, messagingApi: any, jobQueue: any, gateway: any) =>
-      new ProcessCampaignBatchUseCase(campaignRepo, recipientRepo, templateRepo, phoneRepo, convRepo, msgRepo, messagingApi, jobQueue, gateway),
-    inject: ['CampaignRepository', 'CampaignRecipientRepository', 'MessageTemplateRepository', 'PhoneNumberRepository', 'ConversationRepository', 'MessageRepository', 'MessagingApiPort', 'JobQueuePort', 'RealtimeGatewayPort'],
+    useFactory: (campaignRepo: any, recipientRepo: any, templateRepo: any, phoneRepo: any, convRepo: any, msgRepo: any, messagingApi: any, jobQueue: any, gateway: any, charges: any) =>
+      new ProcessCampaignBatchUseCase(campaignRepo, recipientRepo, templateRepo, phoneRepo, convRepo, msgRepo, messagingApi, jobQueue, gateway, charges),
+    inject: ['CampaignRepository', 'CampaignRecipientRepository', 'MessageTemplateRepository', 'PhoneNumberRepository', 'ConversationRepository', 'MessageRepository', 'MessagingApiPort', 'JobQueuePort', 'RealtimeGatewayPort', 'MessageChargeRepository'],
   },
   {
     provide: 'AttributeCampaignReplyUseCase',
@@ -1029,6 +1031,26 @@ const useCaseProviders = [
     useFactory: (subRepo: any, agentRepo: any, paymentProvider: any, providerResolver: any) =>
       new CreateCheckoutUseCase(subRepo, agentRepo, paymentProvider, providerResolver),
     inject: ['SubscriptionRepository', 'AgentRepository', 'PaymentProviderPort', 'PaymentProviderResolverPort'],
+  },
+
+  // Contabilidad de mensajes. No es facturación nuestra: los mensajes los cobra
+  // Meta directo al cliente y acá sólo se traducen a plata para que los vea.
+  {
+    provide: 'GetMessageUsageUseCase',
+    useFactory: (charges: any, cards: any, templates: any, campaigns: any, phones: any) =>
+      new GetMessageUsageUseCase(charges, cards, templates, campaigns, phones),
+    inject: ['MessageChargeRepository', 'RateCardRepository', 'MessageTemplateRepository', 'CampaignRepository', 'PhoneNumberRepository'],
+  },
+  {
+    provide: 'RateChargesUseCase',
+    useFactory: (charges: any, cards: any) => new RateChargesUseCase(charges, cards),
+    inject: ['MessageChargeRepository', 'RateCardRepository'],
+  },
+  {
+    provide: 'ReconcileMetaUsageUseCase',
+    useFactory: (charges: any, phones: any, analytics: any) =>
+      new ReconcileMetaUsageUseCase(charges, phones, analytics),
+    inject: ['MessageChargeRepository', 'PhoneNumberRepository', 'WhatsAppAnalyticsPort'],
   },
   {
     provide: 'HandlePaymentWebhookUseCase',
@@ -1215,7 +1237,6 @@ const useCaseProviders = [
     ConversationController,
     TenantController,
     AccountProfileController,
-    ServiceProviderController,
     WebhookController,
     ContactController,
     TemplateController,
@@ -1231,9 +1252,12 @@ const useCaseProviders = [
     FlowWebhookController,
     DeveloperController,
     PublicApiController,
+    PublicFlowsController,
+    McpController,
     MediaController,
   ],
   providers: [
+    AsisMcpServerFactory,
     ...useCaseProviders,
     WebhookJobProcessor,
     AiResponseJobProcessor,
@@ -1242,6 +1266,7 @@ const useCaseProviders = [
     FlowJobProcessor,
     DeveloperWebhookJobProcessor,
     MediaJobProcessor,
+    BillingJobProcessor,
     PlanLimitGuard,
     ApiKeyGuard,
     { provide: APP_GUARD, useClass: ThrottlerGuard },

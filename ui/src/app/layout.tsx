@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
+import { CookielessAnalytics } from "@/components/layout/cookieless-analytics";
 
 /**
  * Pinta el tema antes del primer render. Sin esto, quien elige oscuro ve un
@@ -76,6 +77,7 @@ export default function RootLayout({
         {children}
         <Toaster />
         <ConfirmDialogHost />
+        <CookielessAnalytics />
       </body>
     </html>
   );

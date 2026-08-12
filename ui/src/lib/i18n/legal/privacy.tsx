@@ -218,7 +218,55 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
         publicidad.
       </p>
 
-      <h2>10. Cambios a esta politica</h2>
+      <h2>10. Acceso desde asistentes de IA (conectores y MCP)</h2>
+      <p>
+        asis.chat ofrece un servidor MCP (Model Context Protocol) y una API
+        publica que permiten conectar la cuenta a asistentes de IA de
+        terceros, como Claude, ChatGPT o editores de codigo con agentes.
+        Esta conexion es opcional y siempre la inicia el titular de la
+        cuenta.
+      </p>
+      <ul>
+        <li>
+          <strong>La conexion se activa y se corta desde la cuenta:</strong>{" "}
+          el acceso requiere una clave de API que el titular crea en la
+          seccion Desarrolladores, y se interrumpe de inmediato al
+          revocarla.
+        </li>
+        <li>
+          <strong>Los permisos de la clave limitan lo que el asistente
+          puede ver:</strong> cada clave se crea con permisos separados
+          para leer mensajes, enviar mensajes, leer automatizaciones y
+          editarlas. Un asistente solo accede a lo que su clave habilita.
+        </li>
+        <li>
+          <strong>Los datos salen hacia el proveedor del asistente:</strong>{" "}
+          cuando el asistente consulta una conversacion, un contacto o una
+          automatizacion, ese contenido se transmite al proveedor que el
+          titular eligio y queda sujeto a la politica de privacidad de ese
+          proveedor. asis.chat no selecciona ese proveedor ni controla el
+          tratamiento posterior que le da a la informacion.
+        </li>
+        <li>
+          <strong>Nunca enviamos datos por iniciativa propia:</strong>{" "}
+          respondemos unicamente a solicitudes autenticadas con una clave
+          valida. asis.chat no envia informacion a ningun asistente sin una
+          solicitud previa.
+        </li>
+        <li>
+          <strong>Hay operaciones que un asistente no puede realizar:</strong>{" "}
+          no puede publicar una automatizacion, no accede a las credenciales
+          de WhatsApp Business ni a las de otros proveedores, y no puede
+          crear ni revocar claves de API.
+        </li>
+        <li>
+          <strong>Queda registro:</strong> cada solicitud se asocia a la
+          clave que la realizo, de modo que el titular puede identificar el
+          origen del acceso.
+        </li>
+      </ul>
+
+      <h2>11. Cambios a esta politica</h2>
       <p>
         Podemos actualizar esta Politica de Privacidad periodicamente.
         Publicaremos cualquier cambio en esta pagina con una fecha de
@@ -226,7 +274,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
         de los cambios constituye la aceptacion de la politica modificada.
       </p>
 
-      <h2>11. Contacto</h2>
+      <h2>12. Contacto</h2>
       <p>
         Si tienes preguntas sobre esta Politica de Privacidad o sobre como
         manejamos tus datos, puedes contactarnos en:
@@ -455,7 +503,53 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
         use tracking or advertising cookies.
       </p>
 
-      <h2>10. Changes to this policy</h2>
+      <h2>10. Access from AI assistants (connectors and MCP)</h2>
+      <p>
+        asis.chat offers an MCP (Model Context Protocol) server and a public
+        API that let you connect your account to third-party AI assistants
+        such as Claude, ChatGPT or agentic code editors. This connection is
+        optional and is always initiated by the account holder.
+      </p>
+      <ul>
+        <li>
+          <strong>The connection is opened and closed from the account:</strong>{" "}
+          access requires an API key that the account holder creates under
+          Developers, and it stops immediately when the key is revoked.
+        </li>
+        <li>
+          <strong>Key permissions limit what the assistant can see:</strong>{" "}
+          every key is created with separate permissions to read messages,
+          send messages, read automations and edit them. An assistant only
+          reaches what its key allows.
+        </li>
+        <li>
+          <strong>Data travels to the assistant&apos;s provider:</strong>{" "}
+          when the assistant reads a conversation, a contact or an
+          automation, that content is transmitted to the provider chosen by
+          the account holder and becomes subject to that provider&apos;s
+          privacy policy. asis.chat neither selects that provider nor
+          controls how it subsequently processes the information.
+        </li>
+        <li>
+          <strong>We never push data on our own initiative:</strong> we
+          respond only to requests authenticated with a valid key. asis.chat
+          does not send information to any assistant without a prior
+          request.
+        </li>
+        <li>
+          <strong>Some operations are out of reach for an assistant:</strong>{" "}
+          it cannot publish an automation, it cannot access WhatsApp
+          Business credentials or those of other providers, and it cannot
+          create or revoke API keys.
+        </li>
+        <li>
+          <strong>Access is logged:</strong> every request is tied to the
+          key that made it, so the account holder can identify where the
+          access came from.
+        </li>
+      </ul>
+
+      <h2>11. Changes to this policy</h2>
       <p>
         We may update this Privacy Policy periodically. We will post any
         changes on this page with a revised update date. Continued use of
@@ -463,7 +557,7 @@ export const privacyContent: Record<Locale, React.ReactNode> = {
         policy.
       </p>
 
-      <h2>11. Contact</h2>
+      <h2>12. Contact</h2>
       <p>
         If you have questions about this Privacy Policy or how we handle
         your data, you can contact us at:

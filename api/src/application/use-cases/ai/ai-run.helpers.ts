@@ -11,6 +11,7 @@ import type { Message } from '../../../domain/entities/message.entity.js';
 import type { AiPersona } from '../../../domain/value-objects/ai-persona.js';
 import type { Contact } from '../../../domain/entities/contact.entity.js';
 import type { RecipientIdentity } from '../../../domain/value-objects/recipient-identity.js';
+import type { OutboundBillingContext } from '../../../domain/value-objects/outbound-billing.js';
 import { messageToText, type MessageSenderKind } from '../../../domain/entities/message.entity.js';
 import type { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
@@ -157,6 +158,13 @@ export interface SendBubblesParams {
   /** Si están presentes, cada burbuja emite message.sent al webhook de desarrolladores */
   devEvents?: DeveloperEventsPort;
   tenantId?: string;
+  /**
+   * Contabilidad del saliente. **Cada burbuja es un mensaje entregado, y desde
+   * octubre de 2026 cada mensaje entregado es un cargo**: partir una respuesta
+   * en tres burbujas para que se sienta humana cuesta el triple. Se registra
+   * una fila por burbuja justamente para que eso se vea.
+   */
+  billing: OutboundBillingContext;
 }
 
 /** Envía burbujas de texto con typing + delay entre burbujas, persiste y emite WS */
@@ -187,6 +195,7 @@ export async function sendBubbles(params: SendBubblesParams): Promise<void> {
       ...recipient,
       type: MessageType.TEXT,
       body,
+      billing: params.billing,
     });
 
     const message = await messageRepo.upsertByWaMessageId({

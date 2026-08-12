@@ -1220,8 +1220,11 @@ async function seedDemo() {
     { tenantId: T, phone: '5491155551015', name: 'Julian Ferrari', lastSeenAt: ago(320) },
     { tenantId: T, phone: '5491155551016', name: 'Ramiro Sosa', company: 'Pedido #5120', customFields: { origen: 'api' }, lastSeenAt: ago(140) },
     { tenantId: T, phone: '5491155551017', name: 'Andres Bustos', lastSeenAt: ago(70) },
+    { tenantId: T, phone: '5491155551018', name: 'Micaela Ortiz', customFields: { origen: 'anuncio' }, lastSeenAt: ago(45) },
+    { tenantId: T, phone: '5491155551019', name: 'Federico Aguirre', customFields: { origen: 'anuncio' }, lastSeenAt: ago(160) },
+    { tenantId: T, phone: '5491155551020', name: 'Carla Medina', customFields: { origen: 'posteo' }, lastSeenAt: ago(300) },
   ]);
-  const [brenda, tomas, julian, ramiro, andres] = flowContacts;
+  const [brenda, tomas, julian, ramiro, andres, micaela, federico, carla] = flowContacts;
 
   const menuButtons = {
     kind: 'buttons',
@@ -1304,7 +1307,73 @@ async function seedDemo() {
     { dir: 'inbound', body: 'Hola, hacen precios por mayor? Tengo un local en Rosario', minutesAgo: 70 },
   ]);
 
+  // Click-to-WhatsApp: dos chats del mismo anuncio y uno de un posteo organico.
+  // Es lo que llena la pantalla de Anuncios y el filtro "De anuncios".
+  const promoAd = {
+    sourceType: 'ad' as const,
+    sourceId: '120210000000000001',
+    sourceUrl: 'https://fb.me/demo-promo-invierno',
+    headline: 'Camperas de abrigo 30% off',
+    body: 'Envio gratis a todo el pais. Consulta stock por WhatsApp.',
+    mediaType: 'image' as const,
+    imageUrl: null,
+    videoUrl: null,
+    thumbnailUrl: null,
+    ctwaClid: 'ARAxDEMOclid001',
+  };
+  const catalogPost = {
+    sourceType: 'post' as const,
+    sourceId: '120210000000000002',
+    sourceUrl: 'https://fb.me/demo-posteo-catalogo',
+    headline: 'Llego la coleccion de invierno',
+    body: null,
+    mediaType: 'image' as const,
+    imageUrl: null,
+    videoUrl: null,
+    thumbnailUrl: null,
+    ctwaClid: 'ARAxDEMOclid002',
+  };
+
+  const convMicaela = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: micaela._id,
+    agentId: null, status: 'unassigned',
+    origin: 'ad', lastMessageAt: ago(45), lastInboundAt: ago(45), unreadCount: 1,
+    attribution: { ...promoAd, waMessageId: 'wamid.demo.ad.1', capturedAt: ago(45) },
+  });
+  await createMessages(convMicaela._id, [
+    { dir: 'inbound', body: 'Hola! Vi el anuncio de las camperas, tienen talle M?', minutesAgo: 45 },
+  ]);
+
+  const convFederico = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: federico._id,
+    agentId: ana._id, status: 'active',
+    origin: 'ad', lastMessageAt: ago(155), lastInboundAt: ago(160),
+    attribution: { ...promoAd, waMessageId: 'wamid.demo.ad.2', capturedAt: ago(160) },
+  });
+  await createMessages(convFederico._id, [
+    { dir: 'inbound', body: 'Buenas, el 30% aplica tambien a las camperas infladas?', minutesAgo: 160 },
+    { dir: 'outbound', body: 'Hola Federico! Si, aplica a toda la linea de abrigo 🙌 Te paso el catalogo?', minutesAgo: 158, agentId: null, agentName: 'Sofía', senderKind: 'ai' },
+    { dir: 'inbound', body: 'Dale, gracias!', minutesAgo: 155 },
+  ]);
+
+  const convCarla = await Conversation.create({
+    tenantId: T, phoneNumberId: phone._id, contactId: carla._id,
+    agentId: null, status: 'unassigned',
+    origin: 'ad', lastMessageAt: ago(300), lastInboundAt: ago(300),
+    attribution: { ...catalogPost, waMessageId: 'wamid.demo.post.1', capturedAt: ago(300) },
+  });
+  await createMessages(convCarla._id, [
+    { dir: 'inbound', body: 'Hola, vi el posteo de la coleccion nueva. Hacen envios a Mendoza?', minutesAgo: 300 },
+  ]);
+  console.log(`+ 3 conversaciones nacidas de Click-to-WhatsApp (2 de un anuncio, 1 de un posteo)`);
+
   await ConvEvent.insertMany([
+    { conversationId: convMicaela._id, tenantId: T, type: 'created', createdAt: ago(45) },
+    { conversationId: convMicaela._id, tenantId: T, type: 'ad_attributed', data: { sourceType: 'ad', sourceId: promoAd.sourceId, headline: promoAd.headline, sourceUrl: promoAd.sourceUrl }, createdAt: ago(45) },
+    { conversationId: convFederico._id, tenantId: T, type: 'created', createdAt: ago(160) },
+    { conversationId: convFederico._id, tenantId: T, type: 'ad_attributed', data: { sourceType: 'ad', sourceId: promoAd.sourceId, headline: promoAd.headline, sourceUrl: promoAd.sourceUrl }, createdAt: ago(160) },
+    { conversationId: convCarla._id, tenantId: T, type: 'created', createdAt: ago(300) },
+    { conversationId: convCarla._id, tenantId: T, type: 'ad_attributed', data: { sourceType: 'post', sourceId: catalogPost.sourceId, headline: catalogPost.headline, sourceUrl: catalogPost.sourceUrl }, createdAt: ago(300) },
     { conversationId: convBrenda._id, tenantId: T, type: 'created', createdAt: ago(195) },
     { conversationId: convBrenda._id, tenantId: T, type: 'reassigned', performedBy: ana._id.toString(), data: { fromAgentName: 'Menú de bienvenida', toAgentName: 'Carlos Lopez' }, createdAt: ago(183) },
     { conversationId: convTomas._id, tenantId: T, type: 'created', createdAt: ago(240) },

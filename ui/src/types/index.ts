@@ -31,6 +31,8 @@ export interface Conversation {
   labels?: { id: string; name: string; color: string }[];
   activeFlow?: { flowId: string; flowName: string; executionId: string; status: string } | null;
   autopilot?: ConversationAutopilot | null;
+  /** Anuncio o posteo Click-to-WhatsApp que trajo el chat. */
+  attribution?: ConversationAttribution | null;
   contact: {
     id: string;
     name: string;
@@ -52,6 +54,55 @@ export interface Conversation {
  * Piloto automático de una conversación: si las automatizaciones pueden actuar
  * sobre ella. Es un eje distinto del de `agentId` (quién es el responsable).
  */
+export interface MessageReferral {
+  sourceType: "ad" | "post";
+  sourceId: string;
+  sourceUrl: string | null;
+  headline: string | null;
+  body: string | null;
+  mediaType: "image" | "video" | null;
+  imageUrl: string | null;
+  videoUrl: string | null;
+  thumbnailUrl: string | null;
+  ctwaClid: string | null;
+}
+
+export interface ConversationAttribution extends MessageReferral {
+  capturedAt: string;
+  waMessageId: string;
+}
+
+export interface AdPerformanceEntry {
+  sourceId: string;
+  sourceType: string;
+  headline: string | null;
+  body: string | null;
+  sourceUrl: string | null;
+  thumbnailUrl: string | null;
+  conversations: number;
+  contacts: number;
+  assigned: number;
+  unread: number;
+  lastAt: string;
+  messagesBillable: number;
+  messagesFree: number;
+  cost: number | null;
+  currency: string | null;
+}
+
+export interface AdPerformanceResponse {
+  entries: AdPerformanceEntry[];
+  totals: {
+    ads: number;
+    conversations: number;
+    contacts: number;
+    assigned: number;
+    unread: number;
+    cost: number | null;
+    currency: string | null;
+  };
+}
+
 export interface ConversationAutopilot {
   enabled: boolean;
   pausedReason: "agent_reply" | "manual" | null;
@@ -190,6 +241,8 @@ export interface Message {
   senderAgentName: string | null;
   /** Respuesta a un interactivo: id del botón/fila elegido */
   interactiveReplyId?: string | null;
+  /** Anuncio Click-to-WhatsApp desde el que se abrió el chat. Solo en el primer mensaje tras el click. */
+  referral?: MessageReferral | null;
   /**
    * `waMessageId` del mensaje citado al responder. En un `reaction` es el
    * mensaje al que apunta la reacción.
@@ -313,7 +366,8 @@ export interface ConversationEvent {
     | "note_added"
     | "handoff"
     | "label_added"
-    | "label_removed";
+    | "label_removed"
+    | "ad_attributed";
   performedBy: string | null;
   data: Record<string, unknown>;
   createdAt: string;
@@ -580,27 +634,6 @@ export interface ImportContactsResult {
  * prompt. No confundir con WhatsAppBusinessProfile, que es lo que ve el cliente
  * al tocar el nombre del chat en su teléfono.
  */
-/**
- * Un tercero al que las automatizaciones le pasan datos de clientes (el
- * carpintero). No es agente ni contacto: tiene su propio WhatsApp y no está
- * conectado a la plataforma.
- */
-export interface ServiceProvider {
-  id: string;
-  name: string;
-  /** Dígitos E.164 sin '+'. */
-  phone: string;
-  services: string[];
-  active: boolean;
-  /** Cuándo aceptó recibir estos avisos. Null = no se puede activar. */
-  optInAt: string | null;
-  optInNote: string;
-  lastAssignedAt: string | null;
-  assignedCount: number;
-  notes: string;
-  createdAt: string;
-}
-
 export interface AccountBusinessProfile {
   vertical: "beauty" | "food" | "retail" | "generic";
   businessName: string;
