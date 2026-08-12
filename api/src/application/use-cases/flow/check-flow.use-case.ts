@@ -2,12 +2,14 @@ import type { FlowRepository } from '../../../domain/repositories/flow.repositor
 import { Result, ok, err } from '../../common/result.js';
 import { DomainError, FlowNotFoundError } from '../../../domain/errors/domain-errors.js';
 import { validateFlowGraph, type FlowGraphIssue } from './engine/flow-graph.validator.js';
+import { worstCaseBillableSends, type BillableSendsResult } from './engine/message-cost.js';
 import { loadFlowGraphRefs, type FlowGraphRefsDeps } from './flow-graph-refs.loader.js';
 
 export interface CheckFlowResult {
   publishable: boolean;
   errors: FlowGraphIssue[];
   warnings: FlowGraphIssue[];
+  billableSends: BillableSendsResult;
 }
 
 /**
@@ -27,6 +29,11 @@ export class CheckFlowUseCase {
 
     const refs = await loadFlowGraphRefs(this.refs, tenantId, flow.draftGraph);
     const { errors, warnings } = validateFlowGraph(flow.draftGraph, refs);
-    return ok({ publishable: errors.length === 0, errors, warnings });
+    return ok({
+      publishable: errors.length === 0,
+      errors,
+      warnings,
+      billableSends: worstCaseBillableSends(flow.draftGraph),
+    });
   }
 }

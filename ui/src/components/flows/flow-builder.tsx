@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useNodesState, useEdgesState, type Node, type Edge, type Connection } from "@xyflow/react";
 import {
   ArrowLeft, Rocket, Pause, Play, AlertTriangle, BarChart3, Webhook, Copy, RefreshCw, X, History,
+  MessageSquareText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useLabelStore } from "@/stores/label.store";
 import { NODE_BY_TYPE, nodeHandles, isTriggerType } from "@/lib/flows/node-catalog";
 import { computeHandleRemap } from "@/lib/flows/handle-remap";
+import { worstCaseBillableSends } from "@/lib/flows/message-cost";
 import { FlowCanvas } from "./flow-canvas";
 import { FlowStatusPill } from "./flow-status-pill";
 import { NodePalette } from "./node-palette";
@@ -404,6 +406,15 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
   const errorNodeIds = useMemo(() => new Set(issues.map((i) => i.nodeId).filter(Boolean) as string[]), [issues]);
   const statByNode = useMemo(() => new Map(stats.map((s) => [s.nodeId, s])), [stats]);
 
+  const messageCost = useMemo(
+    () =>
+      worstCaseBillableSends(
+        nodes.map((n) => ({ id: n.id, type: n.type ?? "", position: n.position, data: {} })),
+        edges.map((e) => ({ id: e.id, source: e.source, sourceHandle: e.sourceHandle ?? "", target: e.target })),
+      ),
+    [nodes, edges],
+  );
+
   const decoratedNodes = useMemo(
     () =>
       nodes.map((n) => {
@@ -458,6 +469,14 @@ export function FlowBuilder({ flowId }: { flowId: string }) {
         <FlowStatusPill status={flow.status} version={flow.publishedVersion} />
         {detail.hasUnpublishedChanges && flow.status !== "draft" && (
           <Badge variant="outline" className="text-accent border-accent/40">{t.flows.unsavedChanges}</Badge>
+        )}
+        {messageCost.worst > 0 && (
+          <Badge variant="outline" className="gap-1 text-muted-foreground font-normal" title={t.flows.messageCostHint}>
+            <MessageSquareText className="size-3" aria-hidden />
+            {messageCost.worst === 1
+              ? t.flows.messageCostSingle
+              : t.flows.messageCost.replace("{count}", String(messageCost.worst))}
+          </Badge>
         )}
         <span
           className={cn("text-xs w-20", saveError ? "text-destructive" : "text-muted-foreground")}

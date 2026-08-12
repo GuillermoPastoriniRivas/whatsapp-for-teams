@@ -92,6 +92,10 @@ const translations = {
       flowName: "Nombre de la automatización",
       backToFlows: "Volver a Automatizaciones",
       notSaved: "Sin guardar",
+      messageCost: "hasta {count} mensajes",
+      messageCostSingle: "hasta 1 mensaje",
+      messageCostHint:
+        "Lo máximo que puede enviar esta automatización en una conversación, siguiendo el camino más largo. Desde el 1/10/2026 Meta cobra cada mensaje que mandás, así que menos pasos es menos plata: un Formulario de WhatsApp junta varios datos en un solo mensaje.",
       draftSaveError: "No se pudo guardar el borrador",
       saveBeforePublishError: "No se pudo guardar el borrador antes de publicar. Reintentá.",
       nodeActivity: "Actividad por nodo",
@@ -1587,6 +1591,10 @@ const translations = {
       flowName: "Automation name",
       backToFlows: "Back to Automations",
       notSaved: "Not saved",
+      messageCost: "up to {count} messages",
+      messageCostSingle: "up to 1 message",
+      messageCostHint:
+        "The most this automation can send in one conversation, along its longest path. From 2026-10-01 Meta charges for every message you send, so fewer steps means less money: a WhatsApp Form collects several fields in a single message.",
       draftSaveError: "Could not save the draft",
       saveBeforePublishError: "Could not save the draft before publishing. Try again.",
       nodeActivity: "Activity per node",
