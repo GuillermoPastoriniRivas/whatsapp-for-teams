@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "es2022",
+    "lib": ["es2022"],
+    "outDir": "./dist",
+    "rootDir": ".",
+    "declaration": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "useUnknownInCatchVariables": false,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true
+  },
+  "include": ["credentials/**/*", "nodes/**/*"],
+  "exclude": ["dist", "node_modules"]
+}

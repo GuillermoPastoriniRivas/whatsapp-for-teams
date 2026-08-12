@@ -6,6 +6,7 @@ import { ApiTags, ApiOperation, ApiSecurity, ApiQuery, ApiParam } from '@nestjs/
 import { Public } from '../decorators/public.decorator.js';
 import { ApiKeyGuard } from '../guards/api-key.guard.js';
 import { ApiPrincipal } from '../decorators/api-principal.decorator.js';
+import { RequireScopes } from '../decorators/require-scopes.decorator.js';
 import type { ApiKeyPrincipal } from '../decorators/api-principal.decorator.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
 import {
@@ -106,6 +107,7 @@ export class PublicApiController {
   }
 
   @Get('phone-numbers')
+  @RequireScopes('messages:read')
   @ApiOperation({ summary: 'List WhatsApp numbers', description: 'Active WhatsApp numbers of the account. Use their `id` as `phoneNumberId` when sending messages.' })
   async phoneNumbers(@ApiPrincipal() principal: ApiKeyPrincipal) {
     const phones = await this.phoneRepo.findByTenantId(principal.tenantId);
@@ -120,6 +122,7 @@ export class PublicApiController {
   }
 
   @Get('templates')
+  @RequireScopes('messages:read')
   @ApiOperation({ summary: 'List approved templates', description: 'Approved WhatsApp templates, usable to start conversations via POST /v1/messages.' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
@@ -148,6 +151,7 @@ export class PublicApiController {
   }
 
   @Post('messages')
+  @RequireScopes('messages:write')
   @ApiOperation({
     summary: 'Send a message to a phone number',
     description:
@@ -179,6 +183,7 @@ export class PublicApiController {
   }
 
   @Get('conversations')
+  @RequireScopes('messages:read')
   @ApiOperation({ summary: 'List conversations' })
   @ApiQuery({ name: 'status', required: false, enum: ['unassigned', 'active'] })
   @ApiQuery({ name: 'phoneNumberId', required: false })
@@ -203,6 +208,7 @@ export class PublicApiController {
   }
 
   @Get('conversations/:id')
+  @RequireScopes('messages:read')
   @ApiOperation({ summary: 'Get a conversation' })
   @ApiParam({ name: 'id' })
   async conversation(@Param('id') id: string, @ApiPrincipal() principal: ApiKeyPrincipal) {
@@ -218,6 +224,7 @@ export class PublicApiController {
   }
 
   @Get('conversations/:id/messages')
+  @RequireScopes('messages:read')
   @ApiOperation({ summary: 'List messages of a conversation' })
   @ApiParam({ name: 'id' })
   @ApiQuery({ name: 'page', required: false })
@@ -238,6 +245,7 @@ export class PublicApiController {
   }
 
   @Post('conversations/:id/messages')
+  @RequireScopes('messages:write')
   @ApiOperation({
     summary: 'Reply in a conversation',
     description: 'Sends a free-form text message in an existing conversation (24h window rules apply).',
@@ -268,6 +276,7 @@ export class PublicApiController {
   }
 
   @Get('contacts')
+  @RequireScopes('messages:read')
   @ApiOperation({ summary: 'List contacts' })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'page', required: false })
@@ -287,6 +296,7 @@ export class PublicApiController {
   }
 
   @Post('contacts')
+  @RequireScopes('messages:write')
   @ApiOperation({ summary: 'Create a contact', description: 'Find-or-create by phone number; an existing contact is returned untouched.' })
   async createContactEndpoint(
     @ApiPrincipal() principal: ApiKeyPrincipal,

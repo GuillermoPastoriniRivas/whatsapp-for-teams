@@ -4,11 +4,15 @@ import { Result, ok, err } from '../../common/result.js';
 import { DomainError, InvalidApiKeyError, FeatureNotInPlanError } from '../../../domain/errors/domain-errors.js';
 import { hashApiKey } from './developer-credentials.util.js';
 import { resolvePlanFeatures } from './plan-features.util.js';
+import type { ApiScope } from '../../../domain/value-objects/api-scopes.js';
 
 export interface ApiKeyPrincipal {
   tenantId: string;
   apiKeyId: string;
   keyName: string;
+  scopes: ApiScope[];
+  /** Quién creó la clave: es a quien se le atribuye lo que la clave construya. */
+  createdByAgentId: string | null;
 }
 
 /** Ventana para no escribir lastUsedAt en cada request. */
@@ -36,6 +40,12 @@ export class AuthenticateApiKeyUseCase {
       void this.apiKeyRepo.updateLastUsed(key.id, now).catch(() => {});
     }
 
-    return ok({ tenantId: key.tenantId, apiKeyId: key.id, keyName: key.name });
+    return ok({
+      tenantId: key.tenantId,
+      apiKeyId: key.id,
+      keyName: key.name,
+      scopes: key.scopes,
+      createdByAgentId: key.createdBy,
+    });
   }
 }

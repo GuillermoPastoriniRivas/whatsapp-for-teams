@@ -8,10 +8,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { LoadingState } from "@/components/ui/spinner";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { UpgradeCard } from "./upgrade-card";
-import type { ApiKeyView, CreatedApiKey, DeveloperOverview } from "./types";
+import type { ApiKeyView, ApiScope, CreatedApiKey, DeveloperOverview } from "./types";
+
+const API_SCOPES: ApiScope[] = ["messages:read", "messages:write", "flows:read", "flows:write"];
+const DEFAULT_SCOPES: ApiScope[] = ["messages:read", "messages:write"];
+
+const SCOPE_LABEL_KEYS = {
+  "messages:read": "scopeMessagesRead",
+  "messages:write": "scopeMessagesWrite",
+  "flows:read": "scopeFlowsRead",
+  "flows:write": "scopeFlowsWrite",
+} as const;
 
 function formatDate(value: string | null): string | null {
   if (!value) return null;
@@ -29,6 +40,7 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [name, setName] = useState("");
+  const [scopes, setScopes] = useState<ApiScope[]>([...DEFAULT_SCOPES]);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<CreatedApiKey | null>(null);
   const [copied, setCopied] = useState(false);
@@ -53,9 +65,10 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
     setCreating(true);
     setError(null);
     try {
-      const result = await api.post<CreatedApiKey>("/developer/api-keys", { name: name.trim() });
+      const result = await api.post<CreatedApiKey>("/developer/api-keys", { name: name.trim(), scopes });
       setCreated(result);
       setName("");
+      setScopes([...DEFAULT_SCOPES]);
       setFormOpen(false);
       load();
     } catch (e) {
@@ -124,7 +137,7 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
 
       {formOpen && (
         <Card>
-          <CardContent className="flex flex-col gap-2 pt-4 sm:flex-row">
+          <CardContent className="space-y-4 pt-4">
             <Input
               autoFocus
               value={name}
@@ -133,11 +146,42 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
               onKeyDown={(e) => e.key === "Enter" && handleCreate()}
               maxLength={80}
             />
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">{t.developers.scopesTitle}</p>
+              <p className="text-xs text-muted-foreground">{t.developers.scopesHelp}</p>
+              {API_SCOPES.map((scope) => (
+                <label key={scope} className="flex items-start gap-2 text-sm">
+                  <Checkbox
+                    className="mt-0.5"
+                    checked={scopes.includes(scope)}
+                    onCheckedChange={(checked) =>
+                      setScopes(checked ? [...scopes, scope] : scopes.filter((item) => item !== scope))
+                    }
+                  />
+                  <span>
+                    <code className="font-mono text-xs">{scope}</code>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {t.developers[SCOPE_LABEL_KEYS[scope]]}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+
             <div className="flex gap-2">
-              <Button onClick={handleCreate} disabled={!name.trim() || creating}>
+              <Button onClick={handleCreate} disabled={!name.trim() || scopes.length === 0 || creating}>
                 {creating ? t.developers.creating : t.developers.create}
               </Button>
-              <Button variant="ghost" onClick={() => { setFormOpen(false); setName(""); setError(null); }}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFormOpen(false);
+                  setName("");
+                  setScopes([...DEFAULT_SCOPES]);
+                  setError(null);
+                }}
+              >
                 {t.developers.cancel}
               </Button>
             </div>
@@ -177,6 +221,15 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
                         {t.developers.colLastUsed}: {formatDate(key.lastUsedAt) ?? t.developers.never}
                       </span>
                     </div>
+                    {(key.scopes ?? []).length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {key.scopes.map((scope) => (
+                          <code key={scope} className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px]">
+                            {scope}
+                          </code>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   {!revoked && (
                     <Button

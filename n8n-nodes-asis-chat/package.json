@@ -1,0 +1,52 @@
+{
+  "name": "n8n-nodes-asis-chat",
+  "version": "0.1.0",
+  "description": "Run WhatsApp for a business from n8n through asis.chat, over Meta's official Cloud API",
+  "keywords": [
+    "n8n-community-node-package",
+    "whatsapp",
+    "whatsapp-business",
+    "asis",
+    "asis.chat"
+  ],
+  "license": "MIT",
+  "homepage": "https://asis.chat/mcp",
+  "author": {
+    "name": "asis.chat",
+    "email": "contact@asis.chat"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asis-chat/n8n-nodes-asis-chat.git"
+  },
+  "engines": {
+    "node": ">=20.15"
+  },
+  "main": "index.js",
+  "files": [
+    "dist",
+    "index.js"
+  ],
+  "scripts": {
+    "build": "tsc && node scripts/copy-assets.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/AsisChatApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/AsisChat/AsisChat.node.js",
+      "dist/nodes/AsisChatTrigger/AsisChatTrigger.node.js"
+    ]
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "n8n-workflow": "*",
+    "typescript": "^5.7.3"
+  }
+}

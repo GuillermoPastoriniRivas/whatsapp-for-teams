@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="81 85 346 342" width="60" height="60">
+  <mask id="asis-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+    <rect width="512" height="512" fill="#fff"/>
+    <path d="M143.8 364.4L157.5 319.2L189.5 352.2Z" fill="#000"/>
+  </mask>
+  <g mask="url(#asis-cut)">
+    <path d="M391.8 199.8A147 147 0 1 1 317 122.2" fill="none" stroke="#15A58A" stroke-width="36" stroke-linecap="round"/>
+    <path d="M185.6 388.4L96.3 410.2L123.6 326.4Z" fill="#15A58A" stroke="#15A58A" stroke-width="18" stroke-linejoin="round"/>
+  </g>
+  <path d="M229.1 306.6L195 314.9L205.5 282.9Z" fill="#15A58A" stroke="#15A58A" stroke-width="6.9" stroke-linejoin="round"/>
+  <circle cx="256" cy="256" r="63" fill="#15A58A"/>
+</svg>

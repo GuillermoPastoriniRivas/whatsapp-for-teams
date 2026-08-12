@@ -6,10 +6,13 @@ export interface DeveloperOverview {
   webhookEndpoints: number;
 }
 
+export type ApiScope = "messages:read" | "messages:write" | "flows:read" | "flows:write";
+
 export interface ApiKeyView {
   id: string;
   name: string;
   prefix: string;
+  scopes: ApiScope[];
   lastUsedAt: string | null;
   revokedAt: string | null;
   createdAt: string;

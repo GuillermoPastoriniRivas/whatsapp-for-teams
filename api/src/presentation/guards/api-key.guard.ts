@@ -1,6 +1,9 @@
-import { CanActivate, ExecutionContext, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { AuthenticateApiKeyUseCase, ApiKeyPrincipal } from '../../application/use-cases/developer/authenticate-api-key.use-case.js';
+import { REQUIRED_SCOPES_KEY } from '../decorators/require-scopes.decorator.js';
+import type { ApiScope } from '../../domain/value-objects/api-scopes.js';
 
 export interface RequestApiPrincipal extends ApiKeyPrincipal {}
 
@@ -23,6 +26,7 @@ export class ApiKeyGuard implements CanActivate {
 
   constructor(
     @Inject('AuthenticateApiKeyUseCase') private readonly authenticate: AuthenticateApiKeyUseCase,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -47,9 +51,28 @@ export class ApiKeyGuard implements CanActivate {
     }
 
     this.enforceRateLimit(result.value.apiKeyId);
+    this.enforceScopes(context, result.value);
 
     (request as any).apiPrincipal = result.value;
     return true;
+  }
+
+  private enforceScopes(context: ExecutionContext, principal: ApiKeyPrincipal): void {
+    const required = this.reflector.getAllAndOverride<ApiScope[] | undefined>(REQUIRED_SCOPES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (!required?.length) return;
+
+    const missing = required.filter((scope) => !principal.scopes.includes(scope));
+    if (missing.length === 0) return;
+
+    throw new ForbiddenException({
+      code: 'MISSING_SCOPE',
+      message: `This API key is missing the ${missing.join(', ')} permission. Create a key with it from Developers.`,
+      required,
+      granted: principal.scopes,
+    });
   }
 
   private enforceRateLimit(apiKeyId: string): void {

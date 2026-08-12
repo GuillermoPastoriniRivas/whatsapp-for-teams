@@ -17,6 +17,9 @@ export class ApiKeyModel {
   @Prop({ required: true })
   keyHash: string;
 
+  @Prop({ type: [String], default: [] })
+  scopes: string[];
+
   @Prop({ type: Types.ObjectId, default: null })
   createdBy: Types.ObjectId | null;
 

@@ -35,6 +35,7 @@ export function toApiKeyView(key: ApiKey) {
     id: key.id,
     name: key.name,
     prefix: key.prefix,
+    scopes: key.scopes,
     lastUsedAt: key.lastUsedAt,
     revokedAt: key.revokedAt,
     createdAt: key.createdAt,

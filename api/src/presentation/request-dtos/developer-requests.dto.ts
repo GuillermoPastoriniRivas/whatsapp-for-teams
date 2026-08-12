@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DeveloperEventType, SUBSCRIBABLE_DEVELOPER_EVENTS } from '../../domain/enums/developer-event-type.enum.js';
+import { API_SCOPES, LEGACY_API_SCOPES } from '../../domain/value-objects/api-scopes.js';
 
 const subscribableEvent = z
   .nativeEnum(DeveloperEventType)
@@ -7,6 +8,7 @@ const subscribableEvent = z
 
 export const CreateApiKeyRequestSchema = z.object({
   name: z.string().min(1).max(80),
+  scopes: z.array(z.enum(API_SCOPES)).min(1).default([...LEGACY_API_SCOPES]),
 });
 export type CreateApiKeyRequestDto = z.infer<typeof CreateApiKeyRequestSchema>;
 

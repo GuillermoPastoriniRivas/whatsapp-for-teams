@@ -26,6 +26,7 @@ export function serializeMessage(message: Message) {
     contextWaMessageId: message.contextWaMessageId,
     mediaId: message.mediaAssetId,
     location: message.location,
+    referral: message.referral,
   };
 }
 
@@ -40,6 +41,7 @@ export function serializeConversation(conversation: Conversation) {
     lastMessageAt: conversation.lastMessageAt,
     lastInboundAt: conversation.lastInboundAt,
     unreadCount: conversation.unreadCount,
+    attribution: conversation.attribution,
     createdAt: conversation.createdAt,
   };
 }

@@ -84,6 +84,7 @@ export class DeveloperController {
     const result = await this.createApiKey.execute({
       tenantId: agent.tenantId,
       name: body.name,
+      scopes: body.scopes,
       createdBy: agent._id,
     });
     if (!result.ok) this.fail(result.error);

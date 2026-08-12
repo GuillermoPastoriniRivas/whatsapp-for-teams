@@ -4,12 +4,14 @@ import { Result, ok, err } from '../../common/result.js';
 import { DomainError, FeatureNotInPlanError } from '../../../domain/errors/domain-errors.js';
 import { generateApiKey, hashApiKey, apiKeyPrefix, toApiKeyView, ApiKeyView } from './developer-credentials.util.js';
 import { resolvePlanFeatures } from './plan-features.util.js';
+import { normalizeScopes, type ApiScope } from '../../../domain/value-objects/api-scopes.js';
 
 const MAX_ACTIVE_KEYS = 10;
 
 export interface CreateApiKeyInput {
   tenantId: string;
   name: string;
+  scopes: ApiScope[];
   createdBy: string | null;
 }
 
@@ -40,6 +42,7 @@ export class CreateApiKeyUseCase {
       name: input.name.trim(),
       prefix: apiKeyPrefix(plainKey),
       keyHash: hashApiKey(plainKey),
+      scopes: normalizeScopes(input.scopes),
       createdBy: input.createdBy,
     });
 

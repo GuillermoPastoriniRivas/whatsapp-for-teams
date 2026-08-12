@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "chat.asis/whatsapp",
+  "description": "Run WhatsApp for a business over Meta's official Cloud API: read conversations, send messages and templates, and build automations that a human then publishes.",
+  "version": "1.0.0",
+  "websiteUrl": "https://asis.chat/mcp",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.asis.chat/api/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer <your asis.chat API key>. Create one under Developers in the app; its permissions decide which tools work.",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
