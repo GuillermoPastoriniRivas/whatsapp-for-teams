@@ -11,8 +11,10 @@ import {
   isWaitNode,
   outputHandles,
   phoneScopeOf,
+  adScopeOf,
   MAX_WAIT_MS,
 } from './flow-node-types.js';
+import { WHATSAPP_COMPONENT_LIMITS as LIMITS } from './whatsapp-component-limits.js';
 
 /**
  * "Solo estos números" sin ninguno tildado no dispara nunca. Antes se publicaba
@@ -27,6 +29,17 @@ function lintPhoneScope(
   const ids = Array.isArray(data.phoneNumberIds) ? data.phoneNumberIds : [];
   if (phoneScopeOf(data) === 'specific' && ids.length === 0) {
     err('no_phone_selected', 'Elegí al menos un número, o cambiá el disparador a "Todos los números".', id);
+  }
+}
+
+function lintAdScope(
+  data: Record<string, any>,
+  id: string,
+  err: (code: string, message: string, nodeId?: string) => void,
+): void {
+  const ids = Array.isArray(data.adSourceIds) ? data.adSourceIds : [];
+  if (adScopeOf(data) === 'specific' && ids.length === 0) {
+    err('no_ad_selected', 'Agregá al menos un ID de anuncio, o cambiá el disparador a "Cualquier origen".', id);
   }
 }
 
@@ -52,8 +65,8 @@ export interface FlowGraphValidation {
   warnings: FlowGraphIssue[];
 }
 
-const MAX_NODES = 100;
-const MAX_EDGES = 300;
+const MAX_NODES = LIMITS.graph.maxNodes;
+const MAX_EDGES = LIMITS.graph.maxEdges;
 
 export function validateFlowGraph(graph: FlowGraph, refs: FlowGraphRefs): FlowGraphValidation {
   const errors: FlowGraphIssue[] = [];
@@ -191,10 +204,13 @@ function validateNodeConfig(
   switch (node.type) {
     case 'trigger.inbound_message': {
       lintPhoneScope(data, id, err);
+      lintAdScope(data, id, err);
       if (data.match === 'keywords') {
         const keywords: unknown[] = Array.isArray(data.keywords) ? data.keywords : [];
         if (keywords.length === 0) err('missing_keywords', 'Agregá al menos una palabra clave.', id);
-        if (keywords.length > 20) err('too_many_keywords', 'Máximo 20 palabras clave.', id);
+        if (keywords.length > LIMITS.triggerKeywordsMaxCount) {
+          err('too_many_keywords', `Máximo ${LIMITS.triggerKeywordsMaxCount} palabras clave.`, id);
+        }
       }
       break;
     }
@@ -230,13 +246,68 @@ function validateNodeConfig(
       break;
     }
     case 'action.send_cta_url': {
-      requireText('body', 'el mensaje', 1024);
+      requireText('body', 'el mensaje', LIMITS.ctaUrl.bodyMaxLength);
       const url = String(data.url ?? '').trim();
       if (!/^https?:\/\//i.test(url) && !url.includes('{{')) {
         err('bad_cta_url', 'El botón necesita un link que empiece con https://', id);
       }
-      if (String(data.buttonText ?? '').length > 20) {
-        err('field_too_long', 'El texto del botón supera los 20 caracteres.', id);
+      if (String(data.buttonText ?? '').length > LIMITS.ctaUrl.buttonTextMaxLength) {
+        err('field_too_long', `El texto del botón supera los ${LIMITS.ctaUrl.buttonTextMaxLength} caracteres.`, id);
+      }
+      break;
+    }
+    case 'action.send_contact': {
+      if (!String(data.contactName ?? '').trim()) {
+        err('missing_contact_name', 'La tarjeta de contacto necesita un nombre.', id);
+      }
+      if (!String(data.contactPhone ?? '').trim() && !String(data.contactEmail ?? '').trim()) {
+        err('missing_contact_data', 'Poné al menos un teléfono o un email: una tarjeta sin nada no sirve de nada.', id);
+      }
+      break;
+    }
+    case 'action.send_flow': {
+      requireText('body', 'el mensaje que acompaña al formulario', LIMITS.form.bodyMaxLength);
+      if (!String(data.flowId ?? '').trim()) {
+        err('missing_flow', 'Elegí qué formulario se abre.', id);
+      }
+      if (!String(data.cta ?? '').trim()) {
+        err('missing_flow_cta', 'Poné el texto del botón que abre el formulario.', id);
+      } else if (String(data.cta).length > LIMITS.form.ctaMaxLength) {
+        err('field_too_long', `El botón del formulario no puede pasar de ${LIMITS.form.ctaMaxLength} caracteres.`, id);
+      }
+      if (typeof data.saveAs !== 'string' || !/^[a-z0-9_]+$/.test(data.saveAs)) {
+        err('missing_save_as', 'Definí dónde guardar lo que complete (letras minúsculas, números y _).', id);
+      }
+      if (data.mode === 'draft') {
+        warn('flow_draft_mode', 'Este formulario se manda en modo borrador: solo lo ven los administradores del número.', id);
+      }
+      validateTimeout(data.timeout, id, err);
+      break;
+    }
+    case 'action.request_location': {
+      requireText('body', 'el mensaje que acompaña al pedido', LIMITS.requestLocation.bodyMaxLength);
+      if (typeof data.saveAs !== 'string' || !/^[a-z0-9_]+$/.test(data.saveAs)) {
+        err('missing_save_as', 'Definí dónde guardar la ubicación (letras minúsculas, números y _).', id);
+      }
+      validateTimeout(data.timeout, id, err);
+      break;
+    }
+    case 'action.react': {
+      const emoji = String(data.emoji ?? '').trim();
+      if (!emoji) err('missing_emoji', 'Elegí con qué emoji reaccionar.', id);
+      else if ([...emoji].length > LIMITS.reaction.maxEmojis) {
+        err('bad_emoji', 'WhatsApp acepta un solo emoji por reacción.', id);
+      }
+      break;
+    }
+    case 'action.typing': {
+      const seconds = parseInt(String(data.seconds ?? 3), 10);
+      if (!Number.isFinite(seconds) || seconds < LIMITS.typing.minSeconds || seconds > LIMITS.typing.maxSeconds) {
+        err(
+          'bad_typing_seconds',
+          `El "escribiendo…" va entre ${LIMITS.typing.minSeconds} y ${LIMITS.typing.maxSeconds} segundos: Meta lo baja solo a los ${LIMITS.typing.maxSeconds}.`,
+          id,
+        );
       }
       break;
     }
@@ -246,7 +317,7 @@ function validateNodeConfig(
       if (!data.mediaAssetId && !/^https:\/\//i.test(url) && !url.includes('{{')) {
         err('bad_media_url', 'Elegí un archivo de la biblioteca o pegá una URL https://', id);
       }
-      if (data.mediaType === 'document' && data.filename && String(data.filename).length > 240) {
+      if (data.mediaType === 'document' && data.filename && String(data.filename).length > LIMITS.media.documentFilenameMaxLength) {
         err('filename_too_long', 'El nombre del archivo es demasiado largo.', id);
       }
       break;
@@ -267,7 +338,9 @@ function validateNodeConfig(
     case 'action.emit_event': {
       const name = String(data.eventName ?? '').trim();
       if (!name) err('missing_event_name', 'Definí el nombre del evento.', id);
-      else if (name.length > 60) err('event_name_too_long', 'El nombre del evento supera los 60 caracteres.', id);
+      else if (name.length > LIMITS.eventNameMaxLength) {
+        err('event_name_too_long', `El nombre del evento supera los ${LIMITS.eventNameMaxLength} caracteres.`, id);
+      }
       break;
     }
     case 'logic.wait_business_hours': {
@@ -289,31 +362,53 @@ function validateNodeConfig(
       break;
     }
     case 'action.send_buttons': {
-      requireText('body', 'el mensaje', 1024);
+      requireText('body', 'el mensaje', LIMITS.buttons.bodyMaxLength);
       const buttons: Array<{ title?: string }> = Array.isArray(data.buttons) ? data.buttons : [];
-      if (buttons.length < 1 || buttons.length > 3) {
-        err('buttons_count', 'Los botones deben ser entre 1 y 3 (límite de WhatsApp).', id);
+      if (buttons.length < LIMITS.buttons.minButtons || buttons.length > LIMITS.buttons.maxButtons) {
+        err(
+          'buttons_count',
+          `Los botones deben ser entre ${LIMITS.buttons.minButtons} y ${LIMITS.buttons.maxButtons} (límite de WhatsApp).`,
+          id,
+        );
       }
       for (const button of buttons) {
         if (!button?.title?.trim()) err('button_title', 'Todos los botones necesitan un texto.', id);
-        else if (button.title.length > 20) err('button_title_long', `El botón "${button.title.slice(0, 20)}…" supera los 20 caracteres.`, id);
+        else if (button.title.length > LIMITS.buttons.titleMaxLength) {
+          err(
+            'button_title_long',
+            `El botón "${button.title.slice(0, LIMITS.buttons.titleMaxLength)}…" supera los ${LIMITS.buttons.titleMaxLength} caracteres.`,
+            id,
+          );
+        }
       }
       validateTimeout(data.timeout, id, err);
       break;
     }
     case 'action.send_list': {
-      requireText('body', 'el mensaje', 4096);
+      requireText('body', 'el mensaje', LIMITS.list.bodyMaxLength);
       const rows: Array<{ title?: string; description?: string }> = Array.isArray(data.rows) ? data.rows : [];
-      if (rows.length < 1 || rows.length > 10) {
-        err('rows_count', 'La lista debe tener entre 1 y 10 opciones (límite de WhatsApp).', id);
+      if (rows.length < LIMITS.list.minRows || rows.length > LIMITS.list.maxRows) {
+        err(
+          'rows_count',
+          `La lista debe tener entre ${LIMITS.list.minRows} y ${LIMITS.list.maxRows} opciones (límite de WhatsApp).`,
+          id,
+        );
       }
       for (const row of rows) {
         if (!row?.title?.trim()) err('row_title', 'Todas las opciones necesitan un título.', id);
-        else if (row.title.length > 24) err('row_title_long', `La opción "${row.title.slice(0, 24)}…" supera los 24 caracteres.`, id);
-        if (row?.description && row.description.length > 72) err('row_desc_long', 'Las descripciones superan los 72 caracteres.', id);
+        else if (row.title.length > LIMITS.list.rowTitleMaxLength) {
+          err(
+            'row_title_long',
+            `La opción "${row.title.slice(0, LIMITS.list.rowTitleMaxLength)}…" supera los ${LIMITS.list.rowTitleMaxLength} caracteres.`,
+            id,
+          );
+        }
+        if (row?.description && row.description.length > LIMITS.list.rowDescriptionMaxLength) {
+          err('row_desc_long', `Las descripciones superan los ${LIMITS.list.rowDescriptionMaxLength} caracteres.`, id);
+        }
       }
-      if (typeof data.buttonText === 'string' && data.buttonText.length > 20) {
-        err('list_button_long', 'El texto del botón de la lista supera los 20 caracteres.', id);
+      if (typeof data.buttonText === 'string' && data.buttonText.length > LIMITS.list.buttonTextMaxLength) {
+        err('list_button_long', `El texto del botón de la lista supera los ${LIMITS.list.buttonTextMaxLength} caracteres.`, id);
       }
       validateTimeout(data.timeout, id, err);
       break;
@@ -329,30 +424,11 @@ function validateNodeConfig(
       break;
     }
     case 'action.ask': {
-      requireText('body', 'la pregunta', 4096);
+      requireText('body', 'la pregunta', LIMITS.ask.bodyMaxLength);
       if (typeof data.saveAs !== 'string' || !/^[a-z0-9_]+$/.test(data.saveAs)) {
         err('missing_save_as', 'Definí el nombre de la variable donde guardar la respuesta (letras minúsculas, números y _).', id);
       }
       validateTimeout(data.timeout, id, err);
-      break;
-    }
-    case 'action.handoff_provider': {
-      if (!String(data.service ?? '').trim()) {
-        err('missing_service', 'Definí qué servicio se busca (normalmente una variable, ej. {{vars.opcion}}).', id);
-      }
-      const templateId = data.templateId;
-      if (typeof templateId !== 'string' || !templateId) {
-        err('missing_template', 'Elegí la plantilla que le llega al proveedor.', id);
-      } else {
-        const template = refs.templates.get(templateId);
-        // Al proveedor se le escribe primero y nunca nos habló: sin plantilla
-        // aprobada, Meta rechaza el envío.
-        if (!template) err('bad_template', 'La plantilla elegida ya no existe.', id);
-        else if (!template.approved) err('template_not_approved', 'La plantilla todavía no está aprobada por Meta.', id);
-      }
-      if (data.notifyCustomer !== false && !String(data.customerBody ?? '').trim()) {
-        err('missing_customer_body', 'Escribí el aviso que recibe el cliente, o apagá el aviso.', id);
-      }
       break;
     }
     case 'action.ai_reply':
@@ -362,13 +438,19 @@ function validateNodeConfig(
       // único que se pide es que tenga nombre, porque es lo que ve el cliente
       // en la nota de derivación y en el historial del chat.
       const name = String(data.name ?? '').trim();
-      if (name.length > 60) err('ai_name_too_long', 'El nombre del asistente supera los 60 caracteres.', id);
+      if (name.length > LIMITS.assistantNameMaxLength) {
+        err('ai_name_too_long', `El nombre del asistente supera los ${LIMITS.assistantNameMaxLength} caracteres.`, id);
+      }
       break;
     }
     case 'logic.ai_route': {
       const options: Array<{ key?: string; label?: string }> = Array.isArray(data.options) ? data.options : [];
-      if (options.length < 2 || options.length > 6) {
-        err('ai_route_options', 'Definí entre 2 y 6 opciones de clasificación.', id);
+      if (options.length < LIMITS.aiRoute.minOptions || options.length > LIMITS.aiRoute.maxOptions) {
+        err(
+          'ai_route_options',
+          `Definí entre ${LIMITS.aiRoute.minOptions} y ${LIMITS.aiRoute.maxOptions} opciones de clasificación.`,
+          id,
+        );
       }
       const keys = new Set<string>();
       for (const option of options) {
@@ -472,7 +554,7 @@ function lintTemplatePhones(
   if (targetIds.length === 0) return;
 
   for (const node of nodes) {
-    if (node.type !== 'action.send_template' && node.type !== 'action.handoff_provider') continue;
+    if (node.type !== 'action.send_template') continue;
 
     const templateId = (node.data as Record<string, any>)?.templateId;
     const template = typeof templateId === 'string' ? refs.templates.get(templateId) : undefined;

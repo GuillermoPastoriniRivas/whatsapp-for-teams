@@ -49,6 +49,35 @@ export function buildInteractivePayload(interactive: InteractiveSendPayload): Re
         action: { name: 'send_location' },
       };
 
+    /**
+     * Formulario nativo. `flow_message_version` es "3" fijo: es la versión del
+     * protocolo del mensaje, no la del Flow.
+     */
+    case 'flow': {
+      const flow = interactive.flow;
+      const action = flow?.action ?? 'navigate';
+      return {
+        ...base,
+        type: 'flow',
+        action: {
+          name: 'flow',
+          parameters: {
+            flow_message_version: '3',
+            flow_token: flow?.token ?? '',
+            flow_id: flow?.id ?? '',
+            flow_cta: flow?.cta ?? 'Abrir',
+            flow_action: action,
+            ...(flow?.mode === 'draft' ? { mode: 'draft' } : {}),
+            // `navigate` exige payload con pantalla; `data_exchange` la resuelve
+            // el endpoint del Flow y mandarla acá lo rompe.
+            ...(action === 'navigate' && flow?.screen
+              ? { flow_action_payload: { screen: flow.screen, ...(flow.data ? { data: flow.data } : {}) } }
+              : {}),
+          },
+        },
+      };
+    }
+
     case 'address_message':
       return {
         ...base,

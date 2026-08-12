@@ -11,7 +11,6 @@ import type { FlowConnectionRepository } from '../../../../domain/repositories/f
 import type { PhoneNumberRepository } from '../../../../domain/repositories/phone-number.repository.js';
 import type { AgentRepository } from '../../../../domain/repositories/agent.repository.js';
 import type { TenantRepository } from '../../../../domain/repositories/tenant.repository.js';
-import type { ServiceProviderRepository } from '../../../../domain/repositories/service-provider.repository.js';
 import type { LabelRepository } from '../../../../domain/repositories/label.repository.js';
 import type { MessageTemplateRepository } from '../../../../domain/repositories/message-template.repository.js';
 import type { AiCompletionPort } from '../../../ports/ai-completion.port.js';
@@ -64,6 +63,17 @@ export interface SimulateFlowInput {
   text?: string;
   /** Id de la opción tocada (botón/fila), como llegaría de WhatsApp */
   optionId?: string;
+  /**
+   * Ubicación compartida por el cliente. Sin esto el nodo "Pedir ubicación"
+   * solo se podía probar por su rama de error: no había forma de mandarle una.
+   */
+  location?: { latitude: number; longitude: number; name?: string; address?: string };
+  /**
+   * Lo que el cliente habría cargado en un formulario de WhatsApp. El token de
+   * correlación no viaja: se arma acá con el nodo en el que está parada la
+   * simulación, que es lo mismo que hace WhatsApp al devolver el formulario.
+   */
+  flowResponse?: Record<string, unknown>;
   /** Respuesta con la que se simulan todas las llamadas HTTP */
   httpResponse?: { status: number; body: unknown };
 }
@@ -82,6 +92,10 @@ export interface SimulateFlowOutput {
   error: { nodeId: string; message: string } | null;
   /** true si quedó esperando un timeout que en la prueba no va a dispararse */
   waitingOnTimer: boolean;
+  /** true si quedó parado en "Pedir ubicación": el probador ofrece compartir una. */
+  waitingForLocation: boolean;
+  /** true si quedó parado en un formulario: el probador ofrece completarlo. */
+  waitingForFlow: boolean;
 }
 
 const SIM_IDS = {
@@ -98,7 +112,6 @@ export class SimulateFlowUseCase {
     private readonly phoneRepo: PhoneNumberRepository,
     private readonly agentRepo: AgentRepository,
     private readonly tenantRepo: TenantRepository,
-    private readonly providerRepo: ServiceProviderRepository,
     private readonly labelRepo: LabelRepository,
     private readonly templateRepo: MessageTemplateRepository,
     private readonly aiCompletion: AiCompletionPort,
@@ -130,7 +143,7 @@ export class SimulateFlowUseCase {
     const session = input.session ? reviveSession(input.session) : null;
     const recorder = new SimulationRecorder();
     const version = this.syntheticVersion(flow, graph);
-    const hasInbound = !!(input.text || input.optionId);
+    const hasInbound = !!(input.text || input.optionId || input.location || input.flowResponse);
 
     // ── Estado ────────────────────────────────────────────────────
     const now = new Date();
@@ -181,7 +194,12 @@ export class SimulateFlowUseCase {
         id: `sim-in-${messages.length}`,
         conversationId: conversation.id,
         direction: MessageDirection.INBOUND,
-        messageType: input.optionId ? MessageType.INTERACTIVE : MessageType.TEXT,
+        messageType: input.location
+          ? MessageType.LOCATION
+          : input.optionId || input.flowResponse
+            ? MessageType.INTERACTIVE
+            : MessageType.TEXT,
+        location: input.location ?? null,
         body: input.text ?? null,
         mediaUrl: null,
         mimeType: null,
@@ -195,7 +213,13 @@ export class SimulateFlowUseCase {
         waErrorMessage: null,
         interactiveReplyId: input.optionId ?? null,
         contextWaMessageId: null,
-        interactivePayload: null,
+        interactivePayload: input.flowResponse
+          ? {
+              kind: 'flow_response',
+              token: `${SIM_IDS.execution}:${session?.execution?.waitState?.nodeId ?? ''}`,
+              fields: input.flowResponse,
+            }
+          : null,
       } as Message);
     }
 
@@ -217,7 +241,6 @@ export class SimulateFlowUseCase {
       this.phoneRepo,
       this.agentRepo,
       this.tenantRepo,
-      this.providerRepo,
       new NoopAiUsage(),
       messageRepo,
       this.labelRepo,
@@ -289,6 +312,25 @@ export class SimulateFlowUseCase {
       await engine.runExecution(data.executionId, data.token);
     }
 
+    // Los temporizadores no corren en una prueba —esperar un día no se prueba—,
+    // pero el "escribiendo…" dura segundos y es puro adorno: si la simulación se
+    // parara ahí, ningún flujo que lo use se podría terminar de probar.
+    let adelantados = 0;
+    while (adelantados++ < 10) {
+      const parado = execRepo.current;
+      const nodo = parado?.waitState
+        ? version.graph.nodes.find((item) => item.id === parado.waitState!.nodeId)
+        : undefined;
+      if (parado?.status !== FlowExecutionStatus.WAITING || nodo?.type !== 'action.typing') break;
+
+      await engine.resume({ executionId: SIM_IDS.execution, token: parado.resumeToken, reason: 'timeout' });
+      while (jobQueue.pendingContinuations.length > 0 && guard++ < 20) {
+        const job = jobQueue.pendingContinuations.shift()!;
+        const data = job.data as { executionId: string; token: string };
+        await engine.runExecution(data.executionId, data.token);
+      }
+    }
+
     const final = execRepo.current!;
     return ok({
       session: {
@@ -306,10 +348,17 @@ export class SimulateFlowUseCase {
       endReason: final.endReason,
       error: final.error,
       waitingOnTimer: final.status === FlowExecutionStatus.WAITING && final.waitState?.kind === 'delay',
+      waitingForLocation: this.paradoEn(final, version, 'action.request_location'),
+      waitingForFlow: this.paradoEn(final, version, 'action.send_flow'),
     });
   }
 
   // ── Helpers ───────────────────────────────────────────────────
+
+  private paradoEn(execution: FlowExecution, version: FlowVersion, type: string): boolean {
+    if (execution.status !== FlowExecutionStatus.WAITING) return false;
+    return version.graph.nodes.find((node) => node.id === execution.waitState?.nodeId)?.type === type;
+  }
 
   private async resolveGraph(flow: Flow, source: 'draft' | 'published') {
     if (source === 'draft') return flow.draftGraph;
@@ -348,6 +397,8 @@ export class SimulateFlowUseCase {
         campaignIds: [],
         senderTypes: [],
         senderLabelIds: [],
+        adScope: 'any',
+        adSourceIds: [],
       },
       publishedByAgentId: flow.createdByAgentId,
       createdAt: new Date(),

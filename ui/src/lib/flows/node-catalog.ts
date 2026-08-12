@@ -8,7 +8,7 @@ import {
   MessageSquareText, SquareMousePointer, List, LayoutTemplate, MessageCircleQuestion,
   Sparkles, Split, Bot, Users, UserPlus, Tag, ContactRound, StickyNote,
   GitBranch, Clock, Globe, Zap, Webhook, Megaphone, Paperclip, Variable, CalendarClock, Radio,
-  MapPin, ExternalLink, Share2,
+  MapPin, ExternalLink, Contact, LocateFixed, SmilePlus, Ellipsis, ClipboardList,
 } from "lucide-react";
 
 export type NodeCategory = "trigger" | "message" | "ai" | "team" | "logic" | "integration";
@@ -91,6 +91,14 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     defaultData: { latitude: "", longitude: "", name: "", address: "", windowPolicy: "error" },
   },
   {
+    type: "action.send_contact",
+    label: "Enviar contacto",
+    description: "Una tarjeta que el cliente guarda en su agenda de un toque",
+    category: "message",
+    icon: Contact,
+    defaultData: { contactName: "", contactPhone: "", contactEmail: "", contactCompany: "", windowPolicy: "error" },
+  },
+  {
     type: "action.send_cta_url",
     label: "Botón con link",
     description: "Un botón que abre una URL, sin necesidad de plantilla",
@@ -131,6 +139,38 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     defaultData: { body: "", saveAs: "", validation: "texto", invalidMessage: "", saveToContact: "", timeout: { amount: 1, unit: "days" }, windowPolicy: "error" },
   },
   {
+    type: "action.request_location",
+    label: "Pedir ubicación",
+    description: "Botón nativo: llegan coordenadas exactas, no una dirección escrita",
+    category: "message",
+    icon: LocateFixed,
+    defaultData: { body: "¿Nos compartís tu ubicación?", saveAs: "ubicacion", invalidMessage: "", timeout: { amount: 1, unit: "days" }, windowPolicy: "error" },
+  },
+  {
+    type: "action.send_flow",
+    label: "Formulario de WhatsApp",
+    description: "Abre un Flow nativo: varios campos en una sola pantalla, sin salir del chat",
+    category: "message",
+    icon: ClipboardList,
+    defaultData: { body: "", footer: "", flowId: "", flowName: "", cta: "Completar", screen: "", mode: "published", saveAs: "formulario", timeout: { amount: 1, unit: "days" }, windowPolicy: "error" },
+  },
+  {
+    type: "action.react",
+    label: "Reaccionar",
+    description: "Un emoji sobre el último mensaje del cliente, sin gastar una burbuja",
+    category: "message",
+    icon: SmilePlus,
+    defaultData: { emoji: "👍" },
+  },
+  {
+    type: "action.typing",
+    label: "Escribiendo…",
+    description: "Tilde azul y el indicador de tipeo, para que no conteste de golpe",
+    category: "message",
+    icon: Ellipsis,
+    defaultData: { seconds: 3 },
+  },
+  {
     type: "action.ai_reply",
     label: "Respuesta IA",
     description: "Tu asistente responde una vez y la automatización sigue",
@@ -153,30 +193,6 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     category: "ai",
     icon: Bot,
     defaultData: { aiAgentId: "" },
-  },
-  {
-    type: "action.handoff_provider",
-    label: "Pasar el dato a un proveedor",
-    description: "Le manda los datos del cliente al WhatsApp de un tercero (el carpintero)",
-    category: "team",
-    icon: Share2,
-    defaultData: {
-      service: "{{vars.opcion}}",
-      templateId: "",
-      providerBody: [
-        "Nuevo pedido de {{provider.service}}.",
-        "",
-        "Cliente: {{contact.name}}",
-        "Teléfono: +{{contact.phone}}",
-        "",
-        "Escribile: https://wa.me/{{contact.phone}}",
-      ].join("\n"),
-      variables: {},
-      notifyCustomer: true,
-      customerBody:
-        "Listo, le pasé tus datos a {{provider.name}}. Te va a escribir en breve — si querés, escribile vos:",
-      customerButtonText: "Escribirle",
-    },
   },
   {
     type: "action.handoff_human",
@@ -272,6 +288,18 @@ export const NODE_CATALOG: NodeTypeDef[] = [
 
 export const NODE_BY_TYPE = new Map(NODE_CATALOG.map((n) => [n.type, n]));
 
+/** Los tipos que Meta acepta como media saliente, con el nombre que usa la gente. */
+export const MEDIA_TYPE_LABELS: Record<string, string> = {
+  image: "Imagen",
+  video: "Video",
+  audio: "Audio",
+  document: "PDF/archivo",
+  sticker: "Sticker",
+};
+
+/** Meta rechaza el pie de foto en estos dos. */
+export const MEDIA_TYPES_WITHOUT_CAPTION = new Set(["audio", "sticker"]);
+
 export function isTriggerType(type: string): boolean {
   return type.startsWith("trigger.");
 }
@@ -287,6 +315,8 @@ export function nodeHandles(node: FlowNode): Array<{ id: string; label: string; 
     case "action.send_text":
     case "action.send_media":
     case "action.send_location":
+    case "action.send_contact":
+    case "action.react":
     // El botón con link abre el navegador: no vuelve como respuesta, así que
     // no abre ramas.
     case "action.send_cta_url":
@@ -294,6 +324,8 @@ export function nodeHandles(node: FlowNode): Array<{ id: string; label: string; 
         { id: "out", label: "", kind: "normal" },
         { id: "error", label: "Error", kind: "error" },
       ];
+    case "action.typing":
+      return [{ id: "out", label: "", kind: "normal" }];
     case "action.send_buttons": {
       const buttons: Array<{ title?: string }> = Array.isArray(data.buttons) ? data.buttons : [];
       return [
@@ -324,6 +356,21 @@ export function nodeHandles(node: FlowNode): Array<{ id: string; label: string; 
         { id: "timeout", label: "Sin respuesta", kind: "alt" },
         { id: "error", label: "Error", kind: "error" },
       ];
+    case "action.request_location":
+      return [
+        { id: "reply", label: "Mandó la ubicación", kind: "normal" },
+        { id: "invalid", label: "Mandó otra cosa", kind: "alt" },
+        { id: "timeout", label: "Sin respuesta", kind: "alt" },
+        { id: "error", label: "Error", kind: "error" },
+      ];
+    // No hay rama "inválido": el formulario o vuelve entero o el cliente lo
+    // abandona, y eso último es el timeout.
+    case "action.send_flow":
+      return [
+        { id: "completed", label: "Lo completó", kind: "normal" },
+        { id: "timeout", label: "No lo completó", kind: "alt" },
+        { id: "error", label: "Error", kind: "error" },
+      ];
     case "action.ai_reply":
       return [
         { id: "out", label: "", kind: "normal" },
@@ -340,12 +387,6 @@ export function nodeHandles(node: FlowNode): Array<{ id: string; label: string; 
     case "action.handoff_ai":
     case "action.handoff_human":
       return [];
-    case "action.handoff_provider":
-      return [
-        { id: "out", label: "Dato pasado", kind: "normal" as const },
-        { id: "no_provider", label: "Sin proveedor", kind: "alt" as const },
-        { id: "error", label: "Error", kind: "error" as const },
-      ];
     case "action.assign_agent":
       return [
         { id: "out", label: "Asignado", kind: "normal" },
@@ -392,7 +433,19 @@ export function nodeSummary(node: FlowNode): string {
         ? `${data.campaignIds.length} campaña(s)`
         : "Cualquier campaña";
     case "action.send_media":
-      return `${data.mediaType === "document" ? "PDF/archivo" : "Imagen"}${data.caption ? ` · ${truncate(String(data.caption), 30)}` : ""}`;
+      return `${MEDIA_TYPE_LABELS[String(data.mediaType ?? "image")] ?? "Imagen"}${data.caption ? ` · ${truncate(String(data.caption), 30)}` : ""}`;
+    case "action.send_contact":
+      return String(data.contactName || "").trim() || "Sin nombre";
+    case "action.request_location":
+      return data.saveAs ? `Se guarda en {{vars.${data.saveAs}}}` : "Sin variable";
+    case "action.send_flow":
+      return data.flowId
+        ? `${truncate(String(data.flowName || "Formulario"), 30)}${data.mode === "draft" ? " · borrador" : ""}`
+        : "Elegí un formulario";
+    case "action.react":
+      return `${data.emoji || "👍"} al último mensaje del cliente`;
+    case "action.typing":
+      return `${data.seconds ?? 3} segundos`;
     case "action.send_location":
       return String(data.name || data.address || "").trim() ||
         (data.latitude && data.longitude ? `${data.latitude}, ${data.longitude}` : "Sin coordenadas");

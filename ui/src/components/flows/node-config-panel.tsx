@@ -3,20 +3,22 @@
 // Panel derecho de configuración del nodo seleccionado. Un formulario por
 // tipo, con preview de burbuja de WhatsApp y variables disponibles.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FileText, FolderOpen, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field } from "@/components/ui/field";
 import { SimpleSelect } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { MediaPickerDialog } from "@/components/media/media-picker-dialog";
 import { InlineNotice } from "@/components/shared/inline-notice";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 import { toast } from "@/lib/toast";
-import { NODE_BY_TYPE, CATEGORY_STYLES } from "@/lib/flows/node-catalog";
+import { NODE_BY_TYPE, CATEGORY_STYLES, MEDIA_TYPES_WITHOUT_CAPTION } from "@/lib/flows/node-catalog";
 import { useTranslations } from "@/lib/i18n/use-translations";
-import type { FlowNode, FlowEdge, Label, Agent, PhoneNumber, MessageTemplate } from "@/types";
+import type { FlowNode, FlowEdge, Label, Agent, PhoneNumber, MessageTemplate, MediaKind } from "@/types";
 
 export interface BuilderRefs {
   labels: Label[];
@@ -149,6 +151,7 @@ function renderForm(
       return (
         <>
           <BodyField data={data} set={set} label="Mensaje" />
+          <QuoteLastInboundField data={data} set={set} />
           <WindowPolicyField data={data} set={set} />
         </>
       );
@@ -160,14 +163,22 @@ function renderForm(
       return <TemplateForm data={data} set={set} refs={refs} />;
     case "action.ask":
       return <AskForm data={data} set={set} />;
+    case "action.send_contact":
+      return <SendContactForm data={data} set={set} />;
+    case "action.request_location":
+      return <RequestLocationForm data={data} set={set} />;
+    case "action.send_flow":
+      return <SendFlowForm data={data} set={set} />;
+    case "action.react":
+      return <ReactForm data={data} set={set} />;
+    case "action.typing":
+      return <TypingForm data={data} set={set} />;
     case "action.ai_reply":
       return <AiPersonaFields data={data} set={set} persistent={false} />;
     case "logic.ai_route":
       return <AiRouteForm data={data} set={set} />;
     case "action.handoff_ai":
       return <AiPersonaFields data={data} set={set} persistent />;
-    case "action.handoff_provider":
-      return <HandoffProviderForm data={data} set={set} refs={refs} />;
     case "action.handoff_human":
       return (
         <div>
@@ -322,14 +333,13 @@ function PhoneScopeField({ data, set, refs }: { data: Record<string, any>; set: 
 }
 
 const SENDER_TYPES = [
-  { value: "proveedor", label: "Un proveedor", hint: "Su teléfono está en Ajustes → Proveedores" },
   { value: "nuevo", label: "Alguien nuevo", hint: "Nunca había escrito a este número" },
   { value: "recurrente", label: "Alguien que ya había escrito", hint: "" },
 ];
 
 /**
- * Quién escribe. Deja tener un flujo para proveedores y otro para clientes
- * sobre el mismo número, ordenados por prioridad.
+ * Quién escribe. Deja tener un flujo de bienvenida y otro para conocidos sobre
+ * el mismo número, ordenados por prioridad.
  *
  * Sin nada tildado aplica a cualquiera, que es lo que hacían todos los
  * disparadores antes de que esto existiera.
@@ -353,9 +363,7 @@ function SenderFilterField({ data, set, refs }: { data: Record<string, any>; set
           />
         ))}
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Sin tildar nada aplica a cualquiera. Un proveedor sigue siendo proveedor aunque además sea cliente.
-      </p>
+      <p className="mt-1 text-xs text-muted-foreground">Sin tildar nada aplica a cualquiera.</p>
 
       {refs.labels.length > 0 && (
         <div className="mt-3">
@@ -557,6 +565,50 @@ function AiPersonaFields({
   );
 }
 
+/**
+ * De dónde viene el chat. Un anuncio de "presupuesto" puede disparar una
+ * automatización distinta que uno de "catálogo".
+ *
+ * El alcance es explícito y no se deduce de la lista vacía: "solo estos
+ * anuncios" sin ninguno cargado no publica, igual que el alcance de líneas.
+ */
+function AdScopeField({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  const sourceIds: string[] = Array.isArray(data.adSourceIds) ? data.adSourceIds : [];
+  const scope: "any" | "from_ads" | "specific" =
+    data.adScope === "from_ads" || data.adScope === "specific" ? data.adScope : "any";
+
+  return (
+    <>
+      <SelectField
+        label="Origen del chat"
+        value={scope}
+        options={[
+          { value: "any", label: "Cualquier origen" },
+          { value: "from_ads", label: "Solo si vino de un anuncio o posteo" },
+          { value: "specific", label: "Solo estos anuncios" },
+        ]}
+        onChange={(value) => set({ adScope: value, ...(value === "specific" ? {} : { adSourceIds: [] }) })}
+      />
+
+      {scope === "specific" && (
+        <div>
+          <FieldLabel>IDs de anuncio (separados por coma)</FieldLabel>
+          <Input
+            value={sourceIds.join(", ")}
+            placeholder="120210000000000000"
+            onChange={(e) =>
+              set({ adSourceIds: e.target.value.split(",").map((id) => id.trim()).filter(Boolean) })
+            }
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            El ID sale de Analytics → Anuncios, o del administrador de anuncios de Meta.
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── Triggers ─────────────────────────────────────────────────────
 
 function TriggerTypeSwitch({ current, onChangeTriggerType }: { current: string; onChangeTriggerType: (t: string) => void }) {
@@ -580,6 +632,7 @@ function TriggerMessageForm({ data, set, refs, onChangeTriggerType }: { data: Re
       <TriggerTypeSwitch current="trigger.inbound_message" onChangeTriggerType={onChangeTriggerType} />
       <PhoneScopeField data={data} set={set} refs={refs} />
       <SenderFilterField data={data} set={set} refs={refs} />
+      <AdScopeField data={data} set={set} />
       <SelectField
         label="Cuándo dispara"
         value={data.match ?? "any"}
@@ -684,9 +737,12 @@ function SendMediaForm({ data, set }: { data: Record<string, any>; set: (p: Reco
         value={data.mediaType ?? "image"}
         options={[
           { value: "image", label: "Imagen (JPG/PNG)" },
+          { value: "video", label: "Video (MP4)" },
+          { value: "audio", label: "Audio (MP3/OGG)" },
           { value: "document", label: "Documento (PDF u otro)" },
+          { value: "sticker", label: "Sticker (WebP)" },
         ]}
-        onChange={(value) => set({ mediaType: value })}
+        onChange={(value) => set({ mediaType: value, mediaAssetId: "", mediaAssetName: "" })}
       />
 
       <div>
@@ -723,7 +779,7 @@ function SendMediaForm({ data, set }: { data: Record<string, any>; set: (p: Reco
       <MediaPickerDialog
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        kinds={data.mediaType === "document" ? ["document"] : ["image"]}
+        kinds={[String(data.mediaType ?? "image") as MediaKind]}
         onSelect={(asset) =>
           set({
             mediaAssetId: asset.id,
@@ -740,12 +796,266 @@ function SendMediaForm({ data, set }: { data: Record<string, any>; set: (p: Reco
           <Input value={data.filename ?? ""} placeholder="catalogo-2026.pdf" onChange={(e) => set({ filename: e.target.value })} />
         </div>
       )}
-      <div>
-        <FieldLabel>Texto que acompaña (opcional)</FieldLabel>
-        <Textarea rows={2} value={data.caption ?? ""} onChange={(e) => set({ caption: e.target.value })} />
-      </div>
+      {MEDIA_TYPES_WITHOUT_CAPTION.has(String(data.mediaType ?? "image")) ? (
+        <p className="text-xs text-muted-foreground">
+          El audio y los stickers viajan solos: WhatsApp no les admite texto acompañante.
+        </p>
+      ) : (
+        <div>
+          <FieldLabel>Texto que acompaña (opcional)</FieldLabel>
+          <Textarea rows={2} value={data.caption ?? ""} onChange={(e) => set({ caption: e.target.value })} />
+        </div>
+      )}
+      <QuoteLastInboundField data={data} set={set} />
       <WindowPolicyField data={data} set={set} />
     </>
+  );
+}
+
+/** Tarjeta de contacto: el cliente la guarda de un toque. */
+function SendContactForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  return (
+    <>
+      <div>
+        <FieldLabel>Nombre</FieldLabel>
+        <Input value={data.contactName ?? ""} placeholder="Ej: Martín, técnico de zona" onChange={(e) => set({ contactName: e.target.value })} />
+      </div>
+      <div>
+        <FieldLabel>Teléfono</FieldLabel>
+        <Input value={data.contactPhone ?? ""} placeholder="59899123456" onChange={(e) => set({ contactPhone: e.target.value })} />
+      </div>
+      <div>
+        <FieldLabel>Email (opcional)</FieldLabel>
+        <Input value={data.contactEmail ?? ""} onChange={(e) => set({ contactEmail: e.target.value })} />
+      </div>
+      <div>
+        <FieldLabel>Empresa (opcional)</FieldLabel>
+        <Input value={data.contactCompany ?? ""} onChange={(e) => set({ contactCompany: e.target.value })} />
+      </div>
+      <QuoteLastInboundField data={data} set={set} />
+      <WindowPolicyField data={data} set={set} />
+    </>
+  );
+}
+
+/** Pedir la ubicación con el botón nativo: llegan coordenadas, no texto. */
+function RequestLocationForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  return (
+    <>
+      <BodyField data={data} set={set} label="Qué le decís al pedirla" />
+      <div>
+        <FieldLabel>Dónde guardo la ubicación</FieldLabel>
+        <Input value={data.saveAs ?? ""} placeholder="ubicacion" onChange={(e) => set({ saveAs: e.target.value })} />
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Después la usás como {"{{vars.ubicacion.latitude}}"} y {"{{vars.ubicacion.longitude}}"}.
+        </p>
+      </div>
+      <div>
+        <FieldLabel>Si manda otra cosa (opcional)</FieldLabel>
+        <Input value={data.invalidMessage ?? ""} placeholder="Necesito que toques el botón 📍" onChange={(e) => set({ invalidMessage: e.target.value })} />
+      </div>
+      <DurationField data={data} set={set} field="timeout" label="Cuánto espera" />
+      <WindowPolicyField data={data} set={set} />
+    </>
+  );
+}
+
+interface WhatsAppFlowOption {
+  id: string;
+  name: string;
+  status: string;
+  categories: string[];
+  hasEndpoint: boolean;
+  screens: string[];
+  phoneNumberId: string;
+  phoneLabel: string;
+}
+
+/**
+ * Los formularios se arman en WhatsApp Manager, así que la lista se pide en
+ * vivo cuando se abre el nodo: si acá guardáramos una copia, un formulario
+ * recién publicado no aparecería hasta vaya a saber cuándo.
+ */
+function SendFlowForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  const [flows, setFlows] = useState<WhatsAppFlowOption[] | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await api.get<{ data: WhatsAppFlowOption[] }>("/flows/whatsapp-flows");
+        if (!cancelled) setFlows(response.data ?? []);
+      } catch {
+        if (!cancelled) {
+          setFlows([]);
+          setError(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selected = flows?.find((f) => f.id === data.flowId);
+  const sinPublicar = selected && selected.status !== "PUBLISHED";
+
+  return (
+    <>
+      {flows === null ? (
+        <p className="text-xs text-muted-foreground">Buscando tus formularios en WhatsApp…</p>
+      ) : error ? (
+        <InlineNotice variant="warning">
+          No pudimos leer los formularios de tu cuenta de WhatsApp. Revisá la conexión del número.
+        </InlineNotice>
+      ) : flows.length === 0 ? (
+        <InlineNotice variant="info">
+          Todavía no tenés formularios. Se crean en WhatsApp Manager (Cuenta → Flujos) y después aparecen acá.
+        </InlineNotice>
+      ) : (
+        <SelectField
+          label="Formulario"
+          value={data.flowId ?? ""}
+          placeholder="Elegí un formulario…"
+          options={flows.map((f) => ({
+            value: f.id,
+            label: f.status === "PUBLISHED" ? f.name : `${f.name} (${FLOW_STATUS_LABELS[f.status] ?? f.status})`,
+          }))}
+          onChange={(value) => {
+            const flow = flows.find((f) => f.id === value);
+            // La pantalla de entrada arranca en la primera del formulario:
+            // Meta pide una cuando el mensaje abre el Flow directamente.
+            set({ flowId: value, flowName: flow?.name ?? "", screen: flow?.screens[0] ?? "" });
+          }}
+        />
+      )}
+      {sinPublicar && (
+        <InlineNotice variant="warning">
+          Este formulario no está publicado: solo lo pueden abrir los administradores del número. Publicalo en WhatsApp
+          Manager antes de usarlo con clientes.
+        </InlineNotice>
+      )}
+      {selected?.hasEndpoint && (
+        <InlineNotice variant="info">
+          Este formulario se conecta a un servidor propio para ir trayendo datos. Desde acá se abre igual, pero esa
+          conexión la maneja quien lo armó.
+        </InlineNotice>
+      )}
+      <BodyField data={data} set={set} label="Mensaje que acompaña" />
+      <div>
+        <FieldLabel>Pie de página (opcional)</FieldLabel>
+        <Input value={data.footer ?? ""} maxLength={60} onChange={(e) => set({ footer: e.target.value })} />
+      </div>
+      <div>
+        <FieldLabel>Texto del botón</FieldLabel>
+        <Input
+          value={data.cta ?? ""}
+          maxLength={30}
+          placeholder="Completar"
+          onChange={(e) => set({ cta: e.target.value })}
+        />
+      </div>
+      {selected && selected.screens.length > 1 && (
+        <SelectField
+          label="Pantalla por la que entra"
+          value={data.screen ?? ""}
+          options={selected.screens.map((s) => ({ value: s, label: s }))}
+          onChange={(value) => set({ screen: value })}
+        />
+      )}
+      <SaveAsField data={data} set={set} label="Guardar las respuestas como variable" />
+      <p className="-mt-1 text-xs text-muted-foreground">
+        Cada campo del formulario queda en {"{{vars.formulario.nombre_del_campo}}"}.
+      </p>
+      <SelectField
+        label="Versión que se manda"
+        value={data.mode ?? "published"}
+        options={[
+          { value: "published", label: "Publicada (la que ven los clientes)" },
+          { value: "draft", label: "Borrador (solo administradores del número)" },
+        ]}
+        onChange={(value) => set({ mode: value })}
+      />
+      <DurationField data={data} set={set} field="timeout" label="Cuánto espera a que lo complete" />
+      <WindowPolicyField data={data} set={set} />
+    </>
+  );
+}
+
+const FLOW_STATUS_LABELS: Record<string, string> = {
+  DRAFT: "borrador",
+  PUBLISHED: "publicado",
+  DEPRECATED: "dado de baja",
+  BLOCKED: "bloqueado",
+  THROTTLED: "limitado",
+};
+
+const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🎉", "✅"];
+
+function ReactForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  return (
+    <>
+      <div>
+        <FieldLabel>Con qué reacciona</FieldLabel>
+        <div className="flex flex-wrap gap-1.5">
+          {REACTION_EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => set({ emoji })}
+              className={
+                data.emoji === emoji
+                  ? "rounded-lg border border-primary bg-primary/10 px-2.5 py-1 text-base"
+                  : "rounded-lg border border-border px-2.5 py-1 text-base hover:bg-muted"
+              }
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Reacciona al último mensaje del cliente. WhatsApp no deja reaccionar a los propios.
+        </p>
+      </div>
+    </>
+  );
+}
+
+function TypingForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  return (
+    <div>
+      <FieldLabel>Cuántos segundos</FieldLabel>
+      <Input
+        type="number"
+        min={1}
+        max={25}
+        value={data.seconds ?? 3}
+        onChange={(e) => set({ seconds: Number(e.target.value) || 3 })}
+      />
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        Además le pone el tilde azul al último mensaje del cliente. Meta baja el indicador solo a los 25 segundos.
+      </p>
+    </div>
+  );
+}
+
+/** Citar el último mensaje del cliente, como cuando respondés apuntando a una burbuja. */
+function QuoteLastInboundField({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  return (
+    <label className="flex items-start gap-2 text-sm">
+      <Checkbox
+        className="mt-0.5"
+        checked={!!data.quoteLastInbound}
+        onCheckedChange={(checked) => set({ quoteLastInbound: !!checked })}
+      />
+      <span>
+        Responder citando el último mensaje del cliente
+        <span className="mt-0.5 block text-xs text-muted-foreground">
+          Si todavía no escribió nada, el mensaje sale igual pero sin la cita.
+        </span>
+      </span>
+    </label>
   );
 }
 
@@ -1008,124 +1318,6 @@ const TEMPLATE_VARIABLE_SOURCES = [
   { value: "flow_var", label: "Variable de la automatización" },
 ];
 
-/**
- * Pasarle el dato del cliente a un tercero (el carpintero).
- *
- * Ojo con lo que promete la UI: la conversación NO se transfiere — eso no
- * existe en WhatsApp. Al proveedor le llega una plantilla con el dato y un
- * botón para escribirle al cliente desde su propio teléfono.
- */
-function HandoffProviderForm({ data, set, refs }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs }) {
-  const approved = refs.templates.filter((t) => t.status === "approved");
-  const selected = approved.find((t) => t.id === data.templateId);
-  const placeholders = selected ? extractTemplatePlaceholders(selected) : [];
-  const variables: Record<string, { source?: string; value?: string }> = data.variables ?? {};
-
-  return (
-    <>
-      <Field
-        label="Servicio que se busca"
-        hint="Normalmente la opción que eligió el cliente en la lista. Se compara con los servicios de cada proveedor."
-      >
-        <Input
-          value={data.service ?? ""}
-          placeholder="{{vars.opcion}}"
-          onChange={(e) => set({ service: e.target.value })}
-        />
-      </Field>
-
-      <div>
-        <FieldLabel>Mensaje al proveedor (si te escribió hace menos de 24 h)</FieldLabel>
-        <Textarea
-          rows={5}
-          value={data.providerBody ?? ""}
-          placeholder="Nuevo pedido de {{provider.service}}…"
-          onChange={(e) => set({ providerBody: e.target.value })}
-        />
-        <p className="mt-1 text-xs text-muted-foreground">
-          Con la ventana abierta va este texto, que no se factura. Poné el link{" "}
-          <code className="font-mono">https://wa.me/{"{{contact.phone}}"}</code> para que le abra el chat.
-          Si la ventana está cerrada, va la plantilla de abajo.
-        </p>
-      </div>
-
-      <SelectField
-        label="Plantilla que recibe el proveedor (si la ventana está cerrada)"
-        value={data.templateId ?? ""}
-        placeholder="Elegí una plantilla…"
-        options={approved.map((t) => ({ value: t.id, label: `${t.name} (${t.language})` }))}
-        onChange={(value) => set({ templateId: value, variables: {} })}
-      />
-      <p className="text-xs text-muted-foreground">
-        Obligatoria: es lo que se manda la primera vez y cada vez que el proveedor haga más de 24 h
-        que no escribe. Poné un botón de URL con <code className="font-mono">https://wa.me/{"{{1}}"}</code> y
-        mapealo al teléfono del cliente para que le abra el chat de una.
-      </p>
-
-      {placeholders.map((placeholder) => {
-        const entry = variables[placeholder] ?? { source: "static", value: "" };
-        return (
-          <div key={placeholder} className="rounded-xl border p-2 space-y-1">
-            <FieldLabel>{placeholder}</FieldLabel>
-            <div className="flex gap-1.5">
-              <SimpleSelect
-                className="w-36"
-                value={entry.source ?? "static"}
-                options={TEMPLATE_VARIABLE_SOURCES}
-                onChange={(value) => set({ variables: { ...variables, [placeholder]: { ...entry, source: value } } })}
-              />
-              <Input
-                className="flex-1"
-                value={entry.value ?? ""}
-                placeholder={entry.source === "contact_field" ? "name / phone" : entry.source === "flow_var" ? "vars.opcion" : "Valor"}
-                onChange={(e) => set({ variables: { ...variables, [placeholder]: { ...entry, value: e.target.value } } })}
-              />
-            </div>
-          </div>
-        );
-      })}
-
-      <ToggleField
-        label="Avisarle también al cliente"
-        checked={data.notifyCustomer !== false}
-        onChange={(v) => set({ notifyCustomer: v })}
-      />
-
-      {data.notifyCustomer !== false && (
-        <>
-          <div>
-            <FieldLabel>Aviso al cliente</FieldLabel>
-            <Textarea
-              rows={3}
-              value={data.customerBody ?? ""}
-              placeholder="Listo, le pasé tus datos a {{provider.name}}."
-              onChange={(e) => set({ customerBody: e.target.value })}
-            />
-          </div>
-          <Field label="Texto del botón" hint="Le abre el chat con el proveedor.">
-            <Input
-              value={data.customerButtonText ?? ""}
-              placeholder="Escribirle"
-              onChange={(e) => set({ customerButtonText: e.target.value })}
-            />
-          </Field>
-        </>
-      )}
-
-      <p className="text-xs text-muted-foreground">
-        Disponibles acá: <code className="font-mono">{"{{provider.name}}"}</code>,{" "}
-        <code className="font-mono">{"{{provider.phone}}"}</code> y{" "}
-        <code className="font-mono">{"{{provider.service}}"}</code>.
-      </p>
-
-      <InlineNotice variant="warning">
-        Le estás dando el teléfono del cliente a un tercero. Avisale antes en el flujo, y cargá los
-        proveedores en Ajustes → Proveedores con su permiso registrado.
-      </InlineNotice>
-    </>
-  );
-}
-
 function TemplateForm({ data, set, refs }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void; refs: BuilderRefs }) {
   const approved = refs.templates.filter((t) => t.status === "approved");
   const selected = approved.find((t) => t.id === data.templateId);
@@ -1364,6 +1556,8 @@ const CONDITION_SOURCES = [
   { value: "contact.email", label: "Email del contacto" },
   { value: "contact.company", label: "Empresa del contacto" },
   { value: "sender.type", label: "Quién escribe" },
+  { value: "ad.sourceId", label: "ID del anuncio de origen" },
+  { value: "ad.headline", label: "Título del anuncio de origen" },
   { value: "__schedule__", label: "Horario / día" },
   { value: "__custom__", label: "Variable (escribir path)" },
 ];

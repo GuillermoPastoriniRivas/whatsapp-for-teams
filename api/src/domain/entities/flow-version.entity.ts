@@ -1,9 +1,13 @@
 import type { FlowGraph } from './flow.entity.js';
 
 /** Quién está del otro lado de un mensaje entrante. */
-export type SenderType = 'proveedor' | 'nuevo' | 'recurrente';
+export type SenderType = 'nuevo' | 'recurrente';
 
-export const SENDER_TYPES: SenderType[] = ['proveedor', 'nuevo', 'recurrente'];
+export const SENDER_TYPES: SenderType[] = ['nuevo', 'recurrente'];
+
+export type AdScope = 'any' | 'from_ads' | 'specific';
+
+export const AD_SCOPES: AdScope[] = ['any', 'from_ads', 'specific'];
 
 /**
  * Trigger denormalizado de la versión publicada, para matchear mensajes
@@ -18,15 +22,15 @@ export interface FlowTriggerIndex {
   keywordMode: 'exact' | 'contains';
   onlyNewConversations: boolean;
   /**
-   * Quién escribe. Vacío = cualquiera.
-   *
-   * 'proveedor' (está en el directorio), 'nuevo' (nunca escribió a esta línea)
-   * o 'recurrente'. Es lo que deja tener un flujo para proveedores y otro para
-   * clientes sobre el mismo número, ordenados por prioridad.
+   * Quién escribe. Vacío = cualquiera. 'nuevo' es quien nunca escribió a esta
+   * línea; 'recurrente', el resto. Deja tener un flujo de bienvenida y otro
+   * para conocidos sobre el mismo número, ordenados por prioridad.
    */
   senderTypes: SenderType[];
   /** Etiquetas de la conversación. Vacío = cualquiera; si hay, basta con una. */
   senderLabelIds: string[];
+  adScope: AdScope;
+  adSourceIds: string[];
   /** Solo trigger.webhook: dot-path del teléfono en el payload */
   contactPhoneField: string | null;
   contactNameField: string | null;

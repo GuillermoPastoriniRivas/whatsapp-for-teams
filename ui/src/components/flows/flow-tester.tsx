@@ -5,7 +5,7 @@
 // publicar ni agarrar otro teléfono.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Play, RotateCcw, X, SendHorizontal, AlertTriangle, Clock, Info } from "lucide-react";
+import { Play, RotateCcw, X, SendHorizontal, AlertTriangle, Clock, Info, MapPin, Contact, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -18,14 +18,16 @@ interface SimOutbound {
   body: string | null;
   mediaUrl?: string | null;
   interactive?: {
-    kind?: "buttons" | "list";
+    kind?: "buttons" | "list" | "flow";
     body?: string;
     footer?: string;
     buttons?: Array<{ id: string; title: string }>;
     buttonText?: string;
     rows?: Array<{ id: string; title: string; description?: string }>;
+    flow?: { cta?: string };
   } | null;
   templateName?: string | null;
+  contactName?: string | null;
 }
 
 interface SimStep {
@@ -47,7 +49,20 @@ interface SimResponse {
   endReason: string | null;
   error: { nodeId: string; message: string } | null;
   waitingOnTimer: boolean;
+  /** El flujo está parado en "Pedir ubicación": el probador ofrece compartir una. */
+  waitingForLocation?: boolean;
+  /** El flujo está parado en un formulario: el probador ofrece completarlo. */
+  waitingForFlow?: boolean;
 }
+
+interface SimLocation {
+  latitude: number;
+  longitude: number;
+  name?: string;
+}
+
+/** Plaza Independencia: una coordenada real para que el mapa del preview no quede en el mar. */
+const SAMPLE_LOCATION: SimLocation = { latitude: -34.9011, longitude: -56.1645, name: "Ubicación de prueba" };
 
 type Entry =
   | { from: "cliente"; text: string }
@@ -69,6 +84,11 @@ export function FlowTester({ flowId, onCurrentNodeChange, onClose }: Props) {
   const [status, setStatus] = useState<SimResponse["status"] | null>(null);
   const [busy, setBusy] = useState(false);
   const [text, setText] = useState("");
+  const [waitingForLocation, setWaitingForLocation] = useState(false);
+  const [waitingForFlow, setWaitingForFlow] = useState(false);
+  // Las respuestas del formulario se cargan a mano: el editor del Flow vive en
+  // WhatsApp Manager, así que acá no sabemos qué campos tiene.
+  const [flowFields, setFlowFields] = useState<Array<{ key: string; value: string }>>([{ key: "", value: "" }]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,6 +101,8 @@ export function FlowTester({ flowId, onCurrentNodeChange, onClose }: Props) {
       setStatus(res.status);
       setSteps((prev) => [...prev, ...res.steps]);
       setVariables(res.variables);
+      setWaitingForLocation(res.waitingForLocation === true);
+      setWaitingForFlow(res.waitingForFlow === true);
       onCurrentNodeChange(res.currentNodeId);
 
       setEntries((prev) => {
@@ -109,7 +131,13 @@ export function FlowTester({ flowId, onCurrentNodeChange, onClose }: Props) {
   );
 
   const send = useCallback(
-    async (payload: { text?: string; optionId?: string; label?: string }) => {
+    async (payload: {
+      text?: string;
+      optionId?: string;
+      label?: string;
+      location?: SimLocation;
+      flowResponse?: Record<string, unknown>;
+    }) => {
       if (busy) return;
       setBusy(true);
       if (payload.label ?? payload.text) {
@@ -121,6 +149,8 @@ export function FlowTester({ flowId, onCurrentNodeChange, onClose }: Props) {
           session,
           text: payload.text,
           optionId: payload.optionId,
+          location: payload.location,
+          flowResponse: payload.flowResponse,
         });
         applyResponse(res);
       } catch (error) {
@@ -140,7 +170,19 @@ export function FlowTester({ flowId, onCurrentNodeChange, onClose }: Props) {
     setVariables({});
     setStatus(null);
     setText("");
+    setWaitingForFlow(false);
+    setFlowFields([{ key: "", value: "" }]);
     onCurrentNodeChange(null);
+  };
+
+  const enviarFormulario = () => {
+    const fields: Record<string, unknown> = {};
+    for (const { key, value } of flowFields) {
+      const name = key.trim();
+      if (name) fields[name] = value;
+    }
+    setFlowFields([{ key: "", value: "" }]);
+    void send({ flowResponse: fields, label: "📋 Formulario completado" });
   };
 
   const finished = status === "completed" || status === "failed";
@@ -257,26 +299,81 @@ export function FlowTester({ flowId, onCurrentNodeChange, onClose }: Props) {
             Probar de nuevo
           </Button>
         ) : (
-          <form
-            className="flex gap-1.5"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const value = text.trim();
-              if (!value) return;
-              setText("");
-              void send({ text: value });
-            }}
-          >
-            <Input
-              value={text}
-              disabled={busy}
-              placeholder={started ? "Respondé como el cliente…" : "Primer mensaje del cliente…"}
-              onChange={(e) => setText(e.target.value)}
-            />
-            <Button type="submit" size="sm" disabled={busy || !text.trim()}>
-              <SendHorizontal className="size-4" />
-            </Button>
-          </form>
+          <div className="space-y-1.5">
+            {waitingForLocation && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={busy}
+                onClick={() => void send({ location: SAMPLE_LOCATION, label: "📍 Ubicación compartida" })}
+              >
+                <MapPin className="size-3.5 mr-1" />
+                Compartir una ubicación de prueba
+              </Button>
+            )}
+            {waitingForFlow && (
+              <div className="rounded-lg border p-2 space-y-1.5">
+                <p className="text-[11px] text-muted-foreground">
+                  Cargá lo que el cliente habría completado. Los campos son los del formulario en WhatsApp Manager.
+                </p>
+                {flowFields.map((field, index) => (
+                  <div key={index} className="flex gap-1.5">
+                    <Input
+                      className="h-8 flex-1 text-xs"
+                      value={field.key}
+                      placeholder="campo"
+                      onChange={(e) =>
+                        setFlowFields((prev) => prev.map((f, i) => (i === index ? { ...f, key: e.target.value } : f)))
+                      }
+                    />
+                    <Input
+                      className="h-8 flex-1 text-xs"
+                      value={field.value}
+                      placeholder="valor"
+                      onChange={(e) =>
+                        setFlowFields((prev) => prev.map((f, i) => (i === index ? { ...f, value: e.target.value } : f)))
+                      }
+                    />
+                  </div>
+                ))}
+                <div className="flex gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setFlowFields((prev) => [...prev, { key: "", value: "" }])}
+                  >
+                    Agregar campo
+                  </Button>
+                  <Button size="sm" className="h-7 flex-1 text-xs" disabled={busy} onClick={enviarFormulario}>
+                    <ClipboardList className="size-3.5 mr-1" />
+                    Completar el formulario
+                  </Button>
+                </div>
+              </div>
+            )}
+            <form
+              className="flex gap-1.5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const value = text.trim();
+                if (!value) return;
+                setText("");
+                void send({ text: value });
+              }}
+            >
+              <Input
+                value={text}
+                disabled={busy}
+                placeholder={started ? "Respondé como el cliente…" : "Primer mensaje del cliente…"}
+                onChange={(e) => setText(e.target.value)}
+              />
+              <Button type="submit" size="sm" disabled={busy || !text.trim()}>
+                <SendHorizontal className="size-4" />
+              </Button>
+            </form>
+          </div>
         )}
       </div>
     </div>
@@ -308,11 +405,27 @@ function BotBubble({
           {message.mediaUrl && (
             <p className="text-[11px] text-neutral-500 mb-1">📎 {message.mediaUrl}</p>
           )}
-          <p className="whitespace-pre-wrap break-words">
-            {interactive?.body ?? message.body ?? <span className="text-neutral-400">(sin texto)</span>}
-          </p>
+          {message.contactName ? (
+            <p className="flex items-center gap-1.5 font-medium">
+              <Contact className="size-3.5 shrink-0 text-neutral-500" />
+              {message.contactName}
+            </p>
+          ) : (
+            <p className="whitespace-pre-wrap break-words">
+              {interactive?.body ?? message.body ?? <span className="text-neutral-400">(sin texto)</span>}
+            </p>
+          )}
           {interactive?.footer && <p className="text-[11px] text-neutral-500 mt-1">{interactive.footer}</p>}
         </div>
+
+        {/* El formulario se abre dentro de WhatsApp: acá el botón es solo la
+            forma de la burbuja; lo que se completa se carga en el composer. */}
+        {interactive?.kind === "flow" && (
+          <div className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-white py-1.5 text-[13px] text-sky-600 shadow-sm">
+            <ClipboardList className="size-3.5" />
+            {interactive.flow?.cta || "Completar"}
+          </div>
+        )}
 
         {options.map((option) => (
           <button

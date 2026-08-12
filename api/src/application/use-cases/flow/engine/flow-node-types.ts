@@ -3,6 +3,7 @@
 // validador, el motor y (espejada) la UI.
 
 import type { FlowNode } from '../../../../domain/entities/flow.entity.js';
+import type { AdScope } from '../../../../domain/entities/flow-version.entity.js';
 
 export const TRIGGER_TYPES = ['trigger.inbound_message', 'trigger.webhook', 'trigger.campaign_reply'] as const;
 
@@ -11,15 +12,19 @@ export const NODE_TYPES = [
   'action.send_text',
   'action.send_media',
   'action.send_location',
+  'action.send_contact',
   'action.send_buttons',
   'action.send_list',
   'action.send_cta_url',
   'action.send_template',
   'action.ask',
+  'action.send_flow',
+  'action.request_location',
+  'action.react',
+  'action.typing',
   'action.ai_reply',
   'logic.ai_route',
   'action.handoff_ai',
-  'action.handoff_provider',
   'action.handoff_human',
   'action.assign_agent',
   'action.label',
@@ -62,12 +67,26 @@ export function phoneScopeOf(data: Record<string, any>): PhoneScope {
   return ids.length > 0 ? 'specific' : 'all';
 }
 
+export function adScopeOf(data: Record<string, any>): AdScope {
+  if (data.adScope === 'any' || data.adScope === 'from_ads' || data.adScope === 'specific') {
+    return data.adScope;
+  }
+  return 'any';
+}
+
 /** Nodos que entran en estado de espera (cortan cualquier ciclo) */
 export function isWaitNode(type: string): boolean {
   return (
     type === 'action.send_buttons' ||
     type === 'action.send_list' ||
     type === 'action.ask' ||
+    type === 'action.request_location' ||
+    // El formulario se completa adentro de WhatsApp y vuelve como un solo
+    // mensaje: el flujo espera esa respuesta como espera cualquier otra.
+    type === 'action.send_flow' ||
+    // El "escribiendo…" solo se ve si algo lo sostiene: el nodo espera, y esa
+    // espera es lo que hace el efecto.
+    type === 'action.typing' ||
     type === 'logic.delay' ||
     type === 'logic.wait_business_hours'
   );
@@ -87,10 +106,12 @@ export function isSessionSend(type: string): boolean {
     type === 'action.send_buttons' ||
     type === 'action.send_list' ||
     type === 'action.send_cta_url' ||
+    type === 'action.send_contact' ||
+    type === 'action.send_flow' ||
     type === 'action.ask' ||
-    type === 'action.ai_reply' ||
-    // Le manda al cliente el aviso con el botón para escribirle al proveedor.
-    type === 'action.handoff_provider'
+    type === 'action.request_location' ||
+    type === 'action.react' ||
+    type === 'action.ai_reply'
   );
 }
 
@@ -105,6 +126,8 @@ export function outputHandles(node: FlowNode): string[] {
     case 'action.send_text':
     case 'action.send_media':
     case 'action.send_location':
+    case 'action.send_contact':
+    case 'action.react':
     // El botón con link abre el navegador: no vuelve como respuesta, así que
     // no abre ramas ni entra en espera.
     case 'action.send_cta_url':
@@ -120,7 +143,14 @@ export function outputHandles(node: FlowNode): string[] {
     case 'action.send_template':
       return ['out', 'error'];
     case 'action.ask':
+    case 'action.request_location':
       return ['reply', 'invalid', 'timeout', 'error'];
+    // No hay rama "inválido": un Flow o se completa y vuelve entero, o el
+    // cliente lo abandona y solo queda el timeout.
+    case 'action.send_flow':
+      return ['completed', 'timeout', 'error'];
+    case 'action.typing':
+      return ['out'];
     case 'action.ai_reply':
       return ['out', 'handoff', 'error'];
     case 'logic.ai_route': {
@@ -130,10 +160,6 @@ export function outputHandles(node: FlowNode): string[] {
     case 'action.handoff_ai':
     case 'action.handoff_human':
       return [];
-    // No es terminal: si no hay proveedor para ese servicio el flujo tiene que
-    // poder seguir (derivar a una persona, ofrecer otra opción).
-    case 'action.handoff_provider':
-      return ['out', 'no_provider', 'error'];
     case 'action.assign_agent':
       return ['out', 'unassigned'];
     case 'action.label':

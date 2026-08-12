@@ -14,7 +14,8 @@ import { Result, ok, err } from '../../common/result.js';
 import { DomainError, FlowNotFoundError, FlowInvalidGraphError, FlowInvalidStateError, PlanLimitExceededError } from '../../../domain/errors/domain-errors.js';
 import { CheckPlanLimitUseCase } from '../billing/check-plan-limit.use-case.js';
 import { validateFlowGraph, FlowGraphIssue, FlowGraphRefs } from './engine/flow-graph.validator.js';
-import { isTrigger } from './engine/flow-node-types.js';
+import { loadFlowGraphRefs } from './flow-graph-refs.loader.js';
+import { adScopeOf, isTrigger } from './engine/flow-node-types.js';
 
 export interface PublishFlowResult {
   versionId: string;
@@ -95,6 +96,8 @@ export class PublishFlowUseCase {
         ? data.senderTypes.map(String).filter((t): t is SenderType => (SENDER_TYPES as string[]).includes(t))
         : [],
       senderLabelIds: Array.isArray(data.senderLabelIds) ? data.senderLabelIds.map(String) : [],
+      adScope: adScopeOf(data),
+      adSourceIds: Array.isArray(data.adSourceIds) ? data.adSourceIds.map(String) : [],
       contactPhoneField: typeof data.contactPhoneField === 'string' && data.contactPhoneField ? data.contactPhoneField : null,
       contactNameField: typeof data.contactNameField === 'string' && data.contactNameField ? data.contactNameField : null,
       campaignIds: Array.isArray(data.campaignIds) ? data.campaignIds.map(String) : [],
@@ -102,38 +105,16 @@ export class PublishFlowUseCase {
   }
 
   private async loadRefs(tenantId: string, graph: { nodes: Array<{ type: string; data: Record<string, unknown> }> }): Promise<FlowGraphRefs> {
-    // Referencias usadas por el grafo (pocas por flujo: se cargan por id).
-    const templateIds = new Set<string>();
-    const connectionIds = new Set<string>();
-    for (const node of graph.nodes) {
-      const data = node.data as Record<string, any>;
-      if ((node.type === 'action.send_template' || node.type === 'action.handoff_provider') && typeof data.templateId === 'string') {
-        templateIds.add(data.templateId);
-      }
-      if (node.type === 'action.http' && typeof data.connectionId === 'string' && data.connectionId) connectionIds.add(data.connectionId);
-    }
-
-    const [labels, agents, phones, templates, connections] = await Promise.all([
-      this.labelRepo.findByTenantId(tenantId),
-      this.agentRepo.findByTenantId(tenantId),
-      this.phoneRepo.findByTenantId(tenantId),
-      Promise.all([...templateIds].map((id) => this.templateRepo.findById(id).catch(() => null))),
-      Promise.all([...connectionIds].map((id) => this.connectionRepo.findById(id).catch(() => null))),
-    ]);
-
-    const templateMap = new Map<string, { approved: boolean; phoneNumberId: string }>();
-    for (const template of templates) {
-      if (template && template.tenantId === tenantId) {
-        templateMap.set(template.id, { approved: template.status === TemplateStatus.APPROVED, phoneNumberId: template.phoneNumberId });
-      }
-    }
-
-    return {
-      templates: templateMap,
-      labelIds: new Set(labels.map((l) => l.id)),
-      agentIds: new Set(agents.filter((a) => a.type === AgentType.HUMAN).map((a) => a.id)),
-      connectionIds: new Set(connections.filter((c) => c && c.tenantId === tenantId).map((c) => c!.id)),
-      phones: new Set(phones.map((phone) => phone.id)),
-    };
+    return loadFlowGraphRefs(
+      {
+        templateRepo: this.templateRepo,
+        labelRepo: this.labelRepo,
+        agentRepo: this.agentRepo,
+        phoneRepo: this.phoneRepo,
+        connectionRepo: this.connectionRepo,
+      },
+      tenantId,
+      graph,
+    );
   }
 }

@@ -94,6 +94,15 @@ export const SimulateFlowRequestSchema = z.object({
   session: z.record(z.string(), z.unknown()).nullable().optional(),
   text: z.string().max(4096).optional(),
   optionId: z.string().max(200).optional(),
+  location: z
+    .object({
+      latitude: z.number().min(-90).max(90),
+      longitude: z.number().min(-180).max(180),
+      name: z.string().max(200).optional(),
+      address: z.string().max(400).optional(),
+    })
+    .optional(),
+  flowResponse: z.record(z.string(), z.unknown()).optional(),
   httpResponse: z
     .object({ status: z.number().int().min(100).max(599), body: z.unknown() })
     .optional(),

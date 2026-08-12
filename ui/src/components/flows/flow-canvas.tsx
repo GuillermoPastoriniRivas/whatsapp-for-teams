@@ -4,7 +4,7 @@
 // Canvas @xyflow. Vive dentro de un wrapper .zoom-neutral (el zoom CSS global
 // rompería la matemática de punteros). Excluido del React Compiler.
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -20,8 +20,10 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { FlowNodeComponent } from "./flow-node";
+import { EdgeActions, FlowEdgeComponent } from "./flow-edge";
 
 const nodeTypes = { flowNode: FlowNodeComponent };
+const edgeTypes = { flowEdge: FlowEdgeComponent };
 
 interface FlowCanvasProps {
   nodes: Node[];
@@ -36,6 +38,15 @@ interface FlowCanvasProps {
 
 function CanvasInner(props: FlowCanvasProps) {
   const { screenToFlowPosition } = useReactFlow();
+  const { onEdgesChange, readOnly } = props;
+
+  const edgeActions = useMemo(
+    () => ({
+      remove: (edgeId: string) => onEdgesChange([{ id: edgeId, type: "remove" }]),
+      editable: !readOnly,
+    }),
+    [onEdgesChange, readOnly],
+  );
 
   const handleDrop = useCallback(
     (event: React.DragEvent) => {
@@ -49,44 +60,49 @@ function CanvasInner(props: FlowCanvasProps) {
   );
 
   return (
-    <ReactFlow
-      nodes={props.nodes}
-      edges={props.edges}
-      nodeTypes={nodeTypes}
-      onNodesChange={props.onNodesChange}
-      onEdgesChange={props.onEdgesChange}
-      onConnect={props.onConnect}
-      onSelectionChange={({ nodes }) => props.onSelectNode(nodes[0]?.id ?? null)}
-      onDrop={handleDrop}
-      onDragOver={(event) => {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-      }}
-      fitView
-      snapToGrid
-      snapGrid={[16, 16]}
-      proOptions={{ hideAttribution: true }}
-      nodesConnectable={!props.readOnly}
-      nodesDraggable={!props.readOnly}
-      elementsSelectable
-      deleteKeyCode={props.readOnly ? null : ["Backspace", "Delete"]}
-      defaultEdgeOptions={{ type: "smoothstep" }}
-      className="bg-muted/30"
-    >
-      <Background gap={16} size={1} />
-      <Controls showInteractive={false} />
-      {/* Los colores por defecto del minimapa son grises fijos: el velo de la
-          zona fuera de vista es casi blanco y en modo oscuro quedaba un recuadro
-          claro sobre el canvas. Van con tokens para seguir al tema. */}
-      <MiniMap
-        pannable
-        zoomable
-        className="!bg-background"
-        maskColor="color-mix(in oklab, var(--foreground) 10%, transparent)"
-        nodeColor="color-mix(in oklab, var(--muted-foreground) 60%, transparent)"
-        nodeStrokeColor="var(--border)"
-      />
-    </ReactFlow>
+    <EdgeActions.Provider value={edgeActions}>
+      <ReactFlow
+        nodes={props.nodes}
+        edges={props.edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onNodesChange={props.onNodesChange}
+        onEdgesChange={props.onEdgesChange}
+        onConnect={props.onConnect}
+        onSelectionChange={({ nodes }) => props.onSelectNode(nodes[0]?.id ?? null)}
+        onDrop={handleDrop}
+        onDragOver={(event) => {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+        }}
+        fitView
+        snapToGrid
+        snapGrid={[16, 16]}
+        proOptions={{ hideAttribution: true }}
+        nodesConnectable={!props.readOnly}
+        nodesDraggable={!props.readOnly}
+        elementsSelectable
+        deleteKeyCode={props.readOnly ? null : ["Backspace", "Delete"]}
+        defaultEdgeOptions={{ type: "flowEdge" }}
+        edgesFocusable={!props.readOnly}
+        edgesReconnectable={false}
+        className="bg-muted/30"
+      >
+        <Background gap={16} size={1} />
+        <Controls showInteractive={false} />
+        {/* Los colores por defecto del minimapa son grises fijos: el velo de la
+            zona fuera de vista es casi blanco y en modo oscuro quedaba un recuadro
+            claro sobre el canvas. Van con tokens para seguir al tema. */}
+        <MiniMap
+          pannable
+          zoomable
+          className="!bg-background"
+          maskColor="color-mix(in oklab, var(--foreground) 10%, transparent)"
+          nodeColor="color-mix(in oklab, var(--muted-foreground) 60%, transparent)"
+          nodeStrokeColor="var(--border)"
+        />
+      </ReactFlow>
+    </EdgeActions.Provider>
   );
 }
 

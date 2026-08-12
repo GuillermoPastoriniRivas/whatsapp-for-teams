@@ -14,13 +14,12 @@ import type { FlowExecutionRepository } from '../../../../domain/repositories/fl
 import type { FlowNodeStatRepository } from '../../../../domain/repositories/flow-node-stat.repository.js';
 import type { FlowConnectionRepository } from '../../../../domain/repositories/flow-connection.repository.js';
 import type { ConversationRepository } from '../../../../domain/repositories/conversation.repository.js';
+import { adVariables } from '../../../../domain/value-objects/message-referral.js';
 import type { ContactRepository } from '../../../../domain/repositories/contact.repository.js';
 import type { PhoneNumberRepository } from '../../../../domain/repositories/phone-number.repository.js';
 import type { AgentRepository } from '../../../../domain/repositories/agent.repository.js';
 import type { AgentPhoneAccessRepository } from '../../../../domain/repositories/agent-phone-access.repository.js';
 import type { TenantRepository } from '../../../../domain/repositories/tenant.repository.js';
-import type { ServiceProviderRepository } from '../../../../domain/repositories/service-provider.repository.js';
-import { normalizeService } from '../../provider/service-provider.use-cases.js';
 import { resolveAiPersona } from '../../../../domain/value-objects/ai-persona.js';
 import type { AiUsageRepository } from '../../../../domain/repositories/ai-usage.repository.js';
 import type { MessageRepository } from '../../../../domain/repositories/message.repository.js';
@@ -32,6 +31,8 @@ import type { MessageTemplateRepository } from '../../../../domain/repositories/
 import type { MediaAssetRepository } from '../../../../domain/repositories/media-asset.repository.js';
 import type { MediaAsset } from '../../../../domain/entities/media-asset.entity.js';
 import { isBsuidOnly, recipientIdentityOf, templateRequiresPhone } from '../../../../domain/value-objects/recipient-identity.js';
+import type { MessageSenderKind } from '../../../../domain/entities/message.entity.js';
+import { billingForConversation, type OutboundBillingExtras } from '../../billing/outbound-billing.helper.js';
 import { MediaKind } from '../../../../domain/enums/media-kind.enum.js';
 import type { MediaAccessService } from '../../media/media-access.service.js';
 import type { FlowSecretsPort } from '../../../ports/flow-secrets.port.js';
@@ -80,6 +81,20 @@ const STEP_BUDGET_PER_RUN = 20;
 const MAX_STEPS = 200;
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_REPROMPTS = 2;
+/** Meta baja el indicador de tipeo a los 25 s: esperar más muestra un chat mudo. */
+const TYPING_MAX_SECONDS = 25;
+
+/** Cuando el archivo viene por URL el tipo lo dice el nodo: no hay asset que preguntarle. */
+const URL_MEDIA_MESSAGE_TYPES: Record<string, MessageType> = {
+  image: MessageType.IMAGE,
+  video: MessageType.VIDEO,
+  audio: MessageType.AUDIO,
+  document: MessageType.DOCUMENT,
+  sticker: MessageType.STICKER,
+};
+
+/** Meta rechaza el pie de foto en estos: no llevan texto acompañante. */
+const MEDIA_TYPES_WITHOUT_CAPTION = new Set<MessageType>([MessageType.AUDIO, MessageType.STICKER]);
 
 /** El archivo elegido define el tipo de mensaje, no lo que dice el nodo. */
 const FLOW_MEDIA_MESSAGE_TYPES: Record<MediaKind, MessageType> = {
@@ -108,6 +123,19 @@ interface RunCtx {
   variables: Record<string, unknown>;
 }
 
+/**
+ * Contabilidad de un saliente del flujo. Se arma desde el contexto de la
+ * ejecución para que ningún nodo tenga que acordarse de armarla a mano.
+ */
+function flowBilling(ctx: RunCtx, extras: Omit<OutboundBillingExtras, 'senderKind'> & { senderKind?: MessageSenderKind } = {}) {
+  const { senderKind = 'flow', ...rest } = extras;
+  return billingForConversation(ctx.conversation, ctx.contact, {
+    senderKind,
+    flowId: ctx.flow.id,
+    ...rest,
+  });
+}
+
 function freshToken(): string {
   return randomBytes(16).toString('hex');
 }
@@ -131,7 +159,6 @@ export class FlowEngineService {
     private readonly phoneRepo: PhoneNumberRepository,
     private readonly agentRepo: AgentRepository,
     private readonly tenantRepo: TenantRepository,
-    private readonly providerRepo: ServiceProviderRepository,
     private readonly usageRepo: AiUsageRepository,
     private readonly messageRepo: MessageRepository,
     private readonly labelRepo: LabelRepository,
@@ -208,6 +235,46 @@ export class FlowEngineService {
 
     if (input.reason === 'timeout') {
       handle = waitState.kind === 'delay' ? 'out' : 'timeout';
+    } else if (node.type === 'action.send_flow') {
+      const respuesta = input.messageId
+        ? ((await this.messageRepo.findById(input.messageId))?.interactivePayload as
+            | { kind?: string; token?: string; fields?: Record<string, unknown> }
+            | null)
+        : null;
+      const esDeEsteNodo = respuesta?.kind === 'flow_response' && respuesta.token === `${ctx.execId}:${node.id}`;
+
+      if (esDeEsteNodo) {
+        handle = 'completed';
+        const fields = respuesta.fields ?? {};
+        if (waitState.saveAs) this.setVar(ctx, waitState.saveAs, fields);
+        note = Object.keys(fields).slice(0, 4).join(', ') || 'formulario completado';
+      } else if (waitState.attempts < MAX_REPROMPTS) {
+        // Escribir mientras el formulario está abierto no lo completa: se le
+        // recuerda que tiene que tocar el botón.
+        return this.reprompt(ctx, node, waitState);
+      } else {
+        handle = 'timeout';
+        note = 'no completó el formulario';
+      }
+    } else if (node.type === 'action.request_location') {
+      const coords = input.messageId ? (await this.messageRepo.findById(input.messageId))?.location ?? null : null;
+      if (coords) {
+        handle = 'reply';
+        if (waitState.saveAs) {
+          this.setVar(ctx, waitState.saveAs, {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            name: coords.name ?? '',
+            address: coords.address ?? '',
+          });
+        }
+        note = `${coords.latitude}, ${coords.longitude}`;
+      } else if (waitState.attempts < MAX_REPROMPTS) {
+        return this.reprompt(ctx, node, waitState);
+      } else {
+        handle = 'invalid';
+        note = 'no mandó una ubicación';
+      }
     } else if (node.type === 'action.ask') {
       const body = (input.body ?? '').trim();
       if (validateAnswer(waitState.validation, body)) {
@@ -461,7 +528,11 @@ export class FlowEngineService {
     const fallbackMessage =
       node.type === 'action.ask'
         ? 'Mmm, eso no parece válido. ¿Me lo repetís?'
-        : 'Elegí una opción tocando un botón 🙂';
+        : node.type === 'action.request_location'
+          ? 'Necesito tu ubicación: tocá el botón de acá arriba y compartila 📍'
+          : node.type === 'action.send_flow'
+            ? 'Para seguir necesito que completes el formulario de arriba 🙂'
+            : 'Elegí una opción tocando un botón 🙂';
     const { text } = renderTemplate(String(data.invalidMessage ?? '') || fallbackMessage, this.varCtx(ctx));
 
     try {
@@ -505,6 +576,16 @@ export class FlowEngineService {
         return this.execSendMedia(ctx, data);
       case 'action.send_location':
         return this.execSendLocation(ctx, data);
+      case 'action.send_contact':
+        return this.execSendContact(ctx, data);
+      case 'action.request_location':
+        return this.execRequestLocation(ctx, node, data);
+      case 'action.send_flow':
+        return this.execSendFlow(ctx, node, data);
+      case 'action.react':
+        return this.execReact(ctx, data);
+      case 'action.typing':
+        return this.execTyping(ctx, node, data);
       case 'action.send_cta_url':
         return this.execSendCtaUrl(ctx, data);
       case 'action.set_variable':
@@ -527,8 +608,6 @@ export class FlowEngineService {
         return this.execAiRoute(ctx, data);
       case 'action.handoff_ai':
         return this.execHandoffAi(ctx, node, data);
-      case 'action.handoff_provider':
-        return this.execHandoffProvider(ctx, data);
       case 'action.handoff_human':
         return this.execHandoffHuman(ctx, data);
       case 'action.assign_agent':
@@ -555,8 +634,27 @@ export class FlowEngineService {
     if (windowIssue) return windowIssue.policy === 'skip' ? { kind: 'advance', handle: 'out', skipped: true, note: 'Ventana de 24 h cerrada — omitido' } : { kind: 'error', message: 'Ventana de 24 h cerrada' };
 
     const { text, missing } = renderTemplate(String(data.body ?? ''), this.varCtx(ctx));
-    await this.sendSessionMessage(ctx, text.substring(0, 4096));
+    await this.sendSessionMessage(ctx, text.substring(0, 4096), undefined, await this.quotedWamid(ctx, data));
     return { kind: 'advance', handle: 'out', note: missing.length ? `variables sin valor: ${missing.join(', ')}` : undefined };
+  }
+
+  /**
+   * El último mensaje del cliente. Es a lo único que Meta deja reaccionar
+   * (131009 si es propio) y lo que se cita al responder.
+   */
+  private async lastInboundWamid(ctx: RunCtx): Promise<string | null> {
+    const { data } = await this.messageRepo.findByConversationId(ctx.conversation.id, 1, 30);
+    // Se ordena por timestamp acá y no se confía en el orden del repositorio:
+    // sus dos llamadores históricos lo interpretaban al revés entre sí.
+    const inbound = data
+      .filter((message) => message.direction === MessageDirection.INBOUND && message.waMessageId)
+      .sort((left, right) => right.timestamp.getTime() - left.timestamp.getTime());
+    return inbound[0]?.waMessageId ?? null;
+  }
+
+  private async quotedWamid(ctx: RunCtx, data: Record<string, any>): Promise<string | undefined> {
+    if (!data.quoteLastInbound) return undefined;
+    return (await this.lastInboundWamid(ctx)) ?? undefined;
   }
 
   private async execSendMedia(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
@@ -568,14 +666,14 @@ export class FlowEngineService {
     }
 
     const varCtx = this.varCtx(ctx);
-    const caption = data.caption ? renderTemplate(String(data.caption), varCtx).text.substring(0, 1024) : undefined;
+    const rawCaption = data.caption ? renderTemplate(String(data.caption), varCtx).text.substring(0, 1024) : undefined;
 
     // Un archivo de la biblioteca se manda por media_id: lo subimos nosotros y
     // no hace falta que sea público. La URL queda para casos externos.
     let mediaId: string | undefined;
     let url: string | undefined;
     let asset: MediaAsset | null = null;
-    let messageType = data.mediaType === 'document' ? MessageType.DOCUMENT : MessageType.IMAGE;
+    let messageType = URL_MEDIA_MESSAGE_TYPES[String(data.mediaType ?? 'image')] ?? MessageType.IMAGE;
 
     if (data.mediaAssetId) {
       asset = await this.assetRepo.findById(String(data.mediaAssetId));
@@ -592,16 +690,20 @@ export class FlowEngineService {
       if (!/^https:\/\//i.test(url)) return { kind: 'error', message: 'La URL del archivo debe ser https' };
     }
 
+    const caption = MEDIA_TYPES_WITHOUT_CAPTION.has(messageType) ? undefined : rawCaption;
+
     const { waMessageId } = await this.messagingApi.sendMessage({
       provider: ctx.phone.provider,
       providerConfig: ctx.phone.providerConfig,
       phoneNumberId: ctx.phone.phoneNumberId,
       ...recipientIdentityOf(ctx.contact),
+      billing: flowBilling(ctx),
       type: messageType,
       body: caption,
       mediaId,
       mediaUrl: url,
       filename: asset?.filename ?? (data.filename ? String(data.filename) : undefined),
+      contextWaMessageId: await this.quotedWamid(ctx, data),
     });
 
     const message = await this.messageRepo.upsertByWaMessageId({
@@ -667,6 +769,209 @@ export class FlowEngineService {
         this.setVar(ctx, saveAs, rendered);
         return { kind: 'advance', handle: 'out', note: rendered.substring(0, 60) };
     }
+  }
+
+  /** Tarjeta de contacto: el cliente la guarda en su agenda con un toque. */
+  private async execSendContact(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    const windowIssue = this.checkWindow(ctx, data.windowPolicy);
+    if (windowIssue) {
+      return windowIssue.policy === 'skip'
+        ? { kind: 'advance', handle: 'out', skipped: true, note: 'Ventana de 24 h cerrada — omitido' }
+        : { kind: 'error', message: 'Ventana de 24 h cerrada' };
+    }
+
+    const varCtx = this.varCtx(ctx);
+    const render = (value: unknown) => renderTemplate(String(value ?? ''), varCtx).text.trim();
+
+    const formattedName = render(data.contactName);
+    if (!formattedName) return { kind: 'error', message: 'La tarjeta necesita un nombre' };
+
+    const phone = render(data.contactPhone).replace(/[^\d+]/g, '');
+    const email = render(data.contactEmail);
+    const company = render(data.contactCompany);
+
+    const { waMessageId } = await this.messagingApi.sendMessage({
+      provider: ctx.phone.provider,
+      providerConfig: ctx.phone.providerConfig,
+      phoneNumberId: ctx.phone.phoneNumberId,
+      ...recipientIdentityOf(ctx.contact),
+      billing: flowBilling(ctx),
+      type: MessageType.CONTACTS,
+      contacts: [
+        {
+          name: { formatted_name: formattedName },
+          ...(phone ? { phones: [{ phone, type: 'CELL' }] } : {}),
+          ...(email ? { emails: [{ email, type: 'WORK' }] } : {}),
+          ...(company ? { org: { company } } : {}),
+        },
+      ],
+      contextWaMessageId: await this.quotedWamid(ctx, data),
+    });
+
+    await this.persistOutbound(ctx, waMessageId, MessageType.CONTACTS, formattedName, null);
+    return { kind: 'advance', handle: 'out', note: formattedName };
+  }
+
+  /**
+   * Pedir la ubicación con el botón nativo. Llegan coordenadas exactas, que es
+   * mucho mejor que una dirección escrita a mano para un envío o una visita.
+   */
+  private async execRequestLocation(ctx: RunCtx, node: FlowNode, data: Record<string, any>): Promise<NodeResult> {
+    const windowIssue = this.checkWindow(ctx, data.windowPolicy);
+    if (windowIssue) {
+      return windowIssue.policy === 'skip'
+        ? { kind: 'advance', handle: 'timeout', skipped: true, note: 'Ventana de 24 h cerrada — omitido' }
+        : { kind: 'error', message: 'Ventana de 24 h cerrada' };
+    }
+
+    const { text } = renderTemplate(String(data.body ?? ''), this.varCtx(ctx));
+    const body = text.substring(0, 1024);
+    const sentAt = new Date();
+    await this.sendSessionMessage(ctx, body, { kind: 'location_request', body });
+
+    const timeoutMs = Math.min(durationToMs(data.timeout) ?? DEFAULT_REPLY_TIMEOUT_MS, MAX_WAIT_MS);
+    return {
+      kind: 'wait',
+      sentAt,
+      wait: {
+        nodeId: node.id,
+        kind: 'reply',
+        timeoutAt: new Date(Date.now() + timeoutMs),
+        waitingSince: new Date(),
+        saveAs: typeof data.saveAs === 'string' && data.saveAs ? data.saveAs : null,
+        optionMap: null,
+        textMap: null,
+        attempts: 0,
+        validation: null,
+      },
+    };
+  }
+
+  /**
+   * Manda un formulario nativo de WhatsApp (Flow) y espera a que el cliente lo
+   * complete. La respuesta vuelve en un solo mensaje y **no trae el id del
+   * Flow**: se ata por el `flow_token`, que acá es el id de esta ejecución.
+   */
+  private async execSendFlow(ctx: RunCtx, node: FlowNode, data: Record<string, any>): Promise<NodeResult> {
+    const windowIssue = this.checkWindow(ctx, data.windowPolicy);
+    if (windowIssue) {
+      return windowIssue.policy === 'skip'
+        ? { kind: 'advance', handle: 'timeout', skipped: true, note: 'Ventana de 24 h cerrada — omitido' }
+        : { kind: 'error', message: 'Ventana de 24 h cerrada' };
+    }
+
+    const flowId = String(data.flowId ?? '').trim();
+    if (!flowId) return { kind: 'error', message: 'El nodo no tiene ningún formulario elegido' };
+
+    const varCtx = this.varCtx(ctx);
+    const body = renderTemplate(String(data.body ?? ''), varCtx).text.substring(0, 1024);
+    const token = `${ctx.execId}:${node.id}`;
+    const sentAt = new Date();
+
+    await this.sendSessionMessage(ctx, body, {
+      kind: 'flow',
+      body,
+      ...(data.footer ? { footer: renderTemplate(String(data.footer), varCtx).text } : {}),
+      ...(data.header ? { header: renderTemplate(String(data.header), varCtx).text } : {}),
+      flow: {
+        id: flowId,
+        token,
+        cta: String(data.cta ?? 'Abrir formulario').substring(0, 30),
+        screen: String(data.screen ?? '') || undefined,
+        mode: data.mode === 'draft' ? 'draft' : 'published',
+        action: data.hasEndpoint ? 'data_exchange' : 'navigate',
+      },
+    });
+
+    const timeoutMs = Math.min(durationToMs(data.timeout) ?? DEFAULT_REPLY_TIMEOUT_MS, MAX_WAIT_MS);
+    return {
+      kind: 'wait',
+      sentAt,
+      wait: {
+        nodeId: node.id,
+        kind: 'reply',
+        timeoutAt: new Date(Date.now() + timeoutMs),
+        waitingSince: new Date(),
+        saveAs: typeof data.saveAs === 'string' && data.saveAs ? data.saveAs : null,
+        optionMap: null,
+        textMap: null,
+        attempts: 0,
+        validation: null,
+      },
+    };
+  }
+
+  /**
+   * Reaccionar al último mensaje del cliente. Meta rechaza reaccionar a los
+   * propios (131009), así que si no hay entrante no se intenta.
+   */
+  private async execReact(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
+    if (this.checkWindow(ctx, 'error')) return { kind: 'error', message: 'Ventana de 24 h cerrada' };
+
+    const emoji = String(data.emoji ?? '').trim();
+    if (!emoji) return { kind: 'error', message: 'Elegí con qué emoji reaccionar' };
+
+    const target = await this.lastInboundWamid(ctx);
+    if (!target) {
+      return { kind: 'advance', handle: 'out', skipped: true, note: 'El cliente todavía no escribió: no hay a qué reaccionar' };
+    }
+
+    await this.messagingApi.sendMessage({
+      provider: ctx.phone.provider,
+      providerConfig: ctx.phone.providerConfig,
+      phoneNumberId: ctx.phone.phoneNumberId,
+      ...recipientIdentityOf(ctx.contact),
+      billing: flowBilling(ctx),
+      type: MessageType.REACTION,
+      reaction: { waMessageId: target, emoji },
+    });
+
+    // No se persiste como mensaje: en el chat una reacción es un chip sobre la
+    // burbuja del cliente, no una burbuja propia.
+    return { kind: 'advance', handle: 'out', note: emoji };
+  }
+
+  /**
+   * "Escribiendo…" y tilde azul sobre el último mensaje del cliente. El
+   * indicador dura hasta 25 s o hasta que mandes algo, así que el nodo espera:
+   * sin esa espera el siguiente mensaje lo borraría al instante.
+   */
+  private async execTyping(ctx: RunCtx, node: FlowNode, data: Record<string, any>): Promise<NodeResult> {
+    const target = await this.lastInboundWamid(ctx);
+    if (!target) {
+      return { kind: 'advance', handle: 'out', skipped: true, note: 'El cliente todavía no escribió' };
+    }
+
+    try {
+      await this.messagingApi.markAsRead({
+        provider: ctx.phone.provider,
+        providerConfig: ctx.phone.providerConfig,
+        phoneNumberId: ctx.phone.phoneNumberId,
+        waMessageId: target,
+        typing: true,
+      });
+    } catch (error: any) {
+      // Que no se vea el "escribiendo…" no puede tumbar la conversación.
+      this.logger.warn(`No se pudo mostrar el indicador de tipeo: ${error?.message}`);
+      return { kind: 'advance', handle: 'out', skipped: true, note: 'No se pudo mostrar el indicador' };
+    }
+
+    const seconds = Math.min(Math.max(parseInt(String(data.seconds ?? 3), 10) || 3, 1), TYPING_MAX_SECONDS);
+    return {
+      kind: 'wait',
+      sentAt: new Date(),
+      wait: {
+        nodeId: node.id,
+        kind: 'delay',
+        timeoutAt: new Date(Date.now() + seconds * 1000),
+        waitingSince: new Date(),
+        saveAs: null,
+        optionMap: null,
+        textMap: null,
+        attempts: 0,
+        validation: null,
+      },
+    };
   }
 
   /** Avisar a mis sistemas: publica un evento propio en los webhooks del tenant. */
@@ -867,6 +1172,9 @@ export class FlowEngineService {
         language: template.language,
         components: built.components,
       },
+      // La categoría se congela acá: Meta la puede cambiar después y entonces
+      // leerla de la plantilla daría una tarifa que no es la que se cobró.
+      billing: flowBilling(ctx, { templateId: template.id, templateCategory: template.category }),
     });
     await this.persistOutbound(ctx, waMessageId, MessageType.TEMPLATE, built.renderedBody, null);
     return { kind: 'advance', handle: 'out' };
@@ -971,6 +1279,7 @@ export class FlowEngineService {
       bubbles,
       interBubbleDelayMs: config.multiMessage?.interBubbleDelayMs ?? 1200,
       replyToWaMessageId: lastInboundOf(history)?.waMessageId ?? null,
+      billing: flowBilling(ctx, { senderKind: 'ai' }),
     });
 
     await this.conversationRepo.update(ctx.conversation.id, { lastMessageAt: new Date() } as any);
@@ -1048,155 +1357,6 @@ export class FlowEngineService {
     // El job se encola en afterFinish, ya cerrada la ejecución: mientras siga
     // viva, el guard de ProcessAiResponseUseCase lo descartaría sin reintento.
     return { kind: 'end', endReason: 'delegated_ai', note: persona.name, delegateToAiNodeId: node.id };
-  }
-
-  /**
-   * Le pasa el dato del cliente a un proveedor externo (el carpintero).
-   *
-   * NO transfiere la conversación: eso no existe en WhatsApp. Le manda al
-   * proveedor una plantilla con los datos del cliente y un botón `wa.me` para
-   * que arranque él, y opcionalmente le avisa al cliente con un botón para
-   * escribirle él. El que reaccione primero conecta.
-   *
-   * El mensaje al proveedor se manda directo, sin crear conversación: un
-   * proveedor no es un contacto de la bandeja. Lo que queda como rastro es una
-   * nota en el chat del cliente, que es donde alguien la va a buscar.
-   */
-  private async execHandoffProvider(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
-    const varCtx = this.varCtx(ctx);
-    const service = normalizeService(renderTemplate(String(data.service ?? ''), varCtx).text);
-    if (!service) return { kind: 'error', message: 'No se pudo resolver qué servicio pidió el cliente' };
-
-    // El botón que recibe el proveedor es un wa.me al teléfono del cliente. Si
-    // el cliente solo compartió su usuario de WhatsApp no hay link posible, y
-    // mandarle el dato igual dejaría al proveedor sin forma de contestar.
-    if (!ctx.contact.phone) {
-      return {
-        kind: 'error',
-        message: 'El cliente no compartió su teléfono, así que el proveedor no podría escribirle',
-      };
-    }
-
-    // La plantilla se resuelve siempre: es el camino cuando la ventana está
-    // cerrada, y la red cuando el mensaje de sesión rebota.
-    const template = await this.templateRepo.findById(String(data.templateId ?? ''));
-    if (!template || template.tenantId !== ctx.tenantId) return { kind: 'error', message: 'Plantilla inexistente' };
-    if (template.status !== TemplateStatus.APPROVED) return { kind: 'error', message: 'La plantilla no está aprobada' };
-    if (template.phoneNumberId !== ctx.phone.id) {
-      return { kind: 'error', message: 'La plantilla pertenece a otro número de WhatsApp' };
-    }
-
-    // Reparto atómico: con dos clientes eligiendo el mismo servicio a la vez,
-    // leer y después escribir se los daría a los dos al mismo proveedor.
-    const provider = await this.providerRepo.claimNextForService(ctx.tenantId, service);
-    if (!provider) return { kind: 'advance', handle: 'no_provider', note: `sin proveedor para "${service}"` };
-
-    // `provider.*` queda disponible para las variables de la plantilla y para
-    // el aviso al cliente ("ya le pasé tus datos a {{provider.name}}").
-    const withProvider = { ...varCtx, provider: { name: provider.name, phone: provider.phone, service } };
-
-    const variables: Record<string, string> = {};
-    const mapping: Record<string, { source?: string; value?: string }> = data.variables ?? {};
-    for (const [placeholder, def] of Object.entries(mapping)) {
-      const source = def?.source ?? 'static';
-      const rawValue = String(def?.value ?? '');
-      if (source === 'contact_field') {
-        variables[placeholder] = String(resolvePath(withProvider as any, `contact.${rawValue}`) ?? '');
-      } else if (source === 'flow_var') {
-        variables[placeholder] = String(resolvePath(withProvider as any, rawValue) ?? '');
-      } else {
-        variables[placeholder] = renderTemplate(rawValue, withProvider).text;
-      }
-    }
-
-    // Si el proveedor nos escribió hace menos de 24 h, la ventana está abierta y
-    // le podemos mandar texto libre: no se factura y no hay que encajar el
-    // detalle en variables numeradas. Si no, va la plantilla.
-    const freeFormBody = renderTemplate(String(data.providerBody ?? ''), withProvider).text.trim();
-    let sentFreeForm = false;
-
-    if (freeFormBody && (await this.providerWindowIsOpen(ctx, provider.phone))) {
-      try {
-        await this.messagingApi.sendMessage({
-          provider: ctx.phone.provider,
-          providerConfig: ctx.phone.providerConfig,
-          phoneNumberId: ctx.phone.phoneNumberId,
-          to: provider.phone,
-          type: MessageType.TEXT,
-          body: freeFormBody.substring(0, 4096),
-        });
-        sentFreeForm = true;
-      } catch (error: any) {
-        // La ventana pudo cerrarse entre el chequeo y el envío — son segundos,
-        // pero pasa. Se cae a la plantilla en vez de perder el dato.
-        //
-        // Si el envío llegó a Meta y lo que falló fue la respuesta, el proveedor
-        // recibe el aviso dos veces. Es un mal mucho menor que perder el lead.
-        this.logger.warn(
-          `El mensaje de sesión al proveedor ${provider.id} falló, se reintenta con la plantilla: ${error?.message}`,
-        );
-      }
-    }
-
-    if (!sentFreeForm) {
-      const built = buildTemplatePayload(template.components, variables);
-      await this.messagingApi.sendMessage({
-        provider: ctx.phone.provider,
-        providerConfig: ctx.phone.providerConfig,
-        phoneNumberId: ctx.phone.phoneNumberId,
-        to: provider.phone,
-        type: 'template',
-        template: { name: template.name, language: template.language, components: built.components },
-      });
-    }
-
-    // Aviso al cliente, con su propio botón para escribirle al proveedor. Es lo
-    // que evita que el lead se enfríe si el proveedor no mira el teléfono.
-    if (data.notifyCustomer !== false) {
-      const body = renderTemplate(String(data.customerBody ?? ''), withProvider).text.trim();
-      if (body) {
-        await this.sendSessionMessage(ctx, body.substring(0, 1024), {
-          kind: 'cta_url',
-          body: body.substring(0, 1024),
-          buttonText: (renderTemplate(String(data.customerButtonText ?? ''), withProvider).text.trim() || 'Escribirle').substring(0, 20),
-          url: `https://wa.me/${provider.phone}`,
-        });
-      }
-    }
-
-    await this.createFlowNote(
-      ctx,
-      `Dato pasado a ${provider.name} (+${provider.phone}) por "${service}" ` +
-        `(${sentFreeForm ? 'mensaje directo' : 'plantilla'}).`,
-    );
-
-    this.setVar(ctx, 'proveedor', provider.name);
-    return { kind: 'advance', handle: 'out', note: provider.name };
-  }
-
-  /**
-   * ¿Se le puede mandar texto libre a este proveedor?
-   *
-   * Solo si nos escribió en las últimas 24 h. Ese estado vive en la
-   * conversación, y un proveedor tiene conversación **solo si alguna vez
-   * escribió** — la crea el pipeline de entrada como con cualquiera. Acá se lee,
-   * nunca se crea: un proveedor no es un contacto de la bandeja.
-   *
-   * La ventana es por (contacto, línea): que nos haya escrito al número A no
-   * habilita mandarle desde el B, y el flujo corre en una línea concreta.
-   */
-  private async providerWindowIsOpen(ctx: RunCtx, phone: string): Promise<boolean> {
-    try {
-      const contact = await this.contactRepo.findByPhone(ctx.tenantId, phone);
-      if (!contact) return false;
-      const conversation = await this.conversationRepo.findByContactAndPhone(contact.id, ctx.phone.id);
-      if (!conversation) return false;
-      return Date.now() - conversation.lastInboundAt.getTime() < WINDOW_MS;
-    } catch (error: any) {
-      // Ante la duda, plantilla: cuesta plata pero llega.
-      this.logger.warn(`No se pudo leer la ventana del proveedor: ${error?.message}`);
-      return false;
-    }
   }
 
   private async execHandoffHuman(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {
@@ -1574,6 +1734,7 @@ export class FlowEngineService {
       webhook: (ctx.variables.webhook as Record<string, unknown>) ?? null,
       flow: { name: ctx.flow.name },
       sender: (ctx.variables.sender as Record<string, unknown>) ?? null,
+      ad: adVariables(ctx.conversation.attribution),
     };
   }
 
@@ -1621,6 +1782,7 @@ export class FlowEngineService {
       ...recipientIdentityOf(ctx.contact),
       type: MessageType.LOCATION,
       location,
+      billing: flowBilling(ctx),
     });
 
     await this.persistOutbound(ctx, waMessageId, MessageType.LOCATION, [name, address].filter(Boolean).join(': '), null, toMessageLocation(location));
@@ -1651,7 +1813,12 @@ export class FlowEngineService {
     return { kind: 'advance', handle: 'out' };
   }
 
-  private async sendSessionMessage(ctx: RunCtx, body: string, interactive?: InteractiveSendPayload): Promise<void> {
+  private async sendSessionMessage(
+    ctx: RunCtx,
+    body: string,
+    interactive?: InteractiveSendPayload,
+    contextWaMessageId?: string,
+  ): Promise<void> {
     const { waMessageId } = await this.messagingApi.sendMessage({
       provider: ctx.phone.provider,
       providerConfig: ctx.phone.providerConfig,
@@ -1660,6 +1827,8 @@ export class FlowEngineService {
       type: interactive ? 'interactive' : 'text',
       body,
       interactive,
+      contextWaMessageId,
+      billing: flowBilling(ctx),
     });
     await this.persistOutbound(
       ctx,

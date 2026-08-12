@@ -9,6 +9,7 @@ export interface FlowVariableContext {
   flow?: Record<string, unknown> | null;
   /** Quién escribe: `sender.type` lo lee el nodo Condición por dot-path. */
   sender?: Record<string, unknown> | null;
+  ad?: Record<string, unknown> | null;
 }
 
 /** Acceso por dot-path con soporte de índices: items.0.price */

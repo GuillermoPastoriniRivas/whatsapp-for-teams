@@ -45,6 +45,7 @@ import {
 import { FLOW_TEMPLATES } from '../../application/use-cases/flow/flow-templates.js';
 import { SimulateFlowUseCase } from '../../application/use-cases/flow/simulator/simulate-flow.use-case.js';
 import { SetupAssistantUseCase } from '../../application/use-cases/flow/assistant/setup-assistant.use-case.js';
+import { ListWhatsAppFlowsUseCase } from '../../application/use-cases/flow/list-whatsapp-flows.use-case.js';
 import { FlowInvalidGraphError, DomainError } from '../../domain/errors/domain-errors.js';
 import { FlowExecutionStatus } from '../../domain/enums/flow-execution-status.enum.js';
 import { isTrigger } from '../../application/use-cases/flow/engine/flow-node-types.js';
@@ -98,7 +99,17 @@ export class FlowController {
     @Inject('GetFlowVersionUseCase') private readonly getVersion: GetFlowVersionUseCase,
     @Inject('SimulateFlowUseCase') private readonly simulateFlow: SimulateFlowUseCase,
     @Inject('SetupAssistantUseCase') private readonly setupAssistant: SetupAssistantUseCase,
+    @Inject('ListWhatsAppFlowsUseCase') private readonly listWhatsAppFlows: ListWhatsAppFlowsUseCase,
   ) {}
+
+  @Get('whatsapp-flows')
+  @ApiOperation({
+    summary: 'WhatsApp Flows of the account',
+    description: 'Native forms built in WhatsApp Manager, read live from Meta so the node can pick one.',
+  })
+  async whatsappFlows(@CurrentAgent() agent: RequestAgent) {
+    return { data: await this.listWhatsAppFlows.execute(agent.tenantId) };
+  }
 
   @Get('templates')
   @ApiOperation({ summary: 'Flow template gallery' })
@@ -259,6 +270,8 @@ export class FlowController {
       session: (body.session ?? null) as any,
       text: body.text,
       optionId: body.optionId,
+      location: body.location,
+      flowResponse: body.flowResponse,
       httpResponse: body.httpResponse,
     });
     if (!result.ok) throwMapped(result.error);

@@ -4,9 +4,9 @@ import { outputHandles } from './engine/flow-node-types.js';
 
 // Las plantillas de la galería son lo primero que toca un tenant nuevo: si una
 // no pasa la validación de publicación, el "usar plantilla → publicar" falla en
-// el primer intento. El validador se fue endureciendo (capacidades del
-// proveedor, fallback de ai_route, línea de la plantilla), así que esto queda
-// como red para que ningún cambio futuro las rompa en silencio.
+// el primer intento. El validador se fue endureciendo (fallback de ai_route,
+// línea de la plantilla), así que esto queda como red para que ningún cambio
+// futuro las rompa en silencio.
 
 const refs: FlowGraphRefs = {
   templates: new Map(),

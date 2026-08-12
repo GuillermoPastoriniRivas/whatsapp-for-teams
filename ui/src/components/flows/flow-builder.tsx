@@ -59,7 +59,7 @@ function toCanvasEdges(graph: FlowGraph): Edge[] {
     source: e.source,
     sourceHandle: e.sourceHandle,
     target: e.target,
-    type: "smoothstep",
+    type: "flowEdge",
   }));
 }
 

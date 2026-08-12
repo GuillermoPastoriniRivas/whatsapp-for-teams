@@ -17,7 +17,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type { FlowExecutionRepository, CreateFlowExecutionInput, FlowExecutionCasPatch } from '../../../../domain/repositories/flow-execution.repository.js';
-import type { ConversationRepository, FindOrCreateResult, ConversationFilters, PaginatedResult } from '../../../../domain/repositories/conversation.repository.js';
+import type { ConversationRepository, FindOrCreateResult, ConversationFilters, PaginatedResult, AdPerformanceRow } from '../../../../domain/repositories/conversation.repository.js';
 import type { MessageRepository, UpsertMessageInput } from '../../../../domain/repositories/message.repository.js';
 import type { ContactRepository, BulkUpsertContactRow } from '../../../../domain/repositories/contact.repository.js';
 import type { ConversationEventRepository } from '../../../../domain/repositories/conversation-event.repository.js';
@@ -50,11 +50,13 @@ export interface SimulatedOutbound {
   mediaUrl?: string | null;
   interactive?: Record<string, unknown> | null;
   templateName?: string | null;
+  /** Tarjeta de contacto: sin esto la burbuja salía vacía. */
+  contactName?: string | null;
 }
 
 /** Acciones que no se ejecutan de verdad pero conviene mostrar en la traza */
 export interface SimulatedSideEffect {
-  kind: 'assign' | 'label' | 'note' | 'contact' | 'event' | 'http' | 'ai_handoff';
+  kind: 'assign' | 'label' | 'note' | 'contact' | 'event' | 'http' | 'ai_handoff' | 'reaction';
   detail: string;
 }
 
@@ -73,12 +75,23 @@ export class RecordingMessagingApi implements MessagingApiPort {
   constructor(private readonly recorder: SimulationRecorder) {}
 
   async sendMessage(params: SendMessageParams): Promise<SendMessageResult> {
+    // Una reacción no es una burbuja: en el chat es un chip sobre el mensaje
+    // del cliente. Como burbuja se veía como un mensaje vacío.
+    if (params.type === 'reaction') {
+      this.recorder.sideEffects.push({
+        kind: 'reaction',
+        detail: `Reaccionó con ${params.reaction?.emoji ?? ''} al último mensaje del cliente`,
+      });
+      return { waMessageId: `sim-${randomUUID()}` };
+    }
+
     this.recorder.outbound.push({
       type: params.type,
       body: params.body ?? null,
       mediaUrl: params.mediaUrl ?? null,
       interactive: (params.interactive as unknown as Record<string, unknown>) ?? null,
       templateName: params.template?.name ?? null,
+      contactName: params.contacts?.[0]?.name?.formatted_name ?? null,
     });
     return { waMessageId: `sim-${randomUUID()}` };
   }
@@ -258,6 +271,9 @@ export class InMemoryConversationRepository implements ConversationRepository {
   async clearUnread(): Promise<void> {}
   async countByTenantIdSince(): Promise<number> {
     return 0;
+  }
+  async adPerformance(): Promise<AdPerformanceRow[]> {
+    return [];
   }
 }
 
