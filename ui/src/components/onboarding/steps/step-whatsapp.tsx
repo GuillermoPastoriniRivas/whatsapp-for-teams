@@ -9,7 +9,7 @@ import { InlineNotice } from "@/components/shared/inline-notice";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { api, ApiError } from "@/lib/api";
 
-const WEBHOOK_URL = "https://api.asis.chat/webhooks/whatsapp";
+const WEBHOOK_URL = "https://asis.chat/api/webhooks/whatsapp";
 
 type Mode = "select" | "credentials" | "guide";
 

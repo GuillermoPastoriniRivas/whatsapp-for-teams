@@ -606,7 +606,7 @@ export default function LandingPage() {
                 <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-primary">POST /v1/messages</span>
               </div>
               <pre className="overflow-x-auto p-5 font-mono text-[13px] leading-6 text-muted-foreground">
-                <code>{`curl -X POST https://api.asis.chat/v1/messages \\
+                <code>{`curl -X POST https://asis.chat/api/v1/messages \\
   -H "X-Api-Key: ak_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{
