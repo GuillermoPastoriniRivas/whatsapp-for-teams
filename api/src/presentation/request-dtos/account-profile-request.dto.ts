@@ -38,6 +38,7 @@ export const UpdateAccountProfileRequestSchema = z.object({
         .array(z.object({ question: z.string().max(300), answer: z.string().max(2000) }))
         .max(100),
       extraNotes: z.string().max(4000),
+      assistantInstructions: z.string().max(8000).default(''),
     })
     .optional(),
   timezone: z.string().max(60).nullable().optional(),

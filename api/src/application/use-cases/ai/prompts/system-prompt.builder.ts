@@ -129,8 +129,10 @@ No operating hours are configured for this business. Always treat the business a
   }
   parts.push(`## Communication Style\n${style.join('\n')}`);
 
-  // ── 5. Vertical playbook ──────────────────────────────────────────────
-  parts.push(`## How This Business Works\n${template.instructions}`);
+  // ── 5. Cómo trabaja este negocio ──────────────────────────────────────
+  if (profile.assistantInstructions?.trim()) {
+    parts.push(`## How This Business Works\n${profile.assistantInstructions.trim()}`);
+  }
 
   // ── 6. Business information ───────────────────────────────────────────
   const info: string[] = [];

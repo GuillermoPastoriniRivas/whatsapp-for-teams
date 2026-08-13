@@ -38,6 +38,7 @@ export interface BusinessProfile {
   catalog: CatalogItem[];
   faqs: FaqEntry[];
   extraNotes: string;
+  assistantInstructions: string;
 }
 
 export const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
@@ -49,4 +50,5 @@ export const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
   catalog: [],
   faqs: [],
   extraNotes: '',
+  assistantInstructions: '',
 };

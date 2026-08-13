@@ -28,6 +28,8 @@ function buildFactory(overrides: Record<string, any> = {}): AsisMcpServerFactory
     connectionRepo: { findByTenantId: jest.fn().mockResolvedValue([]) },
     sendApiMessage: { execute: jest.fn() },
     createContact: { execute: jest.fn() },
+    getAccountProfile: { execute: jest.fn() },
+    updateAccountProfile: { execute: jest.fn() },
     createLabel: { execute: jest.fn() },
     updateLabel: { execute: jest.fn() },
     createFlow: { execute: jest.fn() },
@@ -49,6 +51,8 @@ function buildFactory(overrides: Record<string, any> = {}): AsisMcpServerFactory
     deps.connectionRepo as any,
     deps.sendApiMessage as any,
     deps.createContact as any,
+    deps.getAccountProfile as any,
+    deps.updateAccountProfile as any,
     deps.createLabel as any,
     deps.updateLabel as any,
     deps.createFlow as any,
@@ -185,6 +189,22 @@ describe('AsisMcpServerFactory', () => {
     expect(names).toContain('list_http_connections');
     expect(names).toContain('create_label');
     expect(names).toContain('update_label');
+  });
+
+  it('expone programar al asistente, y las instrucciones no salen del código', async () => {
+    const client = await connect(buildFactory(), ALL_SCOPES);
+    const { tools } = await client.listTools();
+    const names = tools.map((tool) => tool.name);
+
+    expect(names).toContain('get_business_profile');
+    expect(names).toContain('update_business_profile');
+    expect(names).toContain('starter_instructions_for');
+
+    const starter: any = await client.callTool({
+      name: 'starter_instructions_for',
+      arguments: { vertical: 'beauty' },
+    });
+    expect(textOf(starter)).toContain('No podés confirmar, cancelar ni reprogramar turnos');
   });
 
   it('deja crear etiquetas con permiso de cualquiera de las dos mitades', async () => {

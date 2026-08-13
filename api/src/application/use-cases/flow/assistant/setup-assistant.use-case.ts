@@ -11,6 +11,7 @@ import { Logger } from '@nestjs/common';
 import type { AiCompletionPort } from '../../../ports/ai-completion.port.js';
 import type { TenantRepository } from '../../../../domain/repositories/tenant.repository.js';
 import { EMPTY_BUSINESS_PROFILE } from '../../../../domain/value-objects/business-profile.js';
+import { assistantInstructionStarterFor } from '../../ai/prompts/assistant-instruction-starters.js';
 import { CreateFlowUseCase } from '../create-flow.use-case.js';
 import { UpdateFlowUseCase } from '../update-flow.use-case.js';
 import { PublishFlowUseCase } from '../publish-flow.use-case.js';
@@ -56,6 +57,7 @@ export class SetupAssistantUseCase {
         description: input.description ?? '',
         address: input.address ?? '',
         extraNotes: `Horario de atención: ${describeSchedule(input.schedule)}.`,
+        assistantInstructions: assistantInstructionStarterFor(input.vertical),
       },
       timezone: input.schedule.timezone,
     });

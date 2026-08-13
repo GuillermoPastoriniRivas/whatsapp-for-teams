@@ -6,6 +6,10 @@ import type { ApiScope } from '../../domain/value-objects/api-scopes.js';
 import { FlowGraphSchema } from '../request-dtos/flow-request.dto.js';
 import { SendApiMessageUseCase } from '../../application/use-cases/developer/send-api-message.use-case.js';
 import { CreateContactUseCase } from '../../application/use-cases/contact/create-contact.use-case.js';
+import {
+  GetAccountProfileUseCase, UpdateAccountProfileUseCase,
+} from '../../application/use-cases/tenant/account-profile.use-cases.js';
+import { assistantInstructionStarterFor } from '../../application/use-cases/ai/prompts/assistant-instruction-starters.js';
 import { CreateLabelUseCase } from '../../application/use-cases/label/create-label.use-case.js';
 import { UpdateLabelUseCase } from '../../application/use-cases/label/update-label.use-case.js';
 import { LABEL_COLORS } from '../../domain/value-objects/label-colors.js';
@@ -77,6 +81,8 @@ export class AsisMcpServerFactory {
     @Inject('FlowConnectionRepository') private readonly connectionRepo: FlowConnectionRepository,
     @Inject('SendApiMessageUseCase') private readonly sendApiMessage: SendApiMessageUseCase,
     @Inject('CreateContactUseCase') private readonly createContact: CreateContactUseCase,
+    @Inject('GetAccountProfileUseCase') private readonly getAccountProfile: GetAccountProfileUseCase,
+    @Inject('UpdateAccountProfileUseCase') private readonly updateAccountProfile: UpdateAccountProfileUseCase,
     @Inject('CreateLabelUseCase') private readonly createLabel: CreateLabelUseCase,
     @Inject('UpdateLabelUseCase') private readonly updateLabel: UpdateLabelUseCase,
     @Inject('CreateFlowUseCase') private readonly createFlow: CreateFlowUseCase,
@@ -500,6 +506,83 @@ export class AsisMcpServerFactory {
         const labels = await this.labelRepo.findByTenantId(principal.tenantId);
         return asJson(labels.map((label) => ({ id: label.id, name: label.name, color: label.color })));
       },
+    );
+
+    server.registerTool(
+      'get_business_profile',
+      {
+        title: 'Read how the assistant is programmed',
+        description:
+          'Everything the AI nodes use to build their answer: what the business is, its catalogue and prices, its FAQs, ' +
+          'and assistantInstructions — the plain-language playbook that tells the assistant how this business works. ' +
+          'Read this before changing anything: it is shared by every automation in the account.',
+        inputSchema: {},
+        annotations: READ_ONLY,
+      },
+      async () => {
+        const denied = this.lacksEveryScope(principal, readsEither);
+        if (denied) return denied;
+        const result = await this.getAccountProfile.execute(principal.tenantId);
+        if (!result.ok) return asProblem(`${result.error.code}: ${result.error.message}`);
+        return asJson(result.value);
+      },
+    );
+
+    server.registerTool(
+      'update_business_profile',
+      {
+        title: 'Program the assistant',
+        description:
+          'Replaces the business profile that every AI node in the account reads. This is how you teach the assistant ' +
+          'what to say and what never to say: assistantInstructions is free text, written in the language the business ' +
+          'speaks, and it lands in the prompt as the "How This Business Works" section.\n\n' +
+          'Two things to respect: the whole profile is replaced, so read it first with get_business_profile and send it ' +
+          'back complete; and the assistant has no calendar and no live stock, so the instructions must never let it ' +
+          'claim a slot is free or an item is in stock. Ask for a starter with starter_instructions_for if you want a ' +
+          'tested baseline for the vertical.',
+        inputSchema: {
+          vertical: z.enum(['beauty', 'food', 'retail', 'generic']),
+          businessName: z.string().max(120),
+          description: z.string().max(2000).default(''),
+          address: z.string().max(300).default(''),
+          paymentMethods: z.string().max(500).default(''),
+          catalog: z
+            .array(z.object({ name: z.string().max(120), price: z.string().max(60), description: z.string().max(500) }))
+            .max(200)
+            .default([]),
+          faqs: z
+            .array(z.object({ question: z.string().max(300), answer: z.string().max(2000) }))
+            .max(100)
+            .default([]),
+          extraNotes: z.string().max(4000).default(''),
+          assistantInstructions: z.string().max(8000).default(''),
+        },
+        annotations: REPLACES_EXISTING_DRAFT,
+      },
+      async (businessProfile) => {
+        const denied = this.lacksScope(principal, 'flows:write');
+        if (denied) return denied;
+        const result = await this.updateAccountProfile.execute({
+          tenantId: principal.tenantId,
+          businessProfile,
+        });
+        if (!result.ok) return asProblem(`${result.error.code}: ${result.error.message}`);
+        return asJson(result.value);
+      },
+    );
+
+    server.registerTool(
+      'starter_instructions_for',
+      {
+        title: 'Get a tested starting point for the instructions',
+        description:
+          'Returns a baseline playbook for a kind of business, in Spanish, with the guardrails that matter for it — ' +
+          'what customers usually ask, and what the assistant must never claim. It is a starting point to edit, not ' +
+          'something the engine applies on its own.',
+        inputSchema: { vertical: z.enum(['beauty', 'food', 'retail', 'generic']) },
+        annotations: READ_ONLY,
+      },
+      async ({ vertical }) => asJson({ vertical, assistantInstructions: assistantInstructionStarterFor(vertical) }),
     );
 
     server.registerTool(
