@@ -10,7 +10,7 @@
  * las PWA ya instaladas seguirian sirviendo el icono viejo sin forma de
  * limpiarlas. Si alguna vez hay que cambiarlo, primero hay que agregar el
  * prefijo viejo al filtro y recien despues renombrar. */
-const SHELL_CACHE = "asis-shell-v11";
+const SHELL_CACHE = "asis-shell-v15";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/icons/badge-72.png"];
 

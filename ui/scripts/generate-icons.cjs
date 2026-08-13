@@ -26,24 +26,28 @@ const ICONS = path.join(ROOT, 'public', 'icons');
 
 /* ---- Geometría: espejo de src/components/brand/fluws-logo.tsx ---- */
 
-/** Órbita de 317° con la boca enfrentada a la patita (centrada en 316°). Lo fijo
- *  es el borde EXTERIOR en r=165: el eje sale de 165 − trazo/2, y las puntas del
- *  arco se recalculan con ese eje. Ver el componente. */
-const ORBIT_PATH = 'M391.8 199.8A147 147 0 1 1 317 122.2';
+/** Órbita de 323.3° con la boca enfrentada a la patita (centrada en 316°). Lo
+ *  que se elige no es el ángulo sino el aire entre las puntas: φ × trazo = 58.2,
+ *  que sobre el eje de 147 da 36.7° de boca. Lo fijo es el borde EXTERIOR en
+ *  r=165: el eje sale de 165 − trazo/2, y las puntas del arco se recalculan con
+ *  ese eje. Ver el componente. */
+const ORBIT_PATH = 'M388.5 192.4A147 147 0 1 1 324.3 125.8';
 const ORBIT_STROKE = 36;
-/** Núcleo y su patita salen de UNA sola constante: k = 1/φ² = 0.382, la
- *  homotecia desde el centro que reduce la burbuja de afuera a la de adentro.
- *  núcleo = 165 × k = 63.02. El sistema completo está en el componente. */
-const CORE_R = 63;
-const CORE_TAIL_PATH = 'M229.1 306.6L195 314.9L205.5 282.9Z';
-const CORE_TAIL_STROKE = 6.9;
+/** Núcleo y su patita salen de UNA sola constante: k = 0.4291, la homotecia
+ *  desde el centro que reduce la burbuja de afuera a la de adentro. Sale de
+ *  hueco = φ × trazo = 58.2, o sea núcleo = 129 − 58.2 = 70.8. El sistema
+ *  completo, con lo que se descartó, está en el componente. */
+const CORE_R = 70.8;
+const CORE_TAIL_PATH = 'M225.8 312.8L187.5 322.2L199.2 286.2Z';
+const CORE_TAIL_STROKE = 7.7;
 /** Patita abajo a la izquierda, con la base apoyada sobre la banda del trazo. */
 const TAIL_PATH = 'M185.6 388.4L96.3 410.2L123.6 326.4Z';
 const TAIL_STROKE = 18;
 /** Corte del anillo debajo de la patita: triángulo semejante a ella, aristas
- *  paralelas, punta hacia afuera en r=156 y base de 46. Ver el componente — ni
- *  la orientación ni los radios son indistintos. */
-const CUT_PATH = 'M143.8 364.4L157.5 319.2L189.5 352.2Z';
+ *  paralelas, punta hacia afuera en r=163 y base de 53.8. La punta es el único
+ *  número que se elige: la base queda adentro del hueco y no se ve. Ver el
+ *  componente — ni la orientación ni los radios son indistintos. */
+const CUT_PATH = 'M138.8 369.2L154.8 316.3L192.2 355Z';
 /** Bbox del glifo: x 87.3→421, y 91→421. */
 const MARK_VIEWBOX = '81 85 346 342';
 
@@ -73,10 +77,18 @@ const glyph = (color, id) =>
  *   máscara encima y una esquina transparente se ve recortada contra el fondo
  *   del launcher. Además el glifo va más chico, porque esas máscaras comen
  *   hasta un 10% de cada borde.
+ *
+ *   El maskable es el que MENOS puede crecer, y no por gusto: la punta de la
+ *   patita queda a 234.7 del centro (de 512) sin escalar, y la zona segura de
+ *   Android es un círculo de radio 204.8. O sea que el techo del maskable es
+ *   0.873 — arriba de eso la máscara circular le come la patita. Por eso no
+ *   acompaña al 1.12 del cuadrado normal.
  * @param glyphScale  Escala del glifo dentro del cuadrado. En 1 ocupa el ~65%
- *   del lado, que es la banda donde las guías de íconos ponen el contenido.
+ *   del lado; el 1.12 de base lo lleva al ~72%, arriba de la banda donde las
+ *   guías ponen el contenido pero con el símbolo ya sin verse flotando en el
+ *   cuadrado. Espeja `APP_GLYPH_SCALE` del componente.
  */
-const appSvg = ({ bleed = false, glyphScale = bleed ? 0.8 : 1, id = 'cut' } = {}) =>
+const appSvg = ({ bleed = false, glyphScale = bleed ? 0.85 : 1.12, id = 'cut' } = {}) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <rect width="512" height="512" rx="${bleed ? 0 : 115}" fill="${GREEN}"/>
   <g transform="translate(256 256) scale(${glyphScale}) translate(-256 -256)">${glyph('#FFFFFF', id)}</g>
@@ -95,8 +107,12 @@ const badgeSvg = () =>
  * Favicon: el mismo cuadrado verde, con el glifo un poco más grande. A 16px el
  * aire del contenedor pesa mucho más en proporción y con la escala del ícono
  * grande el símbolo queda chico y flotando.
+ *
+ * El techo acá no es la zona segura sino el radio de 115 del cuadrado: a 1.2 la
+ * punta de la patita queda a 31 (de 512) del arco de la esquina, que a 16px es
+ * un pixel. Más grande y la patita toca el borde redondeado.
  */
-const faviconSvg = () => appSvg({ glyphScale: 1.12, id: 'cut-favicon' });
+const faviconSvg = () => appSvg({ glyphScale: 1.2, id: 'cut-favicon' });
 
 const render = (svg, size) =>
   sharp(Buffer.from(svg))
@@ -148,7 +164,9 @@ async function main() {
   }
 
   // Next levanta estos dos por convención desde src/app/.
-  write('src/app/apple-icon.png', await render(appSvg({ bleed: true, glyphScale: 0.86 }), 180));
+  // Va más grande que el maskable: la máscara de iOS es un superelipse, no un
+  // círculo, y en la diagonal recorta bastante menos que Android.
+  write('src/app/apple-icon.png', await render(appSvg({ bleed: true, glyphScale: 0.96 }), 180));
 
   const ico = buildIco(
     await Promise.all(

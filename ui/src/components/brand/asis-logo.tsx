@@ -15,13 +15,27 @@ import { useId } from "react";
 
 /* Espacio de 512.
  *
- * La órbita barre 317° y deja la boca EN FRENTE de la patita: centrada en 316°,
- * entre 294.5° y 337.5° (en SVG el
- * ángulo crece hacia abajo, así que 270° es arriba). Las puntas del arco caen
- * en (391.8, 199.8) y (317, 122.2).
+ * La órbita barre 323.3° y deja la boca EN FRENTE de la patita: centrada en
+ * 316°, entre 297.6° y 334.4° (en SVG el ángulo crece hacia abajo, así que 270°
+ * es arriba). Las puntas del arco caen en (388.5, 192.4) y (324.3, 125.8).
  *
  * Casi cerrada a propósito: con la boca más ancha lee como anillo roto o como
  * spinner de carga, y cerrada del todo lee como el punto de grabar.
+ *
+ * CUÁNTO ABRE NO ES UN ÁNGULO ELEGIDO. Lo que se elige es el AIRE que se ve
+ * entre las dos puntas, y va con la misma regla que gobierna el hueco del
+ * núcleo, así que el símbolo tiene un solo criterio de contraforma:
+ *
+ *     aire = φ × trazo = 1.618 × 36 = 58.2
+ *
+ * Los caps son redondos y se comen medio trazo por punta, así que el hueco del
+ * arco medido sobre el eje es 58.2 + 36 = 94.2, y de ahí sale el ángulo:
+ * 94.2 / 147 = 0.641 rad = 36.7°. Los 43° que hubo hasta ago-2026 dejaban 74.3
+ * de aire y la boca leía demasiado abierta.
+ *
+ * O sea que el ángulo DEPENDE DEL RADIO DEL EJE y del trazo. Si cambia
+ * cualquiera de los dos, se recalcula con la fórmula; copiar los 36.7° a otro
+ * radio cambia el aire sin que se note por qué.
  *
  * OJO CON EL RADIO. Lo fijo del símbolo es el BORDE EXTERIOR, en r=165, porque
  * es lo que define el tamaño total. El radio del eje es una consecuencia:
@@ -32,31 +46,33 @@ import { useId } from "react";
  * el trazo hay que recalcular el eje Y las dos puntas del arco con ese eje;
  * dejar el 147 y solo tocar el ancho corre el borde exterior y cambia el
  * tamaño del símbolo sin que nadie lo pida. */
-const ORBIT_PATH = "M391.8 199.8A147 147 0 1 1 317 122.2";
+const ORBIT_PATH = "M388.5 192.4A147 147 0 1 1 324.3 125.8";
 const ORBIT_STROKE = 36;
 
 /* EL SISTEMA DE PROPORCIONES. Leer esto antes de tocar cualquier radio.
  *
  * El símbolo es una burbuja adentro de otra, y el tamaño de la de adentro NO se
- * elige a ojo: sale de reducir la de afuera dos veces por la sección áurea.
+ * elige a ojo: sale de una regla, y de la regla sale UNA constante k que gobierna
+ * toda la burbuja interior — radio y patita — en vez de ser dos decisiones
+ * sueltas que se desincronizan.
  *
- *     k = 1/φ² = 0.382          núcleo = 165 × k = 63.02
+ * La regla es la del contraste tipográfico entre contraforma y asta:
  *
- * Ese mismo k genera la patita del núcleo (ver abajo), así que UNA constante
- * gobierna toda la burbuja interior — radio y patita — en vez de ser dos
- * decisiones sueltas que se desincronizan.
+ *     hueco = φ × trazo = 1.618 × 36 = 58.2
+ *     núcleo = 129 − 58.2 = 70.8          k = 70.8 / 165 = 0.4291
  *
  * De ahí caen las tres medidas concéntricas, hacia adentro desde 165:
  *
  *     banda   165 → 129   (36, el trazo)
- *     hueco   129 →  63   (66)
- *     núcleo   63 →   0
+ *     hueco   129 →  70.8 (58.2)
+ *     núcleo   70.8 →  0
  *
  * Se evaluaron y descartaron, cada una por su motivo:
  *
- * · hueco = φ × trazo (núcleo 70.8). Regla tipográfica válida de contraforma
- *   contra asta, pero gobierna el hueco y deja el núcleo como resto. El núcleo
- *   es el acento del símbolo; no puede ser lo que sobra.
+ * · k = 1/φ² = 0.382, o sea reducir la burbuja de afuera dos veces por la
+ *   sección áurea (núcleo 63). Es la que estuvo hasta ago-2026 y la más limpia
+ *   de derivar, pero el núcleo lee chico: es el acento del símbolo y a esa
+ *   escala no sostiene el centro. Se cambió por eso.
  * · núcleo = hueco (64.5). El unísono 1:1 no crea jerarquía entre las partes.
  * · continuación geométrica pura, núcleo = 129 × (129/165) = 101. Es la que
  *   seguiría la progresión del anillo, pero deja el hueco en 28, más fino que
@@ -64,28 +80,35 @@ const ORBIT_STROKE = 36;
  *
  * El 73 que hubo antes venía de igualar hueco y trazo cuando el trazo era 46;
  * al pasar el trazo a 36 esa coincidencia dejó de existir y el número quedó
- * huérfano. Por eso este bloque. */
-const CORE_R = 63;
+ * huérfano. Por eso este bloque.
+ *
+ * OJO: el hueco depende del trazo. Si el trazo cambia, el núcleo se recalcula
+ * con la fórmula de arriba, no se deja el 70.8. */
+const CORE_R = 70.8;
 
 /* La patita del núcleo: el núcleo también es una burbuja, una adentro de la
  * otra.
  *
  * NO está puesta a ojo. Es la patita grande pasada por la MISMA homotecia que
- * fija el radio del núcleo: k = 1/φ² = 0.382, desde el centro. Una homotecia
- * conserva direcciones, así que las aristas salen paralelas a las de la patita
- * grande y a las del corte sin tener que forzarlo, y el núcleo queda siendo un
- * modelo a escala exacto de la burbuja grande: sobresale un 34.5% de su radio,
- * igual que la grande sobresale del anillo.
+ * fija el radio del núcleo: k = 0.4291, desde el centro. Una homotecia conserva
+ * direcciones, así que las aristas salen paralelas a las de la patita grande y a
+ * las del corte sin tener que forzarlo, y el núcleo queda siendo un modelo a
+ * escala exacto de la burbuja grande: sobresale un 34.5% de su radio, igual que
+ * la grande sobresale del anillo.
  *
- * Punta en r=84.8 y base en r=57.3, adentro del núcleo. Vive entera en el hueco
- * de 63 a 129, con 40.8 de aire hasta la banda. Aun así no sobrevive por debajo
- * de 28px: a 20 y a 16 solo deforma un poco el círculo, y está bien — a ese
- * tamaño el símbolo se reconoce por la silueta, no por el interior.
+ * Punta en r=95.3 y base en r=64.3, adentro del núcleo. Vive entera en el hueco
+ * de 70.8 a 129, con 29.8 de aire hasta la banda. Aun así no sobrevive por
+ * debajo de 28px: a 20 y a 16 solo deforma un poco el círculo, y está bien — a
+ * ese tamaño el símbolo se reconoce por la silueta, no por el interior.
+ *
+ * Con la punta en 99.2 contando el trazo, sigue sin tocar el corte del anillo,
+ * que arranca en 115. Ese margen es el que permite dejar el núcleo FUERA de la
+ * máscara; si el núcleo crece más, hay que volver a chequearlo.
  *
  * Si se cambia el radio del núcleo o el trazo del anillo, esto se recalcula con
  * la misma k, no se ajusta a mano. */
-const CORE_TAIL_PATH = "M229.1 306.6L195 314.9L205.5 282.9Z";
-const CORE_TAIL_STROKE = 6.9; // = TAIL_STROKE × 0.382
+const CORE_TAIL_PATH = "M225.8 312.8L187.5 322.2L199.2 286.2Z";
+const CORE_TAIL_STROKE = 7.7; // = TAIL_STROKE × 0.4291
 
 /* La patita, abajo a la izquierda. Es un triángulo con la base APOYADA SOBRE LA
  * BANDA del trazo de la órbita (los dos vértices de la base están a r=150, y la
@@ -109,6 +132,18 @@ const TAIL_STROKE = 18;
    de 6. */
 const MARK_VIEWBOX = "81 85 346 342";
 
+/* Escala del glifo dentro del cuadrado verde de la variante `app`.
+ *
+ * Sin escalar el glifo va de 91 a 421 sobre 512, o sea el 64.5% del lado y 17.8%
+ * de aire por borde: correcto para una guía de íconos, pero el símbolo lee chico
+ * y flotando adentro del cuadrado. Con 1.12 pasa a ocupar el 72% con 14% de
+ * aire, que sigue entrando en la banda de contenido de las guías y deja el
+ * radio de 115 sin morder el glifo.
+ *
+ * Es el mismo número que espeja `scripts/generate-icons.cjs`. Si se toca acá,
+ * se toca allá y se regeneran los íconos. */
+const APP_GLYPH_SCALE = 1.12;
+
 /* El corte del anillo debajo de la patita.
  *
  * La banda del anillo se interrumpe ahí, así que el hueco interior sale hasta
@@ -118,26 +153,37 @@ const MARK_VIEWBOX = "81 85 346 342";
  *
  * Es un triángulo SEMEJANTE a la patita: aristas paralelas a las suyas, así que
  * hereda su ángulo de punta (58.2°), y apunta para el mismo lado, hacia afuera
- * sobre el eje de 136°. Punta en r=156, base de 46 sobre r≈115.
+ * sobre el eje de 136°. Punta en r=163, base de 53.8 sobre r≈115.
  *
- * Ese 46 salió de igualar el trazo del anillo, cuando el trazo era 46. Ahora el
- * trazo es 36 y el corte se dejó en 46 a propósito: bajarlo lo acortaría —ancho
- * y largo están atados, ver abajo— y la patita se volvería a pegar al anillo.
+ * LA PUNTA ES EL ÚNICO NÚMERO QUE SE ELIGE. La base del triángulo vive adentro
+ * del hueco, o sea abajo de r=129, así que no se ve: agrandarla no agranda nada.
+ * Lo que se ve es la cuña entre el borde del hueco y la punta, y con el ángulo
+ * fijo en 58.2° esa cuña la define sola la punta:
  *
- * Con las aristas paralelas el ángulo queda fijo, o sea que el ancho ya define
- * el largo: 46 de ancho son 41.3 de largo. No son dos números independientes.
+ *     ancho visible = 2 × (punta − 129) × tan(29.1°)
+ *     hoy = 2 × 34 × 0.557 = 37.9
+ *
+ * Con la punta en 156 que hubo hasta ago-2026 daban 30.1 y la cuña leía apretada
+ * contra la patita. Escalar el triángulo desde su propia punta no habría hecho
+ * NADA visible: mismo ángulo, misma cuña.
+ *
+ * El ancho de la base sale solo: con el ángulo fijo, ancho = 1.114 × largo. No
+ * son dos números independientes. El 46 que hubo antes venía de igualar el trazo
+ * del anillo cuando el trazo era 46, y quedó huérfano al bajar el trazo a 36.
  *
  * Las dos condiciones que lo sostienen, y que hay que rehacer si se toca:
  *
  * 1. Las ESQUINAS de la base tienen que caer dentro del borde interno de la
- *    banda, para que el corte se funda con el hueco. Van en r=117 contra una
- *    banda que arranca en 129: 12 de margen. Con el trazo de 46 que había antes
- *    la banda arrancaba en 119 y el margen era de 2, así que si el trazo vuelve
- *    a engordar esto es lo primero que se rompe, y se rompe como una costura de
- *    banda entre el corte y el hueco.
+ *    banda, para que el corte se funda con el hueco. Van en r=117.8 contra una
+ *    banda que arranca en 129: 11.2 de margen. Por eso al alargar el triángulo
+ *    se dejó la base clavada en r≈115 y se movió solo la punta — corriendo el
+ *    triángulo entero hacia afuera, el margen bajaba a 5 y aparecía una costura
+ *    de banda entre el corte y el hueco.
  * 2. La PUNTA tiene que pasar la cuerda de la base de la patita, que a estos
- *    ángulos cae en r≈143. Va en 156, y por eso separa el anillo de la patita
- *    en vez de solo adelgazarlo.
+ *    ángulos cae en r≈143. Va en 163, y por eso separa el anillo de la patita
+ *    en vez de solo adelgazarlo. Tope por arriba: la patita llega hasta r=222,
+ *    así que la punta puede seguir creciendo sin partir nada, pero pasando ~185
+ *    la cuña se come la base de la patita y la deja colgando de dos puntas.
  *
  * La orientación importa. Al revés —ancho hacia afuera— la patita queda
  * enganchada al anillo por el lado ancho y el corte lee como una mordida.
@@ -145,7 +191,7 @@ const MARK_VIEWBOX = "81 85 346 342";
  * Va como máscara y no como camino con `evenodd`: la patita se dibuja con
  * relleno Y trazo de 18, y un agujero en el relleno quedaría tapado por el
  * trazo. La máscara recorta el resultado ya compuesto. */
-const CUT_PATH = "M143.8 364.4L157.5 319.2L189.5 352.2Z";
+const CUT_PATH = "M138.8 369.2L154.8 316.3L192.2 355Z";
 
 /**
  * Verde del LOGO.
@@ -242,9 +288,11 @@ export function AsisLogo({ size = 40, className, variant = "mark" }: AsisLogoPro
         className={className}
       >
         <rect width="512" height="512" rx="115" fill={ASIS_GREEN} />
-        {/* Sin escalar: el glifo ocupa 91→421 de 512, que deja el aire justo
-            para que el radio del contenedor no se lo coma. */}
-        <Glyph color="#FFFFFF" />
+        <g
+          transform={`translate(256 256) scale(${APP_GLYPH_SCALE}) translate(-256 -256)`}
+        >
+          <Glyph color="#FFFFFF" />
+        </g>
       </svg>
     );
   }
