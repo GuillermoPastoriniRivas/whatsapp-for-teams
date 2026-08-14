@@ -8,6 +8,7 @@ import { CurrentAgent } from '../decorators/current-agent.decorator.js';
 import type { RequestAgent } from '../decorators/current-agent.decorator.js';
 import { Roles } from '../decorators/roles.decorator.js';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe.js';
+import { ASSISTANT_INSTRUCTION_STARTERS } from '../../application/use-cases/ai/prompts/assistant-instruction-starters.js';
 import { UpdateAccountProfileRequestSchema } from '../request-dtos/account-profile-request.dto.js';
 import type { UpdateAccountProfileRequestDto } from '../request-dtos/account-profile-request.dto.js';
 
@@ -24,6 +25,15 @@ export class AccountProfileController {
     @Inject('GetAccountProfileUseCase') private readonly getProfile: GetAccountProfileUseCase,
     @Inject('UpdateAccountProfileUseCase') private readonly updateProfile: UpdateAccountProfileUseCase,
   ) {}
+
+  @Get('instruction-starters')
+  @ApiOperation({
+    summary: 'Tested starting points for the assistant instructions, by kind of business',
+    description: 'Not applied by the engine: they exist so the owner has something to edit instead of a blank box.',
+  })
+  instructionStarters() {
+    return ASSISTANT_INSTRUCTION_STARTERS;
+  }
 
   @Get()
   @ApiOperation({ summary: "The business data the account's AI nodes use to build their prompt" })

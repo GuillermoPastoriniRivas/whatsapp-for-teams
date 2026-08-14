@@ -643,6 +643,18 @@ export interface AccountBusinessProfile {
   catalog: Array<{ name: string; price: string; description: string }>;
   faqs: Array<{ question: string; answer: string }>;
   extraNotes: string;
+  /** Cómo trabaja el negocio, en prosa. Es la conducta del asistente. */
+  assistantInstructions: string;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  title: string;
+  source: "text" | "url" | "file";
+  sourceRef: string | null;
+  chunkCount: number;
+  characterCount: number;
+  createdAt: string;
 }
 
 // ── Flujos ────────────────────────────────────────────────────────

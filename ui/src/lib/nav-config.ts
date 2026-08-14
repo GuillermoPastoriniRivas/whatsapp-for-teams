@@ -1,6 +1,7 @@
 import {
   ChartLine,
   Code2,
+  BookOpen,
   Contact,
   CreditCard,
   Images,
@@ -50,6 +51,7 @@ const PHONE_ADMIN: NavItem = {
 }
 const ANALYTICS: NavItem = { href: "/analytics", icon: ChartLine, labelKey: "analytics", adminOnly: true }
 const TEAM: NavItem = { href: "/agents", icon: Users, labelKey: "team", adminOnly: true }
+const BUSINESS: NavItem = { href: "/business", icon: BookOpen, labelKey: "business", adminOnly: true }
 const DEVELOPERS: NavItem = { href: "/developers", icon: Code2, labelKey: "developers", adminOnly: true }
 const BILLING: NavItem = { href: "/settings/billing", icon: CreditCard, labelKey: "billing", adminOnly: true }
 const SETTINGS: NavItem = { href: "/settings", icon: Settings, labelKey: "settings" }
@@ -63,7 +65,7 @@ export interface NavSection {
 export const NAV_SECTIONS: NavSection[] = [
   { titleKey: "sectionInbox", items: [CONVERSATIONS, CONTACTS] },
   { titleKey: "sectionMarketing", items: [TEMPLATES, CAMPAIGNS, MEDIA, FLOWS, ANALYTICS] },
-  { titleKey: "sectionSetup", items: [PHONE_ADMIN, TEAM, DEVELOPERS] },
+  { titleKey: "sectionSetup", items: [PHONE_ADMIN, BUSINESS, TEAM, DEVELOPERS] },
 ]
 
 /** Bloque anclado al pie del sidebar. */
@@ -76,7 +78,7 @@ export const NAV_BOTTOM: NavItem[] = [BILLING, SETTINGS]
  */
 const MOBILE_TABS: NavItem[] = [CONVERSATIONS, CONTACTS, PHONE_ADMIN, SETTINGS]
 
-const MOBILE_MORE: NavItem[] = [TEMPLATES, CAMPAIGNS, MEDIA, FLOWS, ANALYTICS, TEAM, DEVELOPERS, BILLING]
+const MOBILE_MORE: NavItem[] = [TEMPLATES, CAMPAIGNS, MEDIA, FLOWS, ANALYTICS, BUSINESS, TEAM, DEVELOPERS, BILLING]
 
 export function visibleItems(items: NavItem[], isAdmin: boolean): NavItem[] {
   return items.filter((item) => !item.adminOnly || isAdmin)

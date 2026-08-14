@@ -31,6 +31,7 @@ import { AgentController } from './controllers/agent.controller.js';
 import { PhoneNumberController } from './controllers/phone-number.controller.js';
 import { ConversationController } from './controllers/conversation.controller.js';
 import { TenantController } from './controllers/tenant.controller.js';
+import { KnowledgeController } from './controllers/knowledge.controller.js';
 import { AccountProfileController } from './controllers/account-profile.controller.js';
 import { GetAccountProfileUseCase, UpdateAccountProfileUseCase } from '../application/use-cases/tenant/account-profile.use-cases.js';
 import { WebhookController } from './controllers/webhook.controller.js';
@@ -1265,6 +1266,7 @@ const useCaseProviders = [
     ConversationController,
     TenantController,
     AccountProfileController,
+    KnowledgeController,
     WebhookController,
     ContactController,
     TemplateController,
