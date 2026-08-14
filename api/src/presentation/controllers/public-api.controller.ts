@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query,
   Inject, UseGuards, HttpException, NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiSecurity, ApiQuery, ApiParam } from '@nestjs/swagger';
@@ -24,6 +24,11 @@ import type { CreateLabelRequestDto } from '../request-dtos/create-label-request
 import { UpdateLabelRequestSchema } from '../request-dtos/update-label-request.dto.js';
 import type { UpdateLabelRequestDto } from '../request-dtos/update-label-request.dto.js';
 import type { LabelRepository } from '../../domain/repositories/label.repository.js';
+import {
+  IngestKnowledgeUseCase, ListKnowledgeUseCase, DeleteKnowledgeUseCase,
+} from '../../application/use-cases/knowledge/knowledge.use-cases.js';
+import { CreateKnowledgeRequestSchema } from '../request-dtos/knowledge-request.dto.js';
+import type { CreateKnowledgeRequestDto } from '../request-dtos/knowledge-request.dto.js';
 import { resolvePlanFeatures } from '../../application/use-cases/developer/plan-features.util.js';
 import { serializeMessage, serializeConversation, serializeContact } from '../../application/use-cases/developer/developer-payloads.util.js';
 import { DomainError } from '../../domain/errors/domain-errors.js';
@@ -57,6 +62,12 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   FEATURE_NOT_IN_PLAN: 403,
   LABEL_NOT_FOUND: 404,
   DUPLICATE_LABEL_NAME: 409,
+  KNOWLEDGE_NOT_FOUND: 404,
+  KNOWLEDGE_TITLE_REQUIRED: 422,
+  KNOWLEDGE_TEXT_REQUIRED: 422,
+  KNOWLEDGE_TOO_LARGE: 422,
+  KNOWLEDGE_LIMIT_REACHED: 409,
+  KNOWLEDGE_INDEXING_FAILED: 502,
 };
 
 /**
@@ -82,6 +93,9 @@ export class PublicApiController {
     @Inject('LabelRepository') private readonly labelRepo: LabelRepository,
     @Inject('CreateLabelUseCase') private readonly createLabel: CreateLabelUseCase,
     @Inject('UpdateLabelUseCase') private readonly updateLabel: UpdateLabelUseCase,
+    @Inject('IngestKnowledgeUseCase') private readonly ingestKnowledge: IngestKnowledgeUseCase,
+    @Inject('ListKnowledgeUseCase') private readonly listKnowledge: ListKnowledgeUseCase,
+    @Inject('DeleteKnowledgeUseCase') private readonly deleteKnowledge: DeleteKnowledgeUseCase,
   ) {}
 
   private fail(error: DomainError): never {
@@ -326,6 +340,58 @@ export class PublicApiController {
     const result = await this.updateLabel.execute({ labelId: id, tenantId: principal.tenantId, ...body });
     if (!result.ok) this.fail(result.error as DomainError);
     return { id: result.value.id, name: result.value.name, color: result.value.color };
+  }
+
+  @Get('knowledge')
+  @RequireAnyScope('flows:read', 'messages:read')
+  @ApiOperation({
+    summary: 'List knowledge documents',
+    description: "Everything the assistant can look up when answering. Excerpts are retrieved per question, not sent whole.",
+  })
+  async knowledge(@ApiPrincipal() principal: ApiKeyPrincipal) {
+    const documents = await this.listKnowledge.execute(principal.tenantId);
+    return {
+      data: documents.map((doc) => ({
+        id: doc.id,
+        title: doc.title,
+        source: doc.source,
+        sourceRef: doc.sourceRef,
+        chunkCount: doc.chunkCount,
+        characterCount: doc.characterCount,
+        createdAt: doc.createdAt,
+      })),
+    };
+  }
+
+  @Post('knowledge')
+  @RequireAnyScope('flows:write', 'messages:write')
+  @ApiOperation({
+    summary: 'Add a document to the knowledge base',
+    description: 'The text is split and indexed. Send plain text: extract it from the PDF or the page before calling.',
+  })
+  async createKnowledge(
+    @ApiPrincipal() principal: ApiKeyPrincipal,
+    @Body(new ZodValidationPipe(CreateKnowledgeRequestSchema)) body: CreateKnowledgeRequestDto,
+  ) {
+    const result = await this.ingestKnowledge.execute({
+      tenantId: principal.tenantId,
+      title: body.title,
+      text: body.text,
+      source: body.source,
+      sourceRef: body.sourceRef ?? null,
+    });
+    if (!result.ok) this.fail(result.error as DomainError);
+    return { id: result.value.id, title: result.value.title, chunkCount: result.value.chunkCount };
+  }
+
+  @Delete('knowledge/:id')
+  @RequireAnyScope('flows:write', 'messages:write')
+  @ApiOperation({ summary: 'Remove a document and everything indexed from it' })
+  @ApiParam({ name: 'id' })
+  async removeKnowledge(@Param('id') id: string, @ApiPrincipal() principal: ApiKeyPrincipal) {
+    const result = await this.deleteKnowledge.execute(principal.tenantId, id);
+    if (!result.ok) this.fail(result.error as DomainError);
+    return { deleted: true };
   }
 
   @Get('contacts')

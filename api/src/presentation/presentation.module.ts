@@ -154,6 +154,9 @@ import { ProcessAiResponseUseCase } from '../application/use-cases/ai/process-ai
 import { HandoffToHumanUseCase } from '../application/use-cases/ai/handoff-to-human.use-case.js';
 
 // Use Cases — Label
+import {
+  IngestKnowledgeUseCase, SearchKnowledgeUseCase, ListKnowledgeUseCase, DeleteKnowledgeUseCase,
+} from '../application/use-cases/knowledge/knowledge.use-cases.js';
 import { CreateLabelUseCase } from '../application/use-cases/label/create-label.use-case.js';
 import { ListLabelsUseCase } from '../application/use-cases/label/list-labels.use-case.js';
 import { UpdateLabelUseCase } from '../application/use-cases/label/update-label.use-case.js';
@@ -590,6 +593,7 @@ const useCaseProviders = [
       eventRepo: any, templateRepo: any, secrets: any, http: any, messagingApi: any,
       aiCompletion: any, gateway: any, jobQueue: any, autoAssign: any,
       devEvents: any, accessRepo: any, assetRepo: any, mediaAccess: any,
+      searchKnowledge: any,
     ) =>
       new FlowEngineService(
         flowRepo, versionRepo, execRepo, statRepo, connectionRepo,
@@ -598,6 +602,7 @@ const useCaseProviders = [
         eventRepo, templateRepo, secrets, http, messagingApi,
         aiCompletion, gateway, jobQueue, autoAssign,
         devEvents, accessRepo, assetRepo, mediaAccess,
+        searchKnowledge,
       ),
     inject: [
       'FlowRepository', 'FlowVersionRepository', 'FlowExecutionRepository', 'FlowNodeStatRepository', 'FlowConnectionRepository',
@@ -606,6 +611,7 @@ const useCaseProviders = [
       'ConversationEventRepository', 'MessageTemplateRepository', 'FlowSecretsPort', 'FlowHttpPort', 'MessagingApiPort',
       'AiCompletionPort', 'RealtimeGatewayPort', 'JobQueuePort', 'AutoAssignConversationUseCase',
       'DeveloperEventsPort', 'AgentPhoneAccessRepository', 'MediaAssetRepository', 'MediaAccessService',
+      'SearchKnowledgeUseCase',
     ],
   },
   {
@@ -728,17 +734,17 @@ const useCaseProviders = [
     useFactory: (
       flowRepo: any, versionRepo: any, connectionRepo: any, phoneRepo: any, agentRepo: any,
       tenantRepo: any, labelRepo: any, templateRepo: any, aiCompletion: any,
-      secrets: any, assetRepo: any, mediaAccess: any,
+      secrets: any, assetRepo: any, mediaAccess: any, searchKnowledge: any,
     ) =>
       new SimulateFlowUseCase(
         flowRepo, versionRepo, connectionRepo, phoneRepo, agentRepo,
         tenantRepo, labelRepo, templateRepo, aiCompletion,
-        secrets, assetRepo, mediaAccess,
+        secrets, assetRepo, mediaAccess, searchKnowledge,
       ),
     inject: [
       'FlowRepository', 'FlowVersionRepository', 'FlowConnectionRepository', 'PhoneNumberRepository', 'AgentRepository',
       'TenantRepository', 'LabelRepository', 'MessageTemplateRepository', 'AiCompletionPort', 'FlowSecretsPort',
-      'MediaAssetRepository', 'MediaAccessService',
+      'MediaAssetRepository', 'MediaAccessService', 'SearchKnowledgeUseCase',
     ],
   },
   {
@@ -936,9 +942,31 @@ const useCaseProviders = [
   },
   {
     provide: 'ProcessAiResponseUseCase',
-    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, tenantRepo: any, versionRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, flowExecRepo: any, devEvents: any) =>
+    useFactory: (convRepo: any, msgRepo: any, contactRepo: any, phoneRepo: any, tenantRepo: any, versionRepo: any, usageRepo: any, aiCompletion: any, messagingApi: any, gateway: any, handoff: any, labelRepo: any, convLabelRepo: any, eventRepo: any, flowExecRepo: any, devEvents: any, searchKnowledge: any) =>
       new ProcessAiResponseUseCase(convRepo, msgRepo, contactRepo, phoneRepo, tenantRepo, versionRepo, usageRepo, aiCompletion, messagingApi, gateway, handoff, labelRepo, convLabelRepo, eventRepo, flowExecRepo, devEvents),
-    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'TenantRepository', 'FlowVersionRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', 'FlowExecutionRepository', 'DeveloperEventsPort'],
+    inject: ['ConversationRepository', 'MessageRepository', 'ContactRepository', 'PhoneNumberRepository', 'TenantRepository', 'FlowVersionRepository', 'AiUsageRepository', 'AiCompletionPort', 'MessagingApiPort', 'RealtimeGatewayPort', 'HandoffToHumanUseCase', 'LabelRepository', 'ConversationLabelRepository', 'ConversationEventRepository', 'FlowExecutionRepository', 'DeveloperEventsPort', 'SearchKnowledgeUseCase'],
+  },
+
+  // Conocimiento
+  {
+    provide: 'IngestKnowledgeUseCase',
+    useFactory: (knowledgeRepo: any, embeddings: any) => new IngestKnowledgeUseCase(knowledgeRepo, embeddings),
+    inject: ['KnowledgeRepository', 'EmbeddingsPort'],
+  },
+  {
+    provide: 'SearchKnowledgeUseCase',
+    useFactory: (knowledgeRepo: any, embeddings: any) => new SearchKnowledgeUseCase(knowledgeRepo, embeddings),
+    inject: ['KnowledgeRepository', 'EmbeddingsPort'],
+  },
+  {
+    provide: 'ListKnowledgeUseCase',
+    useFactory: (knowledgeRepo: any) => new ListKnowledgeUseCase(knowledgeRepo),
+    inject: ['KnowledgeRepository'],
+  },
+  {
+    provide: 'DeleteKnowledgeUseCase',
+    useFactory: (knowledgeRepo: any) => new DeleteKnowledgeUseCase(knowledgeRepo),
+    inject: ['KnowledgeRepository'],
   },
 
   // Label

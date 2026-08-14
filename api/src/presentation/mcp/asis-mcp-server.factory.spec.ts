@@ -30,6 +30,10 @@ function buildFactory(overrides: Record<string, any> = {}): AsisMcpServerFactory
     createContact: { execute: jest.fn() },
     getAccountProfile: { execute: jest.fn() },
     updateAccountProfile: { execute: jest.fn() },
+    ingestKnowledge: { execute: jest.fn() },
+    searchKnowledge: { execute: jest.fn(async () => []) },
+    listKnowledge: { execute: jest.fn(async () => []) },
+    deleteKnowledge: { execute: jest.fn() },
     createLabel: { execute: jest.fn() },
     updateLabel: { execute: jest.fn() },
     createFlow: { execute: jest.fn() },
@@ -53,6 +57,10 @@ function buildFactory(overrides: Record<string, any> = {}): AsisMcpServerFactory
     deps.createContact as any,
     deps.getAccountProfile as any,
     deps.updateAccountProfile as any,
+    deps.ingestKnowledge as any,
+    deps.searchKnowledge as any,
+    deps.listKnowledge as any,
+    deps.deleteKnowledge as any,
     deps.createLabel as any,
     deps.updateLabel as any,
     deps.createFlow as any,
@@ -189,6 +197,23 @@ describe('AsisMcpServerFactory', () => {
     expect(names).toContain('list_http_connections');
     expect(names).toContain('create_label');
     expect(names).toContain('update_label');
+  });
+
+  it('expone la base de conocimiento, y search_knowledge avisa cuando no hay nada indexado', async () => {
+    const client = await connect(buildFactory(), ALL_SCOPES);
+    const { tools } = await client.listTools();
+    const names = tools.map((tool) => tool.name);
+
+    expect(names).toContain('list_knowledge');
+    expect(names).toContain('add_knowledge');
+    expect(names).toContain('search_knowledge');
+    expect(names).toContain('delete_knowledge');
+
+    const result: any = await client.callTool({
+      name: 'search_knowledge',
+      arguments: { question: '¿cuánto sale la depilación?' },
+    });
+    expect(textOf(result)).toContain('Nothing indexed answers this');
   });
 
   it('expone programar al asistente, y las instrucciones no salen del código', async () => {

@@ -31,7 +31,8 @@ import type { MessageTemplateRepository } from '../../../../domain/repositories/
 import type { MediaAssetRepository } from '../../../../domain/repositories/media-asset.repository.js';
 import type { MediaAsset } from '../../../../domain/entities/media-asset.entity.js';
 import { isBsuidOnly, recipientIdentityOf, templateRequiresPhone } from '../../../../domain/value-objects/recipient-identity.js';
-import type { MessageSenderKind } from '../../../../domain/entities/message.entity.js';
+import type { Message, MessageSenderKind } from '../../../../domain/entities/message.entity.js';
+import type { SearchKnowledgeUseCase } from '../../knowledge/knowledge.use-cases.js';
 import { billingForConversation, type OutboundBillingExtras } from '../../billing/outbound-billing.helper.js';
 import { MediaKind } from '../../../../domain/enums/media-kind.enum.js';
 import type { MediaAccessService } from '../../media/media-access.service.js';
@@ -177,7 +178,25 @@ export class FlowEngineService {
     private readonly accessRepo: AgentPhoneAccessRepository,
     private readonly assetRepo: MediaAssetRepository,
     private readonly mediaAccess: MediaAccessService,
+    private readonly searchKnowledge?: SearchKnowledgeUseCase,
   ) {}
+
+  private async retrieveKnowledge(
+    tenantId: string,
+    history: Message[],
+  ): Promise<Array<{ text: string; documentTitle: string }> | undefined> {
+    if (!this.searchKnowledge) return undefined;
+    const question = lastInboundOf(history)?.body?.trim();
+    if (!question) return undefined;
+
+    try {
+      const excerpts = await this.searchKnowledge.execute(tenantId, question);
+      return excerpts.length ? excerpts.map((e) => ({ text: e.text, documentTitle: e.documentTitle })) : undefined;
+    } catch (error: any) {
+      this.logger.warn(`No se pudo consultar la base de conocimiento: ${error?.message}`);
+      return undefined;
+    }
+  }
 
   // ── Entradas desde los jobs ────────────────────────────────────
 
@@ -1250,6 +1269,7 @@ export class FlowEngineService {
       conversationSummary: ctx.conversation.summary ?? null,
       labels: tenantLabels.map((l) => l.name),
       extraInstructions: instructions,
+      knowledge: await this.retrieveKnowledge(ctx.tenantId, history),
     });
 
     const result = await this.aiCompletion.complete({

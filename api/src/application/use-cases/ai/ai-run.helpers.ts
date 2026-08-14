@@ -73,8 +73,9 @@ export function buildAgentSystemPrompt(params: {
   conversationSummary: string | null;
   labels: string[];
   extraInstructions?: string;
+  knowledge?: Array<{ text: string; documentTitle: string }>;
 }): string {
-  const { config, contact, conversationSummary, labels, extraInstructions } = params;
+  const { config, contact, conversationSummary, labels, extraInstructions, knowledge } = params;
   const now = new Date();
   const tz = config.timezone ?? undefined;
   const dateOpts: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: tz };
@@ -115,6 +116,7 @@ export function buildAgentSystemPrompt(params: {
       onCustomerRequest: config.handoffRules.onCustomerRequest,
     },
     labels,
+    knowledge,
     multiMessage: config.multiMessage?.enabled
       ? { enabled: true, maxBubbles: config.multiMessage.maxBubbles }
       : undefined,

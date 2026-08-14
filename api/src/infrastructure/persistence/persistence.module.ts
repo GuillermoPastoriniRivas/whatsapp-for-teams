@@ -66,6 +66,11 @@ import { MongoMessageChargeRepository } from './mongoose/repositories/mongo-mess
 import { RateCardModel, RateCardSchema } from './mongoose/schemas/rate-card.schema.js';
 import { MongoRateCardRepository } from './mongoose/repositories/mongo-rate-card.repository.js';
 
+import {
+  KnowledgeChunkModel, KnowledgeChunkSchema, KnowledgeDocumentModel, KnowledgeDocumentSchema,
+} from './mongoose/schemas/knowledge.schema.js';
+import { MongoKnowledgeRepository } from './mongoose/repositories/mongo-knowledge.repository.js';
+
 const schemas = MongooseModule.forFeature([
   { name: TenantModel.name, schema: TenantSchema },
   { name: PhoneNumberModel.name, schema: PhoneNumberSchema },
@@ -79,6 +84,8 @@ const schemas = MongooseModule.forFeature([
   { name: ConversationNoteModel.name, schema: ConversationNoteSchema },
   { name: AiUsageModel.name, schema: AiUsageSchema },
   { name: LabelModel.name, schema: LabelSchema },
+  { name: KnowledgeDocumentModel.name, schema: KnowledgeDocumentSchema },
+  { name: KnowledgeChunkModel.name, schema: KnowledgeChunkSchema },
   { name: ConversationLabelModel.name, schema: ConversationLabelSchema },
   { name: SubscriptionModel.name, schema: SubscriptionSchema },
   { name: BillingRecordModel.name, schema: BillingRecordSchema },
@@ -115,6 +122,7 @@ const repositories = [
   { provide: 'ConversationNoteRepository', useClass: MongoConversationNoteRepository },
   { provide: 'AiUsageRepository', useClass: MongoAiUsageRepository },
   { provide: 'LabelRepository', useClass: MongoLabelRepository },
+  { provide: 'KnowledgeRepository', useClass: MongoKnowledgeRepository },
   { provide: 'ConversationLabelRepository', useClass: MongoConversationLabelRepository },
   { provide: 'SubscriptionRepository', useClass: MongoSubscriptionRepository },
   { provide: 'BillingRecordRepository', useClass: MongoBillingRecordRepository },

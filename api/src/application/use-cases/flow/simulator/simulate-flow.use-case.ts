@@ -16,6 +16,7 @@ import type { MessageTemplateRepository } from '../../../../domain/repositories/
 import type { AiCompletionPort } from '../../../ports/ai-completion.port.js';
 import type { FlowSecretsPort } from '../../../ports/flow-secrets.port.js';
 import type { MediaAssetRepository } from '../../../../domain/repositories/media-asset.repository.js';
+import type { SearchKnowledgeUseCase } from '../../knowledge/knowledge.use-cases.js';
 import type { MediaAccessService } from '../../media/media-access.service.js';
 import { Flow } from '../../../../domain/entities/flow.entity.js';
 import { FlowVersion } from '../../../../domain/entities/flow-version.entity.js';
@@ -120,6 +121,7 @@ export class SimulateFlowUseCase {
     // y la prueba detecta un asset vencido igual que producción.
     private readonly assetRepo: MediaAssetRepository,
     private readonly mediaAccess: MediaAccessService,
+    private readonly searchKnowledge?: SearchKnowledgeUseCase,
   ) {}
 
   async execute(input: SimulateFlowInput): Promise<Result<SimulateFlowOutput, DomainError>> {
@@ -259,6 +261,7 @@ export class SimulateFlowUseCase {
       new NoopPhoneAccess(),
       this.assetRepo,
       this.mediaAccess,
+      this.searchKnowledge,
     );
 
     const stepsBefore = session?.execution?.steps.length ?? 0;

@@ -10,6 +10,9 @@ import {
   GetAccountProfileUseCase, UpdateAccountProfileUseCase,
 } from '../../application/use-cases/tenant/account-profile.use-cases.js';
 import { assistantInstructionStarterFor } from '../../application/use-cases/ai/prompts/assistant-instruction-starters.js';
+import {
+  IngestKnowledgeUseCase, SearchKnowledgeUseCase, ListKnowledgeUseCase, DeleteKnowledgeUseCase,
+} from '../../application/use-cases/knowledge/knowledge.use-cases.js';
 import { CreateLabelUseCase } from '../../application/use-cases/label/create-label.use-case.js';
 import { UpdateLabelUseCase } from '../../application/use-cases/label/update-label.use-case.js';
 import { LABEL_COLORS } from '../../domain/value-objects/label-colors.js';
@@ -83,6 +86,10 @@ export class AsisMcpServerFactory {
     @Inject('CreateContactUseCase') private readonly createContact: CreateContactUseCase,
     @Inject('GetAccountProfileUseCase') private readonly getAccountProfile: GetAccountProfileUseCase,
     @Inject('UpdateAccountProfileUseCase') private readonly updateAccountProfile: UpdateAccountProfileUseCase,
+    @Inject('IngestKnowledgeUseCase') private readonly ingestKnowledge: IngestKnowledgeUseCase,
+    @Inject('SearchKnowledgeUseCase') private readonly searchKnowledge: SearchKnowledgeUseCase,
+    @Inject('ListKnowledgeUseCase') private readonly listKnowledge: ListKnowledgeUseCase,
+    @Inject('DeleteKnowledgeUseCase') private readonly deleteKnowledge: DeleteKnowledgeUseCase,
     @Inject('CreateLabelUseCase') private readonly createLabel: CreateLabelUseCase,
     @Inject('UpdateLabelUseCase') private readonly updateLabel: UpdateLabelUseCase,
     @Inject('CreateFlowUseCase') private readonly createFlow: CreateFlowUseCase,
@@ -505,6 +512,109 @@ export class AsisMcpServerFactory {
         if (denied) return denied;
         const labels = await this.labelRepo.findByTenantId(principal.tenantId);
         return asJson(labels.map((label) => ({ id: label.id, name: label.name, color: label.color })));
+      },
+    );
+
+    server.registerTool(
+      'list_knowledge',
+      {
+        title: 'List what the assistant can look up',
+        description:
+          'Documents indexed in the knowledge base. The assistant does not read them whole: for every customer ' +
+          'question it retrieves only the passages that look relevant.',
+        inputSchema: {},
+        annotations: READ_ONLY,
+      },
+      async () => {
+        const denied = this.lacksEveryScope(principal, readsEither);
+        if (denied) return denied;
+        const documents = await this.listKnowledge.execute(principal.tenantId);
+        return asJson(
+          documents.map((doc) => ({
+            id: doc.id,
+            title: doc.title,
+            source: doc.source,
+            chunkCount: doc.chunkCount,
+            characterCount: doc.characterCount,
+          })),
+        );
+      },
+    );
+
+    server.registerTool(
+      'add_knowledge',
+      {
+        title: 'Teach the assistant something',
+        description:
+          'Indexes a document so the assistant can answer from it. Send plain text: if the source is a PDF or a web ' +
+          'page, extract the text first. Give it a title the business would recognise — the assistant sees it as the ' +
+          'origin of what it quotes. Prefer several focused documents over one huge dump: retrieval gets sharper.',
+        inputSchema: {
+          title: z.string().min(1).max(200),
+          text: z.string().min(1),
+          sourceRef: z.string().max(2000).optional().describe('Where it came from: a URL or a file name'),
+        },
+        annotations: SAFE_WRITE,
+      },
+      async ({ title, text, sourceRef }) => {
+        const denied = this.lacksEveryScope(principal, writesEither);
+        if (denied) return denied;
+        const result = await this.ingestKnowledge.execute({
+          tenantId: principal.tenantId,
+          title,
+          text,
+          source: sourceRef ? 'url' : 'text',
+          sourceRef: sourceRef ?? null,
+        });
+        if (!result.ok) return asProblem(`${result.error.code}: ${result.error.message}`);
+        return asJson({ id: result.value.id, title: result.value.title, chunkCount: result.value.chunkCount });
+      },
+    );
+
+    server.registerTool(
+      'search_knowledge',
+      {
+        title: 'See what the assistant would find',
+        description:
+          'Runs the same retrieval the assistant runs when a customer asks something, and returns the passages with ' +
+          'their relevance score. Use it to check whether the knowledge base actually answers a question before ' +
+          'blaming the instructions: an empty result means the answer is not indexed.',
+        inputSchema: {
+          question: z.string().min(1),
+          limit: z.number().int().min(1).max(20).default(5),
+        },
+        annotations: READ_ONLY,
+      },
+      async ({ question, limit }) => {
+        const denied = this.lacksEveryScope(principal, readsEither);
+        if (denied) return denied;
+        const excerpts = await this.searchKnowledge.execute(principal.tenantId, question, limit);
+        if (excerpts.length === 0) {
+          return asJson({
+            excerpts: [],
+            note: 'Nothing indexed answers this. Either the knowledge base is empty, or this topic is missing from it.',
+          });
+        }
+        return asJson({ excerpts });
+      },
+    );
+
+    server.registerTool(
+      'delete_knowledge',
+      {
+        title: 'Remove a document from the knowledge base',
+        description:
+          'Deletes the document and everything indexed from it. The assistant stops being able to answer from it ' +
+          'immediately, so check with list_knowledge first.',
+        inputSchema: { documentId: z.string() },
+        annotations: REPLACES_EXISTING_DRAFT,
+      },
+      async ({ documentId }) => {
+        const denied = this.lacksEveryScope(principal, writesEither);
+        if (denied) return denied;
+        const result = await this.deleteKnowledge.execute(principal.tenantId, documentId);
+        if (!result.ok) return asProblem(`${result.error.code}: ${result.error.message}`);
+        return asJson({ deleted: true });
       },
     );
 

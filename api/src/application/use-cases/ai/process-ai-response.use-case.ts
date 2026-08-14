@@ -22,6 +22,8 @@ import { DeveloperEventsPort } from '../../ports/developer-events.port.js';
 import { HandoffToHumanUseCase } from './handoff-to-human.use-case.js';
 import { HandoffDetectionDomainService } from '../../../domain/services/handoff-detection.domain-service.js';
 import { ContactDirectiveHandler } from './handlers/contact-directive.handler.js';
+import type { Message } from '../../../domain/entities/message.entity.js';
+import type { SearchKnowledgeUseCase } from '../knowledge/knowledge.use-cases.js';
 import { MessageDirection } from '../../../domain/enums/message-direction.enum.js';
 import { MessageType } from '../../../domain/enums/message-type.enum.js';
 import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js';
@@ -68,8 +70,26 @@ export class ProcessAiResponseUseCase {
     private readonly eventRepo: ConversationEventRepository,
     private readonly flowExecRepo: FlowExecutionRepository,
     private readonly devEvents: DeveloperEventsPort,
+    private readonly searchKnowledge?: SearchKnowledgeUseCase,
   ) {
     this.contactHandler = new ContactDirectiveHandler(this.contactRepo, this.eventRepo, this.gateway);
+  }
+
+  private async retrieveKnowledge(
+    tenantId: string,
+    messages: Message[],
+  ): Promise<Array<{ text: string; documentTitle: string }> | undefined> {
+    if (!this.searchKnowledge) return undefined;
+    const question = lastInboundOf(messages)?.body?.trim();
+    if (!question) return undefined;
+
+    try {
+      const excerpts = await this.searchKnowledge.execute(tenantId, question);
+      return excerpts.length ? excerpts.map((e) => ({ text: e.text, documentTitle: e.documentTitle })) : undefined;
+    } catch (error: any) {
+      this.logger.warn(`No se pudo consultar la base de conocimiento: ${error?.message}`);
+      return undefined;
+    }
   }
 
   async execute(input: ProcessAiResponseInput): Promise<void> {
@@ -182,6 +202,7 @@ export class ProcessAiResponseUseCase {
       contact,
       conversationSummary: conversation.summary ?? null,
       labels: tenantLabels.map((l: any) => l.name),
+      knowledge: await this.retrieveKnowledge(conversation.tenantId, messages),
     });
 
     // ── Build tool registry ─────────────────────────────────────────────

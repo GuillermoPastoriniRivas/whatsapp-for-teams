@@ -40,6 +40,9 @@ export interface SystemPromptContext {
 
   // Multi-message
   multiMessage?: { enabled: boolean; maxBubbles: number };
+
+  // Fragmentos recuperados de la base de conocimiento para este turno
+  knowledge?: Array<{ text: string; documentTitle: string }>;
 }
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -154,11 +157,30 @@ No operating hours are configured for this business. Always treat the business a
   if (profile.extraNotes) {
     info.push(`\n### Additional Notes\n${profile.extraNotes}`);
   }
+  const hasKnowledge = Boolean(ctx.knowledge?.length);
   if (info.length > 0) {
+    const sourceOfTruth = hasKnowledge
+      ? 'This, together with the Knowledge Base section below, is your source of truth. Do not invent anything beyond the two.'
+      : 'This is your source of truth. Answer only from this information — do not invent anything beyond it.';
     parts.push(`## Business Information
-This is your source of truth. Answer only from this information — do not invent anything beyond it.
+${sourceOfTruth}
 
 ${info.join('\n')}`);
+  }
+
+  // ── 6b. Knowledge base excerpts ───────────────────────────────────────
+  if (ctx.knowledge?.length) {
+    const excerpts = ctx.knowledge
+      .map((item, index) => `[${index + 1}] From "${item.documentTitle}":\n${item.text}`)
+      .join('\n\n');
+    parts.push(`## Knowledge Base
+These excerpts come from the business's own documents, retrieved because they look relevant to what the customer just asked. They are source of truth, and they outrank your general knowledge about how this kind of business usually works.
+
+- If an excerpt answers the question, answer with it, and use its concrete data — prices, durations, rules, conditions — exactly as written. Do not soften it into a vague answer and do not say you need to check.
+- Retrieval is approximate: an excerpt may be off-topic. If none of them actually covers what was asked, say you will check with the team. Do NOT fill the gap from your own knowledge.
+- Never mention the excerpts, their numbers or the documents. Just answer naturally.
+
+${excerpts}`);
   }
 
   // ── 7. Conversation objective ─────────────────────────────────────────
