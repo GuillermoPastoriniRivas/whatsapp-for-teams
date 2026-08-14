@@ -70,6 +70,10 @@ import {
   KnowledgeChunkModel, KnowledgeChunkSchema, KnowledgeDocumentModel, KnowledgeDocumentSchema,
 } from './mongoose/schemas/knowledge.schema.js';
 import { MongoKnowledgeRepository } from './mongoose/repositories/mongo-knowledge.repository.js';
+import {
+  EvaluationCaseModel, EvaluationCaseSchema, EvaluationRunModel, EvaluationRunSchema,
+} from './mongoose/schemas/evaluation.schema.js';
+import { MongoEvaluationRepository } from './mongoose/repositories/mongo-evaluation.repository.js';
 
 const schemas = MongooseModule.forFeature([
   { name: TenantModel.name, schema: TenantSchema },
@@ -86,6 +90,8 @@ const schemas = MongooseModule.forFeature([
   { name: LabelModel.name, schema: LabelSchema },
   { name: KnowledgeDocumentModel.name, schema: KnowledgeDocumentSchema },
   { name: KnowledgeChunkModel.name, schema: KnowledgeChunkSchema },
+  { name: EvaluationCaseModel.name, schema: EvaluationCaseSchema },
+  { name: EvaluationRunModel.name, schema: EvaluationRunSchema },
   { name: ConversationLabelModel.name, schema: ConversationLabelSchema },
   { name: SubscriptionModel.name, schema: SubscriptionSchema },
   { name: BillingRecordModel.name, schema: BillingRecordSchema },
@@ -123,6 +129,7 @@ const repositories = [
   { provide: 'AiUsageRepository', useClass: MongoAiUsageRepository },
   { provide: 'LabelRepository', useClass: MongoLabelRepository },
   { provide: 'KnowledgeRepository', useClass: MongoKnowledgeRepository },
+  { provide: 'EvaluationRepository', useClass: MongoEvaluationRepository },
   { provide: 'ConversationLabelRepository', useClass: MongoConversationLabelRepository },
   { provide: 'SubscriptionRepository', useClass: MongoSubscriptionRepository },
   { provide: 'BillingRecordRepository', useClass: MongoBillingRecordRepository },

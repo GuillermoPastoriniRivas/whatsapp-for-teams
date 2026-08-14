@@ -32,6 +32,7 @@ import { PhoneNumberController } from './controllers/phone-number.controller.js'
 import { ConversationController } from './controllers/conversation.controller.js';
 import { TenantController } from './controllers/tenant.controller.js';
 import { KnowledgeController } from './controllers/knowledge.controller.js';
+import { EvaluationController } from './controllers/evaluation.controller.js';
 import { AccountProfileController } from './controllers/account-profile.controller.js';
 import { GetAccountProfileUseCase, UpdateAccountProfileUseCase } from '../application/use-cases/tenant/account-profile.use-cases.js';
 import { WebhookController } from './controllers/webhook.controller.js';
@@ -158,6 +159,10 @@ import { HandoffToHumanUseCase } from '../application/use-cases/ai/handoff-to-hu
 import {
   IngestKnowledgeUseCase, SearchKnowledgeUseCase, ListKnowledgeUseCase, DeleteKnowledgeUseCase,
 } from '../application/use-cases/knowledge/knowledge.use-cases.js';
+import {
+  CreateEvaluationCaseUseCase, ListEvaluationCasesUseCase, DeleteEvaluationCaseUseCase,
+  RunEvaluationUseCase, GetLastEvaluationRunUseCase,
+} from '../application/use-cases/evaluation/evaluation.use-cases.js';
 import { CreateLabelUseCase } from '../application/use-cases/label/create-label.use-case.js';
 import { ListLabelsUseCase } from '../application/use-cases/label/list-labels.use-case.js';
 import { UpdateLabelUseCase } from '../application/use-cases/label/update-label.use-case.js';
@@ -970,6 +975,34 @@ const useCaseProviders = [
     inject: ['KnowledgeRepository'],
   },
 
+  // Evaluación
+  {
+    provide: 'CreateEvaluationCaseUseCase',
+    useFactory: (repo: any) => new CreateEvaluationCaseUseCase(repo),
+    inject: ['EvaluationRepository'],
+  },
+  {
+    provide: 'ListEvaluationCasesUseCase',
+    useFactory: (repo: any) => new ListEvaluationCasesUseCase(repo),
+    inject: ['EvaluationRepository'],
+  },
+  {
+    provide: 'DeleteEvaluationCaseUseCase',
+    useFactory: (repo: any) => new DeleteEvaluationCaseUseCase(repo),
+    inject: ['EvaluationRepository'],
+  },
+  {
+    provide: 'GetLastEvaluationRunUseCase',
+    useFactory: (repo: any) => new GetLastEvaluationRunUseCase(repo),
+    inject: ['EvaluationRepository'],
+  },
+  {
+    provide: 'RunEvaluationUseCase',
+    useFactory: (repo: any, tenantRepo: any, aiCompletion: any, searchKnowledge: any) =>
+      new RunEvaluationUseCase(repo, tenantRepo, aiCompletion, searchKnowledge),
+    inject: ['EvaluationRepository', 'TenantRepository', 'AiCompletionPort', 'SearchKnowledgeUseCase'],
+  },
+
   // Label
   {
     provide: 'CreateLabelUseCase',
@@ -1267,6 +1300,7 @@ const useCaseProviders = [
     TenantController,
     AccountProfileController,
     KnowledgeController,
+    EvaluationController,
     WebhookController,
     ContactController,
     TemplateController,
