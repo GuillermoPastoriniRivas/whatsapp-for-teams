@@ -173,6 +173,8 @@ function renderForm(
       return <ReactForm data={data} set={set} />;
     case "action.typing":
       return <TypingForm data={data} set={set} />;
+    case "action.agent":
+      return <AgentForm data={data} set={set} />;
     case "action.ai_reply":
       return <AiPersonaFields data={data} set={set} persistent={false} />;
     case "logic.ai_route":
@@ -477,6 +479,132 @@ function SaveAsField({ data, set, label = "Guardar respuesta como variable" }: {
  * en este nodo, y los datos del negocio (catálogo, horarios, FAQs) salen del
  * perfil de la cuenta — se cargan una vez en Ajustes, no por flujo.
  */
+const AGENT_TOOLS: Array<{ id: string; label: string; hint: string }> = [
+  { id: "search_knowledge", label: "Buscar en el conocimiento", hint: "Lo que subiste en «Qué sabe tu asistente»" },
+  { id: "get_catalog", label: "Ver el catálogo", hint: "Servicios o productos con sus precios" },
+  { id: "get_business_hours", label: "Ver los horarios", hint: "Si está abierto ahora y cuándo abre" },
+];
+
+/**
+ * El agente conversa solo, pero sale por donde vos le digas. Las salidas son
+ * el contrato con el resto de la automatización: sin al menos una, no tendría
+ * cómo devolver el control y el flujo se cortaría acá.
+ */
+function AgentForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+  const exits: Array<Record<string, any>> = Array.isArray(data.exits) ? data.exits : [];
+  const tools: string[] = Array.isArray(data.tools) ? data.tools : [];
+
+  const setExit = (index: number, patch: Record<string, unknown>) =>
+    set({ exits: exits.map((exit, i) => (i === index ? { ...exit, ...patch } : exit)) });
+
+  const addExit = () =>
+    set({ exits: [...exits, { key: `salida_${exits.length + 1}`, label: "", description: "" }] });
+
+  const removeExit = (index: number) => set({ exits: exits.filter((_, i) => i !== index) });
+
+  const toggleTool = (id: string, on: boolean) =>
+    set({ tools: on ? [...tools, id] : tools.filter((tool) => tool !== id) });
+
+  return (
+    <>
+      <Field label="Nombre del asistente" hint="Aparece en el historial del chat y en las notas de derivación.">
+        <Input value={data.name ?? ""} placeholder="Ej: Sofía" onChange={(e) => set({ name: e.target.value })} />
+      </Field>
+
+      <div>
+        <FieldLabel>Qué tiene que lograr</FieldLabel>
+        <Textarea
+          rows={5}
+          value={data.instructions ?? ""}
+          placeholder="Ej: Contestá consultas sobre tratamientos y precios. Nunca digas que un horario está libre."
+          onChange={(e) => set({ instructions: e.target.value })}
+        />
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Lo que cargaste en «Qué sabe tu asistente» se suma solo: acá va cómo se comporta en este paso.
+        </p>
+      </div>
+
+      <div>
+        <FieldLabel>Qué puede consultar</FieldLabel>
+        <div className="mt-2 space-y-2">
+          {AGENT_TOOLS.map((tool) => (
+            <div key={tool.id}>
+              <ToggleField
+                label={tool.label}
+                checked={tools.includes(tool.id)}
+                onChange={(on) => toggleTool(tool.id, on)}
+              />
+              <p className="text-xs text-muted-foreground">{tool.hint}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Solo puede mirar. Reservar, cobrar o avisarle a alguien lo siguen haciendo los pasos de la automatización.
+        </p>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between">
+          <FieldLabel>Cómo termina</FieldLabel>
+          <Button variant="ghost" size="sm" onClick={addExit} disabled={exits.length >= 6}>
+            Agregar salida
+          </Button>
+        </div>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Cada salida es una rama de la automatización. Escribí cuándo se usa: eso es lo que lee el agente para decidir.
+        </p>
+
+        <div className="space-y-3">
+          {exits.map((exit, index) => (
+            <div key={index} className="rounded-lg border border-border p-3">
+              <div className="flex items-center gap-2">
+                <Input
+                  className="flex-1"
+                  value={exit.label ?? ""}
+                  placeholder="Ej: Quiere sacar turno"
+                  onChange={(e) => setExit(index, { label: e.target.value })}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Quitar salida"
+                  disabled={exits.length <= 1}
+                  onClick={() => removeExit(index)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+              <Textarea
+                className="mt-2"
+                rows={2}
+                value={exit.description ?? ""}
+                placeholder="Cuándo tiene que salir por acá"
+                onChange={(e) => setExit(index, { description: e.target.value })}
+              />
+              <Input
+                className="mt-2 font-mono text-xs"
+                value={exit.key ?? ""}
+                placeholder="clave_interna"
+                onChange={(e) => setExit(index, { key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_") })}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Field label="Tope de idas y vueltas" hint="Si no resuelve en esta cantidad de mensajes, sale por «Se fue sin contestar».">
+        <Input
+          type="number"
+          min={1}
+          max={50}
+          value={data.maxTurns ?? 12}
+          onChange={(e) => set({ maxTurns: Number(e.target.value) })}
+        />
+      </Field>
+    </>
+  );
+}
+
 function AiPersonaFields({
   data,
   set,

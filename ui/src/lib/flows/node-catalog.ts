@@ -179,6 +179,23 @@ export const NODE_CATALOG: NodeTypeDef[] = [
     defaultData: { aiAgentId: "", instructions: "" },
   },
   {
+    type: "action.agent",
+    label: "Agente",
+    description: "Conversa por su cuenta hasta resolverlo, y sigue por la salida que corresponda",
+    category: "ai",
+    icon: Bot,
+    defaultData: {
+      name: "",
+      instructions: "",
+      tools: ["search_knowledge"],
+      maxTurns: 12,
+      exits: [
+        { key: "resuelto", label: "Lo resolvió", description: "Le contestó lo que preguntaba y no necesita nada más" },
+        { key: "no_pude", label: "No pudo", description: "Preguntó algo que no está en la información del negocio, o pidió hablar con una persona" },
+      ],
+    },
+  },
+  {
     type: "logic.ai_route",
     label: "Clasificar con IA",
     description: "La IA elige una rama según la intención",
@@ -377,6 +394,18 @@ export function nodeHandles(node: FlowNode): Array<{ id: string; label: string; 
         { id: "handoff", label: "Pide humano", kind: "alt" },
         { id: "error", label: "Error", kind: "error" },
       ];
+    case "action.agent": {
+      const exits: Array<{ key?: string; label?: string }> = Array.isArray(data.exits) ? data.exits : [];
+      return [
+        ...exits.map((exit) => ({
+          id: `exit:${exit.key ?? ""}`,
+          label: exit?.label || exit?.key || "?",
+          kind: "normal" as const,
+        })),
+        { id: "timeout", label: "Se fue sin contestar", kind: "alt" },
+        { id: "error", label: "Error", kind: "error" },
+      ];
+    }
     case "logic.ai_route": {
       const options: Array<{ key?: string; label?: string }> = Array.isArray(data.options) ? data.options : [];
       return [
@@ -442,6 +471,12 @@ export function nodeSummary(node: FlowNode): string {
       return data.flowId
         ? `${truncate(String(data.flowName || "Formulario"), 30)}${data.mode === "draft" ? " · borrador" : ""}`
         : "Elegí un formulario";
+    case "action.agent": {
+      const exits = Array.isArray(data.exits) ? data.exits.length : 0;
+      const tools = Array.isArray(data.tools) ? data.tools.length : 0;
+      const quien = String(data.name || "Tu asistente");
+      return `${quien} · ${exits} ${exits === 1 ? "salida" : "salidas"}${tools ? ` · puede consultar ${tools}` : " · sin consultas"}`;
+    }
     case "action.react":
       return `${data.emoji || "👍"} al último mensaje del cliente`;
     case "action.typing":
