@@ -16,6 +16,9 @@ import {
 } from './flow-node-types.js';
 import { WHATSAPP_COMPONENT_LIMITS as LIMITS } from './whatsapp-component-limits.js';
 import { AGENT_MIN_EXITS, AGENT_MAX_EXITS, agentExitsOf, agentEnabledToolsOf, AGENT_AVAILABLE_TOOLS } from './agent-node.js';
+import {
+  externalLookupsOf, MAX_EXTERNAL_LOOKUPS, EXTERNAL_LOOKUP_QUERY_PARAM,
+} from '../../ai/tools/external-lookup.tools.js';
 
 /**
  * "Solo estos números" sin ninguno tildado no dispara nunca. Antes se publicaba
@@ -555,6 +558,30 @@ function validateNodeConfig(
       const unknownTools = agentEnabledToolsOf(data).filter((tool) => !AGENT_AVAILABLE_TOOLS.includes(tool));
       if (unknownTools.length > 0) {
         err('agent_unknown_tool', `Herramienta desconocida: ${unknownTools.join(', ')}.`, id);
+      }
+
+      const declaredLookups: unknown[] = Array.isArray(data.lookups) ? data.lookups : [];
+      const lookups = externalLookupsOf(data);
+      if (declaredLookups.length !== lookups.length) {
+        err('agent_lookup_incomplete', 'Cada consulta a tu sistema necesita un nombre y una dirección.', id);
+      }
+      if (lookups.length > MAX_EXTERNAL_LOOKUPS) {
+        err('agent_lookup_count', `Como máximo ${MAX_EXTERNAL_LOOKUPS} consultas a tus sistemas por agente.`, id);
+      }
+      for (const lookup of lookups) {
+        if (!/^https:\/\//i.test(lookup.url)) {
+          err('agent_lookup_url', `La dirección de "${lookup.label}" tiene que empezar con https://`, id);
+        }
+        if (!lookup.url.includes(`{{${EXTERNAL_LOOKUP_QUERY_PARAM}}}`)) {
+          err(
+            'agent_lookup_query',
+            `La dirección de "${lookup.label}" tiene que incluir {{${EXTERNAL_LOOKUP_QUERY_PARAM}}}, que es donde va lo que el agente pregunta.`,
+            id,
+          );
+        }
+        if (lookup.connectionId && !refs.connectionIds.has(lookup.connectionId)) {
+          err('agent_lookup_connection', `La conexión de "${lookup.label}" ya no existe.`, id);
+        }
       }
 
       validateTimeout(data.timeout, id, err);

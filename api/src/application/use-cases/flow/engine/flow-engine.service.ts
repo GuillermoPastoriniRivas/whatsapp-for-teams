@@ -39,6 +39,9 @@ import type { ToolContext } from '../../ai/tools/tool-registry.js';
 import { createLookupTools } from '../../ai/tools/lookup.tools.js';
 import { inspectInbound, inspectOutbound, INJECTION_REMINDER } from '../../ai/guardrails.js';
 import {
+  createExternalLookupTools, externalLookupsOf, EXTERNAL_LOOKUP_QUERY_PARAM, type ExternalLookup,
+} from '../../ai/tools/external-lookup.tools.js';
+import {
   AGENT_FINISH_TOOL, MAX_AGENT_TOOL_ITERATIONS, agentExitsOf, agentMaxTurnsOf, agentEnabledToolsOf,
   buildAgentExitInstructions, buildAgentFinishTool,
 } from './agent-node.js';
@@ -1310,6 +1313,11 @@ export class FlowEngineService {
         (tool) => agentEnabledToolsOf(data).includes(tool.definition.name),
       ),
     );
+    registry.registerAll(
+      createExternalLookupTools(externalLookupsOf(data), (lookup, query) =>
+        this.callExternalLookup(ctx, lookup, query),
+      ),
+    );
 
     const toolContext: ToolContext = {
       conversationId: ctx.conversation.id,
@@ -1376,6 +1384,29 @@ export class FlowEngineService {
         validation: null,
       },
     };
+  }
+
+  private async callExternalLookup(
+    ctx: RunCtx,
+    lookup: ExternalLookup,
+    query: string,
+  ): Promise<{ ok: boolean; body: string }> {
+    const headers: Record<string, string> = {};
+    if (lookup.connectionId) {
+      const connection = await this.connectionRepo.findById(lookup.connectionId);
+      if (!connection || connection.tenantId !== ctx.tenantId) {
+        return { ok: false, body: 'la conexión configurada ya no existe' };
+      }
+      headers[connection.headerName] = this.secrets.decrypt(connection.secretEncrypted);
+    }
+
+    const varCtx = { ...this.varCtx(ctx), [EXTERNAL_LOOKUP_QUERY_PARAM]: query };
+    const url = renderTemplate(lookup.url, varCtx as any).text;
+
+    const response = await this.http.request({ method: 'GET', url, headers, timeoutMs: 10_000 });
+    const ok = response.status >= 200 && response.status < 300;
+    const body = typeof response.body === 'string' ? response.body : JSON.stringify(response.body ?? '');
+    return { ok, body };
   }
 
   private async execAiReply(ctx: RunCtx, data: Record<string, any>): Promise<NodeResult> {

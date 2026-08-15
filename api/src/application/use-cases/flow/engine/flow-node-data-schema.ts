@@ -130,6 +130,11 @@ export const FLOW_NODE_DATA_SCHEMA: Record<string, FlowNodeField[]> = {
       type: 'string[]',
       note: 'Qué puede consultar: search_knowledge, get_catalog, get_business_hours. Vacío = no consulta nada.',
     },
+    {
+      name: 'lookups',
+      type: '[{ label: string, url: string, connectionId?: string }]',
+      note: 'Consultas a los sistemas del negocio, hasta 3. label es qué averigua ("el stock de un producto"); url tiene que ser https e incluir {{consulta}}, que es donde se interpola lo que el agente pregunta. Cada consulta toma UNA sola pregunta a propósito: si hace falta otra cosa, se agrega otra consulta.',
+    },
     { name: 'maxTurns', type: 'number', note: 'Tope de idas y vueltas antes de salir por "timeout". Por defecto 12, máximo 50.' },
     { name: 'timeout', type: '{ amount: number, unit: "minutes" | "hours" | "days" }', note: 'Cuánto espera cada respuesta del cliente.' },
   ],

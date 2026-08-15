@@ -174,7 +174,7 @@ function renderForm(
     case "action.typing":
       return <TypingForm data={data} set={set} />;
     case "action.agent":
-      return <AgentForm data={data} set={set} />;
+      return <AgentForm data={data} set={set} refs={refs} />;
     case "action.ai_reply":
       return <AiPersonaFields data={data} set={set} persistent={false} />;
     case "logic.ai_route":
@@ -490,9 +490,24 @@ const AGENT_TOOLS: Array<{ id: string; label: string; hint: string }> = [
  * el contrato con el resto de la automatización: sin al menos una, no tendría
  * cómo devolver el control y el flujo se cortaría acá.
  */
-function AgentForm({ data, set }: { data: Record<string, any>; set: (p: Record<string, unknown>) => void }) {
+function AgentForm({
+  data,
+  set,
+  refs,
+}: {
+  data: Record<string, any>;
+  set: (p: Record<string, unknown>) => void;
+  refs: BuilderRefs;
+}) {
   const exits: Array<Record<string, any>> = Array.isArray(data.exits) ? data.exits : [];
   const tools: string[] = Array.isArray(data.tools) ? data.tools : [];
+  const lookups: Array<Record<string, any>> = Array.isArray(data.lookups) ? data.lookups : [];
+
+  const setLookup = (index: number, patch: Record<string, unknown>) =>
+    set({ lookups: lookups.map((lookup, i) => (i === index ? { ...lookup, ...patch } : lookup)) });
+
+  const addLookup = () => set({ lookups: [...lookups, { label: "", url: "", connectionId: "" }] });
+  const removeLookup = (index: number) => set({ lookups: lookups.filter((_, i) => i !== index) });
 
   const setExit = (index: number, patch: Record<string, unknown>) =>
     set({ exits: exits.map((exit, i) => (i === index ? { ...exit, ...patch } : exit)) });
@@ -541,6 +556,60 @@ function AgentForm({ data, set }: { data: Record<string, any>; set: (p: Record<s
         <p className="mt-2 text-xs text-muted-foreground">
           Solo puede mirar. Reservar, cobrar o avisarle a alguien lo siguen haciendo los pasos de la automatización.
         </p>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between">
+          <FieldLabel>Consultar tus sistemas</FieldLabel>
+          <Button variant="ghost" size="sm" onClick={addLookup} disabled={lookups.length >= 3}>
+            Agregar consulta
+          </Button>
+        </div>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Si tenés un sistema propio, el agente le puede preguntar. Cada consulta responde una cosa: si necesitás dos,
+          agregá dos.
+        </p>
+
+        <div className="space-y-3">
+          {lookups.map((lookup, index) => (
+            <div key={index} className="rounded-lg border border-border p-3">
+              <div className="flex items-center gap-2">
+                <Input
+                  className="flex-1"
+                  value={lookup.label ?? ""}
+                  placeholder="Qué averigua. Ej: el stock de un producto"
+                  onChange={(e) => setLookup(index, { label: e.target.value })}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Quitar consulta"
+                  onClick={() => removeLookup(index)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+              <Input
+                className="mt-2 font-mono text-xs"
+                value={lookup.url ?? ""}
+                placeholder="https://tu-sistema.com/stock?q={{consulta}}"
+                onChange={(e) => setLookup(index, { url: e.target.value })}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Donde pongas <code>{"{{consulta}}"}</code> va lo que el agente pregunta.
+              </p>
+              <div className="mt-2">
+                <SelectField
+                  label="Si necesita una clave"
+                  value={lookup.connectionId ?? ""}
+                  placeholder="Sin clave"
+                  options={refs.connections.map((c) => ({ value: c.id, label: `${c.name} (${c.headerName})` }))}
+                  onChange={(value) => setLookup(index, { connectionId: value })}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div>
