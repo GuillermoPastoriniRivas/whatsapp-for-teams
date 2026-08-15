@@ -41,8 +41,9 @@ describe('createExternalLookupTools', () => {
 
   it('expone UNA sola pregunta, que es lo que evita hablar de parámetros', () => {
     const [tool] = createExternalLookupTools([lookup], async () => ({ ok: true, body: 'ok' }));
-    expect(Object.keys(tool.definition.parameters.properties)).toEqual([EXTERNAL_LOOKUP_QUERY_PARAM]);
-    expect(tool.definition.parameters.required).toEqual([EXTERNAL_LOOKUP_QUERY_PARAM]);
+    const schema = tool.definition.parameters as { properties: Record<string, unknown>; required: string[] };
+    expect(Object.keys(schema.properties)).toEqual([EXTERNAL_LOOKUP_QUERY_PARAM]);
+    expect(schema.required).toEqual([EXTERNAL_LOOKUP_QUERY_PARAM]);
   });
 
   it('devuelve lo que respondió el sistema del negocio', async () => {

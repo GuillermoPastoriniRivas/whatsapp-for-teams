@@ -38,11 +38,6 @@ export type ExternalLookupCaller = (
   query: string,
 ) => Promise<{ ok: boolean; body: string }>;
 
-/**
- * Lo que el negocio conectó de sus propios sistemas. Cada consulta se describe
- * en una línea y toma UNA sola pregunta: es lo que evita que el usuario tenga
- * que pensar en parámetros. Si hace falta otra cosa, se agrega otra consulta.
- */
 export function createExternalLookupTools(
   lookups: ExternalLookup[],
   call: ExternalLookupCaller,

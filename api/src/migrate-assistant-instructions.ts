@@ -1,24 +1,3 @@
-/**
- * Baja al dato las instrucciones que hasta ago-2026 vivían en el código.
- *
- * Contexto: el prompt del asistente incluía un playbook por rubro escrito por
- * nosotros y elegido según `businessProfile.vertical`. Eso dejó de existir: el
- * bloque "How This Business Works" ahora sale de `businessProfile.assistantInstructions`,
- * que escribe y edita el dueño del negocio.
- *
- * Las cuentas que ya existen no tienen ese campo, así que sin este script se
- * quedarían sin playbook y el asistente perdería sus guardarraíles (el más
- * importante: nunca afirmar que un horario está libre). Acá se les copia como
- * punto de partida el texto del rubro que tenían, ya traducido, para que puedan
- * editarlo.
- *
- * ORDEN: deployar primero el código nuevo y después correr esto.
- *
- * Es idempotente: si la cuenta ya escribió sus instrucciones, no las pisa.
- *
- *   npm run migrate:assistant-instructions -- --dry-run   # muestra qué haría
- *   npm run migrate:assistant-instructions                # aplica
- */
 import 'dotenv/config';
 import { connect, connection, model } from 'mongoose';
 

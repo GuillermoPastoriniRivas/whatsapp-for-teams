@@ -267,8 +267,6 @@ export class FlowEngineService {
     if (input.reason === 'timeout') {
       handle = waitState.kind === 'delay' ? 'out' : 'timeout';
     } else if (node.type === 'action.agent') {
-      // El agente sigue a cargo: contesta y vuelve a estacionar, o sale por una
-      // de sus puertas. Su turno es un nodo más, con su propio presupuesto.
       const outcome = await this.runAgentTurn(ctx, node, node.data as Record<string, any>, waitState.attempts);
       if (outcome.kind === 'wait') return this.enterWait(ctx, node, outcome.wait, outcome.sentAt, startMs);
       if (outcome.kind === 'error') {
@@ -1255,12 +1253,6 @@ export class FlowEngineService {
     return this.runAgentTurn(ctx, node, data, 0);
   }
 
-  /**
-   * Un turno del agente: contesta, puede consultar, y decide si sigue
-   * conversando o sale por una de las puertas declaradas. La autonomía está
-   * acotada por las herramientas que le dieron y por esas salidas: el agente
-   * elige el cómo, el mapa decide qué pasa después.
-   */
   private async runAgentTurn(
     ctx: RunCtx,
     node: FlowNode,

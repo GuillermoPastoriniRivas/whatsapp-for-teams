@@ -252,11 +252,6 @@ interface JudgeVerdict {
   reason: string;
 }
 
-/**
- * La fidelidad se calcula, no se pregunta: pedirle al juez un `faithful` global
- * le deja lugar a racionalizar ("no está contradicho, así que vale"). Se le
- * piden las afirmaciones una por una y el veredicto sale de contarlas.
- */
 export function parseJudgeVerdict(raw: string): JudgeVerdict | null {
   const match = raw.match(/\{[\s\S]*\}/);
   if (!match) return null;

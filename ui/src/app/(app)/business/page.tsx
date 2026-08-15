@@ -92,8 +92,6 @@ export default function BusinessPage() {
   const save = async () => {
     setSaving(true);
     try {
-      // El PATCH reemplaza el perfil entero: catálogo y preguntas frecuentes
-      // viajan de vuelta tal cual vinieron para no borrarlos desde acá.
       await api.patch("/account/profile", { businessProfile: profile });
       toast.success(copy.saved);
     } catch {

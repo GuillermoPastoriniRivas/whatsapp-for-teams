@@ -485,11 +485,6 @@ const AGENT_TOOLS: Array<{ id: string; label: string; hint: string }> = [
   { id: "get_business_hours", label: "Ver los horarios", hint: "Si está abierto ahora y cuándo abre" },
 ];
 
-/**
- * El agente conversa solo, pero sale por donde vos le digas. Las salidas son
- * el contrato con el resto de la automatización: sin al menos una, no tendría
- * cómo devolver el control y el flujo se cortaría acá.
- */
 function AgentForm({
   data,
   set,

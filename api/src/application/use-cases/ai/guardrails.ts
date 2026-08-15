@@ -25,7 +25,6 @@ const PROMPT_LEAK_PATTERNS: RegExp[] = [
 ];
 
 export interface InboundGuardVerdict {
-  /** El mensaje intenta reescribir la conducta del asistente. */
   looksLikeInjection: boolean;
 }
 
@@ -44,11 +43,6 @@ export interface OutboundGuardResult {
   reason: string | null;
 }
 
-/**
- * Última barrera antes de que salga hacia el cliente. Corre siempre, incluso
- * si el modelo se portó bien mil veces: lo que sale del asistente es
- * indistinguible de lo que escribe el negocio.
- */
 export function inspectOutbound(raw: string): OutboundGuardResult {
   const text = raw.trim();
 

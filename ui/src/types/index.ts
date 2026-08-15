@@ -643,7 +643,6 @@ export interface AccountBusinessProfile {
   catalog: Array<{ name: string; price: string; description: string }>;
   faqs: Array<{ question: string; answer: string }>;
   extraNotes: string;
-  /** Cómo trabaja el negocio, en prosa. Es la conducta del asistente. */
   assistantInstructions: string;
 }
 

@@ -41,7 +41,6 @@ export interface SystemPromptContext {
   // Multi-message
   multiMessage?: { enabled: boolean; maxBubbles: number };
 
-  // Fragmentos recuperados de la base de conocimiento para este turno
   knowledge?: Array<{ text: string; documentTitle: string }>;
 }
 
