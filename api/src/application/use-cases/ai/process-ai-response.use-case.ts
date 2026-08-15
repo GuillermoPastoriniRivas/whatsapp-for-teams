@@ -39,6 +39,7 @@ import { ToolRegistry } from './tools/tool-registry.js';
 import type { ToolContext } from './tools/tool-registry.js';
 import { createContactTools } from './tools/contact.tools.js';
 import { createConversationTools } from './tools/conversation.tools.js';
+import { createLookupTools } from './tools/lookup.tools.js';
 
 export interface ProcessAiResponseInput {
   conversationId: string;
@@ -217,6 +218,9 @@ export class ProcessAiResponseUseCase {
       eventRepo: this.eventRepo,
       gateway: this.gateway,
     }));
+    toolRegistry.registerAll(
+      createLookupTools({ tenantRepo: this.tenantRepo, searchKnowledge: this.searchKnowledge }),
+    );
 
     // ── Build chat history ──────────────────────────────────────────────
     const chatHistory: ChatMessage[] = buildChatHistory(messages);

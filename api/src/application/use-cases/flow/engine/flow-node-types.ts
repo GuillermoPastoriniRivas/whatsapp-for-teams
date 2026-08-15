@@ -23,6 +23,7 @@ export const NODE_TYPES = [
   'action.react',
   'action.typing',
   'action.ai_reply',
+  'action.agent',
   'logic.ai_route',
   'action.handoff_ai',
   'action.handoff_human',
@@ -46,7 +47,12 @@ export function isTrigger(type: string): boolean {
 
 /** Nodos que consumen el modelo de IA (y por lo tanto, plata). */
 export function isAiNode(type: string): boolean {
-  return type === 'action.ai_reply' || type === 'logic.ai_route' || type === 'action.handoff_ai';
+  return (
+    type === 'action.ai_reply' ||
+    type === 'logic.ai_route' ||
+    type === 'action.handoff_ai' ||
+    type === 'action.agent'
+  );
 }
 
 /** Sobre qué líneas actúa un disparador. */
@@ -83,6 +89,7 @@ export function isWaitNode(type: string): boolean {
     type === 'action.request_location' ||
     // El formulario se completa adentro de WhatsApp y vuelve como un solo
     // mensaje: el flujo espera esa respuesta como espera cualquier otra.
+    type === 'action.agent' ||
     type === 'action.send_flow' ||
     // El "escribiendo…" solo se ve si algo lo sostiene: el nodo espera, y esa
     // espera es lo que hace el efecto.
@@ -111,7 +118,8 @@ export function isSessionSend(type: string): boolean {
     type === 'action.ask' ||
     type === 'action.request_location' ||
     type === 'action.react' ||
-    type === 'action.ai_reply'
+    type === 'action.ai_reply' ||
+    type === 'action.agent'
   );
 }
 
@@ -153,6 +161,10 @@ export function outputHandles(node: FlowNode): string[] {
       return ['out'];
     case 'action.ai_reply':
       return ['out', 'handoff', 'error'];
+    case 'action.agent': {
+      const exits: Array<{ key?: string }> = Array.isArray(data.exits) ? data.exits : [];
+      return [...exits.map((exit) => `exit:${exit.key ?? ''}`), 'timeout', 'error'];
+    }
     case 'logic.ai_route': {
       const options: Array<{ key?: string }> = Array.isArray(data.options) ? data.options : [];
       return [...options.map((o) => `opt:${o.key ?? ''}`), 'fallback'];

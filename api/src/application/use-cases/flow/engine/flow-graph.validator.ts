@@ -15,6 +15,7 @@ import {
   MAX_WAIT_MS,
 } from './flow-node-types.js';
 import { WHATSAPP_COMPONENT_LIMITS as LIMITS } from './whatsapp-component-limits.js';
+import { AGENT_MIN_EXITS, AGENT_MAX_EXITS, agentExitsOf, agentEnabledToolsOf, AGENT_AVAILABLE_TOOLS } from './agent-node.js';
 
 /**
  * "Solo estos números" sin ninguno tildado no dispara nunca. Antes se publicaba
@@ -516,6 +517,47 @@ function validateNodeConfig(
       if (name.length > LIMITS.assistantNameMaxLength) {
         err('ai_name_too_long', `El nombre del asistente supera los ${LIMITS.assistantNameMaxLength} caracteres.`, id);
       }
+      break;
+    }
+    case 'action.agent': {
+      const name = String(data.name ?? '').trim();
+      if (name.length > LIMITS.assistantNameMaxLength) {
+        err('ai_name_too_long', `El nombre del asistente supera los ${LIMITS.assistantNameMaxLength} caracteres.`, id);
+      }
+
+      const exits = agentExitsOf(data);
+      const declared: Array<{ key?: string }> = Array.isArray(data.exits) ? data.exits : [];
+      if (exits.length < AGENT_MIN_EXITS || exits.length > AGENT_MAX_EXITS) {
+        err(
+          'agent_exits_count',
+          `El agente necesita entre ${AGENT_MIN_EXITS} y ${AGENT_MAX_EXITS} salidas: son las puertas por las que le devuelve el control al flujo.`,
+          id,
+        );
+      }
+      if (declared.length !== exits.length) {
+        err('agent_exit_key', 'Cada salida necesita una clave.', id);
+      }
+
+      const seenKeys = new Set<string>();
+      for (const exit of exits) {
+        if (!/^[a-z0-9_]+$/.test(exit.key)) {
+          err('agent_exit_key', `Clave de salida inválida: "${exit.key}" (minúsculas, números y _).`, id);
+        } else if (seenKeys.has(exit.key)) {
+          err('agent_exit_dup', `Salida repetida: ${exit.key}`, id);
+        } else {
+          seenKeys.add(exit.key);
+        }
+        if (!exit.label && !exit.description) {
+          err('agent_exit_label', `La salida "${exit.key}" necesita decir cuándo se usa.`, id);
+        }
+      }
+
+      const unknownTools = agentEnabledToolsOf(data).filter((tool) => !AGENT_AVAILABLE_TOOLS.includes(tool));
+      if (unknownTools.length > 0) {
+        err('agent_unknown_tool', `Herramienta desconocida: ${unknownTools.join(', ')}.`, id);
+      }
+
+      validateTimeout(data.timeout, id, err);
       break;
     }
     case 'logic.ai_route': {

@@ -2,7 +2,7 @@ import { FlowExecutionStatus } from '../enums/flow-execution-status.enum.js';
 
 export interface FlowWaitState {
   nodeId: string;
-  kind: 'reply' | 'delay';
+  kind: 'reply' | 'delay' | 'agent';
   timeoutAt: Date;
   waitingSince: Date;
   saveAs: string | null;

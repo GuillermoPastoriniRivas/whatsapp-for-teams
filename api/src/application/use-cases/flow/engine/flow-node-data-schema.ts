@@ -116,6 +116,23 @@ export const FLOW_NODE_DATA_SCHEMA: Record<string, FlowNodeField[]> = {
     { name: 'name', type: 'string', note: 'Igual que ai_reply, pero el asistente se queda con la conversación: el flujo termina acá.' },
     { name: 'instructions', type: 'string' },
   ],
+  'action.agent': [
+    { name: 'name', type: 'string', note: 'Nombre del asistente, hasta 60 caracteres. Es lo que ve el cliente.' },
+    { name: 'instructions', type: 'string', note: 'Qué tiene que lograr y cómo. El perfil del negocio y el conocimiento se inyectan solos.' },
+    {
+      name: 'exits',
+      type: '[{ key: string, label: string, description: string }]',
+      required: true,
+      note: 'Las puertas por las que puede salir, entre 1 y 6. key en minúsculas/números/_ y abre la salida exit:<key>; description le dice al agente cuándo usarla. El agente conversa libre hasta que una aplique.',
+    },
+    {
+      name: 'tools',
+      type: 'string[]',
+      note: 'Qué puede consultar: search_knowledge, get_catalog, get_business_hours. Vacío = no consulta nada.',
+    },
+    { name: 'maxTurns', type: 'number', note: 'Tope de idas y vueltas antes de salir por "timeout". Por defecto 12, máximo 50.' },
+    { name: 'timeout', type: '{ amount: number, unit: "minutes" | "hours" | "days" }', note: 'Cuánto espera cada respuesta del cliente.' },
+  ],
   'logic.ai_route': [
     { name: 'options', type: '[{ key: string, label: string }]', required: true, note: 'Entre 2 y 6. key en minúsculas/números/_ y abre la salida opt:<key>; label describe cuándo elegirla.' },
   ],

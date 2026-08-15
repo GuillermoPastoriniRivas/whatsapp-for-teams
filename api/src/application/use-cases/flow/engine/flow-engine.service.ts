@@ -33,6 +33,14 @@ import type { MediaAsset } from '../../../../domain/entities/media-asset.entity.
 import { isBsuidOnly, recipientIdentityOf, templateRequiresPhone } from '../../../../domain/value-objects/recipient-identity.js';
 import type { Message, MessageSenderKind } from '../../../../domain/entities/message.entity.js';
 import type { SearchKnowledgeUseCase } from '../../knowledge/knowledge.use-cases.js';
+import type { ChatMessage } from '../../../ports/ai-completion.port.js';
+import { ToolRegistry } from '../../ai/tools/tool-registry.js';
+import type { ToolContext } from '../../ai/tools/tool-registry.js';
+import { createLookupTools } from '../../ai/tools/lookup.tools.js';
+import {
+  AGENT_FINISH_TOOL, MAX_AGENT_TOOL_ITERATIONS, agentExitsOf, agentMaxTurnsOf, agentEnabledToolsOf,
+  buildAgentExitInstructions, buildAgentFinishTool,
+} from './agent-node.js';
 import { billingForConversation, type OutboundBillingExtras } from '../../billing/outbound-billing.helper.js';
 import { MediaKind } from '../../../../domain/enums/media-kind.enum.js';
 import type { MediaAccessService } from '../../media/media-access.service.js';
@@ -254,6 +262,18 @@ export class FlowEngineService {
 
     if (input.reason === 'timeout') {
       handle = waitState.kind === 'delay' ? 'out' : 'timeout';
+    } else if (node.type === 'action.agent') {
+      // El agente sigue a cargo: contesta y vuelve a estacionar, o sale por una
+      // de sus puertas. Su turno es un nodo más, con su propio presupuesto.
+      const outcome = await this.runAgentTurn(ctx, node, node.data as Record<string, any>, waitState.attempts);
+      if (outcome.kind === 'wait') return this.enterWait(ctx, node, outcome.wait, outcome.sentAt, startMs);
+      if (outcome.kind === 'error') {
+        return this.continueFrom(ctx, node, 'error', outcome.message, startMs);
+      }
+      if (outcome.kind !== 'advance') {
+        return this.continueFrom(ctx, node, 'error', 'El agente terminó de forma inesperada', startMs);
+      }
+      return this.continueFrom(ctx, node, outcome.handle, outcome.note ?? null, startMs);
     } else if (node.type === 'action.send_flow') {
       const respuesta = input.messageId
         ? ((await this.messageRepo.findById(input.messageId))?.interactivePayload as
@@ -621,6 +641,8 @@ export class FlowEngineService {
         return this.execSendTemplate(ctx, data);
       case 'action.ask':
         return this.execAsk(ctx, node, data);
+      case 'action.agent':
+        return this.execAgent(ctx, node, data);
       case 'action.ai_reply':
         return this.execAiReply(ctx, data);
       case 'logic.ai_route':
@@ -1221,6 +1243,132 @@ export class FlowEngineService {
         textMap: null,
         attempts: 0,
         validation: typeof data.validation === 'string' ? data.validation : 'texto',
+      },
+    };
+  }
+
+  private async execAgent(ctx: RunCtx, node: FlowNode, data: Record<string, any>): Promise<NodeResult> {
+    return this.runAgentTurn(ctx, node, data, 0);
+  }
+
+  /**
+   * Un turno del agente: contesta, puede consultar, y decide si sigue
+   * conversando o sale por una de las puertas declaradas. La autonomía está
+   * acotada por las herramientas que le dieron y por esas salidas: el agente
+   * elige el cómo, el mapa decide qué pasa después.
+   */
+  private async runAgentTurn(
+    ctx: RunCtx,
+    node: FlowNode,
+    data: Record<string, any>,
+    turnsSoFar: number,
+  ): Promise<NodeResult> {
+    if (this.checkWindow(ctx, 'error')) return { kind: 'error', message: 'Ventana de 24 h cerrada' };
+
+    const tenant = await this.tenantRepo.findById(ctx.tenantId);
+    if (!tenant) return { kind: 'error', message: 'No se pudo leer la cuenta' };
+
+    if (tenant.aiRateLimits.maxMessagesPerDay > 0) {
+      const usage = await this.usageRepo.getUsage(ctx.tenantId, today());
+      if (usage && usage.messageCount >= tenant.aiRateLimits.maxMessagesPerDay) {
+        return { kind: 'error', message: 'La cuenta alcanzó su límite diario de mensajes de IA' };
+      }
+    }
+
+    const exits = agentExitsOf(data);
+    if (exits.length === 0) return { kind: 'error', message: 'El agente no tiene salidas declaradas' };
+
+    const maxTurns = agentMaxTurnsOf(data);
+    if (turnsSoFar >= maxTurns) {
+      return { kind: 'advance', handle: 'timeout', note: `el agente llegó a ${maxTurns} turnos sin resolver` };
+    }
+
+    const config = resolveAiPersona(tenant, { ...data, multiMessage: { enabled: false } });
+    const { data: history } = await this.messageRepo.findByConversationId(
+      ctx.conversation.id,
+      1,
+      config.contextConfig.maxHistoryMessages,
+    );
+
+    const instructions = typeof data.instructions === 'string' && data.instructions.trim()
+      ? renderTemplate(data.instructions, this.varCtx(ctx)).text
+      : undefined;
+
+    const systemPrompt = buildAgentSystemPrompt({
+      config,
+      contact: config.contextConfig.includeContactInfo ? ctx.contact : null,
+      conversationSummary: ctx.conversation.summary ?? null,
+      labels: [],
+      extraInstructions: [instructions, buildAgentExitInstructions(exits)].filter(Boolean).join('\n\n'),
+      knowledge: await this.retrieveKnowledge(ctx.tenantId, history),
+    });
+
+    const registry = new ToolRegistry();
+    registry.registerAll(
+      createLookupTools({ tenantRepo: this.tenantRepo, searchKnowledge: this.searchKnowledge }).filter(
+        (tool) => agentEnabledToolsOf(data).includes(tool.definition.name),
+      ),
+    );
+
+    const toolContext: ToolContext = {
+      conversationId: ctx.conversation.id,
+      contactId: ctx.contact.id,
+      phoneNumberId: ctx.conversation.phoneNumberId,
+      tenantId: ctx.tenantId,
+      agentId: null,
+      agentName: config.name,
+    };
+
+    const messages: ChatMessage[] = buildChatHistory(history);
+    let reply = '';
+
+    for (let iteration = 0; iteration < MAX_AGENT_TOOL_ITERATIONS; iteration++) {
+      const result = await this.aiCompletion.complete({
+        systemPrompt,
+        messages,
+        tools: [...registry.getDefinitions(), buildAgentFinishTool(exits)],
+      });
+      await this.usageRepo.incrementUsage(ctx.tenantId, today(), 0, result.tokensUsed.total);
+
+      const finish = (result.toolCalls ?? []).find((call) => call.name === AGENT_FINISH_TOOL);
+      if (finish) {
+        const chosen = String((finish.arguments as Record<string, unknown>)?.exit ?? '');
+        const exit = exits.find((e) => e.key === chosen) ?? exits[0];
+        const closing = stripTimestampPrefixes(result.content ?? '').trim();
+        if (closing) await this.sendSessionMessage(ctx, closing.substring(0, 4096));
+        return { kind: 'advance', handle: `exit:${exit.key}`, note: exit.label };
+      }
+
+      const calls = result.toolCalls ?? [];
+      if (calls.length === 0) {
+        reply = stripTimestampPrefixes(result.content ?? '').trim();
+        break;
+      }
+
+      messages.push({ role: 'assistant', content: result.content ?? null, toolCalls: calls });
+      for (const call of calls) {
+        const output = await registry.execute(call.name, call.arguments as Record<string, unknown>, toolContext);
+        messages.push({ role: 'tool', toolCallId: call.id, content: output });
+      }
+    }
+
+    if (!reply) return { kind: 'error', message: 'El agente no produjo respuesta' };
+
+    const sentAt = new Date();
+    await this.sendSessionMessage(ctx, reply.substring(0, 4096));
+    return {
+      kind: 'wait',
+      sentAt,
+      wait: {
+        nodeId: node.id,
+        kind: 'agent',
+        timeoutAt: new Date(Date.now() + (durationToMs(data.timeout) ?? DEFAULT_REPLY_TIMEOUT_MS)),
+        waitingSince: new Date(),
+        saveAs: null,
+        optionMap: null,
+        textMap: null,
+        attempts: turnsSoFar + 1,
+        validation: null,
       },
     };
   }
