@@ -37,6 +37,7 @@ import type { ChatMessage } from '../../../ports/ai-completion.port.js';
 import { ToolRegistry } from '../../ai/tools/tool-registry.js';
 import type { ToolContext } from '../../ai/tools/tool-registry.js';
 import { createLookupTools } from '../../ai/tools/lookup.tools.js';
+import { inspectInbound, inspectOutbound, INJECTION_REMINDER } from '../../ai/guardrails.js';
 import {
   AGENT_FINISH_TOOL, MAX_AGENT_TOOL_ITERATIONS, agentExitsOf, agentMaxTurnsOf, agentEnabledToolsOf,
   buildAgentExitInstructions, buildAgentFinishTool,
@@ -1334,8 +1335,8 @@ export class FlowEngineService {
       if (finish) {
         const chosen = String((finish.arguments as Record<string, unknown>)?.exit ?? '');
         const exit = exits.find((e) => e.key === chosen) ?? exits[0];
-        const closing = stripTimestampPrefixes(result.content ?? '').trim();
-        if (closing) await this.sendSessionMessage(ctx, closing.substring(0, 4096));
+        const closing = inspectOutbound(stripTimestampPrefixes(result.content ?? ''));
+        if (!closing.blocked && closing.text) await this.sendSessionMessage(ctx, closing.text);
         return { kind: 'advance', handle: `exit:${exit.key}`, note: exit.label };
       }
 
@@ -1352,10 +1353,14 @@ export class FlowEngineService {
       }
     }
 
-    if (!reply) return { kind: 'error', message: 'El agente no produjo respuesta' };
+    const guarded = inspectOutbound(reply);
+    if (guarded.blocked) {
+      this.logger.warn(`Respuesta del agente bloqueada en ${ctx.execId}: ${guarded.reason}`);
+      return { kind: 'error', message: `El agente produjo una respuesta que no se podía mandar (${guarded.reason})` };
+    }
 
     const sentAt = new Date();
-    await this.sendSessionMessage(ctx, reply.substring(0, 4096));
+    await this.sendSessionMessage(ctx, guarded.text);
     return {
       kind: 'wait',
       sentAt,
