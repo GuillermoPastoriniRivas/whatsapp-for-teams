@@ -2,6 +2,7 @@ import { SimulateFlowUseCase } from './simulate-flow.use-case.js';
 import { FLOW_TEMPLATES } from '../flow-templates.js';
 import { FlowStatus } from '../../../../domain/enums/flow-status.enum.js';
 import { FlowExecutionStatus } from '../../../../domain/enums/flow-execution-status.enum.js';
+import { MessageDirection } from '../../../../domain/enums/message-direction.enum.js';
 import type { Flow, FlowGraph } from '../../../../domain/entities/flow.entity.js';
 
 // El probador corre el MOTOR REAL contra dobles. Estos tests son la garantía
@@ -135,6 +136,46 @@ describe('SimulateFlowUseCase', () => {
     if (!second.ok) return;
     expect(second.value.outbound.map((o) => o.body)).toEqual(['De 9 a 18']);
     expect(second.value.status).toBe(FlowExecutionStatus.COMPLETED);
+  });
+
+  it('un tap sin texto guarda el título de la opción como body para que el agente lo lea', async () => {
+    const flow = makeFlow({
+      nodes: [
+        TRIGGER,
+        {
+          id: 'menu',
+          type: 'action.send_list',
+          position: { x: 1, y: 0 },
+          data: { body: '¿Qué necesitás?', rows: [{ title: 'Cómo llegar' }, { title: 'Horarios' }] },
+        },
+        { id: 'siguiente', type: 'action.send_text', position: { x: 2, y: 0 }, data: { body: 'ok' } },
+      ],
+      edges: [
+        { id: 'e1', source: 't', sourceHandle: 'out', target: 'menu' },
+        { id: 'e2', source: 'menu', sourceHandle: 'row:0', target: 'siguiente' },
+      ],
+    });
+    const { useCase } = buildUseCase(flow);
+
+    const first = await useCase.execute({ tenantId: 't1', flowId: 'flow1', source: 'draft', session: null, text: 'hola' });
+    if (!first.ok) throw new Error('falló el arranque');
+    expect(first.value.status).toBe(FlowExecutionStatus.WAITING);
+
+    const second = await useCase.execute({
+      tenantId: 't1',
+      flowId: 'flow1',
+      source: 'draft',
+      session: JSON.parse(JSON.stringify(first.value.session)),
+      optionId: 'fl:menu:0',
+    });
+    if (!second.ok) throw new Error('falló la elección');
+    expect(second.value.status).toBe(FlowExecutionStatus.COMPLETED);
+
+    const taps = second.value.session.messages.filter(
+      (m) => m.direction === MessageDirection.INBOUND && m.interactiveReplyId,
+    );
+    expect(taps).toHaveLength(1);
+    expect(taps[0].body).toBe('Cómo llegar');
   });
 
   it('guarda la respuesta abierta en una variable', async () => {

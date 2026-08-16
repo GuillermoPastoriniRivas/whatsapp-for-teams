@@ -21,6 +21,8 @@ import type { MediaAccessService } from '../../media/media-access.service.js';
 import { Flow } from '../../../../domain/entities/flow.entity.js';
 import { FlowVersion } from '../../../../domain/entities/flow-version.entity.js';
 import { FlowExecution } from '../../../../domain/entities/flow-execution.entity.js';
+import type { FlowGraph } from '../../../../domain/entities/flow.entity.js';
+import type { FlowWaitState } from '../../../../domain/entities/flow-execution.entity.js';
 import { Conversation } from '../../../../domain/entities/conversation.entity.js';
 import { Contact } from '../../../../domain/entities/contact.entity.js';
 import { Message } from '../../../../domain/entities/message.entity.js';
@@ -104,6 +106,19 @@ const SIM_IDS = {
   contact: 'sim-contact',
   execution: 'sim-exec',
 };
+
+function resolveTapTitle(graph: FlowGraph, waitState: FlowWaitState, optionId: string): string | null {
+  const handle = waitState.optionMap?.[optionId];
+  if (!handle) return null;
+  const node = graph.nodes.find((n) => n.id === waitState.nodeId);
+  if (!node) return null;
+  const data = node.data as Record<string, any>;
+  const idx = parseInt(handle.split(':')[1] ?? '', 10);
+  if (Number.isNaN(idx)) return null;
+  if (node.type === 'action.send_buttons') return data.buttons?.[idx]?.title ?? null;
+  if (node.type === 'action.send_list') return data.rows?.[idx]?.title ?? null;
+  return null;
+}
 
 export class SimulateFlowUseCase {
   constructor(
@@ -191,6 +206,10 @@ export class SimulateFlowUseCase {
     // El mensaje del cliente entra al historial: el motor lo lee para el
     // contexto de la IA y para resolver la ventana de 24 h.
     const messages = [...(session?.messages ?? [])];
+    const tapTitle =
+      input.optionId && session?.execution?.waitState
+        ? resolveTapTitle(graph, session.execution.waitState, input.optionId)
+        : null;
     if (hasInbound) {
       messages.push({
         id: `sim-in-${messages.length}`,
@@ -202,7 +221,7 @@ export class SimulateFlowUseCase {
             ? MessageType.INTERACTIVE
             : MessageType.TEXT,
         location: input.location ?? null,
-        body: input.text ?? null,
+        body: input.text ?? tapTitle ?? null,
         mediaUrl: null,
         mimeType: null,
         waMessageId: `sim-wa-${messages.length}`,
