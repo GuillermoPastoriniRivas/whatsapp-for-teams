@@ -10,6 +10,7 @@ import {
 } from '../../../domain/errors/domain-errors.js';
 
 const PIN_PATTERN = /^\d{6}$/;
+const VERIFICATION_CODE_PATTERN = /^\d{4,8}$/;
 
 /**
  * Sincroniza contra Meta lo que sabemos del número: nombre verificado, calidad,
@@ -100,6 +101,84 @@ export class RegisterPhoneNumberOnMetaUseCase {
 
     // Tras registrar, Meta ya reporta calidad y verificación: se refresca para
     // que la pantalla muestre el estado real y no el de antes del alta.
+    return this.sync.execute(input.tenantId, input.phoneId);
+  }
+}
+
+export type VerificationCodeMethod = 'SMS' | 'VOICE';
+
+export interface RequestVerificationCodeInput {
+  tenantId: string;
+  phoneId: string;
+  method: VerificationCodeMethod;
+  locale: string;
+}
+
+export interface VerificationCodeSent {
+  sent: true;
+  method: VerificationCodeMethod;
+}
+
+export class RequestPhoneVerificationCodeUseCase {
+  private readonly logger = new Logger(RequestPhoneVerificationCodeUseCase.name);
+
+  constructor(
+    private readonly phoneRepo: PhoneNumberRepository,
+    private readonly admin: PhoneAdminPort,
+  ) {}
+
+  async execute(input: RequestVerificationCodeInput): Promise<Result<VerificationCodeSent, DomainError>> {
+    const phone = await this.phoneRepo.findById(input.phoneId);
+    if (!phone) return err(new PhoneNumberNotFoundError());
+    if (phone.tenantId !== input.tenantId) return err(new CrossTenantAccessError());
+
+    await this.admin.requestVerificationCode(
+      {
+        provider: phone.provider,
+        providerConfig: phone.providerConfig,
+        phoneNumberId: phone.phoneNumberId,
+      },
+      input.method,
+      input.locale,
+    );
+
+    this.logger.log(`Código de verificación pedido para ${phone.displayPhone} por ${input.method}`);
+
+    return ok({ sent: true, method: input.method });
+  }
+}
+
+export interface VerifyCodeInput {
+  tenantId: string;
+  phoneId: string;
+  code: string;
+}
+
+export class VerifyPhoneNumberCodeUseCase {
+  constructor(
+    private readonly phoneRepo: PhoneNumberRepository,
+    private readonly admin: PhoneAdminPort,
+    private readonly sync: SyncPhoneNumberUseCase,
+  ) {}
+
+  async execute(input: VerifyCodeInput): Promise<Result<PhoneNumber, DomainError>> {
+    if (!VERIFICATION_CODE_PATTERN.test(input.code)) {
+      return err(new DomainError('INVALID_VERIFICATION_CODE', 'El código de verificación son los dígitos que mandó Meta, sin espacios ni guiones.'));
+    }
+
+    const phone = await this.phoneRepo.findById(input.phoneId);
+    if (!phone) return err(new PhoneNumberNotFoundError());
+    if (phone.tenantId !== input.tenantId) return err(new CrossTenantAccessError());
+
+    await this.admin.verifyCode(
+      {
+        provider: phone.provider,
+        providerConfig: phone.providerConfig,
+        phoneNumberId: phone.phoneNumberId,
+      },
+      input.code,
+    );
+
     return this.sync.execute(input.tenantId, input.phoneId);
   }
 }

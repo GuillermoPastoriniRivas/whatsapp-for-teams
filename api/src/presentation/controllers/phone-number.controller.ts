@@ -30,7 +30,9 @@ import {
 } from '../../application/use-cases/phone-number/conversational-components.use-case.js';
 import {
   RegisterPhoneNumberOnMetaUseCase,
+  RequestPhoneVerificationCodeUseCase,
   SyncPhoneNumberUseCase,
+  VerifyPhoneNumberCodeUseCase,
 } from '../../application/use-cases/phone-number/phone-registration.use-case.js';
 import {
   BlockUsersUseCase,
@@ -40,11 +42,15 @@ import {
   BlockUsersRequestSchema,
   ConversationalComponentsRequestSchema,
   RegisterOnMetaRequestSchema,
+  RequestVerificationCodeRequestSchema,
+  VerifyCodeRequestSchema,
 } from '../request-dtos/phone-admin-request.dto.js';
 import type {
   BlockUsersRequestDto,
   ConversationalComponentsRequestDto,
   RegisterOnMetaRequestDto,
+  RequestVerificationCodeRequestDto,
+  VerifyCodeRequestDto,
 } from '../request-dtos/phone-admin-request.dto.js';
 import type { DomainError } from '../../domain/errors/domain-errors.js';
 
@@ -66,6 +72,8 @@ export class PhoneNumberController {
     @Inject('UpdateConversationalComponentsUseCase') private readonly updateComponents: UpdateConversationalComponentsUseCase,
     @Inject('SyncPhoneNumberUseCase') private readonly syncPhoneNumber: SyncPhoneNumberUseCase,
     @Inject('RegisterPhoneNumberOnMetaUseCase') private readonly registerOnMetaUseCase: RegisterPhoneNumberOnMetaUseCase,
+    @Inject('RequestPhoneVerificationCodeUseCase') private readonly requestCodeUseCase: RequestPhoneVerificationCodeUseCase,
+    @Inject('VerifyPhoneNumberCodeUseCase') private readonly verifyCodeUseCase: VerifyPhoneNumberCodeUseCase,
     @Inject('ListBlockedUsersUseCase') private readonly listBlocked: ListBlockedUsersUseCase,
     @Inject('BlockUsersUseCase') private readonly blockUsers: BlockUsersUseCase,
   ) {}
@@ -283,6 +291,61 @@ export class PhoneNumberController {
     return result.value;
   }
 
+  @Post(':id/request-code')
+  @Roles('admin')
+  @DemoRestricted()
+  @ApiOperation({
+    summary: 'Request the verification code',
+    description:
+      'Asks Meta to send the verification code to the number by SMS or voice call. ' +
+      'Landlines and numbers that do not receive SMS need VOICE.',
+  })
+  @ApiParam({ name: 'id', description: 'Phone number ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        method: { type: 'string', enum: ['SMS', 'VOICE'], default: 'SMS' },
+        locale: { type: 'string', example: 'es_ES', default: 'es_ES' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Code sent' })
+  async requestVerificationCode(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(RequestVerificationCodeRequestSchema)) body: RequestVerificationCodeRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.requestCodeUseCase.execute({
+      tenantId: agent.tenantId,
+      phoneId: id,
+      method: body.method,
+      locale: body.locale,
+    });
+    if (!result.ok) this.throwMapped(result.error);
+    return result.value;
+  }
+
+  @Post(':id/verify-code')
+  @Roles('admin')
+  @DemoRestricted()
+  @ApiOperation({
+    summary: 'Verify the code Meta sent',
+    description: 'Confirms ownership of the number. It has to be verified before it can be registered on Cloud API.',
+  })
+  @ApiParam({ name: 'id', description: 'Phone number ID' })
+  @ApiBody({ schema: { type: 'object', required: ['code'], properties: { code: { type: 'string', example: '123456' } } } })
+  @ApiResponse({ status: 201, description: 'Verified phone number' })
+  async verifyCode(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(VerifyCodeRequestSchema)) body: VerifyCodeRequestDto,
+    @CurrentAgent() agent: RequestAgent,
+  ) {
+    const result = await this.verifyCodeUseCase.execute({ tenantId: agent.tenantId, phoneId: id, code: body.code });
+    if (!result.ok) this.throwMapped(result.error);
+    return result.value;
+  }
+
   @Post(':id/register')
   @Roles('admin')
   @DemoRestricted()
@@ -352,6 +415,7 @@ export class PhoneNumberController {
       case 'INVALID_BUSINESS_PROFILE':
       case 'INVALID_COMPONENTS':
       case 'INVALID_PIN':
+      case 'INVALID_VERIFICATION_CODE':
         throw new BadRequestException(error.message);
       case 'BUSINESS_PROFILE_PROVIDER_ERROR':
         // 422: la petición está bien formada; el que dijo que no fue el proveedor.

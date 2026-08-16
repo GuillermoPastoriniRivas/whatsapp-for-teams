@@ -215,11 +215,87 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
           {/* Va fuera del <form> de arriba: es otra acción contra Meta, no una
               edición de las credenciales guardadas. */}
           <div className="border-t px-4 py-4">
+            <VerifyPhoneSection phoneId={phone.id} onUpdated={onUpdated} />
+          </div>
+
+          <div className="border-t px-4 py-4">
             <RegisterOnMetaSection phoneId={phone.id} onUpdated={onUpdated} />
           </div>
         </TabsContent>
       </Tabs>
     </>
+  );
+}
+
+function VerifyPhoneSection({ phoneId, onUpdated }: { phoneId: string; onUpdated: () => void }) {
+  const { t, locale } = useTranslations();
+  const [code, setCode] = useState("");
+  const [sending, setSending] = useState<"SMS" | "VOICE" | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
+  const requestCode = async (method: "SMS" | "VOICE") => {
+    setSending(method);
+    try {
+      await api.post(`/phone-numbers/${phoneId}/request-code`, {
+        method,
+        locale: locale === "en" ? "en_US" : "es_ES",
+      });
+      toast.success(method === "SMS" ? t.admin.verifySentSms : t.admin.verifySentVoice);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t.admin.saveError);
+    } finally {
+      setSending(null);
+    }
+  };
+
+  const verify = async () => {
+    setVerifying(true);
+    try {
+      await api.post(`/phone-numbers/${phoneId}/verify-code`, { code });
+      setCode("");
+      toast.success(t.admin.verifyDone);
+      onUpdated();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t.admin.saveError);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">{t.admin.verifyTitle}</p>
+      <p className="text-xs text-muted-foreground">{t.admin.verifyHint}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" variant="outline" size="sm" disabled={sending !== null} onClick={() => requestCode("SMS")}>
+          {sending === "SMS" && <Spinner size="sm" />}
+          {t.admin.verifySendSms}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={sending !== null}
+          onClick={() => requestCode("VOICE")}
+        >
+          {sending === "VOICE" && <Spinner size="sm" />}
+          {t.admin.verifySendVoice}
+        </Button>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          value={code}
+          inputMode="numeric"
+          maxLength={8}
+          placeholder={t.admin.verifyCode}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+        />
+        <Button type="button" variant="outline" disabled={verifying || code.length < 4} onClick={verify}>
+          {verifying && <Spinner size="sm" />}
+          {t.admin.verifyAction}
+        </Button>
+      </div>
+    </div>
   );
 }
 

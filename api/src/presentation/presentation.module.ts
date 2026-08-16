@@ -83,7 +83,9 @@ import {
 } from '../application/use-cases/phone-number/conversational-components.use-case.js';
 import {
   RegisterPhoneNumberOnMetaUseCase,
+  RequestPhoneVerificationCodeUseCase,
   SyncPhoneNumberUseCase,
+  VerifyPhoneNumberCodeUseCase,
 } from '../application/use-cases/phone-number/phone-registration.use-case.js';
 import {
   BlockUsersUseCase,
@@ -454,6 +456,17 @@ const useCaseProviders = [
     provide: 'RegisterPhoneNumberOnMetaUseCase',
     useFactory: (phoneRepo: any, admin: any, sync: any) =>
       new RegisterPhoneNumberOnMetaUseCase(phoneRepo, admin, sync),
+    inject: ['PhoneNumberRepository', 'PhoneAdminPort', 'SyncPhoneNumberUseCase'],
+  },
+  {
+    provide: 'RequestPhoneVerificationCodeUseCase',
+    useFactory: (phoneRepo: any, admin: any) => new RequestPhoneVerificationCodeUseCase(phoneRepo, admin),
+    inject: ['PhoneNumberRepository', 'PhoneAdminPort'],
+  },
+  {
+    provide: 'VerifyPhoneNumberCodeUseCase',
+    useFactory: (phoneRepo: any, admin: any, sync: any) =>
+      new VerifyPhoneNumberCodeUseCase(phoneRepo, admin, sync),
     inject: ['PhoneNumberRepository', 'PhoneAdminPort', 'SyncPhoneNumberUseCase'],
   },
   {

@@ -28,6 +28,19 @@ export const RegisterOnMetaRequestSchema = z.object({
 
 export type RegisterOnMetaRequestDto = z.infer<typeof RegisterOnMetaRequestSchema>;
 
+export const RequestVerificationCodeRequestSchema = z.object({
+  method: z.enum(['SMS', 'VOICE']).default('SMS'),
+  locale: z.string().min(2).max(10).default('es_ES'),
+});
+
+export type RequestVerificationCodeRequestDto = z.infer<typeof RequestVerificationCodeRequestSchema>;
+
+export const VerifyCodeRequestSchema = z.object({
+  code: z.string().regex(/^\d{4,8}$/, 'El código son los dígitos que mandó Meta.'),
+});
+
+export type VerifyCodeRequestDto = z.infer<typeof VerifyCodeRequestSchema>;
+
 export const BlockUsersRequestSchema = z.object({
   waIds: z.array(z.string().min(6).max(20)).min(1).max(100),
   action: z.enum(['block', 'unblock']),
