@@ -1,0 +1,5 @@
+aws_region       = "us-east-1"
+instance_type    = "t4g.small"
+key_name         = "shared-apps-key"
+allowed_ssh_cidr = "0.0.0.0/0"
+manage_dns       = false

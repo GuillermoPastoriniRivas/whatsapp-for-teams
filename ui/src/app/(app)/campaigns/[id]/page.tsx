@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Megaphone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,12 +24,14 @@ import { api } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
 import type { Campaign, CampaignStats } from "@/types";
 import type { CampaignProgressEvent } from "@/stores/campaign.store";
+import { browserPathParam } from "@/lib/static-route-param";
 
 const REFRESH_DEBOUNCE_MS = 3000;
 
 export default function CampaignDetailPage() {
   const params = useParams<{ id: string }>();
-  const campaignId = params.id;
+  const pathname = usePathname();
+  const campaignId = browserPathParam(pathname, params.id);
   const agent = useAuthStore((s) => s.agent);
   const { t } = useTranslations();
   const confirm = useConfirm();

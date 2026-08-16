@@ -1,0 +1,67 @@
+name: Deploy asis to shared ARM host
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  APP_DIR: /home/ubuntu/shared
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build ARM API image
+        run: docker buildx build --platform linux/arm64 --load -t shared-asis-api:latest ./api
+
+      - name: Build static ARM-independent UI
+        working-directory: ui
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+        run: |
+          npm ci
+          npm run build
+          tar -czf ../asis-static.tar.gz -C out .
+
+      - name: Save API image
+        run: docker save shared-asis-api:latest | gzip > shared-asis-api.tar.gz
+
+      - name: Copy shared runtime and artifacts
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SHARED_EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SHARED_EC2_SSH_KEY }}
+          source: "shared-asis-api.tar.gz,asis-static.tar.gz,docker-compose.shared.yml,infra/nginx/shared.conf,infra/nginx/proxy_params,infra/scripts/hydrate-env.sh"
+          target: ${{ env.APP_DIR }}
+
+      - name: Activate asis on shared host
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SHARED_EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SHARED_EC2_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd ${{ env.APP_DIR }}
+            mkdir -p static/asis asis/api infra/nginx
+            docker load < shared-asis-api.tar.gz
+            chmod +x infra/scripts/hydrate-env.sh
+            bash infra/scripts/hydrate-env.sh /asis/api ./asis/api/.env
+            tar -xzf asis-static.tar.gz -C static/asis
+            cp docker-compose.shared.yml docker-compose.yml
+            docker compose -f docker-compose.yml up -d --no-deps asis-api
+            if docker inspect -f '{{.State.Health.Status}}' shared-quiero-menu-api 2>/dev/null | grep -q healthy; then
+              if ! sudo test -f /etc/letsencrypt/live/asis.chat/fullchain.pem; then
+                sudo certbot certonly --standalone --non-interactive --agree-tos \
+                  -m "${{ secrets.TLS_EMAIL }}" \
+                  -d asis.chat -d www.asis.chat -d media.asis.chat
+              fi
+              docker compose -f docker-compose.yml up -d nginx
+            fi
+            rm -f shared-asis-api.tar.gz asis-static.tar.gz

@@ -1,0 +1,80 @@
+services:
+  asis-api:
+    image: shared-asis-api:latest
+    container_name: shared-asis-api
+    restart: unless-stopped
+    env_file: ./asis/api/.env
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)throw 1})"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks: [shared]
+
+  quiero-menu-api:
+    image: shared-quiero-menu-api:latest
+    container_name: shared-quiero-menu-api
+    restart: unless-stopped
+    env_file: ./quiero-menu/api/.env
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)throw 1})"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks: [shared]
+
+  fluws-api:
+    image: shared-fluws-api:latest
+    container_name: shared-fluws-api
+    restart: unless-stopped
+    env_file: ./fluws/.env
+    environment:
+      FLUWS_DATA_DIR: /data
+      FLUWS_API_PORT: 3301
+      FLUWS_UI_ORIGIN: https://fluws.com
+    volumes:
+      - fluws-data:/data
+    expose:
+      - "3301"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3301/health').then(r=>{if(!r.ok)throw 1})"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks: [shared]
+
+  nginx:
+    image: nginx:alpine
+    container_name: shared-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/shared.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infra/nginx/proxy_params:/etc/nginx/proxy_params:ro
+      - ./static:/usr/share/nginx/html:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./certbot:/var/www/certbot:ro
+    depends_on:
+      asis-api:
+        condition: service_healthy
+      quiero-menu-api:
+        condition: service_healthy
+      fluws-api:
+        condition: service_healthy
+    networks: [shared]
+
+networks:
+  shared:
+    name: shared-apps
+
+volumes:
+  fluws-data:

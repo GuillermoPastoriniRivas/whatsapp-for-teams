@@ -14,13 +14,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
       # --- Build Docker images locally, save as tarballs ---
       - name: Build API image
-        run: docker build -t hivvo-api:latest ./api
+        run: docker buildx build --platform linux/arm64 --load -t hivvo-api:latest ./api
 
       - name: Build UI image
         run: |
-          docker build \
+          docker buildx build --platform linux/arm64 --load \
             --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
             --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }} \
             -t hivvo-ui:latest ./ui
