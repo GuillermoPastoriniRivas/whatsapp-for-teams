@@ -182,6 +182,16 @@ resource "aws_route53_record" "apex" {
   allow_overwrite = true
 }
 
+resource "aws_route53_record" "www_fluws" {
+  count           = contains(var.managed_domains, "fluws") ? 1 : 0
+  zone_id         = data.aws_route53_zone.fluws.zone_id
+  name            = "www.fluws.com"
+  type            = "A"
+  ttl             = 300
+  records         = [aws_eip.shared.public_ip]
+  allow_overwrite = true
+}
+
 resource "aws_route53_record" "media_asis" {
   count           = contains(var.managed_domains, "asis") ? 1 : 0
   zone_id         = data.aws_route53_zone.asis.zone_id
