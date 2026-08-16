@@ -7,10 +7,16 @@ import {
   DomainError,
   PhoneNumberNotFoundError,
   CrossTenantAccessError,
+  PhoneRegistrationProviderError,
 } from '../../../domain/errors/domain-errors.js';
 
 const PIN_PATTERN = /^\d{6}$/;
 const VERIFICATION_CODE_PATTERN = /^\d{4,8}$/;
+
+function providerRejection(error: unknown): PhoneRegistrationProviderError {
+  const detail = error instanceof Error ? error.message : String(error);
+  return new PhoneRegistrationProviderError(detail);
+}
 
 /**
  * Sincroniza contra Meta lo que sabemos del número: nombre verificado, calidad,
@@ -32,11 +38,16 @@ export class SyncPhoneNumberUseCase {
     if (!phone) return err(new PhoneNumberNotFoundError());
     if (phone.tenantId !== tenantId) return err(new CrossTenantAccessError());
 
-    const info = await this.admin.getPhoneNumberInfo({
-      provider: phone.provider,
-      providerConfig: phone.providerConfig,
-      phoneNumberId: phone.phoneNumberId,
-    });
+    let info: RemotePhoneNumberInfo | null;
+    try {
+      info = await this.admin.getPhoneNumberInfo({
+        provider: phone.provider,
+        providerConfig: phone.providerConfig,
+        phoneNumberId: phone.phoneNumberId,
+      });
+    } catch (error: unknown) {
+      return err(providerRejection(error));
+    }
     if (!info) return ok(phone);
 
     const updated = await this.phoneRepo.update(phone.id, {
@@ -90,18 +101,23 @@ export class RegisterPhoneNumberOnMetaUseCase {
     if (!phone) return err(new PhoneNumberNotFoundError());
     if (phone.tenantId !== input.tenantId) return err(new CrossTenantAccessError());
 
-    await this.admin.register(
-      {
-        provider: phone.provider,
-        providerConfig: phone.providerConfig,
-        phoneNumberId: phone.phoneNumberId,
-      },
-      input.pin,
-    );
+    try {
+      await this.admin.register(
+        {
+          provider: phone.provider,
+          providerConfig: phone.providerConfig,
+          phoneNumberId: phone.phoneNumberId,
+        },
+        input.pin,
+      );
+    } catch (error: unknown) {
+      return err(providerRejection(error));
+    }
 
     // Tras registrar, Meta ya reporta calidad y verificación: se refresca para
     // que la pantalla muestre el estado real y no el de antes del alta.
-    return this.sync.execute(input.tenantId, input.phoneId);
+    const synced = await this.sync.execute(input.tenantId, input.phoneId);
+    return synced.ok ? synced : ok(phone);
   }
 }
 
@@ -132,15 +148,19 @@ export class RequestPhoneVerificationCodeUseCase {
     if (!phone) return err(new PhoneNumberNotFoundError());
     if (phone.tenantId !== input.tenantId) return err(new CrossTenantAccessError());
 
-    await this.admin.requestVerificationCode(
-      {
-        provider: phone.provider,
-        providerConfig: phone.providerConfig,
-        phoneNumberId: phone.phoneNumberId,
-      },
-      input.method,
-      input.locale,
-    );
+    try {
+      await this.admin.requestVerificationCode(
+        {
+          provider: phone.provider,
+          providerConfig: phone.providerConfig,
+          phoneNumberId: phone.phoneNumberId,
+        },
+        input.method,
+        input.locale,
+      );
+    } catch (error: unknown) {
+      return err(providerRejection(error));
+    }
 
     this.logger.log(`Código de verificación pedido para ${phone.displayPhone} por ${input.method}`);
 
@@ -170,15 +190,20 @@ export class VerifyPhoneNumberCodeUseCase {
     if (!phone) return err(new PhoneNumberNotFoundError());
     if (phone.tenantId !== input.tenantId) return err(new CrossTenantAccessError());
 
-    await this.admin.verifyCode(
-      {
-        provider: phone.provider,
-        providerConfig: phone.providerConfig,
-        phoneNumberId: phone.phoneNumberId,
-      },
-      input.code,
-    );
+    try {
+      await this.admin.verifyCode(
+        {
+          provider: phone.provider,
+          providerConfig: phone.providerConfig,
+          phoneNumberId: phone.phoneNumberId,
+        },
+        input.code,
+      );
+    } catch (error: unknown) {
+      return err(providerRejection(error));
+    }
 
-    return this.sync.execute(input.tenantId, input.phoneId);
+    const synced = await this.sync.execute(input.tenantId, input.phoneId);
+    return synced.ok ? synced : ok(phone);
   }
 }

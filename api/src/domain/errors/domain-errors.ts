@@ -167,6 +167,12 @@ export class BusinessProfileProviderError extends DomainError {
   }
 }
 
+export class PhoneRegistrationProviderError extends DomainError {
+  constructor(detail?: string) {
+    super('PHONE_REGISTRATION_PROVIDER_ERROR', detail ?? 'The messaging provider rejected the phone registration operation.');
+  }
+}
+
 export class InvalidBusinessProfileError extends DomainError {
   constructor(detail: string) {
     super('INVALID_BUSINESS_PROFILE', detail);

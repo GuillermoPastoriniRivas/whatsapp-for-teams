@@ -418,6 +418,7 @@ export class PhoneNumberController {
       case 'INVALID_VERIFICATION_CODE':
         throw new BadRequestException(error.message);
       case 'BUSINESS_PROFILE_PROVIDER_ERROR':
+      case 'PHONE_REGISTRATION_PROVIDER_ERROR':
         // 422: la petición está bien formada; el que dijo que no fue el proveedor.
         throw new UnprocessableEntityException(error.message);
       default:
