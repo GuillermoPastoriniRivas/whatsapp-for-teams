@@ -1,6 +1,8 @@
 name: Deploy asis to shared ARM host
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -37,7 +39,7 @@ jobs:
           host: ${{ secrets.SHARED_EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.SHARED_EC2_SSH_KEY }}
-          source: "shared-asis-api.tar.gz,asis-static.tar.gz,docker-compose.shared.yml,infra/nginx/shared.conf,infra/nginx/proxy_params,infra/scripts/hydrate-env.sh"
+          source: "shared-asis-api.tar.gz,asis-static.tar.gz,docker-compose.shared.yml,infra/nginx/shared/,infra/nginx/proxy_params,infra/scripts/hydrate-env.sh"
           target: ${{ env.APP_DIR }}
 
       - name: Activate asis on shared host
@@ -49,19 +51,45 @@ jobs:
           script: |
             set -euo pipefail
             cd ${{ env.APP_DIR }}
-            mkdir -p static/asis asis/api infra/nginx
+            mkdir -p static/asis asis/api nginx-enabled certbot
+
             docker load < shared-asis-api.tar.gz
             chmod +x infra/scripts/hydrate-env.sh
             bash infra/scripts/hydrate-env.sh /asis/api ./asis/api/.env
+            test -s ./asis/api/.env
+
+            rm -rf static/asis
+            mkdir -p static/asis
             tar -xzf asis-static.tar.gz -C static/asis
+
             cp docker-compose.shared.yml docker-compose.yml
-            docker compose -f docker-compose.yml up -d --no-deps asis-api
-            if docker inspect -f '{{.State.Health.Status}}' shared-quiero-menu-api 2>/dev/null | grep -q healthy; then
-              if ! sudo test -f /etc/letsencrypt/live/asis.chat/fullchain.pem; then
-                sudo certbot certonly --standalone --non-interactive --agree-tos \
-                  -m "${{ secrets.TLS_EMAIL }}" \
-                  -d asis.chat -d www.asis.chat -d media.asis.chat
-              fi
-              docker compose -f docker-compose.yml up -d nginx
+            cp infra/nginx/shared/00-common.conf nginx-enabled/
+            docker compose -f docker-compose.yml up -d --no-deps nginx asis-api
+
+            if ! sudo test -f /etc/letsencrypt/live/asis.chat/fullchain.pem; then
+              sudo certbot certonly --webroot -w "$PWD/certbot" --non-interactive --agree-tos \
+                -m "${{ secrets.TLS_EMAIL }}" --keep-until-expiring \
+                -d asis.chat -d www.asis.chat
             fi
+            if ! sudo test -f /etc/letsencrypt/live/media.asis.chat/fullchain.pem; then
+              sudo certbot certonly --webroot -w "$PWD/certbot" --non-interactive --agree-tos \
+                -m "${{ secrets.TLS_EMAIL }}" --keep-until-expiring \
+                -d media.asis.chat
+            fi
+
+            cp infra/nginx/shared/10-asis.conf nginx-enabled/
+            docker exec shared-nginx nginx -t
+            docker exec shared-nginx nginx -s reload
+
             rm -f shared-asis-api.tar.gz asis-static.tar.gz
+            docker image prune -f
+
+      - name: Verify asis is serving
+        run: |
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://asis.chat/api/health || true)
+            [ "$code" = "200" ] && echo "asis.chat/api/health OK" && exit 0
+            sleep 6
+          done
+          echo "asis.chat/api/health no respondió 200 (último: ${code:-sin respuesta})"
+          exit 1

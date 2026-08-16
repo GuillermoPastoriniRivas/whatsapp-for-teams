@@ -166,38 +166,28 @@ data "aws_route53_zone" "quiero" {
 }
 
 resource "aws_route53_record" "apex" {
-  for_each = var.manage_dns ? {
-    asis   = data.aws_route53_zone.asis.zone_id
-    fluws  = data.aws_route53_zone.fluws.zone_id
-    quiero = data.aws_route53_zone.quiero.zone_id
-  } : {}
+  for_each = {
+    for name, zone_id in {
+      asis   = data.aws_route53_zone.asis.zone_id
+      fluws  = data.aws_route53_zone.fluws.zone_id
+      quiero = data.aws_route53_zone.quiero.zone_id
+    } : name => zone_id if contains(var.managed_domains, name)
+  }
 
-  zone_id = each.value
-  name    = each.key == "asis" ? "asis.chat" : each.key == "fluws" ? "fluws.com" : "quiero.menu"
-  type    = "A"
-  ttl     = 300
-  records = [aws_eip.shared.public_ip]
-}
-
-resource "aws_route53_record" "www" {
-  for_each = var.manage_dns ? {
-    asis   = data.aws_route53_zone.asis.zone_id
-    fluws  = data.aws_route53_zone.fluws.zone_id
-    quiero = data.aws_route53_zone.quiero.zone_id
-  } : {}
-
-  zone_id = each.value
-  name    = each.key == "asis" ? "www.asis.chat" : each.key == "fluws" ? "www.fluws.com" : "www.quiero.menu"
-  type    = "A"
-  ttl     = 300
-  records = [aws_eip.shared.public_ip]
+  zone_id         = each.value
+  name            = each.key == "asis" ? "asis.chat" : each.key == "fluws" ? "fluws.com" : "quiero.menu"
+  type            = "A"
+  ttl             = 300
+  records         = [aws_eip.shared.public_ip]
+  allow_overwrite = true
 }
 
 resource "aws_route53_record" "media_asis" {
-  count   = var.manage_dns ? 1 : 0
-  zone_id = data.aws_route53_zone.asis.zone_id
-  name    = "media.asis.chat"
-  type    = "A"
-  ttl     = 300
-  records = [aws_eip.shared.public_ip]
+  count           = contains(var.managed_domains, "asis") ? 1 : 0
+  zone_id         = data.aws_route53_zone.asis.zone_id
+  name            = "media.asis.chat"
+  type            = "A"
+  ttl             = 300
+  records         = [aws_eip.shared.public_ip]
+  allow_overwrite = true
 }

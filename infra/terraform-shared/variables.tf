@@ -27,10 +27,10 @@ variable "app_name" {
   default = "shared-apps"
 }
 
-variable "manage_dns" {
-  description = "Create the final A records after the new host is tested."
-  type        = bool
-  default     = false
+variable "managed_domains" {
+  description = "Domains whose A records should point to this host."
+  type        = set(string)
+  default     = []
 }
 
 variable "s3_buckets" {

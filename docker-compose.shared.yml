@@ -58,18 +58,11 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./infra/nginx/shared.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx-enabled:/etc/nginx/conf.d:ro
       - ./infra/nginx/proxy_params:/etc/nginx/proxy_params:ro
       - ./static:/usr/share/nginx/html:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./certbot:/var/www/certbot:ro
-    depends_on:
-      asis-api:
-        condition: service_healthy
-      quiero-menu-api:
-        condition: service_healthy
-      fluws-api:
-        condition: service_healthy
     networks: [shared]
 
 networks:
