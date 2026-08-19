@@ -48,7 +48,7 @@ export class SesEmailService implements EmailServicePort {
 
     try {
       await this.client.send(command);
-      this.logger.log(`Email sent to ${toAddresses.join(', ')}: "${message.subject}"`);
+      this.logger.verbose(`Email sent to ${toAddresses.join(', ')}: "${message.subject}"`);
     } catch (error) {
       this.logger.error(`Failed to send email to ${toAddresses.join(', ')}: ${error}`);
       throw error;

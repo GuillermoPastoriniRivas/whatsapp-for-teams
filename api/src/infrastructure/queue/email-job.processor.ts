@@ -29,7 +29,7 @@ export class EmailJobProcessor implements OnModuleInit {
     // el mismo mail saldría duplicado.
     this.queue.define(FORWARD_INBOUND_MAIL_JOB, async () => {
       const forwarded = await this.inboundForwarder.forwardPending();
-      if (forwarded) this.logger.log(`${forwarded} correo(s) entrante(s) reenviado(s)`);
+      if (forwarded) this.logger.debug(`${forwarded} correo(s) entrante(s) reenviado(s)`);
     }, 1);
 
     void this.queue.every('1 minute', FORWARD_INBOUND_MAIL_JOB).catch((error) => {

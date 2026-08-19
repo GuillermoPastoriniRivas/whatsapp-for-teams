@@ -32,7 +32,7 @@ export class OpenAiCompletionService {
       body.max_tokens = params.maxTokens;
     }
 
-    this.logger.log(`OpenAI request: model=${params.model}, messages=${messages.length}, tools=${params.tools?.length ?? 0}`);
+    this.logger.verbose(`OpenAI request: model=${params.model}, messages=${messages.length}, tools=${params.tools?.length ?? 0}`);
 
     let response: Response;
     try {

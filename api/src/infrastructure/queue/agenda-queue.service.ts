@@ -49,7 +49,9 @@ export class AgendaQueueService implements JobQueuePort, OnApplicationBootstrap,
           return; // don't rethrow — Agenda will re-run at nextRunAt
         }
 
-        this.logger.error(`Job "${jobName}" exhausted ${maxRetries} retries, giving up. Data: ${JSON.stringify(job.attrs.data)}`);
+        const data = JSON.stringify(job.attrs.data);
+        const snippet = data.length > 500 ? `${data.slice(0, 500)}…` : data;
+        this.logger.error(`Job "${jobName}" exhausted ${maxRetries} retries, giving up. Data: ${snippet}`);
         throw error;
       }
     }, { concurrency: concurrency ?? 5 });

@@ -1,3 +1,4 @@
+import { LogLevel } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -11,6 +12,19 @@ import { SUBSCRIBABLE_DEVELOPER_EVENTS } from './domain/enums/developer-event-ty
 
 /** Prefijo de la API pública; todo lo demás es la app interna. */
 const PUBLIC_API_PREFIX = '/api/v1';
+
+/**
+ * Niveles del logger. Por defecto se apagan debug/verbose: son los que generan
+ * el grueso del volumen en CloudWatch (un log por mensaje de webhook, por
+ * request de IA, por conexión de socket). Con LOG_LEVEL=warn solo quedan
+ * warning/error; con LOG_LEVEL=debug se habilita todo.
+ */
+function logLevels(): LogLevel[] {
+  const level = process.env.LOG_LEVEL ?? 'log';
+  if (level === 'debug') return ['log', 'error', 'warn', 'debug', 'verbose'];
+  if (level === 'warn') return ['error', 'warn', 'fatal'];
+  return ['log', 'error', 'warn', 'fatal'];
+}
 
 /**
  * Portada de la referencia pública. Va en markdown porque es lo primero que
@@ -65,7 +79,10 @@ async function migrateResolvedConversations(app: NestExpressApplication) {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+    logger: logLevels(),
+  });
   await migrateResolvedConversations(app);
   app.use(helmet({ crossOriginResourcePolicy: false }));
   app.setGlobalPrefix('api');

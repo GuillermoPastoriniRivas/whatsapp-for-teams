@@ -43,7 +43,7 @@ export class SocketIoGatewayService
       const payload = this.tokenProvider.verifyAccess(token);
       client.join(`agent:${payload.sub}`);
       client.join(`tenant:${payload.tenantId}`);
-      this.logger.log(`Agent ${payload.sub} connected (tenant: ${payload.tenantId})`);
+      this.logger.verbose(`Agent ${payload.sub} connected (tenant: ${payload.tenantId})`);
     } catch {
       this.logger.warn('Socket connection rejected: invalid token');
       client.emit('auth_error', { message: 'invalid token' });

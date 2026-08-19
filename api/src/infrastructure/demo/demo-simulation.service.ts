@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
 import type { ConversationRepository } from '../../domain/repositories/conversation.repository.js';
 import type { MessageRepository } from '../../domain/repositories/message.repository.js';
 import type { AgentRepository } from '../../domain/repositories/agent.repository.js';
@@ -44,6 +44,7 @@ const MAX_SIMULATED_MESSAGES = 50;
 
 @Injectable()
 export class DemoSimulationService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(DemoSimulationService.name);
   private interval: ReturnType<typeof setInterval> | null = null;
   private messageCount = 0;
   private demoTenantId: string | null = null;
@@ -75,7 +76,7 @@ export class DemoSimulationService implements OnModuleInit, OnModuleDestroy {
     const tenant = await this.tenantRepo.findBySlug('demo-asis-chat');
     if (!tenant) return;
     this.demoTenantId = tenant.id;
-    console.log('[DemoSimulation] Starting simulation for demo tenant');
+    this.logger.debug('[DemoSimulation] Starting simulation for demo tenant');
     this.scheduleNext();
   }
 
@@ -88,7 +89,7 @@ export class DemoSimulationService implements OnModuleInit, OnModuleDestroy {
 
   private scheduleNext() {
     if (this.messageCount >= MAX_SIMULATED_MESSAGES) {
-      console.log(`[DemoSimulation] Reached ${MAX_SIMULATED_MESSAGES} messages, stopping`);
+      this.logger.debug(`[DemoSimulation] Reached ${MAX_SIMULATED_MESSAGES} messages, stopping`);
       return;
     }
     // Random interval between 45-90 seconds
@@ -100,7 +101,7 @@ export class DemoSimulationService implements OnModuleInit, OnModuleDestroy {
     try {
       await this.simulateAction();
     } catch (err) {
-      console.error('[DemoSimulation] Error:', err);
+      this.logger.error('[DemoSimulation] Error:', err);
     }
     this.scheduleNext();
   }
