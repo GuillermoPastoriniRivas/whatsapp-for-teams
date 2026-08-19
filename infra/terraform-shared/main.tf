@@ -97,6 +97,10 @@ resource "aws_iam_role_policy" "shared_data" {
         Resource = [
           "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/asis/api",
           "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/asis/api/*",
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/turnos/api",
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/turnos/api/*",
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/quiero-menu/api",
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/quiero-menu/api/*",
         ]
       },
       {
@@ -196,6 +200,16 @@ resource "aws_route53_record" "media_asis" {
   count           = contains(var.managed_domains, "asis") ? 1 : 0
   zone_id         = data.aws_route53_zone.asis.zone_id
   name            = "media.asis.chat"
+  type            = "A"
+  ttl             = 300
+  records         = [aws_eip.shared.public_ip]
+  allow_overwrite = true
+}
+
+resource "aws_route53_record" "turnos_fluws" {
+  count           = contains(var.managed_domains, "fluws") ? 1 : 0
+  zone_id         = data.aws_route53_zone.fluws.zone_id
+  name            = "turnos.fluws.com"
   type            = "A"
   ttl             = 300
   records         = [aws_eip.shared.public_ip]
