@@ -141,7 +141,7 @@ export class MongoMessageRepository implements MessageRepository {
           },
         },
       ],
-      { returnDocument: 'after' },
+      { returnDocument: 'after', updatePipeline: true },
     );
     return doc ? MessageMapper.toDomain(doc) : null;
   }

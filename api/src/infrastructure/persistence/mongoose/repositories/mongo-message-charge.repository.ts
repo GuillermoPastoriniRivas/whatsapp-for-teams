@@ -86,6 +86,7 @@ export class MongoMessageChargeRepository implements MessageChargeRepository {
 
     const existing = await this.model.findOneAndUpdate({ waMessageId }, [update], {
       returnDocument: 'after',
+      updatePipeline: true,
     });
     if (existing) return MessageChargeMapper.toDomain(existing);
 
