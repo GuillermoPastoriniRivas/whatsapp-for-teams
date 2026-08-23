@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   asis-api:
     image: shared-asis-api:latest
@@ -6,6 +12,7 @@ services:
     env_file: ./asis/api/.env
     expose:
       - "3000"
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)throw 1})"]
       interval: 30s
@@ -21,12 +28,31 @@ services:
     env_file: ./quiero-menu/api/.env
     expose:
       - "3000"
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)throw 1})"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
+    networks: [shared]
+
+  quiero-menu-ui:
+    image: shared-quiero-menu-ui:latest
+    container_name: shared-quiero-menu-ui
+    restart: unless-stopped
+    environment:
+      - PORT=3002
+      - NEXT_PUBLIC_API_URL=https://quiero.menu/api
+    expose:
+      - "3002"
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3002').then(r=>{if(!r.ok)throw 1})"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks: [shared]
 
   fluws-api:
@@ -42,8 +68,25 @@ services:
       - fluws-data:/data
     expose:
       - "3301"
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3301/health').then(r=>{if(!r.ok)throw 1})"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks: [shared]
+
+  turnos-api:
+    image: shared-turnos-api:latest
+    container_name: shared-turnos-api
+    restart: unless-stopped
+    env_file: ./turnos/api/.env
+    expose:
+      - "3001"
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/auth/login').then(r=>{if(r.status>=500)throw 1})"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -57,6 +100,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    logging: *default-logging
     volumes:
       - ./nginx-enabled:/etc/nginx/conf.d:ro
       - ./infra/nginx/proxy_params:/etc/nginx/proxy_params:ro
