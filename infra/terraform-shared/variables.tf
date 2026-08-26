@@ -34,12 +34,13 @@ variable "managed_domains" {
 }
 
 variable "s3_buckets" {
-  description = "Buckets used by asis and fluws."
+  description = "Buckets used by asis, fluws and quiero-menu."
   type        = list(string)
   default = [
     "asis-chat-media",
     "asis-chat-inbound-mail",
     "fluws-vaults-213407352322",
     "fluws-backups-213407352322",
+    "quiero-menu-images",
   ]
 }
