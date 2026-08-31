@@ -28,5 +28,5 @@ if ! swapon --show | grep -q /swapfile; then
   echo '/swapfile none swap sw 0 0' >> /etc/fstab
 fi
 
-mkdir -p /home/ubuntu/shared/{asis,quiero-menu,fluws,static,nginx,certbot}
+mkdir -p /home/ubuntu/shared/{asis,quiero-menu,fluws,turnos,static,nginx,certbot}
 chown -R ubuntu:ubuntu /home/ubuntu/shared
