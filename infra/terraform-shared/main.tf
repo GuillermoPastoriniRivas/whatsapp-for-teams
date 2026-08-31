@@ -147,6 +147,11 @@ resource "aws_instance" "shared" {
   tags = {
     Name = "${var.app_name}-server"
   }
+
+  lifecycle {
+    ignore_changes  = [ami]
+    prevent_destroy = true
+  }
 }
 
 resource "aws_eip" "shared" {
