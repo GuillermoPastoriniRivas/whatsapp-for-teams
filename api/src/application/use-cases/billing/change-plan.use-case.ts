@@ -2,6 +2,7 @@ import { Subscription } from '../../../domain/entities/subscription.entity.js';
 import { SubscriptionRepository } from '../../../domain/repositories/subscription.repository.js';
 import { BillingRecordRepository } from '../../../domain/repositories/billing-record.repository.js';
 import { PlanTier } from '../../../domain/enums/plan-tier.enum.js';
+import { SubscriptionStatus } from '../../../domain/enums/subscription-status.enum.js';
 import { BillingEventType } from '../../../domain/enums/billing-event-type.enum.js';
 import { Result, ok, err } from '../../common/result.js';
 import { DomainError, SubscriptionNotFoundError } from '../../../domain/errors/domain-errors.js';
@@ -44,11 +45,26 @@ export class ChangePlanUseCase {
 
     const isUpgrade = PLAN_ORDER[newPlan] > PLAN_ORDER[currentPlan];
 
-    // Free plan selection: any change (up or down) applies immediately, no payment.
-    const updated = await this.subscriptionRepo.update(existing.id, {
+    // Si la suscripción estaba cancelada/vencida/past_due, el plan efectivo era FREE
+    // aunque `existing.plan` dijera Business. Cambiar solo `plan` deja el historial
+    // en Business pero `effectivePlan()` sigue devolviendo FREE y los guards siguen
+    // limitando números y agentes. Hay que reactivar.
+    const needsReactivation = existing.status !== SubscriptionStatus.ACTIVE;
+    const now = new Date();
+    const newPeriodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const updateData: Record<string, unknown> = {
       plan: input.newPlan,
       scheduledPlan: null, // No deferred downgrades in the free model
-    });
+    };
+    if (needsReactivation) {
+      updateData.status = SubscriptionStatus.ACTIVE;
+      updateData.canceledAt = null;
+      updateData.currentPeriodStart = now;
+      updateData.currentPeriodEnd = newPeriodEnd;
+    }
+
+    const updated = await this.subscriptionRepo.update(existing.id, updateData as any);
 
     await this.billingRecordRepo.create({
       tenantId: input.tenantId,

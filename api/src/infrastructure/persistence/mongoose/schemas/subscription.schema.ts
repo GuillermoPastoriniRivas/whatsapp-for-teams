@@ -11,7 +11,7 @@ export class SubscriptionModel {
   @Prop({ required: true, enum: ['free', 'pro', 'business', 'agencies'] })
   plan: string;
 
-  @Prop({ required: true, enum: ['active', 'canceled', 'past_due'] })
+  @Prop({ required: true, enum: ['active', 'canceled', 'past_due', 'expired'] })
   status: string;
 
   @Prop({ required: true })
