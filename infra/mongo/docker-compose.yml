@@ -1,0 +1,33 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: shared-mongo
+    restart: unless-stopped
+    command:
+      - --wiredTigerCacheSizeGB
+      - "0.25"
+      - --bind_ip_all
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - shared-apps
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  mongo-data:
+    name: shared_mongo-data
+
+networks:
+  shared-apps:
+    external: true

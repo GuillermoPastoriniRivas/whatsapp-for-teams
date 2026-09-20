@@ -1,8 +1,6 @@
 name: Deploy asis to shared ARM host
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 env:
