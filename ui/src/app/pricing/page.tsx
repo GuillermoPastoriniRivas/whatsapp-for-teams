@@ -31,7 +31,7 @@ export default function PricingPage() {
         variant={isPopular || isFree ? "default" : "outline"}
         onClick={() => {
           if (contactSales) {
-            window.open("https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies", "_blank");
+            window.open("https://wa.me/59891935507?text=Hola,%20me%20interesa%20el%20plan%20Agencies", "_blank");
             return;
           }
           if (agent) {

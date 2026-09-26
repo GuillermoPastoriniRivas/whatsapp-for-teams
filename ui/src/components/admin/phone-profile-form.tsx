@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, Store } from "lucide-react";
+import { Camera } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { api } from "@/lib/api";
 import { toast } from "@/lib/toast";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { useBusinessVerticals } from "./business-verticals";
+import { PhoneAvatar } from "./phone-avatar";
 import type { WhatsAppBusinessProfile, WhatsAppBusinessProfileView, PhoneNumber } from "@/types";
 
 /** Topes de Meta. Se muestran como contador para no enterarse al guardar. */
@@ -181,15 +182,7 @@ export function PhoneProfileForm({ phone, onUpdated }: Props) {
 
       {/* Foto */}
       <div className="flex items-center gap-4">
-        <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted text-muted-foreground">
-          {form.profilePictureUrl ? (
-            // Imagen del CDN de Meta: no pasa por el optimizador de Next.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={form.profilePictureUrl} alt="" className="size-full object-cover" />
-          ) : (
-            <Store className="size-6" />
-          )}
-        </div>
+        <PhoneAvatar src={form.profilePictureUrl} size={16} variant="store" alt="" />
         <div className="min-w-0 space-y-1.5">
           <Button
             type="button"

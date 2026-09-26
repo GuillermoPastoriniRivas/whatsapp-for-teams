@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Phone } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +14,7 @@ import { InlineNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { PhoneAccessSection } from "@/components/admin/phone-access-section";
 import { WhoAnswersSection } from "@/components/admin/who-answers-section";
+import { PhoneAvatar } from "@/components/admin/phone-avatar";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { toast } from "@/lib/toast";
 import { PROVIDER_CONFIG_FIELDS, type Provider } from "./providers";
@@ -94,9 +93,7 @@ export function EditPhonePanel({ phone, onUpdated }: Props) {
       {/* Header */}
       <div className="border-b px-4 pt-6 pb-4">
         <div className="flex items-center gap-3">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Phone className="size-6" />
-          </div>
+          <PhoneAvatar src={phone.businessProfile?.profilePictureUrl} size={12} alt={phone.label} />
           <div className="min-w-0">
             <h2 className="truncate text-base font-semibold">{phone.label}</h2>
             <div className="mt-0.5 flex flex-wrap items-center gap-1.5">

@@ -15,6 +15,7 @@ import { useBillingStore } from "@/stores/billing.store";
 import { useTranslations } from "@/lib/i18n/use-translations";
 import { RegisterPhonePanel } from "./register-phone-panel";
 import { EditPhonePanel } from "./edit-phone-panel";
+import { PhoneAvatar } from "./phone-avatar";
 import type { PhoneNumber } from "@/types";
 
 interface Props {
@@ -128,14 +129,7 @@ export function PhoneNumberList({ onPanelChange, onPanelClose, createRef }: Prop
             >
               {/* La foto del perfil de WhatsApp cuando el número la tiene:
                   es la que ve el cliente, así que identifica mejor que el ícono. */}
-              <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-muted-foreground">
-                {phone.businessProfile?.profilePictureUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={phone.businessProfile.profilePictureUrl} alt="" className="size-full object-cover" />
-                ) : (
-                  <Phone className="size-5" />
-                )}
-              </div>
+              <PhoneAvatar src={phone.businessProfile?.profilePictureUrl} size={10} alt={phone.label} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{phone.label}</p>
                 <p className="truncate text-xs text-muted-foreground">

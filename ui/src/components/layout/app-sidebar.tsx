@@ -251,7 +251,7 @@ export function AppSidebar({ className }: { className?: string }) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <a
-                      href="https://wa.me/5493442670825"
+                      href="https://wa.me/59891935507"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
@@ -266,7 +266,7 @@ export function AppSidebar({ className }: { className?: string }) {
               </TooltipProvider>
             ) : (
               <a
-                href="https://wa.me/5493442670825"
+                href="https://wa.me/59891935507"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-muted-foreground transition-all hover:bg-muted hover:text-foreground"

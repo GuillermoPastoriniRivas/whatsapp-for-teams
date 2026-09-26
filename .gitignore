@@ -17,3 +17,9 @@ PROYECTO-HOTEL.md
 # Hojas de contacto de las exploraciones de marca: se regeneran con los
 # scripts de api/scripts/fluws-symbol-*.js
 api/scripts/out/
+
+# graphify: el knowledge graph se regenera por máquina (graphify . / graphify update .),
+# no se versiona. La skill vive en .opencode/skills/graphify/.
+graphify-out/
+node_modules/
+guillecode/

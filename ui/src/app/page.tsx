@@ -100,7 +100,7 @@ export default function LandingPage() {
         onClick={() => {
           if (isAgencies) {
             window.open(
-              "https://wa.me/5493442670825?text=Hola,%20me%20interesa%20el%20plan%20Agencies",
+              "https://wa.me/59891935507?text=Hola,%20me%20interesa%20el%20plan%20Agencies",
               "_blank",
             );
             return;
@@ -748,7 +748,7 @@ export default function LandingPage() {
                   <h3 className="text-sm leading-6 font-semibold text-foreground">{t.landing.footerCompany}</h3>
                   <ul role="list" className="mt-6 space-y-4">
                     <li><a href="mailto:contact@asis.chat" className={FOOTER_LINK}>{t.landing.footerContact}</a></li>
-                    <li><a href="https://wa.me/5493442670825" target="_blank" rel="noopener noreferrer" className={FOOTER_LINK}>{t.landing.footerWhatsapp}</a></li>
+                    <li><a href="https://wa.me/59891935507" target="_blank" rel="noopener noreferrer" className={FOOTER_LINK}>{t.landing.footerWhatsapp}</a></li>
                     <li><a href="https://www.linkedin.com/in/guillermopastorini/" target="_blank" rel="noopener noreferrer" className={FOOTER_LINK}>{t.landing.footerLinkedin}</a></li>
                   </ul>
                 </div>
@@ -782,7 +782,7 @@ export default function LandingPage() {
 
       {/* Botón flotante de WhatsApp — el verde es la marca de WhatsApp, no del tema. */}
       <a
-        href="https://wa.me/5493442670825"
+        href="https://wa.me/59891935507?text=Hola,%20quisiera%20hacer%20una%20consulta"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed right-6 bottom-6 z-(--z-nav) flex items-center gap-2 rounded-full bg-[#25D366] py-3 pl-4 pr-5 text-white shadow-lg shadow-black/20 transition-transform hover:scale-105 animate-bounce [animation-duration:2s] [animation-iteration-count:3]"
