@@ -86,6 +86,7 @@ export class DeveloperController {
       name: body.name,
       scopes: body.scopes,
       createdBy: agent._id,
+      mode: body.mode,
     });
     if (!result.ok) this.fail(result.error);
     return result.value;

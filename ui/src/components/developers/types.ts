@@ -6,13 +6,28 @@ export interface DeveloperOverview {
   webhookEndpoints: number;
 }
 
-export type ApiScope = "messages:read" | "messages:write" | "flows:read" | "flows:write";
+export type ApiScope =
+  | "messages:read"
+  | "messages:write"
+  | "flows:read"
+  | "flows:write"
+  | "notifications:read"
+  | "notifications:write";
+
+/**
+ * Modo de una clave de API.
+ * - `live`: envía de verdad a Meta y se cobra según el plan.
+ * - `test`: sandbox. No llega a Meta y no genera costo.
+ */
+export type ApiKeyMode = "live" | "test";
 
 export interface ApiKeyView {
   id: string;
   name: string;
   prefix: string;
   scopes: ApiScope[];
+  /** El backend lo devuelve siempre; si falta, la UI no inventa un modo. */
+  mode?: ApiKeyMode;
   lastUsedAt: string | null;
   revokedAt: string | null;
   createdAt: string;

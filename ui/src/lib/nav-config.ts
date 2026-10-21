@@ -1,4 +1,5 @@
 import {
+  Bell,
   ChartLine,
   Code2,
   BookOpen,
@@ -32,12 +33,10 @@ export interface NavItem {
  * Única fuente de la navegación: de acá salen el sidebar de escritorio y la
  * barra inferior de mobile. Antes cada uno tenía su propia lista y se
  * desincronizaron — Facturación no se podía abrir desde el teléfono.
- *
- * `/notifications` queda deliberadamente afuera hasta que tenga backend: la
- * pantalla existe pero no muestra datos reales.
  */
 const CONVERSATIONS: NavItem = { href: "/conversations", icon: MessageSquare, labelKey: "chats" }
 const CONTACTS: NavItem = { href: "/contacts", icon: Contact, labelKey: "contacts" }
+const NOTIFICATIONS: NavItem = { href: "/notifications", icon: Bell, labelKey: "notifications" }
 const CAMPAIGNS: NavItem = { href: "/campaigns", icon: Megaphone, labelKey: "campaigns" }
 const TEMPLATES: NavItem = { href: "/templates", icon: LayoutTemplate, labelKey: "templates" }
 const MEDIA: NavItem = { href: "/media", icon: Images, labelKey: "media" }
@@ -61,10 +60,14 @@ export interface NavSection {
   items: NavItem[]
 }
 
-/** Agrupado por intención, no por permiso. Configuración al final: se toca una vez. */
+/**
+ * Agrupado por intención, no por permiso. Configuración al final: se toca una
+ * vez. Las notificaciones van con Marketing: es el historial de lo que se
+ * mandó, junto a plantillas, campañas y métricas.
+ */
 export const NAV_SECTIONS: NavSection[] = [
   { titleKey: "sectionInbox", items: [CONVERSATIONS, CONTACTS] },
-  { titleKey: "sectionMarketing", items: [TEMPLATES, CAMPAIGNS, MEDIA, FLOWS, ANALYTICS] },
+  { titleKey: "sectionMarketing", items: [TEMPLATES, CAMPAIGNS, MEDIA, FLOWS, ANALYTICS, NOTIFICATIONS] },
   { titleKey: "sectionSetup", items: [PHONE_ADMIN, BUSINESS, TEAM, DEVELOPERS] },
 ]
 
@@ -78,7 +81,7 @@ export const NAV_BOTTOM: NavItem[] = [BILLING, SETTINGS]
  */
 const MOBILE_TABS: NavItem[] = [CONVERSATIONS, CONTACTS, PHONE_ADMIN, SETTINGS]
 
-const MOBILE_MORE: NavItem[] = [TEMPLATES, CAMPAIGNS, MEDIA, FLOWS, ANALYTICS, BUSINESS, TEAM, DEVELOPERS, BILLING]
+const MOBILE_MORE: NavItem[] = [TEMPLATES, CAMPAIGNS, MEDIA, FLOWS, ANALYTICS, NOTIFICATIONS, BUSINESS, TEAM, DEVELOPERS, BILLING]
 
 export function visibleItems(items: NavItem[], isAdmin: boolean): NavItem[] {
   return items.filter((item) => !item.adminOnly || isAdmin)

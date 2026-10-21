@@ -9,20 +9,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Field } from "@/components/ui/field";
+import { SimpleSelect } from "@/components/ui/select";
 import { LoadingState } from "@/components/ui/spinner";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { ApiKeyModeBadge } from "@/app/(app)/developers/_components/api-key-mode-badge";
 import { UpgradeCard } from "./upgrade-card";
-import type { ApiKeyView, ApiScope, CreatedApiKey, DeveloperOverview } from "./types";
+import { apiKeyModeCopy } from "./api-key-mode-copy";
+import type { ApiKeyView, ApiKeyMode, ApiScope, CreatedApiKey, DeveloperOverview } from "./types";
 
-const API_SCOPES: ApiScope[] = ["messages:read", "messages:write", "flows:read", "flows:write"];
+const API_SCOPES: ApiScope[] = [
+  "messages:read",
+  "messages:write",
+  "flows:read",
+  "flows:write",
+  "notifications:read",
+  "notifications:write",
+];
 const DEFAULT_SCOPES: ApiScope[] = ["messages:read", "messages:write"];
+/** El modo por defecto es test: una clave live manda mensajes de verdad. */
+const DEFAULT_MODE: ApiKeyMode = "test";
 
-const SCOPE_LABEL_KEYS = {
+const SCOPE_LABEL_KEYS: Partial<
+  Record<ApiScope, "scopeMessagesRead" | "scopeMessagesWrite" | "scopeFlowsRead" | "scopeFlowsWrite">
+> = {
   "messages:read": "scopeMessagesRead",
   "messages:write": "scopeMessagesWrite",
   "flows:read": "scopeFlowsRead",
   "flows:write": "scopeFlowsWrite",
-} as const;
+};
 
 function formatDate(value: string | null): string | null {
   if (!value) return null;
@@ -34,13 +49,15 @@ function formatDate(value: string | null): string | null {
 }
 
 export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null }) {
-  const { t } = useTranslations();
+  const { t, locale } = useTranslations();
   const confirm = useConfirm();
+  const copy = apiKeyModeCopy(locale);
   const [keys, setKeys] = useState<ApiKeyView[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [name, setName] = useState("");
   const [scopes, setScopes] = useState<ApiScope[]>([...DEFAULT_SCOPES]);
+  const [mode, setMode] = useState<ApiKeyMode>(DEFAULT_MODE);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<CreatedApiKey | null>(null);
   const [copied, setCopied] = useState(false);
@@ -65,10 +82,15 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
     setCreating(true);
     setError(null);
     try {
-      const result = await api.post<CreatedApiKey>("/developer/api-keys", { name: name.trim(), scopes });
+      const result = await api.post<CreatedApiKey>("/developer/api-keys", {
+        name: name.trim(),
+        scopes,
+        mode,
+      });
       setCreated(result);
       setName("");
       setScopes([...DEFAULT_SCOPES]);
+      setMode(DEFAULT_MODE);
       setFormOpen(false);
       load();
     } catch (e) {
@@ -95,9 +117,22 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
     setTimeout(() => setCopied(false), 2000);
   };
 
+  /** Descripción de un permiso: la de las traducciones si existe, si no la local. */
+  const scopeDescription = (scope: ApiScope): string => {
+    const labelKey = SCOPE_LABEL_KEYS[scope];
+    if (labelKey) return t.developers[labelKey];
+    return scope === "notifications:write"
+      ? copy.scopeNotificationsWrite
+      : copy.scopeNotificationsRead;
+  };
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{t.developers.keysIntro}</p>
+
+      <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
+        {copy.listNotice}
+      </p>
 
       {created && (
         <Card className="border-primary/40 bg-primary/5">
@@ -105,10 +140,14 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
             <CardTitle className="flex items-center gap-2 text-sm">
               <AlertTriangle className="h-4 w-4 text-primary" />
               {t.developers.createdKeyTitle}
+              <ApiKeyModeBadge mode={created.apiKey?.mode} />
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-xs text-muted-foreground">{t.developers.createdKeyBody}</p>
+            {created.apiKey?.mode === "test" && (
+              <p className="text-xs text-muted-foreground">{copy.testBadgeNote}</p>
+            )}
             <div className="flex items-center gap-2">
               <code className="flex-1 overflow-x-auto rounded-md border bg-background px-3 py-2 font-mono text-xs">
                 {created.plainKey}
@@ -147,6 +186,20 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
               maxLength={80}
             />
 
+            <Field
+              label={copy.modeTitle}
+              hint={mode === "test" ? copy.modeTestHint : copy.modeLiveHint}
+            >
+              <SimpleSelect
+                value={mode}
+                onChange={(value) => setMode(value === "live" ? "live" : "test")}
+                options={[
+                  { value: "test", label: copy.modeTestOption },
+                  { value: "live", label: copy.modeLiveOption },
+                ]}
+              />
+            </Field>
+
             <div className="space-y-2">
               <p className="text-sm font-medium">{t.developers.scopesTitle}</p>
               <p className="text-xs text-muted-foreground">{t.developers.scopesHelp}</p>
@@ -162,7 +215,7 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
                   <span>
                     <code className="font-mono text-xs">{scope}</code>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {t.developers[SCOPE_LABEL_KEYS[scope]]}
+                      {scopeDescription(scope)}
                     </span>
                   </span>
                 </label>
@@ -210,6 +263,7 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
                       <span className={revoked ? "text-sm font-medium line-through text-muted-foreground" : "text-sm font-medium"}>
                         {key.name}
                       </span>
+                      <ApiKeyModeBadge mode={key.mode} />
                       {revoked && <Badge variant="secondary">{t.developers.revoked}</Badge>}
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
@@ -221,6 +275,9 @@ export function ApiKeysTab({ overview }: { overview: DeveloperOverview | null })
                         {t.developers.colLastUsed}: {formatDate(key.lastUsedAt) ?? t.developers.never}
                       </span>
                     </div>
+                    {key.mode === "test" && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{copy.testBadgeNote}</p>
+                    )}
                     {(key.scopes ?? []).length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
                         {key.scopes.map((scope) => (

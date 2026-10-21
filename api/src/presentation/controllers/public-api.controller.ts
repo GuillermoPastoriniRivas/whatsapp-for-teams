@@ -203,6 +203,7 @@ export class PublicApiController {
       reaction: body.reaction,
       replyToWaMessageId: body.replyToWaMessageId,
       marketingLite: body.marketingLite,
+      sandbox: principal.apiKeyMode === 'test',
     });
     if (!result.ok) this.fail(result.error as DomainError);
     return result.value;
@@ -296,6 +297,7 @@ export class PublicApiController {
       contactId: contact.id,
       phoneNumberId: conversation.phoneNumberId,
       body: body.body,
+      sandbox: principal.apiKeyMode === 'test',
     });
     if (!result.ok) this.fail(result.error as DomainError);
     return result.value;

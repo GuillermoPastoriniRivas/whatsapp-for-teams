@@ -5,6 +5,7 @@ import { DomainError, InvalidApiKeyError, FeatureNotInPlanError } from '../../..
 import { hashApiKey } from './developer-credentials.util.js';
 import { resolvePlanFeatures } from './plan-features.util.js';
 import type { ApiScope } from '../../../domain/value-objects/api-scopes.js';
+import { ApiKeyMode, normalizeApiKeyMode } from '../../../domain/entities/api-key.entity.js';
 
 export interface ApiKeyPrincipal {
   tenantId: string;
@@ -13,6 +14,14 @@ export interface ApiKeyPrincipal {
   scopes: ApiScope[];
   /** Quién creó la clave: es a quien se le atribuye lo que la clave construya. */
   createdByAgentId: string | null;
+  /**
+   * Modo de la clave autenticada. Una clave `test` es sandbox: nunca debe
+   * llegar a Meta. Las claves anteriores al sandbox autentican como `live`.
+   *
+   * Opcional solo para los principales armados a mano en tests: el caso de uso
+   * de autenticación siempre lo informa.
+   */
+  apiKeyMode?: ApiKeyMode;
 }
 
 /** Ventana para no escribir lastUsedAt en cada request. */
@@ -46,6 +55,7 @@ export class AuthenticateApiKeyUseCase {
       keyName: key.name,
       scopes: key.scopes,
       createdByAgentId: key.createdBy,
+      apiKeyMode: normalizeApiKeyMode(key.mode),
     });
   }
 }

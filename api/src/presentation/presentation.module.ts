@@ -229,6 +229,17 @@ import { DeliverWebhookUseCase } from '../application/use-cases/developer/delive
 import { SendApiMessageUseCase } from '../application/use-cases/developer/send-api-message.use-case.js';
 import { DeveloperWebhookJobProcessor } from '../infrastructure/queue/developer-webhook-job.processor.js';
 
+// Notifications (API pública)
+import { PublicNotificationsController } from './controllers/public-notifications.controller.js';
+import { NotificationLogController } from './controllers/notification-log.controller.js';
+import { SendNotificationUseCase } from '../application/use-cases/notification/send-notification.use-case.js';
+import { DispatchNotificationUseCase } from '../application/use-cases/notification/dispatch-notification.use-case.js';
+import { AdvanceSandboxNotificationUseCase } from '../application/use-cases/notification/advance-sandbox-notification.use-case.js';
+import { GetNotificationUseCase } from '../application/use-cases/notification/get-notification.use-case.js';
+import { ListNotificationsUseCase } from '../application/use-cases/notification/list-notifications.use-case.js';
+import { CancelNotificationUseCase } from '../application/use-cases/notification/cancel-notification.use-case.js';
+import { NotificationJobProcessor } from '../infrastructure/queue/notification-job.processor.js';
+
 // Queue Processors
 import { WebhookJobProcessor } from '../infrastructure/queue/webhook-job.processor.js';
 import { AiResponseJobProcessor } from '../infrastructure/queue/ai-response-job.processor.js';
@@ -818,9 +829,9 @@ const useCaseProviders = [
   },
   {
     provide: 'HandleStatusUpdateUseCase',
-    useFactory: (msgRepo: any, gateway: any, campaignRepo: any, recipientRepo: any, convRepo: any, devEvents: any, charges: any) =>
-      new HandleStatusUpdateUseCase(msgRepo, gateway, campaignRepo, recipientRepo, convRepo, devEvents, charges),
-    inject: ['MessageRepository', 'RealtimeGatewayPort', 'CampaignRepository', 'CampaignRecipientRepository', 'ConversationRepository', 'DeveloperEventsPort', 'MessageChargeRepository'],
+    useFactory: (msgRepo: any, gateway: any, campaignRepo: any, recipientRepo: any, convRepo: any, devEvents: any, charges: any, notifications: any) =>
+      new HandleStatusUpdateUseCase(msgRepo, gateway, campaignRepo, recipientRepo, convRepo, devEvents, charges, notifications),
+    inject: ['MessageRepository', 'RealtimeGatewayPort', 'CampaignRepository', 'CampaignRecipientRepository', 'ConversationRepository', 'DeveloperEventsPort', 'MessageChargeRepository', 'NotificationRepository'],
   },
   {
     provide: 'HandleTemplateStatusUpdateUseCase',
@@ -1215,6 +1226,42 @@ const useCaseProviders = [
     inject: ['PhoneNumberRepository', 'ContactRepository', 'ConversationRepository', 'MessageRepository', 'MessageTemplateRepository', 'ConversationEventRepository', 'MessagingApiPort', 'RealtimeGatewayPort', 'DeveloperEventsPort', 'CancelActiveFlowExecutionUseCase', 'AgentRepository'],
   },
 
+  // Notifications (API pública)
+  {
+    provide: 'SendNotificationUseCase',
+    useFactory: (notifications: any, phones: any, templates: any, contacts: any, queue: any, devEvents: any) =>
+      new SendNotificationUseCase(notifications, phones, templates, contacts, queue, devEvents),
+    inject: ['NotificationRepository', 'PhoneNumberRepository', 'MessageTemplateRepository', 'ContactRepository', 'JobQueuePort', 'DeveloperEventsPort'],
+  },
+  {
+    provide: 'DispatchNotificationUseCase',
+    useFactory: (notifications: any, sendMessage: any, queue: any, devEvents: any) =>
+      new DispatchNotificationUseCase(notifications, sendMessage, queue, devEvents),
+    inject: ['NotificationRepository', 'SendApiMessageUseCase', 'JobQueuePort', 'DeveloperEventsPort'],
+  },
+  {
+    provide: 'AdvanceSandboxNotificationUseCase',
+    useFactory: (notifications: any, devEvents: any) =>
+      new AdvanceSandboxNotificationUseCase(notifications, devEvents),
+    inject: ['NotificationRepository', 'DeveloperEventsPort'],
+  },
+  {
+    provide: 'GetNotificationUseCase',
+    useFactory: (notifications: any) => new GetNotificationUseCase(notifications),
+    inject: ['NotificationRepository'],
+  },
+  {
+    provide: 'ListNotificationsUseCase',
+    useFactory: (notifications: any) => new ListNotificationsUseCase(notifications),
+    inject: ['NotificationRepository'],
+  },
+  {
+    provide: 'CancelNotificationUseCase',
+    useFactory: (notifications: any, devEvents: any) =>
+      new CancelNotificationUseCase(notifications, devEvents),
+    inject: ['NotificationRepository', 'DeveloperEventsPort'],
+  },
+
   // Notifications (web push)
   {
     provide: 'SubscribePushUseCase',
@@ -1323,12 +1370,14 @@ const useCaseProviders = [
     BillingController,
     PaymentWebhookController,
     NotificationController,
+    NotificationLogController,
     FlowController,
     FlowExecutionController,
     FlowConnectionController,
     FlowWebhookController,
     DeveloperController,
     PublicApiController,
+    PublicNotificationsController,
     PublicFlowsController,
     McpController,
     MediaController,
@@ -1342,6 +1391,7 @@ const useCaseProviders = [
     CampaignJobProcessor,
     FlowJobProcessor,
     DeveloperWebhookJobProcessor,
+    NotificationJobProcessor,
     MediaJobProcessor,
     BillingJobProcessor,
     PlanLimitGuard,

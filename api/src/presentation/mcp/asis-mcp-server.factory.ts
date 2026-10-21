@@ -449,6 +449,7 @@ export class AsisMcpServerFactory {
           body,
           templateId,
           variables,
+          sandbox: principal.apiKeyMode === 'test',
         });
         if (!result.ok) return this.explainSendFailure(principal.tenantId, result.error as DomainError);
         return asJson(result.value);
@@ -479,6 +480,7 @@ export class AsisMcpServerFactory {
           contactId: contact.id,
           phoneNumberId: conversation.phoneNumberId,
           body,
+          sandbox: principal.apiKeyMode === 'test',
         });
         if (!result.ok) return this.explainSendFailure(principal.tenantId, result.error as DomainError);
         return asJson(result.value);

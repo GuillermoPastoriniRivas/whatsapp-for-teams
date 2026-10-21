@@ -20,6 +20,13 @@ export class ApiKeyModel {
   @Prop({ type: [String], default: [] })
   scopes: string[];
 
+  /**
+   * Sandbox de la clave. Las claves anteriores a este campo quedan en `live`
+   * (default de mongoose), sin necesidad de migración.
+   */
+  @Prop({ type: String, enum: ['live', 'test'], default: 'live' })
+  mode: 'live' | 'test';
+
   @Prop({ type: Types.ObjectId, default: null })
   createdBy: Types.ObjectId | null;
 

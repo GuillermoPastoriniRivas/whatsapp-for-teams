@@ -12,10 +12,11 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ApiKeysTab } from "@/components/developers/api-keys-tab";
 import { WebhooksTab } from "@/components/developers/webhooks-tab";
 import { PlaygroundTab } from "@/components/developers/playground-tab";
+import { apiKeyModeCopy } from "@/components/developers/api-key-mode-copy";
 import { API_BASE, type DeveloperOverview } from "@/components/developers/types";
 
 export default function DevelopersPage() {
-  const { t } = useTranslations();
+  const { t, locale } = useTranslations();
   const agent = useAuthStore((s) => s.agent);
   const router = useRouter();
   const [overview, setOverview] = useState<DeveloperOverview | null>(null);
@@ -54,6 +55,10 @@ export default function DevelopersPage() {
             {docsUrl.replace(/^https?:\/\//, "")}
             <ExternalLink className="h-3 w-3" />
           </a>
+        </p>
+
+        <p className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
+          {apiKeyModeCopy(locale).pageNotice}
         </p>
 
         <Tabs defaultValue="keys">

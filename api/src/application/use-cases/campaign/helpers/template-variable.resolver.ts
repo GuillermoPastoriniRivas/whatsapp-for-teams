@@ -41,6 +41,49 @@ function variableKey(placeholder: TemplatePlaceholder): string {
     : `${placeholder.component}.${placeholder.position}`;
 }
 
+/**
+ * Acepta las tres formas de nombrar una variable y devuelve las claves
+ * canónicas que usa `buildTemplatePayload`:
+ *
+ * - canónica: `body.1`, `body.nombre`, `header.nombre`, `button.0.1`;
+ * - nombre suelto: `nombre` (sólo body/header, se aplica a todos los que se
+ *   llamen así);
+ * - ordinal: `body.1` es el primer placeholder del body, se llame `1` o
+ *   `nombre`. Es lo que permite que una plantilla con `{{nombre}}` reciba
+ *   `{ "body.1": "Ana" }` sin obligar al desarrollador a conocer el nombre.
+ *
+ * Devuelve las claves que faltan para que el llamador responda
+ * `MISSING_TEMPLATE_VARIABLES` antes de encolar el envío.
+ */
+export function canonicalizeTemplateVariables(
+  components: MessageTemplateComponent[],
+  variables: Record<string, unknown> = {},
+): { variables: Record<string, string>; missing: string[] } {
+  const canonical: Record<string, string> = {};
+  const missing: string[] = [];
+  const ordinals: Record<string, number> = {};
+
+  for (const placeholder of listTemplatePlaceholders(components)) {
+    const key = variableKey(placeholder);
+    const component = placeholder.component;
+    ordinals[component] = (ordinals[component] ?? 0) + 1;
+    const ordinalKey = component === 'button' ? key : `${component}.${ordinals[component]}`;
+
+    const raw =
+      variables[key] ??
+      variables[ordinalKey] ??
+      (component === 'button' ? undefined : variables[placeholder.position]);
+
+    if (raw === undefined || raw === null || String(raw).length === 0) {
+      missing.push(key);
+      continue;
+    }
+    canonical[key] = String(raw);
+  }
+
+  return { variables: canonical, missing };
+}
+
 /** Lists every placeholder the template requires a value for. */
 export function listTemplatePlaceholders(components: MessageTemplateComponent[]): TemplatePlaceholder[] {
   const placeholders: TemplatePlaceholder[] = [];

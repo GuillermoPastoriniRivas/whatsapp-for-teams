@@ -1,10 +1,15 @@
 import { createHash, createHmac, randomBytes } from 'node:crypto';
-import { ApiKey } from '../../../domain/entities/api-key.entity.js';
+import { ApiKey, ApiKeyMode, DEFAULT_API_KEY_MODE, normalizeApiKeyMode } from '../../../domain/entities/api-key.entity.js';
 import { WebhookEndpoint } from '../../../domain/entities/webhook-endpoint.entity.js';
 
-/** Genera una clave de API en claro: ak_live_ + 40 hex (160 bits de entropía). */
-export function generateApiKey(): string {
-  return `ak_live_${randomBytes(20).toString('hex')}`;
+/**
+ * Genera una clave de API en claro: ak_live_ o ak_test_ + 40 hex
+ * (160 bits de entropía). El prefijo dice desde el primer vistazo si la clave
+ * es de sandbox.
+ */
+export function generateApiKey(mode: ApiKeyMode = DEFAULT_API_KEY_MODE): string {
+  const prefix = mode === 'test' ? 'ak_test' : 'ak_live';
+  return `${prefix}_${randomBytes(20).toString('hex')}`;
 }
 
 export function hashApiKey(plainKey: string): string {
@@ -36,6 +41,7 @@ export function toApiKeyView(key: ApiKey) {
     name: key.name,
     prefix: key.prefix,
     scopes: key.scopes,
+    mode: normalizeApiKeyMode(key.mode),
     lastUsedAt: key.lastUsedAt,
     revokedAt: key.revokedAt,
     createdAt: key.createdAt,

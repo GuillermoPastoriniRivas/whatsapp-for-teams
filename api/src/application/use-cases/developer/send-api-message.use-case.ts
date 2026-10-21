@@ -25,7 +25,8 @@ import { Contact } from '../../../domain/entities/contact.entity.js';
 import { Conversation } from '../../../domain/entities/conversation.entity.js';
 import { billingForConversation } from '../billing/outbound-billing.helper.js';
 import { isBsuidOnly, recipientIdentityOf, templateRequiresPhone } from '../../../domain/value-objects/recipient-identity.js';
-import { listTemplatePlaceholders, buildTemplatePayload, TemplatePlaceholder } from '../campaign/helpers/template-variable.resolver.js';
+import { canonicalizeTemplateVariables, buildTemplatePayload } from '../campaign/helpers/template-variable.resolver.js';
+import { randomUUID } from 'node:crypto';
 import { templateBelongsToPhone } from '../template/helpers/template-scope.js';
 import { ConversationStatus } from '../../../domain/enums/conversation-status.enum.js';
 import { ConversationOrigin } from '../../../domain/enums/conversation-origin.enum.js';
@@ -78,6 +79,12 @@ export interface SendApiMessageInput {
    * como "API".
    */
   sender?: { agentId: string };
+  /**
+   * Clave `ak_test_`: simula el envío sin llamar al proveedor. El mensaje y la
+   * conversación se crean igual (para que el sandbox se vea real), pero no sale
+   * a WhatsApp y no se contabiliza.
+   */
+  sandbox?: boolean;
 }
 
 /** Cómo queda firmado el mensaje saliente. */
@@ -93,10 +100,9 @@ export interface SendApiMessageOutput {
   conversationCreated: boolean;
 }
 
-function placeholderKey(p: TemplatePlaceholder): string {
-  return p.component === 'button'
-    ? `button.${p.index}.${p.position}`
-    : `${p.component}.${p.position}`;
+/** wamid de mentira, con un prefijo que lo hace inconfundible en los logs. */
+function sandboxWaMessageId(): string {
+  return `sandbox-${randomUUID()}`;
 }
 
 /**
@@ -199,20 +205,24 @@ export class SendApiMessageUseCase {
               ? MessageType.INTERACTIVE
               : MessageType.TEXT;
 
-      const { waMessageId } = await this.messagingApi.sendMessage({
-        provider: phone.provider,
-        providerConfig: phone.providerConfig,
-        phoneNumberId: phone.phoneNumberId,
-        ...recipientIdentityOf(contact),
-        type: messageType,
-        body: input.body,
-        location: input.location,
-        contacts: input.contacts,
-        interactive: input.interactive,
-        reaction: input.reaction,
-        contextWaMessageId: input.replyToWaMessageId,
-        billing: billingForConversation(conversation, contact, { senderKind: 'api' }),
-      });
+      const waMessageId = input.sandbox
+        ? sandboxWaMessageId()
+        : (
+            await this.messagingApi.sendMessage({
+              provider: phone.provider,
+              providerConfig: phone.providerConfig,
+              phoneNumberId: phone.phoneNumberId,
+              ...recipientIdentityOf(contact),
+              type: messageType,
+              body: input.body,
+              location: input.location,
+              contacts: input.contacts,
+              interactive: input.interactive,
+              reaction: input.reaction,
+              contextWaMessageId: input.replyToWaMessageId,
+              billing: billingForConversation(conversation, contact, { senderKind: 'api' }),
+            })
+          ).waMessageId;
 
       message = await this.messageRepo.upsertByWaMessageId({
         conversationId: conversation.id,
@@ -344,41 +354,47 @@ export class SendApiMessageUseCase {
       return err(new MarketingOptOutError());
     }
 
-    const variables = input.variables ?? {};
-    const missing = listTemplatePlaceholders(template.components)
-      .map(placeholderKey)
-      .filter((key) => !variables[key]);
-    if (missing.length > 0) {
-      return err(new DomainError('MISSING_TEMPLATE_VARIABLES', `Missing template variables: ${missing.join(', ')}`));
+    const canonical = canonicalizeTemplateVariables(template.components, input.variables ?? {});
+    if (canonical.missing.length > 0) {
+      return err(
+        new DomainError(
+          'MISSING_TEMPLATE_VARIABLES',
+          `Missing template variables: ${canonical.missing.join(', ')}`,
+        ),
+      );
     }
 
-    const built = buildTemplatePayload(template.components, variables);
+    const built = buildTemplatePayload(template.components, canonical.variables);
 
-    const { waMessageId } = await this.messagingApi.sendMessage({
-      provider: phone.provider,
-      providerConfig: phone.providerConfig,
-      phoneNumberId: phone.phoneNumberId,
-      ...recipientIdentityOf(contact),
-      type: MessageType.TEMPLATE,
-      body: built.renderedBody,
-      template: {
-        name: template.name,
-        language: template.language,
-        components: built.components,
-      },
-      // MM Lite sólo aplica a marketing; pedirlo en otra categoría lo rechaza
-      // Meta, así que se ignora en vez de romper el envío.
-      marketingLite: input.marketingLite && template.category === TemplateCategory.MARKETING,
-      // La categoría se congela acá: Meta la puede cambiar después (hay un
-      // webhook `template_category_update`) y entonces leerla de la plantilla
-      // devolvería una tarifa que no es la que se cobró.
-      billing: billingForConversation(conversation, contact, {
-        senderKind: 'api',
-        templateId: template.id,
-        templateCategory: template.category,
-        marketingLite: input.marketingLite && template.category === TemplateCategory.MARKETING,
-      }),
-    });
+    const waMessageId = input.sandbox
+      ? sandboxWaMessageId()
+      : (
+          await this.messagingApi.sendMessage({
+            provider: phone.provider,
+            providerConfig: phone.providerConfig,
+            phoneNumberId: phone.phoneNumberId,
+            ...recipientIdentityOf(contact),
+            type: MessageType.TEMPLATE,
+            body: built.renderedBody,
+            template: {
+              name: template.name,
+              language: template.language,
+              components: built.components,
+            },
+            // MM Lite sólo aplica a marketing; pedirlo en otra categoría lo rechaza
+            // Meta, así que se ignora en vez de romper el envío.
+            marketingLite: input.marketingLite && template.category === TemplateCategory.MARKETING,
+            // La categoría se congela acá: Meta la puede cambiar después (hay un
+            // webhook `template_category_update`) y entonces leerla de la plantilla
+            // devolvería una tarifa que no es la que se cobró.
+            billing: billingForConversation(conversation, contact, {
+              senderKind: 'api',
+              templateId: template.id,
+              templateCategory: template.category,
+              marketingLite: input.marketingLite && template.category === TemplateCategory.MARKETING,
+            }),
+          })
+        ).waMessageId;
 
     const message = await this.messageRepo.upsertByWaMessageId({
       conversationId: conversation.id,

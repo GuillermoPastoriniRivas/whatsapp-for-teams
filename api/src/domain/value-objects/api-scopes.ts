@@ -1,4 +1,11 @@
-export const API_SCOPES = ['messages:read', 'messages:write', 'flows:read', 'flows:write'] as const;
+export const API_SCOPES = [
+  'messages:read',
+  'messages:write',
+  'flows:read',
+  'flows:write',
+  'notifications:read',
+  'notifications:write',
+] as const;
 
 export type ApiScope = (typeof API_SCOPES)[number];
 
@@ -14,6 +21,8 @@ export const API_SCOPE_DESCRIPTIONS: Record<ApiScope, string> = {
   'messages:write': 'Mandar mensajes y crear contactos',
   'flows:read': 'Ver automatizaciones, sus versiones y validarlas',
   'flows:write': 'Crear y editar borradores, y probarlos en el simulador',
+  'notifications:read': 'Ver las notificaciones enviadas por la API, su estado y su historial',
+  'notifications:write': 'Enviar, programar y cancelar notificaciones',
 };
 
 export function isApiScope(value: unknown): value is ApiScope {

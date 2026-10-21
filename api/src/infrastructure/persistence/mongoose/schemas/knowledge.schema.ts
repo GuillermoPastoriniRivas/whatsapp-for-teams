@@ -12,13 +12,15 @@ export class KnowledgeDocumentModel {
   @Prop({ required: true })
   title: string;
 
-  @Prop({ required: true })
+  // `type: String` explícito: con ts-jest + isolatedModules el `design:type`
+  // de un alias de unión se pierde y @nestjs/mongoose no puede inferirlo.
+  @Prop({ type: String, required: true })
   source: KnowledgeSource;
 
   @Prop({ type: String, default: null })
   sourceRef: string | null;
 
-  @Prop({ required: true, default: 'ready' })
+  @Prop({ type: String, required: true, default: 'ready' })
   status: KnowledgeStatus;
 
   @Prop({ default: 0 })

@@ -88,7 +88,9 @@ export class MessageChargeModel {
   @Prop({ type: Object, default: null })
   rate: ChargeRate | null;
 
-  @Prop({ required: true, default: 'live' })
+  // `type: String` explícito: con ts-jest + isolatedModules el `design:type`
+  // de un alias de unión se pierde y @nestjs/mongoose no puede inferirlo.
+  @Prop({ type: String, required: true, default: 'live' })
   source: ChargeSource;
 }
 

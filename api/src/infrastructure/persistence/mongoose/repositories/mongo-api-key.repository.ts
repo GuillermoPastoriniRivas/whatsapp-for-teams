@@ -19,6 +19,7 @@ export class MongoApiKeyRepository implements ApiKeyRepository {
       prefix: data.prefix,
       keyHash: data.keyHash,
       scopes: data.scopes,
+      mode: data.mode,
       createdBy: data.createdBy ? new Types.ObjectId(data.createdBy) : null,
     });
     return ApiKeyMapper.toDomain(doc);

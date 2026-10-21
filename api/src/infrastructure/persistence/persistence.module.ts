@@ -63,6 +63,8 @@ import { MongoMediaAssetRepository } from './mongoose/repositories/mongo-media-a
 import { MongoMediaProviderRefRepository } from './mongoose/repositories/mongo-media-provider-ref.repository.js';
 import { MessageChargeModel, MessageChargeSchema } from './mongoose/schemas/message-charge.schema.js';
 import { MongoMessageChargeRepository } from './mongoose/repositories/mongo-message-charge.repository.js';
+import { NotificationModel, NotificationSchema } from './mongoose/schemas/notification.schema.js';
+import { MongoNotificationRepository } from './mongoose/repositories/mongo-notification.repository.js';
 import { RateCardModel, RateCardSchema } from './mongoose/schemas/rate-card.schema.js';
 import { MongoRateCardRepository } from './mongoose/repositories/mongo-rate-card.repository.js';
 
@@ -111,6 +113,7 @@ const schemas = MongooseModule.forFeature([
   { name: MediaAssetModel.name, schema: MediaAssetSchema },
   { name: MediaProviderRefModel.name, schema: MediaProviderRefSchema },
   { name: MessageChargeModel.name, schema: MessageChargeSchema },
+  { name: NotificationModel.name, schema: NotificationSchema },
   { name: RateCardModel.name, schema: RateCardSchema },
 ]);
 
@@ -149,6 +152,7 @@ const repositories = [
   { provide: 'MediaAssetRepository', useClass: MongoMediaAssetRepository },
   { provide: 'MediaProviderRefRepository', useClass: MongoMediaProviderRefRepository },
   { provide: 'MessageChargeRepository', useClass: MongoMessageChargeRepository },
+  { provide: 'NotificationRepository', useClass: MongoNotificationRepository },
   { provide: 'RateCardRepository', useClass: MongoRateCardRepository },
 ];
 

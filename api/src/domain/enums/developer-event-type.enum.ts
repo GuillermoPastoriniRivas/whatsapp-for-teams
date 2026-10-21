@@ -15,6 +15,13 @@ export enum DeveloperEventType {
   FLOW_FAILED = 'flow.failed',
   /** Evento propio disparado por el nodo "Avisar a mis sistemas" */
   FLOW_CUSTOM = 'flow.custom',
+  /** Ciclo de vida de una notificación de la API pública. */
+  NOTIFICATION_SCHEDULED = 'notification.scheduled',
+  NOTIFICATION_SENT = 'notification.sent',
+  NOTIFICATION_DELIVERED = 'notification.delivered',
+  NOTIFICATION_READ = 'notification.read',
+  NOTIFICATION_FAILED = 'notification.failed',
+  NOTIFICATION_CANCELED = 'notification.canceled',
   PING = 'ping',
 }
 
@@ -29,4 +36,10 @@ export const SUBSCRIBABLE_DEVELOPER_EVENTS: DeveloperEventType[] = [
   DeveloperEventType.FLOW_COMPLETED,
   DeveloperEventType.FLOW_FAILED,
   DeveloperEventType.FLOW_CUSTOM,
+  DeveloperEventType.NOTIFICATION_SCHEDULED,
+  DeveloperEventType.NOTIFICATION_SENT,
+  DeveloperEventType.NOTIFICATION_DELIVERED,
+  DeveloperEventType.NOTIFICATION_READ,
+  DeveloperEventType.NOTIFICATION_FAILED,
+  DeveloperEventType.NOTIFICATION_CANCELED,
 ];

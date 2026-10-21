@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { DeveloperEventType, SUBSCRIBABLE_DEVELOPER_EVENTS } from '../../domain/enums/developer-event-type.enum.js';
 import { API_SCOPES, LEGACY_API_SCOPES } from '../../domain/value-objects/api-scopes.js';
+import { API_KEY_MODES } from '../../domain/entities/api-key.entity.js';
 
 const subscribableEvent = z
   .nativeEnum(DeveloperEventType)
@@ -9,6 +10,8 @@ const subscribableEvent = z
 export const CreateApiKeyRequestSchema = z.object({
   name: z.string().min(1).max(80),
   scopes: z.array(z.enum(API_SCOPES)).min(1).default([...LEGACY_API_SCOPES]),
+  /** `test` crea una clave de sandbox: nunca llega a Meta. Si no viene, `live`. */
+  mode: z.enum(API_KEY_MODES).default('live'),
 });
 export type CreateApiKeyRequestDto = z.infer<typeof CreateApiKeyRequestSchema>;
 

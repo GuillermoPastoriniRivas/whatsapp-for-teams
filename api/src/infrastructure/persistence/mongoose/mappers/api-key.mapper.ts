@@ -1,4 +1,4 @@
-import { ApiKey } from '../../../../domain/entities/api-key.entity.js';
+import { ApiKey, normalizeApiKeyMode } from '../../../../domain/entities/api-key.entity.js';
 import { normalizeScopes } from '../../../../domain/value-objects/api-scopes.js';
 import { ApiKeyDocument } from '../schemas/api-key.schema.js';
 
@@ -11,6 +11,7 @@ export class ApiKeyMapper {
       doc.prefix,
       doc.keyHash,
       normalizeScopes(doc.scopes),
+      normalizeApiKeyMode(doc.mode),
       doc.createdBy ? doc.createdBy.toHexString() : null,
       doc.lastUsedAt ?? null,
       doc.revokedAt ?? null,

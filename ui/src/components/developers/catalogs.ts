@@ -15,6 +15,36 @@ export const EVENT_CATALOG: {
   { value: "flow.completed", labelKey: "eventFlowCompleted", descKey: "eventFlowCompletedDesc" },
   { value: "flow.failed", labelKey: "eventFlowFailed", descKey: "eventFlowFailedDesc" },
   { value: "flow.custom", labelKey: "eventFlowCustom", descKey: "eventFlowCustomDesc" },
+  {
+    value: "notification.scheduled",
+    labelKey: "eventNotificationScheduled",
+    descKey: "eventNotificationScheduledDesc",
+  },
+  {
+    value: "notification.sent",
+    labelKey: "eventNotificationSent",
+    descKey: "eventNotificationSentDesc",
+  },
+  {
+    value: "notification.delivered",
+    labelKey: "eventNotificationDelivered",
+    descKey: "eventNotificationDeliveredDesc",
+  },
+  {
+    value: "notification.read",
+    labelKey: "eventNotificationRead",
+    descKey: "eventNotificationReadDesc",
+  },
+  {
+    value: "notification.failed",
+    labelKey: "eventNotificationFailed",
+    descKey: "eventNotificationFailedDesc",
+  },
+  {
+    value: "notification.canceled",
+    labelKey: "eventNotificationCanceled",
+    descKey: "eventNotificationCanceledDesc",
+  },
 ];
 
 export interface CatalogQueryParam {
@@ -74,6 +104,40 @@ export const ENDPOINT_CATALOG: CatalogEndpoint[] = [
       templateId: "TEMPLATE_ID",
       variables: { "body.1": "Guille" },
     },
+  },
+  {
+    id: "notifications",
+    method: "GET",
+    path: "/v1/notifications",
+    summary: {
+      es: "Historial de notificaciones (estado y timeline)",
+      en: "Notification history (status and timeline)",
+    },
+    queryParams: [
+      { name: "status", placeholder: "scheduled | sent | delivered | read | failed | canceled" },
+      { name: "templateId" },
+      { name: "from" },
+      { name: "to" },
+      { name: "page" },
+      { name: "limit" },
+    ],
+  },
+  {
+    id: "notification",
+    method: "GET",
+    path: "/v1/notifications/{id}",
+    summary: { es: "Detalle de una notificación", en: "Notification detail" },
+    pathParams: ["id"],
+  },
+  {
+    id: "notification-cancel",
+    method: "POST",
+    path: "/v1/notifications/{id}/cancel",
+    summary: {
+      es: "Cancelar una notificación programada",
+      en: "Cancel a scheduled notification",
+    },
+    pathParams: ["id"],
   },
   {
     id: "conversations",

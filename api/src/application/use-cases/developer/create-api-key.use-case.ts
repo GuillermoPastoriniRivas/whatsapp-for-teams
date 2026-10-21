@@ -5,6 +5,7 @@ import { DomainError, FeatureNotInPlanError } from '../../../domain/errors/domai
 import { generateApiKey, hashApiKey, apiKeyPrefix, toApiKeyView, ApiKeyView } from './developer-credentials.util.js';
 import { resolvePlanFeatures } from './plan-features.util.js';
 import { normalizeScopes, type ApiScope } from '../../../domain/value-objects/api-scopes.js';
+import { ApiKeyMode, normalizeApiKeyMode } from '../../../domain/entities/api-key.entity.js';
 
 const MAX_ACTIVE_KEYS = 10;
 
@@ -13,6 +14,8 @@ export interface CreateApiKeyInput {
   name: string;
   scopes: ApiScope[];
   createdBy: string | null;
+  /** `test` crea una clave de sandbox: nunca alcanza a Meta. Por defecto, `live`. */
+  mode?: ApiKeyMode;
 }
 
 export interface CreateApiKeyOutput {
@@ -36,13 +39,15 @@ export class CreateApiKeyUseCase {
       return err(new DomainError('API_KEY_LIMIT_REACHED', `You can have at most ${MAX_ACTIVE_KEYS} active API keys.`));
     }
 
-    const plainKey = generateApiKey();
+    const mode = normalizeApiKeyMode(input.mode);
+    const plainKey = generateApiKey(mode);
     const apiKey = await this.apiKeyRepo.create({
       tenantId: input.tenantId,
       name: input.name.trim(),
       prefix: apiKeyPrefix(plainKey),
       keyHash: hashApiKey(plainKey),
       scopes: normalizeScopes(input.scopes),
+      mode,
       createdBy: input.createdBy,
     });
 

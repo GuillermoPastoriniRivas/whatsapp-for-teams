@@ -9,6 +9,9 @@ import { MessageWaStatus } from '../../../domain/enums/message-wa-status.enum.js
 import { CampaignRecipientStatus } from '../../../domain/enums/campaign-recipient-status.enum.js';
 import { DeveloperEventType } from '../../../domain/enums/developer-event-type.enum.js';
 import { MessageChargeRepository } from '../../../domain/repositories/message-charge.repository.js';
+import { NotificationRepository } from '../../../domain/repositories/notification.repository.js';
+import { NotificationStatus } from '../../../domain/enums/notification-status.enum.js';
+import { serializeNotificationPayload } from '../notification/notification.util.js';
 
 const RECIPIENT_STATUS_MAP: Record<string, CampaignRecipientStatus> = {
   delivered: CampaignRecipientStatus.DELIVERED,
@@ -19,6 +22,24 @@ const RECIPIENT_STATUS_MAP: Record<string, CampaignRecipientStatus> = {
 /** `read` prueba la entrega aunque el `delivered` se haya perdido. */
 const DELIVERED_STATUSES = new Set(['delivered', 'read']);
 
+/** Estados de Meta que también mueven la notificación pública. */
+const NOTIFICATION_STATUS_MAP: Record<string, NotificationStatus> = {
+  sent: NotificationStatus.SENT,
+  delivered: NotificationStatus.DELIVERED,
+  read: NotificationStatus.READ,
+  failed: NotificationStatus.FAILED,
+};
+
+const NOTIFICATION_EVENT_MAP: Record<NotificationStatus, DeveloperEventType> = {
+  [NotificationStatus.SCHEDULED]: DeveloperEventType.NOTIFICATION_SCHEDULED,
+  [NotificationStatus.QUEUED]: DeveloperEventType.NOTIFICATION_SCHEDULED,
+  [NotificationStatus.SENT]: DeveloperEventType.NOTIFICATION_SENT,
+  [NotificationStatus.DELIVERED]: DeveloperEventType.NOTIFICATION_DELIVERED,
+  [NotificationStatus.READ]: DeveloperEventType.NOTIFICATION_READ,
+  [NotificationStatus.FAILED]: DeveloperEventType.NOTIFICATION_FAILED,
+  [NotificationStatus.CANCELED]: DeveloperEventType.NOTIFICATION_CANCELED,
+};
+
 export class HandleStatusUpdateUseCase {
   constructor(
     private readonly messageRepo: MessageRepository,
@@ -28,6 +49,7 @@ export class HandleStatusUpdateUseCase {
     private readonly conversationRepo: ConversationRepository,
     private readonly devEvents: DeveloperEventsPort,
     private readonly charges: MessageChargeRepository,
+    private readonly notifications: NotificationRepository,
   ) {}
 
   async execute(input: StatusUpdateInput): Promise<void> {
@@ -70,6 +92,10 @@ export class HandleStatusUpdateUseCase {
       }
     }
 
+    // La notificación pública (si el mensaje salió por /v1/notifications)
+    // sigue el mismo estado que reporta Meta y emite su propio webhook.
+    await this.syncNotification(input);
+
     // Campaign recipient tracking. The monotonic guard in the repo makes
     // out-of-order webhooks a no-op, so counters increment exactly once.
     const recipientStatus = RECIPIENT_STATUS_MAP[input.status];
@@ -92,6 +118,43 @@ export class HandleStatusUpdateUseCase {
         counts: campaign.counts,
       });
     }
+  }
+
+  /**
+   * Propaga el estado de Meta a la notificación pública. Se busca por wamid y
+   * no por el `Message` interno, así un webhook que llega antes de que el job
+   * termine de enlazar el mensaje tampoco se pierde.
+   */
+  private async syncNotification(input: StatusUpdateInput): Promise<void> {
+    const status = NOTIFICATION_STATUS_MAP[input.status];
+    if (!status) return;
+
+    const notification = await this.notifications.findByWaMessageId(input.waMessageId);
+    if (!notification) return;
+
+    const stamp = input.timestamp ?? new Date();
+    const firstError = input.errors?.[0];
+    const timestamps =
+      status === NotificationStatus.FAILED
+        ? {
+            failedAt: stamp,
+            failureCode: firstError ? String(firstError.code) : null,
+            failureReason: firstError?.title ?? null,
+          }
+        : status === NotificationStatus.DELIVERED
+          ? { deliveredAt: stamp }
+          : status === NotificationStatus.READ
+            ? { readAt: stamp, deliveredAt: notification.deliveredAt ?? stamp }
+            : { sentAt: stamp };
+
+    const updated = await this.notifications.updateStatus(notification.id, status, timestamps);
+    if (!updated) return;
+
+    this.devEvents.emit(
+      updated.tenantId,
+      NOTIFICATION_EVENT_MAP[status],
+      serializeNotificationPayload(updated),
+    );
   }
 
   /**
